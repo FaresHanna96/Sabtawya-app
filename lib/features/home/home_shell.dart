@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/l10n/app_strings.dart';
+import '../../core/services/connectivity_service.dart';
+import '../../core/services/sync_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_widgets.dart';
+import '../../state/session_controller.dart';
+import '../attendance/attendance_screen.dart';
+import '../children/children_screen.dart';
+import '../classes/classes_screen.dart';
+import '../dashboard/admin_dashboard_screen.dart';
+import '../dashboard/servant_dashboard_screen.dart';
+import '../excel/import_children_screen.dart';
+import '../servant_activities/admin_servant_activities_screen.dart';
+import '../servant_activities/my_activities_screen.dart';
+import 'more_screen.dart';
+
+/// The signed-in shell: five tabs, with the dashboard and the labels adapting
+/// to the role. A servant sees "فصولي" where an admin sees "الفصول".
+class HomeShell extends StatefulWidget {
+  const HomeShell({super.key});
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
+    final connectivity = context.watch<ConnectivityService>();
+    final sync = context.watch<SyncService>();
+    final isAdmin = session.isAdmin;
+    final isOnline = connectivity.isOnline;
+    final pendingCount = sync.pendingCount;
+
+    final tabs = <_Tab>[
+      _Tab(
+        label: AppStrings.dashboard,
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home,
+        child: isAdmin
+            ? const AdminDashboardScreen()
+            : const ServantDashboardScreen(),
+      ),
+      _Tab(
+        label: isAdmin ? AppStrings.classesNav : AppStrings.myClasses,
+        icon: Icons.class_outlined,
+        selectedIcon: Icons.class_,
+        child: const ClassesScreen(),
+      ),
+      const _Tab(
+        label: AppStrings.childrenNav,
+        icon: Icons.groups_outlined,
+        selectedIcon: Icons.groups,
+        child: ChildrenScreen(),
+      ),
+      const _Tab(
+        label: AppStrings.attendanceNav,
+        icon: Icons.fact_check_outlined,
+        selectedIcon: Icons.fact_check,
+        child: AttendanceScreen(),
+      ),
+      _Tab(
+        label: isAdmin ? AppStrings.activitiesNav : AppStrings.myActivities,
+        icon: Icons.volunteer_activism_outlined,
+        selectedIcon: Icons.volunteer_activism,
+        child: isAdmin
+            ? const AdminServantActivitiesScreen()
+            : const MyActivitiesScreen(),
+      ),
+      const _Tab(
+        label: AppStrings.more,
+        icon: Icons.more_horiz_outlined,
+        selectedIcon: Icons.more_horiz,
+        child: MoreScreen(),
+      ),
+    ];
+
+    final current = tabs[_index];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(current.label == AppStrings.dashboard
+            ? AppStrings.appTitle
+            : current.label),
+        actions: [
+          if (_index == 2)
+            IconButton(
+              tooltip: AppStrings.importChildren,
+              icon: const Icon(Icons.upload_file),
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ImportChildrenScreen(),
+                ),
+              ),
+            ),
+          IconButton(
+            tooltip: AppStrings.refresh,
+            icon: const Icon(Icons.refresh),
+            onPressed: () => session.refreshAll(),
+          ),
+        ],
+      ),
+      // IndexedStack keeps each tab's scroll position and loaded data, so
+      // moving between attendance and the roster does not re-query every time.
+      body: Column(
+        children: [
+          if (!isOnline) _OfflineBanner(pendingCount: pendingCount),
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: tabs.map((tab) => tab.child).toList(),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (index) => setState(() => _index = index),
+        destinations: [
+          for (var i = 0; i < tabs.length; i++)
+            NavigationDestination(
+              icon: (i == 3 && pendingCount > 0)
+                  ? Badge(
+                      label: Text('$pendingCount'),
+                      child: Icon(tabs[i].icon),
+                    )
+                  : Icon(tabs[i].icon),
+              selectedIcon: Icon(tabs[i].selectedIcon),
+              label: tabs[i].label,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tab {
+  const _Tab({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.child,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final Widget child;
+}
+
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner({required this.pendingCount});
+
+  final int pendingCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.warning.withValues(alpha: 0.92),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off, size: 16, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              pendingCount > 0
+                  ? '${AppStrings.offlineMode} • ${AppStrings.pendingSyncCount(pendingCount)}'
+                  : AppStrings.offlineMode,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown while the shell has nothing to display, e.g. a servant with no class.
+class HomePlaceholder extends StatelessWidget {
+  const HomePlaceholder({super.key});
+
+  @override
+  Widget build(BuildContext context) => const EmptyState(
+        icon: Icons.class_outlined,
+        title: AppStrings.noClassesAssigned,
+        body: AppStrings.noClassesAssignedBody,
+      );
+}

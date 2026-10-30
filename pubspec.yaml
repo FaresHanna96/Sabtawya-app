@@ -1,0 +1,36 @@
+name: sabtawya
+description: "Sabtawya — نظام إدارة الحضور والطايو"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.18.3
+  provider: ^6.1.5+1
+  excel: ^4.0.6
+  file_picker: ^13.2.0
+  share_plus: ^13.3.1
+  image_picker: ^1.2.4
+  url_launcher: ^6.3.0
+  google_fonts: ^6.2.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  connectivity_plus: ^6.0.5
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/logo.png
+    - assets/images/church_logo.jpg
