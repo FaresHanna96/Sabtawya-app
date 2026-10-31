@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -46,6 +47,22 @@ class PhotoService {
         maxHeight: 1024,
         imageQuality: 85,
       );
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Picks a PDF file. Returns null when the user cancels.
+  static Future<XFile?> pickPdf() async {
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (files.isEmpty) return null;
+      final path = files.single.path;
+      if (path == null) return null;
+      return XFile(path);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -128,6 +145,7 @@ class PhotoService {
     final dot = name.lastIndexOf('.');
     if (dot < 0 || dot == name.length - 1) return 'jpg';
     final extension = name.substring(dot + 1).toLowerCase();
+    if (extension == 'pdf') return 'pdf';
     return const <String>{'jpg', 'jpeg', 'png', 'webp'}.contains(extension)
         ? extension
         : 'jpg';
@@ -136,6 +154,7 @@ class PhotoService {
   static String _mimeOf(String extension) => switch (extension) {
         'png' => 'image/png',
         'webp' => 'image/webp',
+        'pdf' => 'application/pdf',
         _ => 'image/jpeg',
       };
 }

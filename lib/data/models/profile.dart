@@ -8,7 +8,8 @@ import 'parsers.dart';
 /// wording; the difference is [Profile.gender], not the role.
 enum AppRole {
   admin('admin', AppStrings.roleAdmin),
-  servant('servant', AppStrings.roleServant);
+  servant('servant', AppStrings.roleServant),
+  generalServant('general_servant', AppStrings.roleGeneralServant);
 
   const AppRole(this.wire, this.label);
 
@@ -18,6 +19,7 @@ enum AppRole {
   /// أمين الخدمة, or خادم / خادمة according to [gender].
   String labelFor(Gender? gender) {
     if (this == AppRole.admin) return AppStrings.roleAdmin;
+    if (this == AppRole.generalServant) return AppStrings.roleGeneralServant;
     return gender == Gender.girl
         ? AppStrings.roleServantFemale
         : AppStrings.roleServant;
@@ -57,6 +59,7 @@ class Profile {
   final DateTime? rejectedAt;
 
   bool get isAdmin => role == AppRole.admin;
+  bool get isGeneralServant => role == AppRole.generalServant;
 
   bool get isRejected => rejectedAt != null;
 

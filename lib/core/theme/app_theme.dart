@@ -114,8 +114,10 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         side: const BorderSide(color: Color(0xFFE5E7EB)),
+        backgroundColor: Colors.white,
         selectedColor: AppColors.navy.withValues(alpha: 0.12),
-        labelStyle: GoogleFonts.cairo(fontSize: 13),
+        labelStyle: GoogleFonts.cairo(fontSize: 13, color: AppColors.navy),
+        iconTheme: const IconThemeData(color: AppColors.navy),
         padding: const EdgeInsets.symmetric(horizontal: 4),
       ),
       navigationBarTheme: NavigationBarThemeData(

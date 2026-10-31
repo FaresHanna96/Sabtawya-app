@@ -20,7 +20,62 @@ class CompetitionsScreen extends StatefulWidget {
   State<CompetitionsScreen> createState() => _CompetitionsScreenState();
 }
 
-class _CompetitionsScreenState extends State<CompetitionsScreen> {
+class _CompetitionsScreenState extends State<CompetitionsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isAdmin = context.watch<SessionController>().isAdmin;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(AppStrings.competitions),
+        bottom: TabBar(
+          controller: _tabs,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
+          indicatorColor: Colors.white,
+          tabs: const [
+            Tab(text: AppStrings.competitionsList),
+            Tab(text: AppStrings.cumulativeScores),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: TabBarView(
+          controller: _tabs,
+          children: [
+            _ListTab(isAdmin: isAdmin),
+            const _ScoresTab(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tab 1 — list of competitions
+// ---------------------------------------------------------------------------
+
+class _ListTab extends StatefulWidget {
+  const _ListTab({required this.isAdmin});
+
+  final bool isAdmin;
+
+  @override
+  State<_ListTab> createState() => _ListTabState();
+}
+
+class _ListTabState extends State<_ListTab>
+    with AutomaticKeepAliveClientMixin {
   static const _repository = CompetitionRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<List<Competition>>>();
@@ -72,13 +127,15 @@ class _CompetitionsScreenState extends State<CompetitionsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isAdmin = context.watch<SessionController>().isAdmin;
+  bool get wantKeepAlive => true;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.competitions)),
-      body: SafeArea(
-        child: AsyncSection<List<Competition>>(
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    return Stack(
+      children: [
+        AsyncSection<List<Competition>>(
           key: _sectionKey,
           load: _load,
           builder: (context, competitions, reload) {
@@ -103,7 +160,7 @@ class _CompetitionsScreenState extends State<CompetitionsScreen> {
                 final c = competitions[index];
                 return _CompetitionTile(
                   competition: c,
-                  isAdmin: isAdmin,
+                  isAdmin: widget.isAdmin,
                   onTap: () => _openDetail(c),
                   onEdit: () => _edit(c),
                   onDelete: () => _delete(c),
@@ -112,14 +169,122 @@ class _CompetitionsScreenState extends State<CompetitionsScreen> {
             );
           },
         ),
-      ),
-      floatingActionButton: isAdmin
-          ? FloatingActionButton.extended(
+        if (widget.isAdmin)
+          Positioned(
+            bottom: 24,
+            left: 16,
+            right: 16,
+            child: FloatingActionButton.extended(
               onPressed: _add,
               icon: const Icon(Icons.add),
               label: const Text(AppStrings.addCompetition),
-            )
-          : null,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tab 2 — cumulative scores across ALL competitions
+// ---------------------------------------------------------------------------
+
+class _ScoresTab extends StatelessWidget {
+  const _ScoresTab();
+
+  static const _repository = CompetitionRepository();
+
+  @override
+  Widget build(BuildContext context) {
+    return AsyncSection<List<ChildCompetitionScore>>(
+      load: () => _repository.cumulativeScores(),
+      builder: (context, scores, reload) {
+        if (scores.isEmpty) {
+          return const Center(
+            child: EmptyState(
+              icon: Icons.leaderboard_outlined,
+              title: AppStrings.noCompetitions,
+              body: AppStrings.noCompetitionsBody,
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          itemCount: scores.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final score = scores[index];
+            final rank = index + 1;
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      child: Text(
+                        '$rank',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: rank <= 3
+                              ? AppColors.warning
+                              : AppColors.muted,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            score.childName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${AppStrings.avgMark}: ${score.avgMark}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${score.totalMarks}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        Text(
+                          '${score.competitionsCount} ${AppStrings.weeklyCompetition}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

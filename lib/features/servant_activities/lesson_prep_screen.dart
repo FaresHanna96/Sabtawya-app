@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -43,29 +44,37 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
 
-  // Picked but not yet uploaded
-  final List<XFile> _pickedFiles = [];
-  final List<Uint8List> _previews = [];
+  // Picked but not yet uploaded — images carry preview bytes; PDFs carry only XFile
+  final List<XFile> _pickedImages = [];
+  final List<Uint8List> _imagePreviews = [];
+  final List<XFile> _pickedPdfs = [];
 
   Future<void> _pickPhoto() async {
     final files = await PhotoService.pickMultiple();
     if (files.isEmpty || !mounted) return;
     final previews = await Future.wait(files.map((f) => f.readAsBytes()));
     setState(() {
-      _pickedFiles.addAll(files);
-      _previews.addAll(previews);
+      _pickedImages.addAll(files);
+      _imagePreviews.addAll(previews);
     });
   }
 
-  void _removePickedPhoto(int index) {
-    setState(() {
-      _pickedFiles.removeAt(index);
-      _previews.removeAt(index);
-    });
+  Future<void> _pickPdf() async {
+    final file = await PhotoService.pickPdf();
+    if (file == null || !mounted) return;
+    setState(() => _pickedPdfs.add(file));
   }
+
+  void _removePickedImage(int index) => setState(() {
+        _pickedImages.removeAt(index);
+        _imagePreviews.removeAt(index);
+      });
+
+  void _removePickedPdf(int index) =>
+      setState(() => _pickedPdfs.removeAt(index));
 
   Future<void> _submit() async {
-    if (_pickedFiles.isEmpty) {
+    if (_pickedImages.isEmpty && _pickedPdfs.isEmpty) {
       Ui.info(context, AppStrings.noPhotosSelected);
       return;
     }
@@ -73,10 +82,8 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
     final ok = await Ui.runGuarded(
       context,
       () async {
-        // Create prep row first to get its id (used as the storage path prefix).
         final prep = await _repo.createLessonPrep(widget.sessionId);
-        // Upload each photo and record the path.
-        for (final file in _pickedFiles) {
+        for (final file in [..._pickedImages, ..._pickedPdfs]) {
           final path = await PhotoService.upload(
             bucket: Db.bucketServantSubmissions,
             ownerId: prep.id,
@@ -90,8 +97,9 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
 
     if (ok) {
       setState(() {
-        _pickedFiles.clear();
-        _previews.clear();
+        _pickedImages.clear();
+        _imagePreviews.clear();
+        _pickedPdfs.clear();
       });
       await _reload();
     }
@@ -112,9 +120,12 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
               return _SubmittedView(prep: prep);
             }
             return _SubmitForm(
-              previews: _previews,
+              imagePreviews: _imagePreviews,
+              pdfFiles: _pickedPdfs,
               onPickPhoto: _pickPhoto,
-              onRemovePhoto: _removePickedPhoto,
+              onPickPdf: _pickPdf,
+              onRemovePhoto: _removePickedImage,
+              onRemovePdf: _removePickedPdf,
               onSubmit: _submit,
             );
           },
@@ -130,16 +141,24 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
 
 class _SubmitForm extends StatelessWidget {
   const _SubmitForm({
-    required this.previews,
+    required this.imagePreviews,
+    required this.pdfFiles,
     required this.onPickPhoto,
+    required this.onPickPdf,
     required this.onRemovePhoto,
+    required this.onRemovePdf,
     required this.onSubmit,
   });
 
-  final List<Uint8List> previews;
+  final List<Uint8List> imagePreviews;
+  final List<XFile> pdfFiles;
   final VoidCallback onPickPhoto;
+  final VoidCallback onPickPdf;
   final void Function(int) onRemovePhoto;
+  final void Function(int) onRemovePdf;
   final VoidCallback onSubmit;
+
+  bool get _isEmpty => imagePreviews.isEmpty && pdfFiles.isEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +170,7 @@ class _SubmitForm extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (previews.isEmpty)
+              if (_isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: EmptyState(
@@ -160,23 +179,47 @@ class _SubmitForm extends StatelessWidget {
                     body: AppStrings.noLessonPrepsBody,
                   ),
                 )
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (var i = 0; i < previews.length; i++)
-                      _PhotoThumb(
-                        bytes: previews[i],
-                        onRemove: () => onRemovePhoto(i),
-                      ),
-                  ],
-                ),
+              else ...[
+                if (imagePreviews.isNotEmpty)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var i = 0; i < imagePreviews.length; i++)
+                        _PhotoThumb(
+                          bytes: imagePreviews[i],
+                          onRemove: () => onRemovePhoto(i),
+                        ),
+                    ],
+                  ),
+                if (pdfFiles.isNotEmpty) ...[
+                  if (imagePreviews.isNotEmpty) const SizedBox(height: 8),
+                  for (var i = 0; i < pdfFiles.length; i++)
+                    _PdfTile(
+                      name: pdfFiles[i].name,
+                      onRemove: () => onRemovePdf(i),
+                    ),
+                ],
+              ],
               const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: onPickPhoto,
-                icon: const Icon(Icons.add_photo_alternate_outlined),
-                label: const Text(AppStrings.pickPhotos),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: onPickPhoto,
+                      icon: const Icon(Icons.add_photo_alternate_outlined),
+                      label: const Text(AppStrings.pickPhotos),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: onPickPdf,
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label: const Text(AppStrings.pickPdf),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -231,6 +274,71 @@ class _PhotoThumb extends StatelessWidget {
   }
 }
 
+class _PdfTile extends StatelessWidget {
+  const _PdfTile({required this.name, required this.onRemove});
+
+  final String name;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.danger),
+        title: Text(name, style: const TextStyle(fontSize: 13)),
+        trailing: IconButton(
+          icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
+          onPressed: onRemove,
+        ),
+        dense: true,
+      ),
+    );
+  }
+}
+
+class _StoragePdfTile extends StatefulWidget {
+  const _StoragePdfTile({required this.storagePath});
+
+  final String storagePath;
+
+  @override
+  State<_StoragePdfTile> createState() => _StoragePdfTileState();
+}
+
+class _StoragePdfTileState extends State<_StoragePdfTile> {
+  String? _url;
+
+  @override
+  void initState() {
+    super.initState();
+    PhotoService.signedUrl(
+      bucket: Db.bucketServantSubmissions,
+      path: widget.storagePath,
+    ).then((url) {
+      if (mounted) setState(() => _url = url);
+    });
+  }
+
+  String get _fileName {
+    final parts = widget.storagePath.split('/');
+    return parts.isNotEmpty ? parts.last : widget.storagePath;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.danger),
+      title: Text(_fileName, style: const TextStyle(fontSize: 13)),
+      trailing: _url == null
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.open_in_new, size: 18, color: AppColors.navy),
+      dense: true,
+      onTap: _url == null ? null : () => launchUrl(Uri.parse(_url!)),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Already submitted: read-only view
 // ---------------------------------------------------------------------------
@@ -240,8 +348,15 @@ class _SubmittedView extends StatelessWidget {
 
   final LessonPrep prep;
 
+  static bool _isPdf(String path) => path.toLowerCase().endsWith('.pdf');
+
   @override
   Widget build(BuildContext context) {
+    final imagePhotos =
+        prep.photos.where((p) => !_isPdf(p.storagePath)).toList();
+    final pdfPhotos =
+        prep.photos.where((p) => _isPdf(p.storagePath)).toList();
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
@@ -262,15 +377,26 @@ class _SubmittedView extends StatelessWidget {
             ),
           ),
         ],
-        if (prep.photos.isNotEmpty) ...[
+        if (imagePhotos.isNotEmpty) ...[
           const SizedBox(height: 16),
           SectionCard(
             title: AppStrings.lessonPrepTitle,
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: prep.photos
+              children: imagePhotos
                   .map((p) => _StorageThumb(storagePath: p.storagePath))
+                  .toList(),
+            ),
+          ),
+        ],
+        if (pdfPhotos.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          SectionCard(
+            title: AppStrings.pdfFile,
+            child: Column(
+              children: pdfPhotos
+                  .map((p) => _StoragePdfTile(storagePath: p.storagePath))
                   .toList(),
             ),
           ),

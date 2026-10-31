@@ -67,6 +67,7 @@ class SessionController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   bool get isAdmin => _profile?.isAdmin ?? false;
+  bool get isGeneralServant => _profile?.isGeneralServant ?? false;
   String get displayName => _profile?.fullName ?? '';
   bool get hasClasses => _myClasses.isNotEmpty;
 

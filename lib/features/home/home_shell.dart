@@ -35,6 +35,7 @@ class _HomeShellState extends State<HomeShell> {
     final connectivity = context.watch<ConnectivityService>();
     final sync = context.watch<SyncService>();
     final isAdmin = session.isAdmin;
+    final isGeneralServant = session.isGeneralServant;
     final isOnline = connectivity.isOnline;
     final pendingCount = sync.pendingCount;
 
@@ -43,12 +44,12 @@ class _HomeShellState extends State<HomeShell> {
         label: AppStrings.dashboard,
         icon: Icons.home_outlined,
         selectedIcon: Icons.home,
-        child: isAdmin
+        child: isAdmin || isGeneralServant
             ? const AdminDashboardScreen()
             : const ServantDashboardScreen(),
       ),
       _Tab(
-        label: isAdmin ? AppStrings.classesNav : AppStrings.myClasses,
+        label: (isAdmin || isGeneralServant) ? AppStrings.classesNav : AppStrings.myClasses,
         icon: Icons.class_outlined,
         selectedIcon: Icons.class_,
         child: const ClassesScreen(),
@@ -65,14 +66,15 @@ class _HomeShellState extends State<HomeShell> {
         selectedIcon: Icons.fact_check,
         child: AttendanceScreen(),
       ),
-      _Tab(
-        label: isAdmin ? AppStrings.activitiesNav : AppStrings.myActivities,
-        icon: Icons.volunteer_activism_outlined,
-        selectedIcon: Icons.volunteer_activism,
-        child: isAdmin
-            ? const AdminServantActivitiesScreen()
-            : const MyActivitiesScreen(),
-      ),
+      if (!isGeneralServant)
+        _Tab(
+          label: isAdmin ? AppStrings.activitiesNav : AppStrings.myActivities,
+          icon: Icons.volunteer_activism_outlined,
+          selectedIcon: Icons.volunteer_activism,
+          child: isAdmin
+              ? const AdminServantActivitiesScreen()
+              : const MyActivitiesScreen(),
+        ),
       const _Tab(
         label: AppStrings.more,
         icon: Icons.more_horiz_outlined,
@@ -89,7 +91,7 @@ class _HomeShellState extends State<HomeShell> {
             ? AppStrings.appTitle
             : current.label),
         actions: [
-          if (_index == 2)
+          if (_index == 2 && isAdmin)
             IconButton(
               tooltip: AppStrings.importChildren,
               icon: const Icon(Icons.upload_file),

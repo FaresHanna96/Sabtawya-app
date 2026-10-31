@@ -165,6 +165,7 @@ class AppStrings {
   static const roleAdmin = 'أمين الخدمة';
   static const roleServant = 'خادم';
   static const roleServantFemale = 'خادمة';
+  static const roleGeneralServant = 'خادم عام';
   static const pendingRequests = 'طلبات الانضمام';
   static const pendingRequestsBody =
       'طلبات تحتاج موافقتك قبل أن يرى أصحابها أي بيانات.';
@@ -447,18 +448,21 @@ class AppStrings {
   static const noAttendanceRecords        = 'لا توجد سجلات حضور';
   static const noAttendanceRecordsBody    = 'لم يتم تسجيل أي حضور لهذا النشاط.';
   static const pickPhotos                 = 'اختيار صور';
+  static const pickPdf                    = 'اختيار PDF';
+  static const pdfFile                    = 'ملف PDF';
   static const photosSelected             = 'صور مختارة';
   static const submittedSuccessfully      = 'تم رفع التحضير بنجاح';
   static const reviewedSuccessfully       = 'تمت المراجعة';
   static const enterComment               = 'اكتب التعليق';
   static const commentRequired            = 'التعليق مطلوب';
-  static const noPhotosSelected           = 'يجب اختيار صورة واحدة على الأقل';
+  static const noPhotosSelected           = 'يجب اختيار صورة أو ملف PDF واحد على الأقل';
   static const lessonPrepTitle            = 'تحضير الدرس';
   static const alreadySubmitted           = 'تم الرفع';
   static const pendingPreps               = 'تحضيرات قيد المراجعة';
 
   // -------------------------------------------------------------- competitions
   static const competitions            = 'المسابقات';
+  static const competitionsList        = 'قائمة المسابقات';
   static const weeklyCompetition       = 'المسابقة الأسبوعية';
   static const addCompetition          = 'إضافة مسابقة';
   static const editCompetition         = 'تعديل المسابقة';

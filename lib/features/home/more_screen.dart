@@ -30,6 +30,7 @@ class MoreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
     final isAdmin = session.isAdmin;
+    final isGeneralServant = session.isGeneralServant;
 
     return Scaffold(
       appBar: showAppBar ? AppBar(title: const Text(AppStrings.more)) : null,
@@ -60,25 +61,27 @@ class MoreScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            SectionCard(
-              title: AppStrings.importTitle,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: Column(
-                children: [
-                  _Entry(
-                    icon: Icons.upload_file,
-                    title: AppStrings.importChildren,
-                    screen: const ImportChildrenScreen(),
-                  ),
-                  _Entry(
-                    icon: Icons.ios_share,
-                    title: AppStrings.exportTitle,
-                    screen: const ExportScreen(),
-                  ),
-                ],
+            if (!isGeneralServant) ...[
+              const SizedBox(height: 16),
+              SectionCard(
+                title: AppStrings.importTitle,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                child: Column(
+                  children: [
+                    _Entry(
+                      icon: Icons.upload_file,
+                      title: AppStrings.importChildren,
+                      screen: const ImportChildrenScreen(),
+                    ),
+                    _Entry(
+                      icon: Icons.ios_share,
+                      title: AppStrings.exportTitle,
+                      screen: const ExportScreen(),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.competitions,
