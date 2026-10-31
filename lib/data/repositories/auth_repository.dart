@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/utils/app_failure.dart';
-import '../models/child.dart';
 import '../models/profile.dart';
 import '../supabase/db.dart';
 
@@ -24,12 +23,12 @@ class AuthRepository {
     }
   }
 
-  /// Creates an account for a servant.
+  /// Creates an account for a servant or general_servant.
   ///
-  /// The name and mobile travel as user metadata, which `handle_new_user()`
-  /// copies into the profile. The role is never sent: the trigger decides it,
-  /// and an account with no matching invite stays inactive until an admin
-  /// activates it.
+  /// The name, mobile, and requested_role travel as user metadata.
+  /// `handle_new_user()` copies them into the profile. Only 'servant' and
+  /// 'general_servant' are accepted from metadata; 'admin' is ignored.
+  /// An account with no matching invite stays inactive until an admin activates it.
   ///
   /// Returns true when the session is live straight away, and false when the
   /// project requires the email to be confirmed first.
@@ -37,7 +36,7 @@ class AuthRepository {
     required String email,
     required String password,
     required String fullName,
-    required Gender gender,
+    required AppRole role,
     String? mobile,
   }) async {
     try {
@@ -47,7 +46,7 @@ class AuthRepository {
         emailRedirectTo: 'sabtawya://login-callback',
         data: <String, dynamic>{
           'full_name': fullName.trim(),
-          'gender': gender.wire,
+          'requested_role': role.wire,
           if (mobile != null && mobile.trim().isNotEmpty)
             'mobile': mobile.trim(),
         },

@@ -209,14 +209,14 @@ class SessionController extends ChangeNotifier {
     required String email,
     required String password,
     required String fullName,
-    required Gender gender,
+    required AppRole role,
     String? mobile,
   }) =>
       _auth.signUp(
         email: email,
         password: password,
         fullName: fullName,
-        gender: gender,
+        role: role,
         mobile: mobile,
       );
 

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
-import '../../data/models/child.dart';
+import '../../data/models/profile.dart';
 import '../../state/session_controller.dart';
 import 'login_screen.dart';
 
@@ -25,7 +25,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
-  Gender _gender = Gender.boy;
+  AppRole _role = AppRole.servant;
   bool _obscure = true;
   bool _busy = false;
 
@@ -49,7 +49,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             email: _emailController.text,
             password: _passwordController.text,
             fullName: _nameController.text,
-            gender: _gender,
+            role: _role,
             mobile: _mobileController.text,
           );
       if (!mounted) return;
@@ -118,21 +118,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         labelText: AppStrings.role,
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
-                      child: SegmentedButton<Gender>(
+                      child: SegmentedButton<AppRole>(
                         segments: const [
-                          ButtonSegment<Gender>(
-                            value: Gender.boy,
+                          ButtonSegment<AppRole>(
+                            value: AppRole.servant,
                             label: Text(AppStrings.roleServant),
                           ),
-                          ButtonSegment<Gender>(
-                            value: Gender.girl,
-                            label: Text(AppStrings.roleServantFemale),
+                          ButtonSegment<AppRole>(
+                            value: AppRole.generalServant,
+                            label: Text(AppStrings.roleGeneralServant),
                           ),
                         ],
-                        selected: <Gender>{_gender},
+                        selected: <AppRole>{_role},
                         showSelectedIcon: false,
                         onSelectionChanged: (selection) =>
-                            setState(() => _gender = selection.first),
+                            setState(() => _role = selection.first),
                       ),
                     ),
                     const SizedBox(height: 14),
