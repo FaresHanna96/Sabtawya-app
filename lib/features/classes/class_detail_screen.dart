@@ -164,7 +164,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<SessionController>().isAdmin;
+    final session = context.watch<SessionController>();
+    final isAdmin = session.isAdmin;
+    final isGeneralServant = session.isGeneralServant;
 
     return Scaffold(
       body: AsyncSection<_ClassDetail>(
@@ -190,10 +192,11 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       _ClassAction.delete => _delete(overview),
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem<_ClassAction>(
-                        value: _ClassAction.edit,
-                        child: Text(AppStrings.editClass),
-                      ),
+                      if (!isGeneralServant)
+                        const PopupMenuItem<_ClassAction>(
+                          value: _ClassAction.edit,
+                          child: Text(AppStrings.editClass),
+                        ),
                       if (isAdmin)
                         PopupMenuItem<_ClassAction>(
                           value: _ClassAction.archive,

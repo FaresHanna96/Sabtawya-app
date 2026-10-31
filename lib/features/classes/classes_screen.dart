@@ -57,12 +57,14 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<SessionController>().isAdmin;
+    final session = context.watch<SessionController>();
+    final isAdmin = session.isAdmin;
+    final isGeneralServant = session.isGeneralServant;
 
     return Scaffold(
       appBar: widget.showAppBar
           ? AppBar(
-              title: Text(isAdmin ? AppStrings.classesTitle : AppStrings.myClasses),
+              title: Text((isAdmin || isGeneralServant) ? AppStrings.classesTitle : AppStrings.myClasses),
               actions: [
                 if (isAdmin)
                   IconButton(
@@ -98,7 +100,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                   ),
                 ),
               ),
-            Expanded(child: _buildList(isAdmin)),
+            Expanded(child: _buildList(isAdmin, isGeneralServant)),
           ],
         ),
       ),
@@ -112,7 +114,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
     );
   }
 
-  Widget _buildList(bool isAdmin) {
+  Widget _buildList(bool isAdmin, bool isGeneralServant) {
     return AsyncSection<List<ClassOverview>>(
           key: _sectionKey,
           load: _load,
@@ -123,10 +125,10 @@ class _ClassesScreenState extends State<ClassesScreen> {
                   const SizedBox(height: 40),
                   EmptyState(
                     icon: Icons.class_outlined,
-                    title: isAdmin
+                    title: (isAdmin || isGeneralServant)
                         ? AppStrings.noClasses
                         : AppStrings.noClassesAssigned,
-                    body: isAdmin ? null : AppStrings.noClassesAssignedBody,
+                    body: (isAdmin || isGeneralServant) ? null : AppStrings.noClassesAssignedBody,
                     action: isAdmin
                         ? FilledButton.icon(
                             onPressed: _add,
