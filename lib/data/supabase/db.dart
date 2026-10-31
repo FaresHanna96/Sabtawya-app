@@ -50,6 +50,13 @@ class Db {
   // Views – competitions
   static const vChildCompScores = 'v_child_competition_scores';
 
+  // Tables – events (فعاليات)
+  static const tEvents        = 'events';
+  static const tEventPayments = 'event_payments';
+
+  // Views – events
+  static const vChildEventBalances = 'v_child_event_balances';
+
   // Storage buckets
   static const bucketChildPhotos = 'child-photos';
   static const bucketClassPatrons = 'class-patrons';

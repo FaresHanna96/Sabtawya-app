@@ -14,6 +14,7 @@ import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
 import '../classes/class_detail_screen.dart';
 import '../competitions/competitions_screen.dart';
+import '../events/events_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
 import 'today_birthdays_section.dart';
 
@@ -160,6 +161,15 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                     ),
                     label: const Text(AppStrings.weeklyCompetition),
                     onPressed: () => _push(const CompetitionsScreen()),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(
+                      Icons.event_outlined,
+                      size: 16,
+                      color: AppColors.navy,
+                    ),
+                    label: const Text(AppStrings.events),
+                    onPressed: () => _push(const EventsScreen()),
                   ),
                 ],
               ),

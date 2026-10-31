@@ -543,8 +543,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           shrinkWrap: true,
           itemCount: _sessions.length,
           itemBuilder: (context, index) {
-            // Show most-recent sessions at the top.
-            final session = _sessions[_sessions.length - 1 - index];
+            final session = _sessions[index];
             final selected = _date != null &&
                 AppDateUtils.isSameDay(session.sessionDate, _date!);
             final future = session.sessionDate.isAfter(today);

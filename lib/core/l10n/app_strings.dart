@@ -481,6 +481,38 @@ class AppStrings {
   static const competitionTitleRequired = 'عنوان المسابقة مطلوب';
   static const confirmDeleteCompetition = 'هل تريد حذف هذه المسابقة وكل علاماتها؟';
 
+  // ------------------------------------------------------------------- events
+  static const events                  = 'الفعاليات';
+  static const addEvent                = 'إضافة فعالية';
+  static const editEvent               = 'تعديل الفعالية';
+  static const deleteEvent             = 'حذف الفعالية';
+  static const eventTitleLabel         = 'عنوان الفعالية';
+  static const eventDateLabel          = 'تاريخ الفعالية';
+  static const eventCost               = 'التكلفة (ج.م)';
+  static const eventDescription        = 'وصف (اختياري)';
+  static const noEvents                = 'لا توجد فعاليات';
+  static const noEventsBody            = 'أضف فعالية للبدء.';
+  static const eventTitleRequired      = 'عنوان الفعالية مطلوب';
+  static const eventCostRequired       = 'التكلفة مطلوبة';
+  static const eventCostInvalid        = 'التكلفة يجب أن تكون أكبر من صفر';
+  static const confirmDeleteEvent      = 'هل تريد حذف هذه الفعالية وكل مدفوعاتها؟';
+  static const addPayment              = 'إضافة دفعة';
+  static const deletePayment           = 'حذف الدفعة';
+  static const paymentAmount           = 'المبلغ المدفوع (ج.م)';
+  static const paymentNotes            = 'ملاحظة (اختياري)';
+  static const totalPaid               = 'المدفوع';
+  static const remaining               = 'المتبقي';
+  static const paidInFull              = 'مسدَّد';
+  static const paymentSaved            = 'تم حفظ الدفعة';
+  static const paymentDeleted          = 'تم حذف الدفعة';
+  static const noPayments              = 'لا توجد مدفوعات';
+  static const paymentAmountRequired   = 'المبلغ مطلوب';
+  static const paymentAmountInvalid    = 'المبلغ يجب أن يكون أكبر من صفر';
+  static const confirmDeletePayment    = 'هل تريد حذف هذه الدفعة؟';
+  static const paymentHistory          = 'سجل الدفعات';
+  static const collected               = 'محصَّل';
+  static const expected                = 'متوقع';
+
   // ---------------------------------------------------------------- settings
   static const settingsTitle = 'الإعدادات';
   static const account = 'الحساب';
