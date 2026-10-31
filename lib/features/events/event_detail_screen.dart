@@ -101,6 +101,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               return id;
             }
 
+            final sortedClasses = byClass.entries.toList()
+              ..sort((a, b) => className(a.key).compareTo(className(b.key)));
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               children: [
@@ -147,8 +150,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Children by class
-                for (final entry in byClass.entries) ...[
+                // Children by class (sorted alphabetically)
+                for (final entry in sortedClasses) ...[
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8, top: 4),
                     child: Text(
@@ -361,114 +364,109 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
     final isAdmin = context.read<SessionController>().isAdmin;
     final balance = widget.balance;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) {
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          balance.childName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          '${AppStrings.remaining}: ${balance.remaining.toStringAsFixed(0)} ج.م',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: balance.remaining <= 0
-                                ? AppColors.olive
-                                : AppColors.muted,
-                          ),
-                        ),
-                      ],
+    final maxListHeight = MediaQuery.of(context).size.height * 0.45;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      balance.childName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _addPayment,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text(AppStrings.addPayment),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                    Text(
+                      '${AppStrings.remaining}: ${balance.remaining.toStringAsFixed(0)} ج.م',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: balance.remaining <= 0
+                            ? AppColors.olive
+                            : AppColors.muted,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(child: Text(_error!))
-                      : _payments == null || _payments!.isEmpty
-                          ? const Center(
-                              child: EmptyState(
-                                icon: Icons.payments_outlined,
-                                title: AppStrings.noPayments,
-                                body: '',
+              FilledButton.icon(
+                onPressed: _addPayment,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text(AppStrings.addPayment),
+                style: FilledButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxListHeight),
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? Center(child: Text(_error!))
+                  : _payments == null || _payments!.isEmpty
+                      ? const Center(
+                          child: EmptyState(
+                            icon: Icons.payments_outlined,
+                            title: AppStrings.noPayments,
+                            body: '',
+                          ),
+                        )
+                      : ListView.separated(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                          itemCount: _payments!.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 4),
+                          itemBuilder: (context, index) {
+                            final p = _payments![index];
+                            final canDelete = isAdmin || p.paidBy == myId;
+                            return ListTile(
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              leading: const Icon(
+                                Icons.payments_outlined,
+                                color: AppColors.navy,
+                                size: 20,
                               ),
-                            )
-                          : ListView.separated(
-                              controller: scrollController,
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                              itemCount: _payments!.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 4),
-                              itemBuilder: (context, index) {
-                                final p = _payments![index];
-                                final canDelete =
-                                    isAdmin || p.paidBy == myId;
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 4),
-                                  leading: const Icon(
-                                    Icons.payments_outlined,
-                                    color: AppColors.navy,
-                                    size: 20,
-                                  ),
-                                  title: Text(
-                                    '${p.amount.toStringAsFixed(0)} ج.م',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    AppDateUtils.formatDate(p.paidAt),
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.muted),
-                                  ),
-                                  trailing: canDelete
-                                      ? IconButton(
-                                          icon: const Icon(
-                                            Icons.delete_outline,
-                                            color: AppColors.danger,
-                                            size: 20,
-                                          ),
-                                          onPressed: () => _delete(p),
-                                        )
-                                      : null,
-                                );
-                              },
-                            ),
-            ),
-          ],
-        );
-      },
+                              title: Text(
+                                '${p.amount.toStringAsFixed(0)} ج.م',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              subtitle: Text(
+                                AppDateUtils.formatDate(p.paidAt),
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.muted),
+                              ),
+                              trailing: canDelete
+                                  ? IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: AppColors.danger,
+                                        size: 20,
+                                      ),
+                                      onPressed: () => _delete(p),
+                                    )
+                                  : null,
+                            );
+                          },
+                        ),
+        ),
+        SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 16),
+      ],
     );
   }
 }

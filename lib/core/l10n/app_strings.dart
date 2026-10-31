@@ -482,20 +482,20 @@ class AppStrings {
   static const confirmDeleteCompetition = 'هل تريد حذف هذه المسابقة وكل علاماتها؟';
 
   // ------------------------------------------------------------------- events
-  static const events                  = 'الفعاليات';
-  static const addEvent                = 'إضافة فعالية';
-  static const editEvent               = 'تعديل الفعالية';
-  static const deleteEvent             = 'حذف الفعالية';
-  static const eventTitleLabel         = 'عنوان الفعالية';
-  static const eventDateLabel          = 'تاريخ الفعالية';
+  static const events                  = 'نشاطات';
+  static const addEvent                = 'إضافة نشاط';
+  static const editEvent               = 'تعديل النشاط';
+  static const deleteEvent             = 'حذف النشاط';
+  static const eventTitleLabel         = 'اسم النشاط';
+  static const eventDateLabel          = 'تاريخ النشاط';
   static const eventCost               = 'التكلفة (ج.م)';
   static const eventDescription        = 'وصف (اختياري)';
-  static const noEvents                = 'لا توجد فعاليات';
-  static const noEventsBody            = 'أضف فعالية للبدء.';
-  static const eventTitleRequired      = 'عنوان الفعالية مطلوب';
+  static const noEvents                = 'لا توجد نشاطات';
+  static const noEventsBody            = 'أضف نشاطاً للبدء.';
+  static const eventTitleRequired      = 'اسم النشاط مطلوب';
   static const eventCostRequired       = 'التكلفة مطلوبة';
   static const eventCostInvalid        = 'التكلفة يجب أن تكون أكبر من صفر';
-  static const confirmDeleteEvent      = 'هل تريد حذف هذه الفعالية وكل مدفوعاتها؟';
+  static const confirmDeleteEvent      = 'هل تريد حذف هذا النشاط وكل مدفوعاته؟';
   static const addPayment              = 'إضافة دفعة';
   static const deletePayment           = 'حذف الدفعة';
   static const paymentAmount           = 'المبلغ المدفوع (ج.م)';
