@@ -9,5 +9,7 @@ $key = "sb_publishable_5j2lzDrUoKL3RUlJTIBoag_fU8ClIuT"
     "--dart-define=SUPABASE_ANON_KEY=$key"
 
 if ($LASTEXITCODE -eq 0) {
+    # Copy cache-control config so Vercel serves assets with proper headers
+    Copy-Item vercel.json build/web/vercel.json -Force
     npx vercel deploy --prod --project sabtawya build/web
 }
