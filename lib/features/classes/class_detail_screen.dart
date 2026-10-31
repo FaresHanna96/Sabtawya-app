@@ -192,7 +192,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       _ClassAction.delete => _delete(overview),
                     },
                     itemBuilder: (context) => [
-                      if (!isGeneralServant)
+                      if (isAdmin)
                         const PopupMenuItem<_ClassAction>(
                           value: _ClassAction.edit,
                           child: Text(AppStrings.editClass),

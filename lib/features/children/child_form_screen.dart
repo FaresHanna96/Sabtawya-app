@@ -318,9 +318,14 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                     controller: _name,
                     label: AppStrings.childName,
                     icon: Icons.person_outline,
-                    validator: (value) => (value?.trim().isEmpty ?? true)
-                        ? AppStrings.childNameRequired
-                        : null,
+                    validator: (value) {
+                      final v = value?.trim() ?? '';
+                      if (v.isEmpty) return AppStrings.childNameRequired;
+                      if (!RegExp(r'^[؀-ۿ\s]+$').hasMatch(v)) {
+                        return AppStrings.nameArabicOnly;
+                      }
+                      return null;
+                    },
                     textCapitalization: TextCapitalization.words,
                   ),
                   _genderPicker(),

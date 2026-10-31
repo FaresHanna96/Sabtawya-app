@@ -63,6 +63,7 @@ class AppStrings {
   static const noAccountYet = 'ليس لديك حساب؟ أنشئ حساباً';
   static const fullName = 'الاسم بالكامل';
   static const fullNameRequired = 'الاسم مطلوب';
+  static const nameArabicOnly  = 'الاسم يجب أن يكون باللغة العربية';
   static const confirmPassword = 'تأكيد كلمة المرور';
   static const passwordsDoNotMatch = 'كلمتا المرور غير متطابقتين';
   static const passwordTooShort = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
@@ -482,7 +483,7 @@ class AppStrings {
   static const confirmDeleteCompetition = 'هل تريد حذف هذه المسابقة وكل علاماتها؟';
 
   // ------------------------------------------------------------------- events
-  static const events                  = 'نشاطات';
+  static const events                  = 'نشاطات ترفيهية';
   static const addEvent                = 'إضافة نشاط';
   static const editEvent               = 'تعديل النشاط';
   static const deleteEvent             = 'حذف النشاط';
@@ -490,7 +491,7 @@ class AppStrings {
   static const eventDateLabel          = 'تاريخ النشاط';
   static const eventCost               = 'التكلفة (ج.م)';
   static const eventDescription        = 'وصف (اختياري)';
-  static const noEvents                = 'لا توجد نشاطات';
+  static const noEvents                = 'لا توجد نشاطات ترفيهية';
   static const noEventsBody            = 'أضف نشاطاً للبدء.';
   static const eventTitleRequired      = 'اسم النشاط مطلوب';
   static const eventCostRequired       = 'التكلفة مطلوبة';

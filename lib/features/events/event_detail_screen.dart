@@ -102,7 +102,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             }
 
             final sortedClasses = byClass.entries.toList()
-              ..sort((a, b) => className(a.key).compareTo(className(b.key)));
+              ..sort((a, b) => className(b.key).compareTo(className(a.key)));
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

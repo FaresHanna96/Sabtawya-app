@@ -34,8 +34,6 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
   late final TextEditingController _name;
   late final TextEditingController _description;
   late final TextEditingController _patronName;
-  late final TextEditingController _sortOrder;
-
   XFile? _pickedPatron;
   Uint8List? _patronPreview;
   bool _removePatron = false;
@@ -50,9 +48,6 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
     _name = TextEditingController(text: existing?.name ?? '');
     _description = TextEditingController(text: existing?.description ?? '');
     _patronName = TextEditingController(text: existing?.patronName ?? '');
-    _sortOrder = TextEditingController(
-      text: existing == null ? '' : '${existing.sortOrder}',
-    );
   }
 
   @override
@@ -60,7 +55,6 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
     _name.dispose();
     _description.dispose();
     _patronName.dispose();
-    _sortOrder.dispose();
     super.dispose();
   }
 
@@ -161,7 +155,6 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
     final name = _name.text.trim();
     final description = _description.text.trim();
     final patronName = _patronName.text.trim();
-    final sortOrder = int.tryParse(_sortOrder.text.trim());
     final existing = widget.existing;
 
     final ok = await Ui.runGuarded(
@@ -175,7 +168,6 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
             name: name,
             description: description,
             patronName: patronName,
-            sortOrder: sortOrder,
           );
           _createdId = classId;
           await _syncPatronPhoto(classId);
@@ -185,7 +177,6 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
             name: name,
             description: description,
             patronName: patronName,
-            sortOrder: sortOrder,
           );
           await _syncPatronPhoto(knownId);
         }
@@ -232,19 +223,6 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
                         labelText: AppStrings.classDescription,
                         helperText: AppStrings.optional,
                         prefixIcon: Icon(Icons.notes_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _sortOrder,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: AppStrings.sortBy,
-                        helperText: AppStrings.optional,
-                        prefixIcon: Icon(Icons.sort),
                       ),
                     ),
                   ],

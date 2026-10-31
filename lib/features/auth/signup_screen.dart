@@ -107,10 +107,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         labelText: AppStrings.fullName,
                         prefixIcon: Icon(Icons.person_outline),
                       ),
-                      validator: (value) =>
-                          (value == null || value.trim().isEmpty)
-                              ? AppStrings.fullNameRequired
-                              : null,
+                      validator: (value) {
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return AppStrings.fullNameRequired;
+                        if (!RegExp(r'^[؀-ۿ\s]+$').hasMatch(v)) {
+                          return AppStrings.nameArabicOnly;
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 14),
                     InputDecorator(
