@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/utils/app_failure.dart';
 import '../data/models/attendance.dart';
-import '../data/models/child.dart';
 import '../data/models/profile.dart';
 import '../data/models/school_class.dart';
 import '../data/repositories/attendance_repository.dart';
