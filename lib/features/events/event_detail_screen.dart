@@ -98,7 +98,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               for (final c in session.myClasses) {
                 if (c.classId == id) return c.className;
               }
-              return id;
+              return 'فصل غير معروف';
             }
 
             final sortedClasses = byClass.entries.toList()
