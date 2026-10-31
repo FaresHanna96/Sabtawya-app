@@ -14,6 +14,7 @@ import '../reports/reports_screen.dart';
 import '../servants/pending_requests_screen.dart';
 import '../servants/servant_assignments_screen.dart';
 import '../servants/servants_screen.dart';
+import '../competitions/competitions_screen.dart';
 import '../settings/settings_screen.dart';
 
 /// The hub for everything that does not deserve its own tab.
@@ -76,6 +77,16 @@ class MoreScreen extends StatelessWidget {
                     screen: const ExportScreen(),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SectionCard(
+              title: AppStrings.competitions,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              child: _Entry(
+                icon: Icons.emoji_events_outlined,
+                title: AppStrings.competitions,
+                screen: const CompetitionsScreen(),
               ),
             ),
             if (isAdmin) ...[

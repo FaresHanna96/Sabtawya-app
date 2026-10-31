@@ -457,6 +457,26 @@ class AppStrings {
   static const alreadySubmitted           = 'تم الرفع';
   static const pendingPreps               = 'تحضيرات قيد المراجعة';
 
+  // -------------------------------------------------------------- competitions
+  static const competitions            = 'المسابقات';
+  static const weeklyCompetition       = 'المسابقة الأسبوعية';
+  static const addCompetition          = 'إضافة مسابقة';
+  static const editCompetition         = 'تعديل المسابقة';
+  static const deleteCompetition       = 'حذف المسابقة';
+  static const competitionTitle        = 'عنوان المسابقة';
+  static const competitionWeekDate     = 'تاريخ الأسبوع';
+  static const competitionMaxMark      = 'العلامة القصوى';
+  static const markChildren            = 'تسجيل العلامات';
+  static const cumulativeScores        = 'المجموع التراكمي';
+  static const noCompetitions          = 'لا توجد مسابقات';
+  static const noCompetitionsBody      = 'أضف مسابقة أسبوعية للبدء.';
+  static const noMarkEntered           = 'لم تُسجَّل علامة';
+  static const markSaved               = 'تم حفظ العلامات';
+  static const totalMarks              = 'مجموع العلامات';
+  static const avgMark                 = 'متوسط العلامة';
+  static const competitionTitleRequired = 'عنوان المسابقة مطلوب';
+  static const confirmDeleteCompetition = 'هل تريد حذف هذه المسابقة وكل علاماتها؟';
+
   // ---------------------------------------------------------------- settings
   static const settingsTitle = 'الإعدادات';
   static const account = 'الحساب';

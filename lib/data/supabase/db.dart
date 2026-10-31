@@ -43,6 +43,13 @@ class Db {
   static const tServantLessonPrepPhotos = 'servant_lesson_prep_photos';
   static const tServantAttendances = 'servant_attendances';
 
+  // Tables – competitions (مسابقات)
+  static const tCompetitions = 'competitions';
+  static const tCompetitionMarks = 'competition_marks';
+
+  // Views – competitions
+  static const vChildCompScores = 'v_child_competition_scores';
+
   // Storage buckets
   static const bucketChildPhotos = 'child-photos';
   static const bucketClassPatrons = 'class-patrons';
