@@ -123,8 +123,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  /// Keeps the chosen date when it still exists, otherwise falls back to the
-  /// most recent Saturday that has already happened.
+  /// Keeps the chosen date when it still exists, otherwise defaults to this
+  /// week's Saturday, then falls back to the most recent past Saturday.
   DateTime? _resolveDate(List<AttendanceSession> sessions) {
     if (sessions.isEmpty) return null;
 
@@ -132,6 +132,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (chosen != null &&
         sessions.any((s) => AppDateUtils.isSameDay(s.sessionDate, chosen))) {
       return chosen;
+    }
+
+    // Prefer this week's Saturday when a session exists for it.
+    final thisSaturday = AppDateUtils.lastSaturday(DateTime.now());
+    if (sessions.any((s) => AppDateUtils.isSameDay(s.sessionDate, thisSaturday))) {
+      return thisSaturday;
     }
 
     final today = AppDateUtils.dateOnly(DateTime.now());
