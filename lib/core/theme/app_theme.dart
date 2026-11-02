@@ -22,6 +22,30 @@ class AppColors {
   static const Color muted = Color(0xFF6B7280);
 }
 
+/// Shared gradients used across the app.
+class AppGradients {
+  const AppGradients._();
+
+  static const LinearGradient navyHeader = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [AppColors.navyDark, AppColors.navyLight],
+  );
+
+  static const LinearGradient oliveAccent = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [AppColors.olive, AppColors.oliveLight],
+  );
+
+  static const LinearGradient loginBackground = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: [0.0, 0.42, 1.0],
+    colors: [AppColors.navyDark, AppColors.navy, AppColors.surface],
+  );
+}
+
 class AppTheme {
   const AppTheme._();
 
@@ -133,6 +157,13 @@ class AppTheme {
       ),
       dividerTheme:
           const DividerThemeData(color: Color(0xFFE5E7EB), space: 1),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+        },
+      ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape:

@@ -167,7 +167,7 @@ class ErrorView extends StatelessWidget {
   }
 }
 
-class EmptyState extends StatelessWidget {
+class EmptyState extends StatefulWidget {
   const EmptyState({
     super.key,
     required this.title,
@@ -182,41 +182,90 @@ class EmptyState extends StatelessWidget {
   final Widget? action;
 
   @override
+  State<EmptyState> createState() => _EmptyStateState();
+}
+
+class _EmptyStateState extends State<EmptyState>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.07),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 40,
-                color: AppColors.navy.withValues(alpha: 0.45),
-              ),
+      child: FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(
+          position: _slide,
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.navy.withValues(alpha: 0.08),
+                        AppColors.olive.withValues(alpha: 0.06),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    size: 42,
+                    color: AppColors.navy.withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w700),
+                ),
+                if (widget.body != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.body!,
+                    textAlign: TextAlign.center,
+                    style:
+                        const TextStyle(color: AppColors.muted, height: 1.5),
+                  ),
+                ],
+                if (widget.action != null) ...[
+                  const SizedBox(height: 20),
+                  widget.action!,
+                ],
+              ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-            ),
-            if (body != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                body!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.muted, height: 1.5),
-              ),
-            ],
-            if (action != null) ...[const SizedBox(height: 20), action!],
-          ],
+          ),
         ),
       ),
     );
@@ -338,6 +387,9 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Animate numeric values from 0 to the target.
+    final numeric = double.tryParse(value);
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -347,12 +399,10 @@ class StatCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              height: 4,
-              color: color,
-            ),
+            Container(height: 4, color: color),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -368,19 +418,35 @@ class StatCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                   ],
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: color,
-                    ),
-                  ),
+                  numeric != null
+                      ? TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: numeric),
+                          duration: const Duration(milliseconds: 700),
+                          curve: Curves.easeOut,
+                          builder: (_, v, __) => Text(
+                            numeric == numeric.truncateToDouble()
+                                ? v.round().toString()
+                                : v.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: color,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
                   const SizedBox(height: 2),
                   Text(
                     label,
-                    style:
-                        const TextStyle(fontSize: 13, color: AppColors.muted),
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.muted),
                   ),
                 ],
               ),
