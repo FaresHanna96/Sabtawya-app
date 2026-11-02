@@ -462,14 +462,15 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
   }
 
   Future<void> _addPayment() async {
-    final currentPaid =
-        _payments?.fold<double>(0, (s, p) => s + p.amount) ?? 0;
-    final liveRemaining = widget.balance.cost - currentPaid;
+    final liveRemaining = _payments != null
+        ? widget.balance.cost -
+            _payments!.fold<double>(0, (s, p) => s + p.amount)
+        : widget.balance.remaining;
 
     final result = await showDialog<double>(
       context: context,
       builder: (_) => _AddPaymentDialog(
-        maxAmount: liveRemaining > 0 ? liveRemaining : widget.balance.cost,
+        maxAmount: liveRemaining > 0 ? liveRemaining : 0,
       ),
     );
 
@@ -492,6 +493,10 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
     final balance = widget.balance;
 
     final maxListHeight = MediaQuery.of(context).size.height * 0.45;
+    final effectiveRemaining = _payments != null
+        ? balance.cost -
+            _payments!.fold<double>(0, (s, p) => s + p.amount)
+        : balance.remaining;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -535,7 +540,7 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
                 ),
               ),
               FilledButton.icon(
-                onPressed: _addPayment,
+                onPressed: effectiveRemaining > 0 ? _addPayment : null,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text(AppStrings.addPayment),
                 style: FilledButton.styleFrom(
