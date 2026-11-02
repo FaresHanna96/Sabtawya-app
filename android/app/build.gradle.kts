@@ -41,7 +41,8 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keyPropertiesFile.exists())
+            val keystorePath = keyProperties["storeFile"]?.let { rootProject.file(it as String) }
+            signingConfig = if (keyPropertiesFile.exists() && keystorePath?.exists() == true)
                 signingConfigs.getByName("release")
             else
                 signingConfigs.getByName("debug")

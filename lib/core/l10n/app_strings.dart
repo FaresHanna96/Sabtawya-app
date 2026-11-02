@@ -266,6 +266,16 @@ class AppStrings {
   static const showInactive = 'إظهار غير النشطين';
   static const createdAt = 'تاريخ الإضافة';
   static const updatedAt = 'آخر تحديث';
+  static const visitsSection = 'الافتقادات';
+  static const lastPhoneVisit = 'آخر افتقاد تليفون';
+  static const lastHomeVisit = 'آخر افتقاد منزلي';
+  static const visitNotes = 'ملاحظات الافتقاد';
+  static const noVisitYet = 'لم يتم بعد';
+  static const pickVisitDate = 'اختر تاريخ الافتقاد';
+  static const visitsSaved = 'تم حفظ بيانات الافتقاد';
+  static const visitHistory = 'سجل الافتقادات';
+  static const noVisitHistory = 'لا يوجد سجل افتقادات بعد';
+  static const servantBirthdays = 'أعياد ميلاد الخدام';
   static const attendanceSummary = 'ملخص الحضور';
   static const monthlyBreakdown = 'التفصيل الشهري';
   static const searchChildHint = 'ابحث بالاسم أو الموبايل أو الكود';
@@ -513,6 +523,8 @@ class AppStrings {
   static const paymentHistory          = 'سجل الدفعات';
   static const collected               = 'محصَّل';
   static const expected                = 'متوقع';
+  static const partialPay              = 'بدأ الدفع';
+  static const notPaidTab              = 'لم يدفع';
 
   // ---------------------------------------------------------------- settings
   static const settingsTitle = 'الإعدادات';

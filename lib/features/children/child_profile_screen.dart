@@ -86,6 +86,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
         yearId: yearId,
       ),
       lastActivity: await _reports.lastActivity(child.id),
+      visitLogs: await _children.visitLogs(child.id),
     );
   }
 
@@ -290,6 +291,14 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+              _VisitSection(
+                key: ValueKey(child.id),
+                child: child,
+                onSaved: _reload,
+              ),
+              const SizedBox(height: 16),
+              _visitHistoryCard(data.visitLogs),
               const SizedBox(height: 16),
               _lastActivityCard(data.lastActivity),
               if (data.monthly.isNotEmpty) ...[
@@ -555,6 +564,80 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
+  Widget _visitHistoryCard(List<ChildVisitLog> logs) {
+    return SectionCard(
+      title: AppStrings.visitHistory,
+      child: logs.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                AppStrings.noVisitHistory,
+                style: TextStyle(color: AppColors.muted),
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: logs.map(_visitLogRow).toList(),
+            ),
+    );
+  }
+
+  Widget _visitLogRow(ChildVisitLog log) {
+    final isPhone = log.isPhone;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isPhone ? Icons.phone_callback_outlined : Icons.home_outlined,
+            size: 18,
+            color: AppColors.navy,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${AppDateUtils.formatDate(log.visitDate)} • ${AppDateUtils.sinceLabel(log.visitDate)}',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                if (log.notes != null && log.notes!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      log.notes!,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.muted),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: (isPhone ? AppColors.navy : AppColors.success)
+                  .withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              isPhone ? AppStrings.lastPhoneVisit : AppStrings.lastHomeVisit,
+              style: TextStyle(
+                fontSize: 10,
+                color: isPhone ? AppColors.navy : AppColors.success,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _historyCard(_ProfileData data) {
     final months = <DateTime>{
       for (final row in data.history)
@@ -766,6 +849,7 @@ class _ProfileData {
     required this.monthly,
     required this.history,
     required this.lastActivity,
+    required this.visitLogs,
   });
 
   final Child child;
@@ -774,7 +858,228 @@ class _ProfileData {
   final List<ChildMonthlyReport> monthly;
   final List<ChildSessionScore> history;
   final ChildLastActivity? lastActivity;
+  final List<ChildVisitLog> visitLogs;
 }
+
+// ---------------------------------------------------------------------------
+// Visits section — inline editable datepicker + notes for phone & home visits.
+// ---------------------------------------------------------------------------
+
+class _VisitSection extends StatefulWidget {
+  const _VisitSection({super.key, required this.child, required this.onSaved});
+
+  final Child child;
+  final Future<void> Function() onSaved;
+
+  @override
+  State<_VisitSection> createState() => _VisitSectionState();
+}
+
+class _VisitSectionState extends State<_VisitSection> {
+  static const _children = ChildRepository();
+
+  late DateTime? _phoneDate;
+  late DateTime? _homeDate;
+  late final TextEditingController _phoneNotes;
+  late final TextEditingController _homeNotes;
+
+  bool _dirty = false;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneDate = widget.child.lastPhoneVisitDate;
+    _homeDate = widget.child.lastHomeVisitDate;
+    _phoneNotes = TextEditingController(
+        text: widget.child.lastPhoneVisitNotes ?? '');
+    _homeNotes = TextEditingController(
+        text: widget.child.lastHomeVisitNotes ?? '');
+  }
+
+  @override
+  void dispose() {
+    _phoneNotes.dispose();
+    _homeNotes.dispose();
+    super.dispose();
+  }
+
+  void _mark() => setState(() => _dirty = true);
+
+  Future<void> _pickDate({required bool isPhone}) async {
+    final current = isPhone ? _phoneDate : _homeDate;
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: DateTime(2000),
+      lastDate: now,
+      helpText: AppStrings.pickVisitDate,
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isPhone) {
+        _phoneDate = picked;
+      } else {
+        _homeDate = picked;
+      }
+      _dirty = true;
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    FocusScope.of(context).unfocus();
+
+    final phoneNotes =
+        _phoneNotes.text.trim().isEmpty ? null : _phoneNotes.text.trim();
+    final homeNotes =
+        _homeNotes.text.trim().isEmpty ? null : _homeNotes.text.trim();
+
+    final updated = widget.child.withVisits(
+      phoneVisitDate: _phoneDate,
+      phoneVisitNotes: phoneNotes,
+      homeVisitDate: _homeDate,
+      homeVisitNotes: homeNotes,
+    );
+
+    final ok = await Ui.runGuarded(
+      context,
+      () async {
+        await _children.update(updated);
+        // Append a history entry only when the date actually changed.
+        if (_phoneDate != null &&
+            _phoneDate != widget.child.lastPhoneVisitDate) {
+          await _children.insertVisitLog(
+            childId: widget.child.id,
+            visitType: 'phone',
+            visitDate: _phoneDate!,
+            notes: phoneNotes,
+          );
+        }
+        if (_homeDate != null &&
+            _homeDate != widget.child.lastHomeVisitDate) {
+          await _children.insertVisitLog(
+            childId: widget.child.id,
+            visitType: 'home',
+            visitDate: _homeDate!,
+            notes: homeNotes,
+          );
+        }
+      },
+      successMessage: AppStrings.visitsSaved,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      if (ok) _dirty = false;
+    });
+    if (ok) await widget.onSaved();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: AppStrings.visitsSection,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _visitRow(
+            label: AppStrings.lastPhoneVisit,
+            icon: Icons.phone_callback_outlined,
+            date: _phoneDate,
+            notesController: _phoneNotes,
+            isPhone: true,
+          ),
+          const SizedBox(height: 12),
+          _visitRow(
+            label: AppStrings.lastHomeVisit,
+            icon: Icons.home_outlined,
+            date: _homeDate,
+            notesController: _homeNotes,
+            isPhone: false,
+          ),
+          if (_dirty) ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check),
+              label: const Text(AppStrings.save),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _visitRow({
+    required String label,
+    required IconData icon,
+    required DateTime? date,
+    required TextEditingController notesController,
+    required bool isPhone,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => _pickDate(isPhone: isPhone),
+          borderRadius: BorderRadius.circular(12),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: label,
+              prefixIcon: Icon(icon),
+              suffixIcon: date == null
+                  ? const Icon(Icons.calendar_today_outlined, size: 20)
+                  : IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: () => setState(() {
+                        if (isPhone) {
+                          _phoneDate = null;
+                        } else {
+                          _homeDate = null;
+                        }
+                        _dirty = true;
+                      }),
+                    ),
+            ),
+            child: Text(
+              date == null
+                  ? AppStrings.noVisitYet
+                  : '${AppDateUtils.formatDate(date)} • ${AppDateUtils.sinceLabel(date)}',
+              style: TextStyle(
+                fontSize: 15,
+                color: date == null ? AppColors.muted : null,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: notesController,
+          maxLines: 2,
+          onChanged: (_) => _mark(),
+          decoration: const InputDecoration(
+            labelText: AppStrings.visitNotes,
+            prefixIcon: Icon(Icons.notes_outlined),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 class _MoveChildSheet extends StatefulWidget {
   const _MoveChildSheet({required this.classes, required this.currentClassName});

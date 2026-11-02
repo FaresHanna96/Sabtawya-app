@@ -55,6 +55,13 @@ class SettingsScreen extends StatelessWidget {
                     icon: Icons.phone_outlined,
                   ),
                   InfoRow(
+                    label: AppStrings.birthDate,
+                    value: profile?.birthDate == null
+                        ? null
+                        : AppDateUtils.formatDate(profile!.birthDate!),
+                    icon: Icons.cake_outlined,
+                  ),
+                  InfoRow(
                     label: AppStrings.role,
                     value: profile?.roleLabel,
                     icon: Icons.shield_outlined,

@@ -53,6 +53,10 @@ class Child {
     this.address,
     this.notes,
     this.photoPath,
+    this.lastPhoneVisitDate,
+    this.lastPhoneVisitNotes,
+    this.lastHomeVisitDate,
+    this.lastHomeVisitNotes,
     this.createdAt,
     this.updatedAt,
   });
@@ -77,6 +81,10 @@ class Child {
   /// Path of the photo inside the `child-photos` bucket, not a URL: the bucket
   /// is private, so a signed URL is minted when the image is displayed.
   final String? photoPath;
+  final DateTime? lastPhoneVisitDate;
+  final String? lastPhoneVisitNotes;
+  final DateTime? lastHomeVisitDate;
+  final String? lastHomeVisitNotes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -117,6 +125,10 @@ class Child {
         address: asTextOrNull(map['address']),
         notes: asTextOrNull(map['notes']),
         photoPath: asTextOrNull(map['photo_path']),
+        lastPhoneVisitDate: asDateOrNull(map['last_phone_visit_date']),
+        lastPhoneVisitNotes: asTextOrNull(map['last_phone_visit_notes']),
+        lastHomeVisitDate: asDateOrNull(map['last_home_visit_date']),
+        lastHomeVisitNotes: asTextOrNull(map['last_home_visit_notes']),
         createdAt: asDateOrNull(map['created_at']),
         updatedAt: asDateOrNull(map['updated_at']),
       );
@@ -139,6 +151,14 @@ class Child {
         'school': _nullIfBlank(school),
         'address': _nullIfBlank(address),
         'notes': _nullIfBlank(notes),
+        'last_phone_visit_date': lastPhoneVisitDate == null
+            ? null
+            : AppDateUtils.toIsoDate(lastPhoneVisitDate!),
+        'last_phone_visit_notes': _nullIfBlank(lastPhoneVisitNotes),
+        'last_home_visit_date': lastHomeVisitDate == null
+            ? null
+            : AppDateUtils.toIsoDate(lastHomeVisitDate!),
+        'last_home_visit_notes': _nullIfBlank(lastHomeVisitNotes),
       };
 
   static String? _nullIfBlank(String? value) {
@@ -184,6 +204,44 @@ class Child {
         address: address ?? this.address,
         notes: notes ?? this.notes,
         photoPath: clearPhoto ? null : (photoPath ?? this.photoPath),
+        lastPhoneVisitDate: lastPhoneVisitDate,
+        lastPhoneVisitNotes: lastPhoneVisitNotes,
+        lastHomeVisitDate: lastHomeVisitDate,
+        lastHomeVisitNotes: lastHomeVisitNotes,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
+
+  /// Returns a copy with the visit fields replaced. All four are required so
+  /// callers can never accidentally keep a stale date when clearing notes.
+  Child withVisits({
+    required DateTime? phoneVisitDate,
+    required String? phoneVisitNotes,
+    required DateTime? homeVisitDate,
+    required String? homeVisitNotes,
+  }) =>
+      Child(
+        id: id,
+        classId: classId,
+        fullName: fullName,
+        gender: gender,
+        isActive: isActive,
+        birthDate: birthDate,
+        code: code,
+        mobile: mobile,
+        motherName: motherName,
+        motherMobile: motherMobile,
+        fatherName: fatherName,
+        fatherMobile: fatherMobile,
+        confessionFather: confessionFather,
+        school: school,
+        address: address,
+        notes: notes,
+        photoPath: photoPath,
+        lastPhoneVisitDate: phoneVisitDate,
+        lastPhoneVisitNotes: phoneVisitNotes,
+        lastHomeVisitDate: homeVisitDate,
+        lastHomeVisitNotes: homeVisitNotes,
         createdAt: createdAt,
         updatedAt: updatedAt,
       );
@@ -207,4 +265,36 @@ class Child {
         (confessionFather?.toLowerCase().contains(q) ?? false) ||
         (school?.toLowerCase().contains(q) ?? false);
   }
+}
+
+/// One entry in the pastoral visit log for a child.
+class ChildVisitLog {
+  const ChildVisitLog({
+    required this.id,
+    required this.childId,
+    required this.visitType,
+    required this.visitDate,
+    this.notes,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String childId;
+
+  /// Either 'phone' or 'home'.
+  final String visitType;
+  final DateTime visitDate;
+  final String? notes;
+  final DateTime createdAt;
+
+  bool get isPhone => visitType == 'phone';
+
+  factory ChildVisitLog.fromMap(Map<String, dynamic> map) => ChildVisitLog(
+        id: asText(map['id']),
+        childId: asText(map['child_id']),
+        visitType: asText(map['visit_type'], 'phone'),
+        visitDate: asDate(map['visit_date']),
+        notes: asTextOrNull(map['notes']),
+        createdAt: asDate(map['created_at']),
+      );
 }

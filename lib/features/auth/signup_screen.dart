@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../data/models/profile.dart';
 import '../../state/session_controller.dart';
@@ -26,6 +27,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _confirmController = TextEditingController();
 
   AppRole _role = AppRole.servant;
+  DateTime? _birthDate;
   bool _obscure = true;
   bool _busy = false;
 
@@ -51,6 +53,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             fullName: _nameController.text,
             role: _role,
             mobile: _mobileController.text,
+            birthDate: _birthDate,
           );
       if (!mounted) return;
       if (signedIn) {
@@ -163,6 +166,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                    _BirthDateField(
+                      value: _birthDate,
+                      onChanged: (d) => setState(() => _birthDate = d),
+                    ),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscure,
@@ -218,6 +226,55 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BirthDateField extends StatelessWidget {
+  const _BirthDateField({required this.value, required this.onChanged});
+
+  final DateTime? value;
+  final ValueChanged<DateTime?> onChanged;
+
+  Future<void> _pick(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: value ?? DateTime(now.year - 25, now.month, now.day),
+      firstDate: DateTime(1950),
+      lastDate: now,
+      helpText: AppStrings.pickBirthDate,
+    );
+    if (picked != null) onChanged(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _pick(context),
+      borderRadius: BorderRadius.circular(12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: AppStrings.birthDate,
+          helperText: AppStrings.optional,
+          prefixIcon: const Icon(Icons.cake_outlined),
+          suffixIcon: value == null
+              ? const Icon(Icons.calendar_today_outlined, size: 20)
+              : IconButton(
+                  icon: const Icon(Icons.clear, size: 20),
+                  onPressed: () => onChanged(null),
+                ),
+        ),
+        child: Text(
+          value == null
+              ? AppStrings.pickBirthDate
+              : AppDateUtils.formatDate(value!),
+          style: TextStyle(
+            fontSize: 15,
+            color: value == null ? AppColors.muted : null,
           ),
         ),
       ),

@@ -21,11 +21,25 @@ class EventDetailScreen extends StatefulWidget {
   State<EventDetailScreen> createState() => _EventDetailScreenState();
 }
 
-class _EventDetailScreenState extends State<EventDetailScreen> {
+class _EventDetailScreenState extends State<EventDetailScreen>
+    with SingleTickerProviderStateMixin {
   static const _repository = EventRepository();
 
   final _sectionKey =
       GlobalKey<AsyncSectionState<List<ChildEventBalance>>>();
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   Future<List<ChildEventBalance>> _load() =>
       _repository.balances(widget.event.id);
@@ -37,7 +51,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
       builder: (_) => _PaymentHistorySheet(
         event: widget.event,
         balance: balance,
@@ -87,95 +100,209 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             final progress =
                 totalExpected > 0 ? totalCollected / totalExpected : 0.0;
 
-            // Group by class
-            final byClass = <String, List<ChildEventBalance>>{};
-            for (final b in balances) {
-              (byClass[b.classId] ??= []).add(b);
-            }
+            final partial = balances
+                .where((b) => b.totalPaid > 0 && b.remaining > 0)
+                .toList();
+            final notPaid =
+                balances.where((b) => b.totalPaid == 0).toList();
+            final fullPaid =
+                balances.where((b) => b.remaining <= 0).toList();
 
             final session = context.read<SessionController>();
-            String className(String id) {
+            String getClassName(String id) {
               for (final c in session.myClasses) {
                 if (c.classId == id) return c.className;
               }
               return 'فصل غير معروف';
             }
 
-            final sortedClasses = byClass.entries.toList()
-              ..sort((a, b) => className(b.key).compareTo(className(a.key)));
-
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            return Column(
               children: [
                 // Summary card
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${AppStrings.collected}: ${totalCollected.toStringAsFixed(0)} ج.م',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.olive,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${AppStrings.collected}: ${totalCollected.toStringAsFixed(0)} ج.م',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.olive,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${AppStrings.expected}: ${totalExpected.toStringAsFixed(0)} ج.م',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.muted,
+                              Text(
+                                '${AppStrings.expected}: ${totalExpected.toStringAsFixed(0)} ج.م',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.muted,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: progress.clamp(0.0, 1.0),
-                            minHeight: 8,
-                            backgroundColor:
-                                AppColors.navy.withValues(alpha: 0.1),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                AppColors.olive),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Children by class (sorted alphabetically)
-                for (final entry in sortedClasses) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8, top: 4),
-                    child: Text(
-                      className(entry.key),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.navy,
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress.clamp(0.0, 1.0),
+                              minHeight: 8,
+                              backgroundColor:
+                                  AppColors.navy.withValues(alpha: 0.1),
+                              valueColor:
+                                  const AlwaysStoppedAnimation<Color>(
+                                      AppColors.olive),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  ...entry.value.map(
-                    (b) => _BalanceRow(
-                      balance: b,
-                      onTap: () => _openPayments(b),
-                    ),
+                ),
+                const SizedBox(height: 4),
+                // Filter tab bar with live counts
+                TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  tabs: [
+                    Tab(text: '${AppStrings.all} (${balances.length})'),
+                    Tab(text: '${AppStrings.partialPay} (${partial.length})'),
+                    Tab(text: '${AppStrings.notPaidTab} (${notPaid.length})'),
+                    Tab(text: '${AppStrings.paidInFull} (${fullPaid.length})'),
+                  ],
+                ),
+                // Filtered list - rebuilds on tab change without reloading data
+                Expanded(
+                  child: ListenableBuilder(
+                    listenable: _tabController,
+                    builder: (context, _) {
+                      final List<ChildEventBalance> filtered;
+                      switch (_tabController.index) {
+                        case 1:
+                          filtered = partial;
+                        case 2:
+                          filtered = notPaid;
+                        case 3:
+                          filtered = fullPaid;
+                        default:
+                          filtered = balances;
+                      }
+
+                      if (filtered.isEmpty) {
+                        return const Center(
+                          child: EmptyState(
+                            icon: Icons.payments_outlined,
+                            title: 'لا يوجد',
+                            body: '',
+                          ),
+                        );
+                      }
+
+                      final filteredExpected =
+                          filtered.fold<double>(0, (s, b) => s + b.cost);
+                      final filteredCollected =
+                          filtered.fold<double>(0, (s, b) => s + b.totalPaid);
+                      final filteredRemaining =
+                          filteredExpected - filteredCollected;
+
+                      final byClass = <String, List<ChildEventBalance>>{};
+                      for (final b in filtered) {
+                        (byClass[b.classId] ??= []).add(b);
+                      }
+                      final sortedClasses = byClass.entries.toList()
+                        ..sort((a, b) => getClassName(b.key)
+                            .compareTo(getClassName(a.key)));
+
+                      return ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        children: [
+                          // Estimated payment summary for the filtered group
+                          if (_tabController.index > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Wrap(
+                                spacing: 16,
+                                children: [
+                                  _MiniStat(
+                                    label: AppStrings.expected,
+                                    value:
+                                        '${filteredExpected.toStringAsFixed(0)} ج.م',
+                                    color: AppColors.muted,
+                                  ),
+                                  _MiniStat(
+                                    label: AppStrings.collected,
+                                    value:
+                                        '${filteredCollected.toStringAsFixed(0)} ج.م',
+                                    color: AppColors.olive,
+                                  ),
+                                  if (filteredRemaining > 0)
+                                    _MiniStat(
+                                      label: AppStrings.remaining,
+                                      value:
+                                          '${filteredRemaining.toStringAsFixed(0)} ج.م',
+                                      color: AppColors.danger,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          for (final entry in sortedClasses) ...[
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: 8, top: 4),
+                              child: Text(
+                                getClassName(entry.key),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                            ),
+                            ...entry.value.map(
+                              (b) => _BalanceRow(
+                                balance: b,
+                                onTap: () => _openPayments(b),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ],
+                      );
+                    },
                   ),
-                  const SizedBox(height: 8),
-                ],
+                ),
               ],
             );
           },
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value, required this.color});
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('$label: ', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+      ],
     );
   }
 }
@@ -369,6 +496,17 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 32,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Row(
@@ -403,6 +541,8 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
                 style: FilledButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ],

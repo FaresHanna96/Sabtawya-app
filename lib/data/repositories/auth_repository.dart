@@ -38,17 +38,25 @@ class AuthRepository {
     required String fullName,
     required AppRole role,
     String? mobile,
+    DateTime? birthDate,
   }) async {
     try {
       final response = await Db.client.auth.signUp(
         email: email.trim(),
         password: password,
-        emailRedirectTo: 'sabtawya://login-callback',
+        emailRedirectTo: kIsWeb
+            ? 'https://sabtawya.vercel.app'
+            : 'sabtawya://login-callback',
         data: <String, dynamic>{
           'full_name': fullName.trim(),
           'requested_role': role.wire,
           if (mobile != null && mobile.trim().isNotEmpty)
             'mobile': mobile.trim(),
+          if (birthDate != null)
+            'birth_date':
+                '${birthDate.year.toString().padLeft(4, '0')}-'
+                '${birthDate.month.toString().padLeft(2, '0')}-'
+                '${birthDate.day.toString().padLeft(2, '0')}',
         },
       );
       return response.session != null;
@@ -117,14 +125,21 @@ class AuthRepository {
   Future<void> updateMyProfile({
     required String fullName,
     String? mobile,
+    DateTime? birthDate,
   }) async {
     final userId = Db.userId;
     if (userId == null) return;
 
+    final d = birthDate;
     try {
       await Db.client.from(Db.tProfiles).update(<String, dynamic>{
         'full_name': fullName.trim(),
         'mobile': mobile?.trim().isEmpty ?? true ? null : mobile!.trim(),
+        'birth_date': d == null
+            ? null
+            : '${d.year.toString().padLeft(4, '0')}-'
+                '${d.month.toString().padLeft(2, '0')}-'
+                '${d.day.toString().padLeft(2, '0')}',
       }).eq('id', userId);
     } catch (e) {
       throw AppFailure.from(e);

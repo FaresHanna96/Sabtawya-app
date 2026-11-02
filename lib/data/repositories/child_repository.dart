@@ -159,4 +159,41 @@ class ChildRepository {
       await update(child);
     }
   }
+
+  Future<List<ChildVisitLog>> visitLogs(String childId) async {
+    try {
+      final data = await Db.client
+          .from(Db.tChildVisitLogs)
+          .select()
+          .eq('child_id', childId)
+          .order('visit_date', ascending: false)
+          .order('created_at', ascending: false);
+      return rows(data).map(ChildVisitLog.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  Future<void> insertVisitLog({
+    required String childId,
+    required String visitType,
+    required DateTime visitDate,
+    String? notes,
+  }) async {
+    try {
+      final d = visitDate;
+      await Db.client.from(Db.tChildVisitLogs).insert(<String, dynamic>{
+        'child_id': childId,
+        'visit_type': visitType,
+        'visit_date':
+            '${d.year.toString().padLeft(4, '0')}-'
+            '${d.month.toString().padLeft(2, '0')}-'
+            '${d.day.toString().padLeft(2, '0')}',
+        'notes': notes,
+        'recorded_by': Db.userId,
+      });
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
 }

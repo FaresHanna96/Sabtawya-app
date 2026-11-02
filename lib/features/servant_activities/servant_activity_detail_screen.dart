@@ -47,13 +47,17 @@ class _ServantActivityDetailScreenState
       _repo.prepsForServant(widget.servantId),
       _repo.attendancesForServant(widget.servantId, 'sunday_school'),
       _repo.attendancesForServant(widget.servantId, 'servant_meeting'),
+      _repo.attendancesForServant(widget.servantId, 'mass'),
+      _repo.attendancesForServant(widget.servantId, 'confession'),
       _repo.sessionsForClasses(classIds, yearId: yearId),
     ]);
     return _DetailData(
       preps: results[0] as List<LessonPrep>,
       sundaySchool: results[1] as List<ServantAttendance>,
       servantMeeting: results[2] as List<ServantAttendance>,
-      sessions: results[3] as List<AttendanceSession>,
+      mass: results[3] as List<ServantAttendance>,
+      confession: results[4] as List<ServantAttendance>,
+      sessions: results[5] as List<AttendanceSession>,
     );
   }
 
@@ -157,12 +161,17 @@ class _ServantActivityDetailScreenState
                     final sundayRec = data.sundaySchoolFor(session.sessionDate);
                     final meetingRec =
                         data.servantMeetingFor(session.sessionDate);
+                    final massRec = data.massFor(session.sessionDate);
+                    final confessionRec =
+                        data.confessionFor(session.sessionDate);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _AttendanceSessionCard(
                         session: session,
                         sundaySchoolPresent: sundayRec != null,
                         servantMeetingPresent: meetingRec != null,
+                        massPresent: massRec != null,
+                        confessionPresent: confessionRec != null,
                         onToggleSundaySchool: () => _toggleAttendance(
                           session,
                           'sunday_school',
@@ -172,6 +181,16 @@ class _ServantActivityDetailScreenState
                           session,
                           'servant_meeting',
                           meetingRec,
+                        ),
+                        onToggleMass: () => _toggleAttendance(
+                          session,
+                          'mass',
+                          massRec,
+                        ),
+                        onToggleConfession: () => _toggleAttendance(
+                          session,
+                          'confession',
+                          confessionRec,
                         ),
                       ),
                     );
@@ -282,15 +301,23 @@ class _AttendanceSessionCard extends StatelessWidget {
     required this.session,
     required this.sundaySchoolPresent,
     required this.servantMeetingPresent,
+    required this.massPresent,
+    required this.confessionPresent,
     required this.onToggleSundaySchool,
     required this.onToggleServantMeeting,
+    required this.onToggleMass,
+    required this.onToggleConfession,
   });
 
   final AttendanceSession session;
   final bool sundaySchoolPresent;
   final bool servantMeetingPresent;
+  final bool massPresent;
+  final bool confessionPresent;
   final VoidCallback onToggleSundaySchool;
   final VoidCallback onToggleServantMeeting;
+  final VoidCallback onToggleMass;
+  final VoidCallback onToggleConfession;
 
   @override
   Widget build(BuildContext context) {
@@ -342,6 +369,26 @@ class _AttendanceSessionCard extends StatelessWidget {
                     label: AppStrings.servantMeetingShort,
                     present: servantMeetingPresent,
                     onTap: onToggleServantMeeting,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _ActivityToggle(
+                    label: AppStrings.massShort,
+                    present: massPresent,
+                    onTap: onToggleMass,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ActivityToggle(
+                    label: AppStrings.confessionShort,
+                    present: confessionPresent,
+                    onTap: onToggleConfession,
                   ),
                 ),
               ],
@@ -614,25 +661,28 @@ class _DetailData {
     required this.preps,
     required this.sundaySchool,
     required this.servantMeeting,
+    required this.mass,
+    required this.confession,
     required this.sessions,
   });
 
   final List<LessonPrep> preps;
   final List<ServantAttendance> sundaySchool;
   final List<ServantAttendance> servantMeeting;
+  final List<ServantAttendance> mass;
+  final List<ServantAttendance> confession;
   final List<AttendanceSession> sessions;
 
-  ServantAttendance? sundaySchoolFor(DateTime date) {
-    final key = _key(date);
-    for (final a in sundaySchool) {
-      if (_key(a.date) == key) return a;
-    }
-    return null;
-  }
+  ServantAttendance? sundaySchoolFor(DateTime date) =>
+      _find(sundaySchool, date);
+  ServantAttendance? servantMeetingFor(DateTime date) =>
+      _find(servantMeeting, date);
+  ServantAttendance? massFor(DateTime date) => _find(mass, date);
+  ServantAttendance? confessionFor(DateTime date) => _find(confession, date);
 
-  ServantAttendance? servantMeetingFor(DateTime date) {
+  ServantAttendance? _find(List<ServantAttendance> list, DateTime date) {
     final key = _key(date);
-    for (final a in servantMeeting) {
+    for (final a in list) {
       if (_key(a.date) == key) return a;
     }
     return null;

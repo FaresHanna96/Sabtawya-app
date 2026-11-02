@@ -57,6 +57,9 @@ class Db {
   // Views – events
   static const vChildEventBalances = 'v_child_event_balances';
 
+  // Tables – pastoral visits
+  static const tChildVisitLogs = 'child_visit_logs';
+
   // Storage buckets
   static const bucketChildPhotos = 'child-photos';
   static const bucketClassPatrons = 'class-patrons';

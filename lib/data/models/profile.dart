@@ -40,6 +40,7 @@ class Profile {
     this.email,
     this.mobile,
     this.gender,
+    this.birthDate,
     this.createdAt,
     this.rejectedAt,
   });
@@ -53,6 +54,7 @@ class Profile {
 
   /// Only wording: خادم or خادمة. Null for an account that never said.
   final Gender? gender;
+  final DateTime? birthDate;
   final DateTime? createdAt;
 
   /// Set when an admin refused the sign-up request.
@@ -73,6 +75,7 @@ class Profile {
         email: asTextOrNull(map['email']),
         mobile: asTextOrNull(map['mobile']),
         gender: Gender.tryParse(map['gender']),
+        birthDate: asDateOrNull(map['birth_date']),
         createdAt: asDateOrNull(map['created_at']),
         rejectedAt: asDateOrNull(map['rejected_at']),
       );

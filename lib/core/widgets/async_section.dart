@@ -43,7 +43,7 @@ class AsyncSectionState<T> extends State<AsyncSection<T>> {
 
   Future<void> reload() async {
     final next = widget.load();
-    setState(() => _future = next);
+    setState(() { _future = next; });
     // The failure is swallowed here because the FutureBuilder below already
     // renders it; rethrowing would also break RefreshIndicator's animation.
     await next.then<void>((_) {}, onError: (Object _) {});

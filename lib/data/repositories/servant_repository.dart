@@ -151,6 +151,29 @@ class ServantRepository {
     }
   }
 
+  /// Active servants whose birth-date month+day matches today. Errors are
+  /// silently swallowed: RLS may restrict access for non-admin roles.
+  Future<List<Profile>> servantsWithBirthdayToday() async {
+    try {
+      final today = DateTime.now();
+      final data = await Db.client
+          .from(Db.tProfiles)
+          .select('id, full_name, mobile, birth_date, gender')
+          .not('birth_date', 'is', null)
+          .eq('is_active', true);
+      return rows(data)
+          .map(Profile.fromMap)
+          .where((p) =>
+              p.birthDate != null &&
+              p.birthDate!.month == today.month &&
+              p.birthDate!.day == today.day)
+          .toList()
+        ..sort((a, b) => a.fullName.compareTo(b.fullName));
+    } catch (_) {
+      return [];
+    }
+  }
+
   static String? _blankToNull(String? value) {
     final trimmed = value?.trim();
     return (trimmed == null || trimmed.isEmpty) ? null : trimmed;

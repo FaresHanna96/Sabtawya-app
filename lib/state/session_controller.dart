@@ -210,6 +210,7 @@ class SessionController extends ChangeNotifier {
     required String fullName,
     required AppRole role,
     String? mobile,
+    DateTime? birthDate,
   }) =>
       _auth.signUp(
         email: email,
@@ -217,6 +218,7 @@ class SessionController extends ChangeNotifier {
         fullName: fullName,
         role: role,
         mobile: mobile,
+        birthDate: birthDate,
       );
 
   Future<void> signOut() => _auth.signOut();
