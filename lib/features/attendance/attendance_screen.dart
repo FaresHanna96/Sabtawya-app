@@ -716,45 +716,69 @@ class _MarkToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.olive : AppColors.muted;
     return Expanded(
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         onTap: enabled ? onTap : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.olive.withValues(alpha: 0.12)
-                : Colors.transparent,
-            border: Border.all(
-              color: selected
-                  ? AppColors.olive
-                  : AppColors.muted.withValues(alpha: 0.4),
-            ),
-            borderRadius: BorderRadius.circular(10),
+            gradient: selected ? AppGradients.navyHeader : null,
+            color: selected ? null : Colors.transparent,
+            border: selected
+                ? null
+                : Border.all(
+                    color: AppColors.muted.withValues(alpha: 0.35),
+                  ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppColors.navy.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             children: [
               Icon(
-                selected ? Icons.check_circle : Icons.circle_outlined,
-                size: 18,
-                color: enabled ? color : AppColors.muted.withValues(alpha: 0.5),
+                selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                size: 26,
+                color: selected
+                    ? Colors.white
+                    : (enabled
+                        ? AppColors.muted
+                        : AppColors.muted.withValues(alpha: 0.4)),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: color,
+                  color: selected
+                      ? Colors.white
+                      : (enabled
+                          ? AppColors.muted
+                          : AppColors.muted.withValues(alpha: 0.4)),
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 '+$points',
                 textDirection: TextDirection.ltr,
-                style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: selected
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : AppColors.muted.withValues(alpha: 0.5),
+                ),
               ),
             ],
           ),
