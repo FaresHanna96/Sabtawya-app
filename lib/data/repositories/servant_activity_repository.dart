@@ -288,7 +288,8 @@ class ServantActivityRepository {
           .select('id')
           .eq('year_id', yearId)
           // Only sessions already held, so percentages are "so far".
-          .lte('session_date', DateTime.now().toIso8601String().substring(0, 10));
+          .lte('session_date',
+              DateTime.now().toIso8601String().substring(0, 10));
       return rows(data).length;
     } catch (e) {
       throw AppFailure.from(e);

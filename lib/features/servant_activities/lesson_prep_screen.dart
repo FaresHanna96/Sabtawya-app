@@ -14,6 +14,7 @@ import '../../data/models/servant_activity.dart';
 import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
+import '../lessons/lesson_widgets.dart';
 
 /// Servant view for a single attendance session's lesson prep submission.
 ///
@@ -38,8 +39,7 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<LessonPrep?>>();
 
-  Future<LessonPrep?> _load() =>
-      _repo.lessonPrepForSession(widget.sessionId);
+  Future<LessonPrep?> _load() => _repo.lessonPrepForSession(widget.sessionId);
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
@@ -112,23 +112,38 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
         title: Text(AppDateUtils.formatDayDate(widget.sessionDate)),
       ),
       body: SafeArea(
-        child: AsyncSection<LessonPrep?>(
-          key: _sectionKey,
-          load: _load,
-          builder: (context, prep, reload) {
-            if (prep != null) {
-              return _SubmittedView(prep: prep);
-            }
-            return _SubmitForm(
-              imagePreviews: _imagePreviews,
-              pdfFiles: _pickedPdfs,
-              onPickPhoto: _pickPhoto,
-              onPickPdf: _pickPdf,
-              onRemovePhoto: _removePickedImage,
-              onRemovePdf: _removePickedPdf,
-              onSubmit: _submit,
-            );
-          },
+        child: Column(
+          children: [
+            // The lesson this prep is for, taken from the weekly programme.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: LessonOfDay(
+                date: widget.sessionDate,
+                title: AppStrings.lessonForPrep,
+                showExtras: false,
+              ),
+            ),
+            Expanded(
+              child: AsyncSection<LessonPrep?>(
+                key: _sectionKey,
+                load: _load,
+                builder: (context, prep, reload) {
+                  if (prep != null) {
+                    return _SubmittedView(prep: prep);
+                  }
+                  return _SubmitForm(
+                    imagePreviews: _imagePreviews,
+                    pdfFiles: _pickedPdfs,
+                    onPickPhoto: _pickPhoto,
+                    onPickPdf: _pickPdf,
+                    onRemovePhoto: _removePickedImage,
+                    onRemovePdf: _removePickedPdf,
+                    onSubmit: _submit,
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -287,7 +302,8 @@ class _PdfTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.danger),
+        leading:
+            const Icon(Icons.picture_as_pdf_outlined, color: AppColors.danger),
         title: Text(name, style: const TextStyle(fontSize: 13)),
         trailing: IconButton(
           icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
@@ -330,10 +346,14 @@ class _StoragePdfTileState extends State<_StoragePdfTile> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.danger),
+      leading:
+          const Icon(Icons.picture_as_pdf_outlined, color: AppColors.danger),
       title: Text(_fileName, style: const TextStyle(fontSize: 13)),
       trailing: _url == null
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2))
           : const Icon(Icons.open_in_new, size: 18, color: AppColors.navy),
       dense: true,
       onTap: _url == null ? null : () => launchUrl(Uri.parse(_url!)),
@@ -356,8 +376,7 @@ class _SubmittedView extends StatelessWidget {
   Widget build(BuildContext context) {
     final imagePhotos =
         prep.photos.where((p) => !_isPdf(p.storagePath)).toList();
-    final pdfPhotos =
-        prep.photos.where((p) => _isPdf(p.storagePath)).toList();
+    final pdfPhotos = prep.photos.where((p) => _isPdf(p.storagePath)).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),

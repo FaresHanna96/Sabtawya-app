@@ -17,6 +17,7 @@ import '../servants/servants_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
 import '../settings/settings_screen.dart';
+import '../lessons/lesson_schedule_screen.dart';
 import '../sync/sync_screen.dart';
 
 /// The hub for everything that does not deserve its own tab.
@@ -165,6 +166,12 @@ class MoreScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: Column(
                 children: [
+                  _Entry(
+                    icon: Icons.menu_book_outlined,
+                    title: AppStrings.lessonSchedule,
+                    screen: const LessonScheduleScreen(),
+                    color: AppColors.olive,
+                  ),
                   _Entry(
                     icon: Icons.sync_rounded,
                     title: AppStrings.syncTitle,

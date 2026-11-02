@@ -21,8 +21,26 @@ enum Gender {
     final text = raw?.trim().toLowerCase();
     if (text == null || text.isEmpty) return null;
 
-    const boyWords = <String>{'boy', 'b', 'm', 'male', 'ولد', 'ذكر', 'اولاد', 'أولاد'};
-    const girlWords = <String>{'girl', 'g', 'f', 'female', 'بنت', 'أنثى', 'انثى', 'بنات'};
+    const boyWords = <String>{
+      'boy',
+      'b',
+      'm',
+      'male',
+      'ولد',
+      'ذكر',
+      'اولاد',
+      'أولاد'
+    };
+    const girlWords = <String>{
+      'girl',
+      'g',
+      'f',
+      'female',
+      'بنت',
+      'أنثى',
+      'انثى',
+      'بنات'
+    };
 
     if (boyWords.contains(text)) return Gender.boy;
     if (girlWords.contains(text)) return Gender.girl;
@@ -141,7 +159,8 @@ class Child {
         'full_name': fullName.trim(),
         'gender': gender.wire,
         'is_active': isActive,
-        'birth_date': birthDate == null ? null : AppDateUtils.toIsoDate(birthDate!),
+        'birth_date':
+            birthDate == null ? null : AppDateUtils.toIsoDate(birthDate!),
         'mobile': _nullIfBlank(mobile),
         'mother_name': _nullIfBlank(motherName),
         'mother_mobile': _nullIfBlank(motherMobile),

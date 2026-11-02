@@ -54,7 +54,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
             ),
       ];
     }
-    final servants = await _servantRepository.servants(includeInactive: false);
+    final servants = await _servantRepository.birthdays();
     final assignments = await _classRepository.allAssignments();
     return [
       for (final p in servants)

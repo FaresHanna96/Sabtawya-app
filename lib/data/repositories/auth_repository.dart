@@ -54,8 +54,7 @@ class AuthRepository {
           if (mobile != null && mobile.trim().isNotEmpty)
             'mobile': mobile.trim(),
           if (birthDate != null)
-            'birth_date':
-                '${birthDate.year.toString().padLeft(4, '0')}-'
+            'birth_date': '${birthDate.year.toString().padLeft(4, '0')}-'
                 '${birthDate.month.toString().padLeft(2, '0')}-'
                 '${birthDate.day.toString().padLeft(2, '0')}',
         },

@@ -10,11 +10,17 @@ import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/servant_activity.dart';
 import '../../data/repositories/servant_activity_repository.dart';
+import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'lesson_prep_screen.dart';
+import 'servant_summary_card.dart';
 
 class MyActivitiesScreen extends StatefulWidget {
-  const MyActivitiesScreen({super.key});
+  const MyActivitiesScreen({super.key, this.showAppBar = false});
+
+  /// The home shell already has an app bar for this tab; a pushed screen
+  /// (from the dashboard) needs its own.
+  final bool showAppBar;
 
   @override
   State<MyActivitiesScreen> createState() => _MyActivitiesScreenState();
@@ -33,11 +39,20 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
     final results = await Future.wait([
       _repo.sessionsForClasses(classIds, yearId: yearId),
       _repo.myLessonPreps(),
+      // Only this servant's own records: the database allows no others.
+      _repo.attendancesForServant(Db.userId!, 'sunday_school'),
+      _repo.attendancesForServant(Db.userId!, 'servant_meeting'),
+      _repo.attendancesForServant(Db.userId!, 'mass'),
+      _repo.attendancesForServant(Db.userId!, 'confession'),
     ]);
 
     return _ActivitiesData(
       sessions: results[0] as List<AttendanceSession>,
       preps: results[1] as List<LessonPrep>,
+      sundaySchool: (results[2] as List).length,
+      servantMeeting: (results[3] as List).length,
+      mass: (results[4] as List).length,
+      confession: (results[5] as List).length,
     );
   }
 
@@ -59,7 +74,9 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.myActivities)),
+      appBar: widget.showAppBar
+          ? AppBar(title: const Text(AppStrings.myActivities))
+          : null,
       body: SafeArea(
         child: AsyncSection<_ActivitiesData>(
           key: _sectionKey,
@@ -68,8 +85,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
             if (data.sessions.isEmpty) {
               return ListView(
                 children: [
-                  SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.06),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.06),
                   const EmptyState(
                     icon: Icons.assignment_outlined,
                     title: AppStrings.noLessonPreps,
@@ -79,13 +95,19 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
               );
             }
 
-            final submitted = data.sessions
-                .where((s) => data.prepFor(s.id) != null)
+            // Only sessions already held count towards the percentage, not
+            // the whole year.
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            final held = data.sessions
+                .where((s) => !s.sessionDate.isAfter(today))
+                .toList();
+            final submitted =
+                held.where((s) => data.prepFor(s.id) != null).length;
+            final accepted = held
+                .where((s) => data.prepFor(s.id)?.status == 'accepted')
                 .length;
-            final accepted = data.preps
-                .where((p) => p.status == 'accepted')
-                .length;
-            final total = data.sessions.length;
+            final total = held.length;
 
             return ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
@@ -94,6 +116,19 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                 if (index == 0) {
                   return Column(
                     children: [
+                      ServantSummaryCard(
+                        sundaySchool: data.sundaySchool,
+                        servantMeeting: data.servantMeeting,
+                        mass: data.mass,
+                        confession: data.confession,
+                        preps: data.preps.length,
+                        pendingPreps: data.preps
+                            .where((p) => p.status == 'pending')
+                            .length,
+                        heldSessions:
+                            held.map((s) => s.sessionDate).toSet().length,
+                      ),
+                      const SizedBox(height: 16),
                       _ProgressHeader(
                         submitted: submitted,
                         accepted: accepted,
@@ -175,14 +210,14 @@ class _ProgressHeader extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$submitted / $total  ·  $pct',
+                  textDirection: TextDirection.ltr,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -199,8 +234,7 @@ class _ProgressHeader extends StatelessWidget {
               value: progress,
               minHeight: 7,
               backgroundColor: Colors.white.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                  AppColors.success),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.success),
             ),
           ),
           const SizedBox(height: 10),
@@ -372,10 +406,21 @@ class _SessionCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ActivitiesData {
-  const _ActivitiesData({required this.sessions, required this.preps});
+  const _ActivitiesData({
+    required this.sessions,
+    required this.preps,
+    required this.sundaySchool,
+    required this.servantMeeting,
+    required this.mass,
+    required this.confession,
+  });
 
   final List<AttendanceSession> sessions;
   final List<LessonPrep> preps;
+  final int sundaySchool;
+  final int servantMeeting;
+  final int mass;
+  final int confession;
 
   LessonPrep? prepFor(String sessionId) {
     for (final p in preps) {

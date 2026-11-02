@@ -170,46 +170,101 @@ class ExcelService {
 
   /// Header synonyms, normalised. Arabic and English headings both resolve, so
   /// a sheet exported from the old spreadsheets still imports.
-  static const Map<String, List<String>> _headerAliases = <String, List<String>>{
+  static const Map<String, List<String>> _headerAliases =
+      <String, List<String>>{
     'name': <String>[
-      'اسم المخدوم', 'اسم الطالب', 'الاسم', 'اسم', 'المخدوم',
-      'child name', 'student name', 'name', 'full name',
+      'اسم المخدوم',
+      'اسم الطالب',
+      'الاسم',
+      'اسم',
+      'المخدوم',
+      'child name',
+      'student name',
+      'name',
+      'full name',
     ],
     'gender': <String>[
-      'النوع', 'الجنس', 'ولد او بنت', 'ولد/بنت',
-      'gender', 'sex', 'boy/girl',
+      'النوع',
+      'الجنس',
+      'ولد او بنت',
+      'ولد/بنت',
+      'gender',
+      'sex',
+      'boy/girl',
     ],
     'birth_date': <String>[
-      'تاريخ الميلاد', 'الميلاد', 'تاريخ الميلاد الميلادي', 'السن',
-      'birth date', 'birthdate', 'date of birth', 'dob',
+      'تاريخ الميلاد',
+      'الميلاد',
+      'تاريخ الميلاد الميلادي',
+      'السن',
+      'birth date',
+      'birthdate',
+      'date of birth',
+      'dob',
     ],
     'mobile': <String>[
-      'موبايل المخدوم', 'موبايل الطالب', 'الموبايل', 'موبايل', 'تليفون',
-      'رقم الموبايل', 'child mobile', 'student mobile', 'mobile', 'phone',
+      'موبايل المخدوم',
+      'موبايل الطالب',
+      'الموبايل',
+      'موبايل',
+      'تليفون',
+      'رقم الموبايل',
+      'child mobile',
+      'student mobile',
+      'mobile',
+      'phone',
     ],
     'mother_name': <String>[
-      'اسم الام', 'الام', 'mother name', 'mother',
+      'اسم الام',
+      'الام',
+      'mother name',
+      'mother',
     ],
     'mother_mobile': <String>[
-      'موبايل الام', 'تليفون الام', 'mother mobile', 'mother phone',
+      'موبايل الام',
+      'تليفون الام',
+      'mother mobile',
+      'mother phone',
     ],
     'father_name': <String>[
-      'اسم الاب', 'الاب', 'father name', 'father',
+      'اسم الاب',
+      'الاب',
+      'father name',
+      'father',
     ],
     'father_mobile': <String>[
-      'موبايل الاب', 'تليفون الاب', 'father mobile', 'father phone',
+      'موبايل الاب',
+      'تليفون الاب',
+      'father mobile',
+      'father phone',
     ],
     'confession_father': <String>[
-      'اب الاعتراف', 'ابو الاعتراف', 'الاب الروحي', 'اب اعتراف',
-      'confession father', 'father of confession',
+      'اب الاعتراف',
+      'ابو الاعتراف',
+      'الاب الروحي',
+      'اب اعتراف',
+      'confession father',
+      'father of confession',
     ],
     'school': <String>['المدرسه', 'مدرسه', 'school'],
     'address': <String>[
-      'العنوان', 'عنوان', 'السكن', 'المنطقه', 'address', 'location',
+      'العنوان',
+      'عنوان',
+      'السكن',
+      'المنطقه',
+      'address',
+      'location',
     ],
     'code': <String>[
-      'كود المخدوم', 'كود الطالب', 'الكود', 'كود', 'رقم المخدوم',
-      'child code', 'student id', 'code', 'id',
+      'كود المخدوم',
+      'كود الطالب',
+      'الكود',
+      'كود',
+      'رقم المخدوم',
+      'child code',
+      'student id',
+      'code',
+      'id',
     ],
     'notes': <String>['ملاحظات', 'ملحوظات', 'notes', 'note', 'remarks'],
   };
@@ -224,7 +279,8 @@ class ExcelService {
       return const ExcelParseResult(error: AppStrings.importMissingHeader);
     }
 
-    final sheet = book.tables.values.where((table) => table.rows.isNotEmpty).firstOrNull;
+    final sheet =
+        book.tables.values.where((table) => table.rows.isNotEmpty).firstOrNull;
     if (sheet == null) {
       return const ExcelParseResult(error: AppStrings.importEmptyFile);
     }
@@ -473,7 +529,8 @@ class ExcelService {
   }) {
     final (book, sheet) = _book(AppStrings.attendanceTitle);
     sheet.appendRow(<CellValue?>[_text(className)]);
-    sheet.appendRow(<CellValue?>[_text(AppDateUtils.formatDayDate(sessionDate))]);
+    sheet.appendRow(
+        <CellValue?>[_text(AppDateUtils.formatDayDate(sessionDate))]);
     sheet.appendRow(<CellValue?>[]);
     sheet.appendRow(<CellValue?>[
       _text(AppStrings.childName),
@@ -520,7 +577,8 @@ class ExcelService {
       (grouped[row.classId] ??= []).add(row);
     }
     final sortedGroups = grouped.entries.toList()
-      ..sort((a, b) => a.value.first.className.compareTo(b.value.first.className));
+      ..sort(
+          (a, b) => a.value.first.className.compareTo(b.value.first.className));
 
     for (final entry in sortedGroups) {
       final className = entry.value.first.className;
@@ -565,7 +623,8 @@ class ExcelService {
       (grouped[row.classId] ??= []).add(row);
     }
     final sortedGroups = grouped.entries.toList()
-      ..sort((a, b) => a.value.first.className.compareTo(b.value.first.className));
+      ..sort(
+          (a, b) => a.value.first.className.compareTo(b.value.first.className));
 
     for (final entry in sortedGroups) {
       final className = entry.value.first.className;
@@ -574,7 +633,8 @@ class ExcelService {
       for (var i = 0; i < entry.value.length; i++) {
         final row = entry.value[i];
         final held = sessionsHeldByChild?[row.childId] ?? row.sessionsTotal;
-        final pct = held > 0 ? row.sessionsAttended / held * 100 : row.percentage;
+        final pct =
+            held > 0 ? row.sessionsAttended / held * 100 : row.percentage;
         sheet.appendRow(<CellValue?>[
           IntCellValue(i + 1),
           _text(row.className),

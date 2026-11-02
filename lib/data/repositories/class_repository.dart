@@ -105,10 +105,8 @@ class ClassRepository {
         final six = active('6 $g');
         if (six != null) {
           // Graduated children leave the lists with their class.
-          await Db.client
-              .from(Db.tChildren)
-              .update(<String, dynamic>{'is_active': false})
-              .eq('class_id', six.id);
+          await Db.client.from(Db.tChildren).update(
+              <String, dynamic>{'is_active': false}).eq('class_id', six.id);
           await rename(six, '6 $g $archiveSuffix', 100 + sortOf(6, g),
               isActive: false);
           changed++;

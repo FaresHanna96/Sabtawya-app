@@ -82,8 +82,7 @@ class ChildRepository {
     try {
       await Db.client
           .from(Db.tChildren)
-          .update(<String, dynamic>{'is_active': isActive})
-          .eq('id', childId);
+          .update(<String, dynamic>{'is_active': isActive}).eq('id', childId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -98,8 +97,7 @@ class ChildRepository {
     try {
       await Db.client
           .from(Db.tChildren)
-          .update(<String, dynamic>{'class_id': newClassId})
-          .eq('id', childId);
+          .update(<String, dynamic>{'class_id': newClassId}).eq('id', childId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -109,12 +107,12 @@ class ChildRepository {
   ///
   /// Kept out of [Child.toWriteMap] so an ordinary edit or an Excel import
   /// cannot drop a photo it never knew about.
-  Future<void> setPhoto({required String childId, required String? path}) async {
+  Future<void> setPhoto(
+      {required String childId, required String? path}) async {
     try {
       await Db.client
           .from(Db.tChildren)
-          .update(<String, dynamic>{'photo_path': path})
-          .eq('id', childId);
+          .update(<String, dynamic>{'photo_path': path}).eq('id', childId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -177,8 +175,7 @@ class ChildRepository {
       await Db.client.from(Db.tChildVisitLogs).insert(<String, dynamic>{
         'child_id': childId,
         'visit_type': visitType,
-        'visit_date':
-            '${d.year.toString().padLeft(4, '0')}-'
+        'visit_date': '${d.year.toString().padLeft(4, '0')}-'
             '${d.month.toString().padLeft(2, '0')}-'
             '${d.day.toString().padLeft(2, '0')}',
         'notes': notes,

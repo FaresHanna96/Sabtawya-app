@@ -38,6 +38,7 @@ class Db {
   static const vChildCommitment = 'v_child_commitment';
   static const vPendingServants = 'v_pending_servants';
   static const vChildBirthdays = 'v_child_birthdays';
+  static const vServantBirthdays = 'v_servant_birthdays';
 
   // Tables – servant activities
   static const tServantLessonPreps = 'servant_lesson_preps';
@@ -52,7 +53,7 @@ class Db {
   static const vChildCompScores = 'v_child_competition_scores';
 
   // Tables – events (فعاليات)
-  static const tEvents        = 'events';
+  static const tEvents = 'events';
   static const tEventPayments = 'event_payments';
 
   // Views – events
@@ -60,6 +61,9 @@ class Db {
 
   // Tables – pastoral visits
   static const tChildVisitLogs = 'child_visit_logs';
+  static const tLessons = 'lessons';
+  static const tLessonExtras = 'lesson_extras';
+  static const tLessonBreaks = 'lesson_breaks';
 
   // Storage buckets
   static const bucketChildPhotos = 'child-photos';

@@ -16,6 +16,7 @@ import '../classes/class_detail_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
+import '../lessons/lesson_widgets.dart';
 import 'today_birthdays_section.dart';
 
 /// The servant landing page. It shows only the assigned classes, which is a
@@ -79,6 +80,7 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
             ),
             const SizedBox(height: 16),
             const TodayBirthdaysSection(),
+            LessonOfDay(date: upcomingSaturday()),
             StatCard(
               label: AppStrings.totalChildren,
               value: '$totalChildren',
@@ -130,7 +132,7 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                       color: AppColors.navy,
                     ),
                     label: const Text(AppStrings.myActivities),
-                    onPressed: () => _push(const MyActivitiesScreen()),
+                    onPressed: () => _push(const MyActivitiesScreen(showAppBar: true)),
                   ),
                   ActionChip(
                     avatar: const Icon(

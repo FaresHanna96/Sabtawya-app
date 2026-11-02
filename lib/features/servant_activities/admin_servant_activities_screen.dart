@@ -243,8 +243,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
   int get _selectedIndex {
     if (_selectedDate == null) return -1;
     final iso = AppDateUtils.toIsoDate(_selectedDate!);
-    return _sessionDates
-        .indexWhere((d) => AppDateUtils.toIsoDate(d) == iso);
+    return _sessionDates.indexWhere((d) => AppDateUtils.toIsoDate(d) == iso);
   }
 
   void _goPrev() {
@@ -438,7 +437,8 @@ class _AttendanceTabState extends State<_AttendanceTab>
                   color: _selectedIndex > 0 ? AppColors.navy : AppColors.muted,
                   onPressed: _selectedIndex > 0 ? _goPrev : null,
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
                 ),
                 // Scrollable date chips
                 Expanded(
@@ -470,8 +470,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color:
-                                  selected ? Colors.white : AppColors.navy,
+                              color: selected ? Colors.white : AppColors.navy,
                             ),
                           ),
                         ),
@@ -491,20 +490,19 @@ class _AttendanceTabState extends State<_AttendanceTab>
                       ? _goNext
                       : null,
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
                 ),
               ],
             ),
           ),
         const Divider(height: 1, thickness: 0.5),
         // Servant list
-        if (_loading)
-          const LinearProgressIndicator(minHeight: 2),
+        if (_loading) const LinearProgressIndicator(minHeight: 2),
         Expanded(
           child: _servants.isEmpty
               ? ListView(children: [
-                  SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.1),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.1),
                   const EmptyState(
                     icon: Icons.people_outline,
                     title: AppStrings.noServants,
@@ -512,11 +510,9 @@ class _AttendanceTabState extends State<_AttendanceTab>
                   ),
                 ])
               : ListView.separated(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                   itemCount: _servants.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 8),
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final servant = _servants[index];
                     final ss = _find(servant.id, 'sunday_school');
@@ -538,8 +534,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
                           _toggle(servant.id, 'sunday_school'),
                       onToggleMeeting: () =>
                           _toggle(servant.id, 'servant_meeting'),
-                      onToggleMass: () =>
-                          _toggle(servant.id, 'mass'),
+                      onToggleMass: () => _toggle(servant.id, 'mass'),
                       onToggleConfession: () =>
                           _toggle(servant.id, 'confession'),
                       onPrep: prep != null
@@ -633,7 +628,11 @@ class _BulkServantRow extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _PrepChip(prep: prep, manualPresent: lessonPrepManual, disabled: disabled, onTap: onPrep),
+                  _PrepChip(
+                      prep: prep,
+                      manualPresent: lessonPrepManual,
+                      disabled: disabled,
+                      onTap: onPrep),
                   _Toggle(
                     label: 'خدمة',
                     icon: Icons.church_outlined,
@@ -753,14 +752,12 @@ class _Toggle extends StatelessWidget {
       onTap: disabled ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: present ? 0.12 : 0.07),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: color.withValues(alpha: present ? 0.5 : 0.25),
-              width: 1.2),
+              color: color.withValues(alpha: present ? 0.5 : 0.25), width: 1.2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -774,9 +771,7 @@ class _Toggle extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: color),
+                  fontSize: 11, fontWeight: FontWeight.w600, color: color),
             ),
           ],
         ),
@@ -830,8 +825,7 @@ class _StatsHeader extends StatelessWidget {
             icon: Icons.hourglass_empty_outlined,
             value: '$totalPending',
             label: 'قيد المراجعة',
-            accent:
-                totalPending > 0 ? AppColors.warning : Colors.white70,
+            accent: totalPending > 0 ? AppColors.warning : Colors.white70,
           ),
         ],
       ),
@@ -862,13 +856,10 @@ class _HeaderStat extends StatelessWidget {
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: color)),
+                  fontSize: 22, fontWeight: FontWeight.w800, color: color)),
           Text(label,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: color.withValues(alpha: 0.7))),
+              style:
+                  TextStyle(fontSize: 11, color: color.withValues(alpha: 0.7))),
         ],
       ),
     );
@@ -903,17 +894,14 @@ class _ServantCard extends StatelessWidget {
       totalSessions > 0 ? (count / totalSessions).clamp(0.0, 1.0) : 0.0;
 
   String _pctLabel(int count) =>
-      totalSessions > 0
-          ? '${(count / totalSessions * 100).round()}%'
-          : '-';
+      totalSessions > 0 ? '${(count / totalSessions * 100).round()}%' : '-';
 
   @override
   Widget build(BuildContext context) {
     final hasPending = summary.pendingPreps > 0;
 
     return Card(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -947,8 +935,7 @@ class _ServantCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color:
-                            AppColors.warning.withValues(alpha: 0.15),
+                        color: AppColors.warning.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1043,15 +1030,12 @@ class _AttendanceBar extends StatelessWidget {
           children: [
             Icon(icon, size: 13, color: color),
             const SizedBox(width: 4),
-            Text(label,
-                style: TextStyle(fontSize: 11, color: color)),
+            Text(label, style: TextStyle(fontSize: 11, color: color)),
             const Spacer(),
             Text(
               '$count  ·  $pctLabel',
               style: TextStyle(
-                  fontSize: 11,
-                  color: color,
-                  fontWeight: FontWeight.w600),
+                  fontSize: 11, color: color, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -1099,9 +1083,7 @@ class _SmallChip extends StatelessWidget {
           Text(
             '$label: $value',
             style: TextStyle(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w600),
+                fontSize: 11, color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),

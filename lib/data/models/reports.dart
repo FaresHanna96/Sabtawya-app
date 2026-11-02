@@ -316,7 +316,8 @@ class ActivityLogEntry {
   final String? actorName;
   final Map<String, dynamic> details;
 
-  factory ActivityLogEntry.fromMap(Map<String, dynamic> map) => ActivityLogEntry(
+  factory ActivityLogEntry.fromMap(Map<String, dynamic> map) =>
+      ActivityLogEntry(
         id: asInt(map['id']),
         action: asText(map['action']),
         entity: asText(map['entity']),

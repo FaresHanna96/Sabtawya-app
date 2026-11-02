@@ -15,6 +15,7 @@ import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../classes/class_detail_screen.dart';
 import '../excel/import_children_screen.dart';
+import '../lessons/lesson_widgets.dart';
 import 'today_birthdays_section.dart';
 
 /// The admin landing page: system-wide counters, class standings, the children
@@ -96,6 +97,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _greeting(session.displayName, session.currentYear?.name),
             const SizedBox(height: 16),
             const TodayBirthdaysSection(),
+            LessonOfDay(date: upcomingSaturday()),
             FadeSlideIn(
               index: 1,
               child: Row(

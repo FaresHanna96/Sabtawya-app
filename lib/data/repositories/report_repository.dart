@@ -71,10 +71,8 @@ class ReportRepository {
     bool onlyActive = true,
   }) async {
     try {
-      var query = Db.client
-          .from(Db.vChildMonthlyReport)
-          .select()
-          .eq('year_id', yearId);
+      var query =
+          Db.client.from(Db.vChildMonthlyReport).select().eq('year_id', yearId);
       if (childId != null) query = query.eq('child_id', childId);
       if (classId != null) query = query.eq('class_id', classId);
       if (onlyActive) query = query.eq('child_is_active', true);

@@ -91,8 +91,8 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
                   onPageChanged: (i) => setState(() => _photoPage = i),
                   itemBuilder: (_, i) => Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _StorageImage(
-                        storagePath: prep.photos[i].storagePath),
+                    child:
+                        _StorageImage(storagePath: prep.photos[i].storagePath),
                   ),
                 ),
               ),

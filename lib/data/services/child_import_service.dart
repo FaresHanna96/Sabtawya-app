@@ -6,7 +6,8 @@ import 'excel_service.dart';
 /// The reviewed outcome of a parsed sheet: every row tagged insert, update, or
 /// skip, ready to show in the preview before anything is written.
 class ImportPlan {
-  const ImportPlan({required this.rows, required this.classId, required this.mode});
+  const ImportPlan(
+      {required this.rows, required this.classId, required this.mode});
 
   final List<ImportRow> rows;
   final String classId;
@@ -23,8 +24,9 @@ class ImportPlan {
   int get insertCount => inserts.length;
   int get updateCount => updates.length;
   int get errorCount => rows.where((row) => row.hasErrors).length;
-  int get skipCount =>
-      rows.where((row) => !row.hasErrors && row.action == ImportAction.skip).length;
+  int get skipCount => rows
+      .where((row) => !row.hasErrors && row.action == ImportAction.skip)
+      .length;
   int get movesCount => _usable.where((row) => row.movesClass).length;
 
   bool get hasWork => insertCount > 0 || updateCount > 0;
@@ -91,9 +93,8 @@ class ChildImportService {
         continue;
       }
 
-      final existing = (code != null && code.isNotEmpty)
-          ? byCode[code]
-          : byName[name];
+      final existing =
+          (code != null && code.isNotEmpty) ? byCode[code] : byName[name];
       row.existing = existing;
       row.movesClass = existing != null && existing.classId != classId;
 
@@ -128,9 +129,8 @@ class ChildImportService {
   }
 
   Future<ImportResult> apply(ImportPlan plan) async {
-    final inserts = plan.inserts
-        .map((row) => row.toNewChild(plan.classId))
-        .toList();
+    final inserts =
+        plan.inserts.map((row) => row.toNewChild(plan.classId)).toList();
 
     final updates = plan.updates
         .map((row) => row.applyTo(row.existing!, plan.classId))

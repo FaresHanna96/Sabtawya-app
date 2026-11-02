@@ -61,7 +61,8 @@ class AttendanceSession {
   final bool isLocked;
   final String? notes;
 
-  factory AttendanceSession.fromMap(Map<String, dynamic> map) => AttendanceSession(
+  factory AttendanceSession.fromMap(Map<String, dynamic> map) =>
+      AttendanceSession(
         id: asText(map['id']),
         yearId: asText(map['year_id']),
         classId: asText(map['class_id']),
@@ -100,7 +101,8 @@ class AttendanceRecord {
   final DateTime? updatedAt;
   final String? updatedByName;
 
-  factory AttendanceRecord.fromMap(Map<String, dynamic> map) => AttendanceRecord(
+  factory AttendanceRecord.fromMap(Map<String, dynamic> map) =>
+      AttendanceRecord(
         id: asTextOrNull(map['id'] ?? map['record_id']),
         sessionId: asText(map['session_id']),
         childId: asText(map['child_id']),
@@ -308,7 +310,8 @@ class ChildSessionScore {
 
   bool get isPresent => sundaySchool || vespers || mass || confession;
 
-  factory ChildSessionScore.fromMap(Map<String, dynamic> map) => ChildSessionScore(
+  factory ChildSessionScore.fromMap(Map<String, dynamic> map) =>
+      ChildSessionScore(
         sessionId: asText(map['session_id']),
         sessionDate: asDate(map['session_date']),
         className: asText(map['class_name']),

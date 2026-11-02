@@ -6,7 +6,8 @@ import '../supabase/db.dart';
 import 'child_repository.dart';
 
 class AttendanceRepository {
-  const AttendanceRepository({ChildRepository children = const ChildRepository()})
+  const AttendanceRepository(
+      {ChildRepository children = const ChildRepository()})
       : _children = children;
 
   final ChildRepository _children;
@@ -109,7 +110,8 @@ class AttendanceRepository {
 
   /// Creates one session per attendance weekday per active class. Safe to call
   /// repeatedly; existing sessions are left untouched.
-  Future<int> generateSessions({required String yearId, String? classId}) async {
+  Future<int> generateSessions(
+      {required String yearId, String? classId}) async {
     try {
       final inserted = await Db.client.rpc<dynamic>(
         'generate_sessions_for_year',
@@ -178,8 +180,7 @@ class AttendanceRepository {
     try {
       await Db.client
           .from(Db.tAttendanceSessions)
-          .update(<String, dynamic>{'is_locked': isLocked})
-          .eq('id', sessionId);
+          .update(<String, dynamic>{'is_locked': isLocked}).eq('id', sessionId);
     } catch (e) {
       throw AppFailure.from(e);
     }

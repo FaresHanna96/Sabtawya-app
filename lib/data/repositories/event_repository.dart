@@ -60,8 +60,7 @@ class EventRepository {
           'event_date': eventDate.toIso8601String().split('T').first,
         if (cost != null) 'cost': cost,
         if (description != null)
-          'description':
-              description.trim().isEmpty ? null : description.trim(),
+          'description': description.trim().isEmpty ? null : description.trim(),
       };
       await Db.client.from(Db.tEvents).update(patch).eq('id', id);
     } catch (e) {
@@ -93,8 +92,7 @@ class EventRepository {
   }
 
   /// Payment history for one child in one event, newest first.
-  Future<List<EventPayment>> payments(
-      String eventId, String childId) async {
+  Future<List<EventPayment>> payments(String eventId, String childId) async {
     try {
       final data = await Db.client
           .from(Db.tEventPayments)

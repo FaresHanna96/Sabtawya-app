@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'servant_summary_card.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
@@ -113,79 +115,22 @@ class _ServantActivityDetailScreenState
   }
 
   Widget _summary(_DetailData data) {
-    final pending = data.preps.where((p) => p.status == 'pending').length;
     // Only sessions already held (one per date, whatever the class count).
     final now = DateTime.now();
     final cutoff = DateTime(now.year, now.month, now.day);
-    final total = data.sessions
+    final held = data.sessions
         .where((x) => !x.sessionDate.isAfter(cutoff))
         .map((x) => x.sessionDate)
         .toSet()
         .length;
-
-    String pct(int n) => total == 0 ? '' : ' (${(n / total * 100).round()}%)';
-
-    Widget row(Widget a, Widget b) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              Expanded(child: a),
-              const SizedBox(width: 8),
-              Expanded(child: b),
-            ],
-          ),
-        );
-
-    return SectionCard(
-      title: AppStrings.servantActivityReport,
-      icon: Icons.insert_chart_rounded,
-      accent: AppColors.navy,
-      child: Column(
-        children: [
-          row(
-            StatTile(
-              label: '${AppStrings.sundaySchoolShort}${pct(data.sundaySchool.length)}',
-              value: '${data.sundaySchool.length}/$total',
-              color: AppColors.success,
-              icon: Icons.church_outlined,
-            ),
-            StatTile(
-              label: '${AppStrings.servantMeetingShort}${pct(data.servantMeeting.length)}',
-              value: '${data.servantMeeting.length}/$total',
-              color: AppColors.success,
-              icon: Icons.groups_outlined,
-            ),
-          ),
-          row(
-            StatTile(
-              label: '${AppStrings.mass}${pct(data.mass.length)}',
-              value: '${data.mass.length}/$total',
-              color: AppColors.gold,
-              icon: Icons.account_balance_outlined,
-            ),
-            StatTile(
-              label: '${AppStrings.confession}${pct(data.confession.length)}',
-              value: '${data.confession.length}/$total',
-              color: AppColors.coral,
-              icon: Icons.volunteer_activism_outlined,
-            ),
-          ),
-          row(
-            StatTile(
-              label: AppStrings.lessonPrep,
-              value: '${data.preps.length}',
-              color: AppColors.navy,
-              icon: Icons.assignment_outlined,
-            ),
-            StatTile(
-              label: AppStrings.prepPending,
-              value: '$pending',
-              color: pending > 0 ? AppColors.warning : AppColors.muted,
-              icon: Icons.hourglass_empty_outlined,
-            ),
-          ),
-        ],
-      ),
+    return ServantSummaryCard(
+      sundaySchool: data.sundaySchool.length,
+      servantMeeting: data.servantMeeting.length,
+      mass: data.mass.length,
+      confession: data.confession.length,
+      preps: data.preps.length,
+      pendingPreps: data.preps.where((p) => p.status == 'pending').length,
+      heldSessions: held,
     );
   }
 
@@ -321,10 +266,8 @@ class _PrepRow extends StatelessWidget {
     return Card(
       child: ListTile(
         onTap: onTap,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         leading: Container(
           width: 44,
           height: 44,
@@ -679,8 +622,9 @@ class _ReviewSheetState extends State<_ReviewSheet> {
   }
 
   Future<void> _submit(String status) async {
-    final comment =
-        _commentController.text.trim().isEmpty ? null : _commentController.text.trim();
+    final comment = _commentController.text.trim().isEmpty
+        ? null
+        : _commentController.text.trim();
     if (status == 'commented' && comment == null) {
       Ui.info(context, AppStrings.commentRequired);
       return;

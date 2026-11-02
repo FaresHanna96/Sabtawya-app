@@ -501,6 +501,7 @@ class SectionCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.collapsible = false,
+    this.initiallyExpanded = false,
     this.icon,
     this.accent = AppColors.navy,
   });
@@ -515,6 +516,9 @@ class SectionCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final bool collapsible;
 
+  /// Only used when [collapsible]; birthdays start closed, the lesson open.
+  final bool initiallyExpanded;
+
   @override
   Widget build(BuildContext context) {
     if (collapsible && title != null) {
@@ -522,7 +526,7 @@ class SectionCard extends StatelessWidget {
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            initiallyExpanded: false,
+            initiallyExpanded: initiallyExpanded,
             tilePadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             childrenPadding: padding,
