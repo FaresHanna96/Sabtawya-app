@@ -60,6 +60,7 @@ class EventPayment {
     required this.paidBy,
     required this.paidAt,
     this.notes,
+    this.paymentMethod = 'cash',
   });
 
   final String id;
@@ -69,6 +70,9 @@ class EventPayment {
   final String paidBy;
   final DateTime paidAt;
   final String? notes;
+  final String paymentMethod;
+
+  bool get isTayo => paymentMethod == 'tayo';
 
   factory EventPayment.fromMap(Map<String, dynamic> map) => EventPayment(
         id: asText(map['id']),
@@ -78,6 +82,7 @@ class EventPayment {
         paidBy: asText(map['paid_by']),
         paidAt: asDate(map['paid_at']),
         notes: asTextOrNull(map['notes']),
+        paymentMethod: asTextOrNull(map['payment_method']) ?? 'cash',
       );
 }
 

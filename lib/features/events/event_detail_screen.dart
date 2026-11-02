@@ -467,7 +467,7 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
             _payments!.fold<double>(0, (s, p) => s + p.amount)
         : widget.balance.remaining;
 
-    final result = await showDialog<double>(
+    final result = await showDialog<({double amount, String method})>(
       context: context,
       builder: (_) => _AddPaymentDialog(
         maxAmount: liveRemaining > 0 ? liveRemaining : 0,
@@ -479,7 +479,11 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
     await Ui.runGuarded(
       context,
       () => _repository.addPayment(
-          widget.event.id, widget.balance.childId, result),
+        widget.event.id,
+        widget.balance.childId,
+        result.amount,
+        paymentMethod: result.method,
+      ),
       successMessage: AppStrings.paymentSaved,
     );
     await _load();
@@ -585,11 +589,39 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
                                 color: AppColors.navy,
                                 size: 20,
                               ),
-                              title: Text(
-                                '${p.amount.toStringAsFixed(0)} ج.م',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              title: Row(
+                                children: [
+                                  Text(
+                                    '${p.amount.toStringAsFixed(0)} ج.م',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: (p.isTayo
+                                              ? AppColors.navy
+                                              : AppColors.olive)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      p.isTayo
+                                          ? AppStrings.paymentMethodTayo
+                                          : AppStrings.paymentMethodCash,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: p.isTayo
+                                            ? AppColors.navy
+                                            : AppColors.olive,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               subtitle: Text(
                                 AppDateUtils.formatDate(p.paidAt),
@@ -633,6 +665,7 @@ class _AddPaymentDialogState extends State<_AddPaymentDialog> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  String _method = 'cash';
 
   @override
   void dispose() {
@@ -672,6 +705,30 @@ class _AddPaymentDialogState extends State<_AddPaymentDialog> {
                 return null;
               },
             ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                AppStrings.paymentMethodLabel,
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _MethodChip(
+                  label: AppStrings.paymentMethodCash,
+                  selected: _method == 'cash',
+                  onTap: () => setState(() => _method = 'cash'),
+                ),
+                const SizedBox(width: 8),
+                _MethodChip(
+                  label: AppStrings.paymentMethodTayo,
+                  selected: _method == 'tayo',
+                  onTap: () => setState(() => _method = 'tayo'),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _notesController,
@@ -692,11 +749,51 @@ class _AddPaymentDialogState extends State<_AddPaymentDialog> {
             if (!(_formKey.currentState?.validate() ?? false)) return;
             final amount =
                 double.tryParse(_amountController.text.trim()) ?? 0;
-            Navigator.of(context).pop(amount);
+            Navigator.of(context)
+                .pop((amount: amount, method: _method));
           },
           child: const Text(AppStrings.save),
         ),
       ],
+    );
+  }
+}
+
+class _MethodChip extends StatelessWidget {
+  const _MethodChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.navy;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color : color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? color : color.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : color,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -113,6 +113,7 @@ class EventRepository {
     String childId,
     double amount, {
     String? notes,
+    String paymentMethod = 'cash',
   }) async {
     try {
       final userId = Db.userId;
@@ -123,6 +124,7 @@ class EventRepository {
         'amount': amount,
         'paid_by': userId,
         'paid_at': DateTime.now().toIso8601String(),
+        'payment_method': paymentMethod,
         if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
       });
     } catch (e) {

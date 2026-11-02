@@ -521,6 +521,9 @@ class AppStrings {
   static const paymentAmountRequired   = 'المبلغ مطلوب';
   static const paymentAmountInvalid    = 'المبلغ يجب أن يكون أكبر من صفر';
   static const paymentAmountExceeds    = 'المبلغ يتجاوز المتبقي';
+  static const paymentMethodLabel      = 'طريقة الدفع';
+  static const paymentMethodCash       = 'كاش';
+  static const paymentMethodTayo       = 'طايو';
   static const confirmDeletePayment    = 'هل تريد حذف هذه الدفعة؟';
   static const paymentHistory          = 'سجل الدفعات';
   static const collected               = 'محصَّل';
