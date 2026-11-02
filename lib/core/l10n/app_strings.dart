@@ -520,6 +520,7 @@ class AppStrings {
   static const noPayments              = 'لا توجد مدفوعات';
   static const paymentAmountRequired   = 'المبلغ مطلوب';
   static const paymentAmountInvalid    = 'المبلغ يجب أن يكون أكبر من صفر';
+  static const paymentAmountExceeds    = 'المبلغ يتجاوز المتبقي';
   static const confirmDeletePayment    = 'هل تريد حذف هذه الدفعة؟';
   static const paymentHistory          = 'سجل الدفعات';
   static const collected               = 'محصَّل';

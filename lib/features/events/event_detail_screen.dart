@@ -663,6 +663,7 @@ class _AddPaymentDialogState extends State<_AddPaymentDialog> {
                 final n = double.tryParse(v?.trim() ?? '');
                 if (n == null) return AppStrings.paymentAmountRequired;
                 if (n <= 0) return AppStrings.paymentAmountInvalid;
+                if (n > widget.maxAmount) return AppStrings.paymentAmountExceeds;
                 return null;
               },
             ),
