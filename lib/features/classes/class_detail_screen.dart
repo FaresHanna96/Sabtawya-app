@@ -61,7 +61,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     );
   }
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _addChild() async {
     final added = await Navigator.of(context).push<bool>(
@@ -185,37 +186,42 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 title: Text(overview.className),
                 pinned: true,
                 actions: [
-                  PopupMenuButton<_ClassAction>(
-                    onSelected: (action) => switch (action) {
-                      _ClassAction.edit => _edit(overview.asClass),
-                      _ClassAction.archive => _toggleArchive(overview),
-                      _ClassAction.delete => _delete(overview),
-                    },
-                    itemBuilder: (context) => [
-                      if (isAdmin)
+                  // أمين الخدمة manages the class; a servant of this class can
+                  // edit it (the database allows exactly that) but not archive
+                  // or delete it. Without any item the menu is not shown.
+                  if (isAdmin ||
+                      session.myClasses
+                          .any((c) => c.classId == overview.classId))
+                    PopupMenuButton<_ClassAction>(
+                      onSelected: (action) => switch (action) {
+                        _ClassAction.edit => _edit(overview.asClass),
+                        _ClassAction.archive => _toggleArchive(overview),
+                        _ClassAction.delete => _delete(overview),
+                      },
+                      itemBuilder: (context) => [
                         const PopupMenuItem<_ClassAction>(
                           value: _ClassAction.edit,
                           child: Text(AppStrings.editClass),
                         ),
-                      if (isAdmin)
-                        PopupMenuItem<_ClassAction>(
-                          value: _ClassAction.archive,
-                          child: Text(
-                            overview.isActive
-                                ? AppStrings.archiveClass
-                                : AppStrings.restoreClass,
+                        if (isAdmin)
+                          PopupMenuItem<_ClassAction>(
+                            value: _ClassAction.archive,
+                            child: Text(
+                              overview.isActive
+                                  ? AppStrings.archiveClass
+                                  : AppStrings.restoreClass,
+                            ),
                           ),
-                        ),
-                      if (isAdmin)
-                        const PopupMenuItem<_ClassAction>(
-                          value: _ClassAction.delete,
-                          child: Text(
-                            AppStrings.deleteClass,
-                            style: TextStyle(color: AppColors.danger),
+                        if (isAdmin)
+                          const PopupMenuItem<_ClassAction>(
+                            value: _ClassAction.delete,
+                            child: Text(
+                              AppStrings.deleteClass,
+                              style: TextStyle(color: AppColors.danger),
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ),
               SliverPadding(

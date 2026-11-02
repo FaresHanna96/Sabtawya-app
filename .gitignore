@@ -53,3 +53,4 @@ app.*.map.json
 .widget_preview/
 .vercel
 .env*
+backups/
