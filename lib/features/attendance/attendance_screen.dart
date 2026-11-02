@@ -716,68 +716,51 @@ class _MarkToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activeColor = AppColors.success;
+    final labelColor = selected
+        ? activeColor
+        : (enabled ? AppColors.muted : AppColors.muted.withValues(alpha: 0.4));
+
     return Expanded(
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         onTap: enabled ? onTap : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 6),
           decoration: BoxDecoration(
-            gradient: selected ? AppGradients.navyHeader : null,
-            color: selected ? null : Colors.transparent,
-            border: selected
-                ? null
-                : Border.all(
-                    color: AppColors.muted.withValues(alpha: 0.35),
-                  ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: AppColors.navy.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : null,
+            color: selected
+                ? activeColor.withValues(alpha: 0.12)
+                : Colors.transparent,
+            border: Border.all(
+              color: selected
+                  ? activeColor.withValues(alpha: 0.45)
+                  : AppColors.muted.withValues(alpha: 0.3),
+            ),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: Column(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-                size: 26,
-                color: selected
-                    ? Colors.white
-                    : (enabled
-                        ? AppColors.muted
-                        : AppColors.muted.withValues(alpha: 0.4)),
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked,
+                size: 16,
+                color: labelColor,
               ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: selected
-                      ? Colors.white
-                      : (enabled
-                          ? AppColors.muted
-                          : AppColors.muted.withValues(alpha: 0.4)),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '+$points',
-                textDirection: TextDirection.ltr,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.8)
-                      : AppColors.muted.withValues(alpha: 0.5),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: labelColor,
+                  ),
                 ),
               ),
             ],
@@ -787,6 +770,7 @@ class _MarkToggle extends StatelessWidget {
     );
   }
 }
+
 
 class _HeaderStat extends StatelessWidget {
   const _HeaderStat({required this.label, required this.value});
