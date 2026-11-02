@@ -567,6 +567,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   Widget _visitHistoryCard(List<ChildVisitLog> logs) {
     return SectionCard(
       title: AppStrings.visitHistory,
+      collapsible: true,
       child: logs.isEmpty
           ? const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
@@ -982,6 +983,7 @@ class _VisitSectionState extends State<_VisitSection> {
   Widget build(BuildContext context) {
     return SectionCard(
       title: AppStrings.visitsSection,
+      collapsible: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

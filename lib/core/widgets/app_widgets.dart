@@ -231,15 +231,55 @@ class SectionCard extends StatelessWidget {
     this.trailing,
     required this.child,
     this.padding = const EdgeInsets.all(16),
+    this.collapsible = false,
   });
 
   final String? title;
   final Widget? trailing;
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final bool collapsible;
 
   @override
   Widget build(BuildContext context) {
+    if (collapsible && title != null) {
+      return Card(
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            initiallyExpanded: false,
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            childrenPadding: padding,
+            title: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 18,
+                  margin: const EdgeInsetsDirectional.only(end: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.navy,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    title!,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (trailing != null) trailing!,
+              ],
+            ),
+            children: [child],
+          ),
+        ),
+      );
+    }
+
     return Card(
       child: Padding(
         padding: padding,
