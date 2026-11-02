@@ -55,9 +55,9 @@ class ServantActivityRepository {
       await Db.client
           .from(Db.tServantLessonPrepPhotos)
           .insert(<String, dynamic>{
-            'prep_id': prepId,
-            'storage_path': storagePath,
-          });
+        'prep_id': prepId,
+        'storage_path': storagePath,
+      });
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -151,15 +151,12 @@ class ServantActivityRepository {
     String? comment,
   }) async {
     try {
-      await Db.client
-          .from(Db.tServantLessonPreps)
-          .update(<String, dynamic>{
-            'status': status,
-            'admin_comment': comment,
-            'reviewed_by': Db.userId,
-            'reviewed_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', prepId);
+      await Db.client.from(Db.tServantLessonPreps).update(<String, dynamic>{
+        'status': status,
+        'admin_comment': comment,
+        'reviewed_by': Db.userId,
+        'reviewed_at': DateTime.now().toIso8601String(),
+      }).eq('id', prepId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -275,10 +272,8 @@ class ServantActivityRepository {
       final iso = '${date.year.toString().padLeft(4, '0')}-'
           '${date.month.toString().padLeft(2, '0')}-'
           '${date.day.toString().padLeft(2, '0')}';
-      final data = await Db.client
-          .from(Db.tServantAttendances)
-          .select()
-          .eq('date', iso);
+      final data =
+          await Db.client.from(Db.tServantAttendances).select().eq('date', iso);
       return rows(data).map(ServantAttendance.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
@@ -291,7 +286,9 @@ class ServantActivityRepository {
       final data = await Db.client
           .from(Db.tAttendanceSessions)
           .select('id')
-          .eq('year_id', yearId);
+          .eq('year_id', yearId)
+          // Only sessions already held, so percentages are "so far".
+          .lte('session_date', DateTime.now().toIso8601String().substring(0, 10));
       return rows(data).length;
     } catch (e) {
       throw AppFailure.from(e);
@@ -306,8 +303,8 @@ class ServantActivityRepository {
     try {
       final from =
           '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-01';
-      final toDate = DateTime(year, month + 1, 1)
-          .subtract(const Duration(days: 1));
+      final toDate =
+          DateTime(year, month + 1, 1).subtract(const Duration(days: 1));
       final to =
           '${toDate.year.toString().padLeft(4, '0')}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}';
 
@@ -390,14 +387,11 @@ class ServantActivityRepository {
       // Load ALL servant profiles so servants with zero activity still appear
       final profileData = await Db.client
           .from(Db.tProfiles)
-          .select('id, full_name')
-          .eq('role', AppRole.servant.wire)
+          .select('id, full_name, role')
           .order('full_name');
 
       // Load all preps grouped by servant
-      final prepData = await Db.client
-          .from(Db.tServantLessonPreps)
-          .select(
+      final prepData = await Db.client.from(Db.tServantLessonPreps).select(
             'servant_id, status, '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           );
@@ -412,16 +406,23 @@ class ServantActivityRepository {
 
       // Pre-seed map with ALL servants so those with no activity still show
       final Map<String, _SummaryBuilder> map = {};
+      final names = <String, String>{};
       for (final row in rows(profileData)) {
         final id = row['id'] as String;
         final name = row['full_name']?.toString() ?? '';
-        map[id] = _SummaryBuilder(id, name);
+        names[id] = name;
+        // خادم عام takes part in the same activities as a class servant.
+        final role = row['role']?.toString();
+        if (role == AppRole.servant.wire ||
+            role == AppRole.generalServant.wire) {
+          map[id] = _SummaryBuilder(id, name);
+        }
       }
 
       for (final row in prepRows) {
         final id = row['servant_id'] as String;
         final profile = row['profiles'] as Map<String, dynamic>?;
-        final name = profile?['full_name']?.toString() ?? '';
+        final name = profile?['full_name']?.toString() ?? names[id] ?? '';
         map.putIfAbsent(id, () => _SummaryBuilder(id, name));
         map[id]!.totalPreps++;
         if (row['status'] == 'pending') map[id]!.pendingPreps++;
@@ -429,7 +430,7 @@ class ServantActivityRepository {
 
       for (final row in attendanceRows) {
         final id = row['servant_id'] as String;
-        map.putIfAbsent(id, () => _SummaryBuilder(id, ''));
+        map.putIfAbsent(id, () => _SummaryBuilder(id, names[id] ?? ''));
         switch (row['activity_type'] as String?) {
           case 'sunday_school':
             map[id]!.sundaySchoolCount++;
@@ -442,9 +443,7 @@ class ServantActivityRepository {
         }
       }
 
-      return map.values
-          .map((b) => b.toSummary())
-          .toList()
+      return map.values.map((b) => b.toSummary()).toList()
         ..sort((a, b) => a.servantName.compareTo(b.servantName));
     } catch (e) {
       throw AppFailure.from(e);

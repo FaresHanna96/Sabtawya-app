@@ -16,6 +16,7 @@ class Db {
   // Tables
   static const tProfiles = 'profiles';
   static const tServantInvites = 'servant_invites';
+  static const tServantDetails = 'servant_details';
   static const tClasses = 'classes';
   static const tClassServants = 'class_servants';
   static const tChildren = 'children';

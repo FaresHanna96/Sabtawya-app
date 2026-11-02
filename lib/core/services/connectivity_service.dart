@@ -25,6 +25,17 @@ class ConnectivityService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// A request that really reached (or failed to reach) the server is a better
+  /// signal than the platform flag, which is unreliable on the web.
+  void markOnline() => _set(true);
+  void markOffline() => _set(false);
+
+  void _set(bool online) {
+    if (online == _isOnline) return;
+    _isOnline = online;
+    notifyListeners();
+  }
+
   bool _resolve(List<ConnectivityResult> r) =>
       r.isNotEmpty && r.any((x) => x != ConnectivityResult.none);
 

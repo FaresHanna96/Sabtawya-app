@@ -72,6 +72,62 @@ class ClassRepository {
     }
   }
 
+  static const _genders = ['ولاد', 'بنات'];
+
+  /// New-year promotion. A class moves up as a whole (its children, servants,
+  /// patron and picture go with it): the 6 classes are archived together with
+  /// their children (renamed with [archiveSuffix] to free the name), 5 becomes
+  /// 6, 4 becomes 5, 3 becomes 4, and fresh 3 classes are created.
+  Future<int> promoteGrades({required String archiveSuffix}) async {
+    try {
+      final all = await list(includeInactive: true);
+      SchoolClass? active(String name) {
+        for (final c in all) {
+          if (c.isActive && c.name == name) return c;
+        }
+        return null;
+      }
+
+      Future<void> rename(SchoolClass c, String name, int sort,
+          {bool? isActive}) async {
+        await Db.client.from(Db.tClasses).update(<String, dynamic>{
+          'name': name,
+          'sort_order': sort,
+          if (isActive != null) 'is_active': isActive,
+        }).eq('id', c.id);
+      }
+
+      int sortOf(int grade, String gender) =>
+          (grade - 3) * 2 + (gender == _genders.first ? 1 : 2);
+
+      var changed = 0;
+      for (final g in _genders) {
+        final six = active('6 $g');
+        if (six != null) {
+          // Graduated children leave the lists with their class.
+          await Db.client
+              .from(Db.tChildren)
+              .update(<String, dynamic>{'is_active': false})
+              .eq('class_id', six.id);
+          await rename(six, '6 $g $archiveSuffix', 100 + sortOf(6, g),
+              isActive: false);
+          changed++;
+        }
+        for (final grade in [5, 4, 3]) {
+          final c = active('$grade $g');
+          if (c == null) continue;
+          await rename(c, '${grade + 1} $g', sortOf(grade + 1, g));
+          changed++;
+        }
+        await create(name: '3 $g', sortOrder: sortOf(3, g));
+        changed++;
+      }
+      return changed;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// `patron_photo_path` is left out on purpose: it is written only by
   /// [setPatronPhoto], so editing a class can never blank out its picture.
   Future<void> update({
@@ -98,10 +154,8 @@ class ClassRepository {
     required String? path,
   }) async {
     try {
-      await Db.client
-          .from(Db.tClasses)
-          .update(<String, dynamic>{'patron_photo_path': path})
-          .eq('id', classId);
+      await Db.client.from(Db.tClasses).update(
+          <String, dynamic>{'patron_photo_path': path}).eq('id', classId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -124,8 +178,7 @@ class ClassRepository {
     try {
       await Db.client
           .from(Db.tClasses)
-          .update(<String, dynamic>{'is_active': isActive})
-          .eq('id', classId);
+          .update(<String, dynamic>{'is_active': isActive}).eq('id', classId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -208,10 +261,8 @@ class ClassRepository {
     required String newClassId,
   }) async {
     try {
-      await Db.client
-          .from(Db.tClassServants)
-          .update(<String, dynamic>{'class_id': newClassId})
-          .eq('id', assignmentId);
+      await Db.client.from(Db.tClassServants).update(
+          <String, dynamic>{'class_id': newClassId}).eq('id', assignmentId);
     } catch (e) {
       throw AppFailure.from(e);
     }

@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/competition.dart';
 import '../../data/repositories/competition_repository.dart';
@@ -158,12 +159,15 @@ class _ListTabState extends State<_ListTab>
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final c = competitions[index];
-                return _CompetitionTile(
-                  competition: c,
-                  isAdmin: widget.isAdmin,
-                  onTap: () => _openDetail(c),
-                  onEdit: () => _edit(c),
-                  onDelete: () => _delete(c),
+                return FadeSlideIn(
+                  index: index,
+                  child: _CompetitionTile(
+                    competition: c,
+                    isAdmin: widget.isAdmin,
+                    onTap: () => _openDetail(c),
+                    onEdit: () => _edit(c),
+                    onDelete: () => _delete(c),
+                  ),
                 );
               },
             );

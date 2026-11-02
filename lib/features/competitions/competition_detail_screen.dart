@@ -47,6 +47,9 @@ class _MarksTabState extends State<_MarksTab> {
   // childId -> controller
   final _controllers = <String, TextEditingController>{};
 
+  String _query = '';
+  String? _classId;
+
   @override
   void dispose() {
     for (final c in _controllers.values) {
@@ -139,10 +142,22 @@ class _MarksTabState extends State<_MarksTab> {
           );
         }
 
-        // Group by class
+        // Group by class, after the search and class filters. Hidden rows keep
+        // their typed marks: they live in the controllers, and save covers all.
+        final allClassIds = <String>[];
+        for (final row in rows) {
+          final id = row['class_id'] as String? ?? '';
+          if (!allClassIds.contains(id)) allClassIds.add(id);
+        }
+        final query = _query.trim();
         final byClass = <String, List<Map<String, dynamic>>>{};
         for (final row in rows) {
           final classId = row['class_id'] as String? ?? '';
+          if (_classId != null && classId != _classId) continue;
+          if (query.isNotEmpty &&
+              !(row['full_name']?.toString() ?? '').contains(query)) {
+            continue;
+          }
           (byClass[classId] ??= []).add(row);
         }
 
@@ -156,10 +171,59 @@ class _MarksTabState extends State<_MarksTab> {
 
         return Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: TextField(
+                onChanged: (value) => setState(() => _query = value),
+                decoration: const InputDecoration(
+                  hintText: AppStrings.search,
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+            ),
+            if (allClassIds.length > 1)
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 8),
+                      child: ChoiceChip(
+                        label: const Text(AppStrings.all),
+                        selected: _classId == null,
+                        onSelected: (_) => setState(() => _classId = null),
+                      ),
+                    ),
+                    for (final id in allClassIds)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 8),
+                        child: ChoiceChip(
+                          label: Text(className(id)),
+                          selected: _classId == id,
+                          onSelected: (selected) =>
+                              setState(() => _classId = selected ? id : null),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 children: [
+                  if (byClass.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 32),
+                      child: Center(
+                        child: Text(
+                          AppStrings.noResults,
+                          style: TextStyle(color: AppColors.muted),
+                        ),
+                      ),
+                    ),
                   for (final entry in byClass.entries) ...[
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8, top: 4),

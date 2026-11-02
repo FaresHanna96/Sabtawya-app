@@ -50,6 +50,17 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
     _patronName = TextEditingController(text: existing?.patronName ?? '');
   }
 
+  /// The service's fixed class names (grades 3-6, boys and girls), plus the
+  /// current name when a class was saved under something else.
+  List<String> get _classNameOptions {
+    final names = [
+      for (final grade in [3, 4, 5, 6]) ...['$grade ولاد', '$grade بنات'],
+    ];
+    final current = _name.text.trim();
+    if (current.isNotEmpty && !names.contains(current)) names.insert(0, current);
+    return names;
+  }
+
   @override
   void dispose() {
     _name.dispose();
@@ -204,13 +215,18 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
               SectionCard(
                 child: Column(
                   children: [
-                    TextFormField(
-                      controller: _name,
-                      textInputAction: TextInputAction.next,
+                    DropdownButtonFormField<String>(
+                      initialValue: _name.text.isEmpty ? null : _name.text,
                       decoration: const InputDecoration(
                         labelText: AppStrings.className,
                         prefixIcon: Icon(Icons.class_outlined),
                       ),
+                      items: [
+                        for (final name in _classNameOptions)
+                          DropdownMenuItem(value: name, child: Text(name)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _name.text = value ?? ''),
                       validator: (value) =>
                           (value == null || value.trim().isEmpty)
                               ? AppStrings.classNameRequired
@@ -231,6 +247,8 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.patronSaint,
+                icon: Icons.auto_awesome_rounded,
+                accent: AppColors.gold,
                 child: Column(
                   children: [
                     _patronPicker(),

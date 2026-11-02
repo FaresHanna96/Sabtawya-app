@@ -95,7 +95,7 @@ class _ServantActivitiesReportScreenState
                         Row(
                           children: [
                             Expanded(
-                              child: _StatTile(
+                              child: StatTile(
                                 label: 'إجمالي الخدام',
                                 value: '$totalServants',
                                 color: AppColors.navy,
@@ -104,7 +104,7 @@ class _ServantActivitiesReportScreenState
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _StatTile(
+                              child: StatTile(
                                 label: 'جلسات السنة',
                                 value: '$totalSessions',
                                 color: AppColors.olive,
@@ -117,7 +117,7 @@ class _ServantActivitiesReportScreenState
                         Row(
                           children: [
                             Expanded(
-                              child: _StatTile(
+                              child: StatTile(
                                 label: AppStrings.sundaySchoolShort,
                                 value: '$totalSunday',
                                 color: AppColors.success,
@@ -126,7 +126,7 @@ class _ServantActivitiesReportScreenState
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _StatTile(
+                              child: StatTile(
                                 label: AppStrings.servantMeetingShort,
                                 value: '$totalMeeting',
                                 color: AppColors.success,
@@ -139,7 +139,7 @@ class _ServantActivitiesReportScreenState
                         Row(
                           children: [
                             Expanded(
-                              child: _StatTile(
+                              child: StatTile(
                                 label: AppStrings.lessonPrep,
                                 value: '$totalPreps',
                                 color: AppColors.navy,
@@ -148,7 +148,7 @@ class _ServantActivitiesReportScreenState
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _StatTile(
+                              child: StatTile(
                                 label: AppStrings.prepPending,
                                 value: '$totalPending',
                                 color: totalPending > 0
@@ -190,60 +190,6 @@ class _ServantActivitiesReportScreenState
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.muted,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

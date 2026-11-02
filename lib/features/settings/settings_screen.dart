@@ -37,6 +37,8 @@ class SettingsScreen extends StatelessWidget {
           children: [
             SectionCard(
               title: AppStrings.myProfile,
+              icon: Icons.person_rounded,
+              accent: AppColors.navyLight,
               child: Column(
                 children: [
                   InfoRow(
@@ -81,6 +83,8 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.attendanceYear,
+              icon: Icons.calendar_month_rounded,
+              accent: AppColors.olive,
               child: Column(
                 children: [
                   InfoRow(
@@ -118,6 +122,8 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.about,
+              icon: Icons.info_rounded,
+              accent: AppColors.gold,
               child: Column(
                 children: [
                   Row(
@@ -153,6 +159,8 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.account,
+              icon: Icons.lock_rounded,
+              accent: AppColors.maroon,
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.lock_outline),

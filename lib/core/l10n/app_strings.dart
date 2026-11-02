@@ -18,6 +18,11 @@ class AppStrings {
   static const edit = 'تعديل';
   static const add = 'إضافة';
   static const search = 'بحث';
+  static const noResults = 'لا توجد نتائج';
+  static const promoteClassesTitle = 'ترقية الفصول للسنة الجديدة';
+  static const promoteClassesBody =
+      'ينتقل كل فصل بخدامه ومخدوميه وشفيعه: 5 إلى 6، و4 إلى 5، و3 إلى 4، '
+      'ويُؤرشف فصل 6 بمخدوميه، وتُضاف فصول 3 ولاد و3 بنات جديدة.';
   static const retry = 'إعادة المحاولة';
   static const confirm = 'تأكيد';
   static const close = 'إغلاق';
@@ -161,6 +166,10 @@ class AppStrings {
   static const addServant = 'إضافة خادم';
   static const editServant = 'تعديل الخادم';
   static const servantName = 'اسم الخادم';
+  static const servantData = 'بيانات الخادم';
+  static const confessor = 'آب الاعتراف';
+  static const occupation = 'الدراسة أو العمل';
+  static const servantDataHint = 'هذه البيانات تظهر لأمين الخدمة فقط.';
   static const mobile = 'رقم الموبايل';
   static const role = 'الصلاحية';
   static const roleAdmin = 'أمين الخدمة';
@@ -344,7 +353,17 @@ class AppStrings {
   static const attendanceSavedOffline =
       'تم الحفظ محلياً • سيتم المزامنة عند عودة الاتصال';
   static const offlineMode = 'وضع عدم الاتصال — البيانات محفوظة محلياً';
-  static String pendingSyncCount(int n) => '$n تسجيل في انتظار المزامنة';
+  static String pendingSyncCount(int n) => '$n تغيير في انتظار المزامنة';
+  static String failedSyncCount(int n) => '$n لم يُقبل';
+  static const syncingNow = 'جارٍ المزامنة...';
+  static const syncTitle = 'المزامنة';
+  static const syncNow = 'مزامنة الآن';
+  static const syncPending = 'في الانتظار';
+  static const syncFailed = 'لم يقبلها الخادم';
+  static const syncNothing = 'كل شيء متزامن';
+  static const syncRetry = 'إعادة المحاولة';
+  static const syncDiscard = 'تجاهل';
+  static const needsConnection = 'هذا الإجراء يحتاج اتصالاً بالإنترنت';
   static const saveAttendance = 'حفظ الحضور';
   static const noSessionsTitle = 'لا توجد جلسات حضور';
   static const noSessionsBody =

@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/servant_activity.dart';
@@ -106,10 +107,13 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                 final prep = data.prepFor(session.id);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: _SessionCard(
-                    session: session,
-                    prep: prep,
-                    onTap: () => _openSession(session),
+                  child: FadeSlideIn(
+                    index: index,
+                    child: _SessionCard(
+                      session: session,
+                      prep: prep,
+                      onTap: () => _openSession(session),
+                    ),
                   ),
                 );
               },

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/motion.dart';
+import '../../core/widgets/app_widgets.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../data/models/profile.dart';
@@ -97,6 +99,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const FadeSlideIn(
+                      child: Center(child: Pulse(child: AppLogo(size: 84))),
+                    ),
+                    const SizedBox(height: 16),
                     const Text(
                       AppStrings.signUpHint,
                       textAlign: TextAlign.center,

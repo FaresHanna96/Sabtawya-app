@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
@@ -95,7 +96,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _greeting(session.displayName, session.currentYear?.name),
             const SizedBox(height: 16),
             const TodayBirthdaysSection(),
-            Row(
+            FadeSlideIn(
+              index: 1,
+              child: Row(
               children: [
                 Expanded(
                   child: StatCard(
@@ -115,8 +118,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ],
             ),
+            ),
             const SizedBox(height: 12),
-            Row(
+            FadeSlideIn(
+              index: 2,
+              child: Row(
               children: [
                 Expanded(
                   child: StatCard(
@@ -132,10 +138,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     label: AppStrings.totalPoints,
                     value: '${stats.totalPoints}',
                     icon: Icons.star_outline,
-                    color: AppColors.warning,
+                    color: AppColors.gold,
                   ),
                 ),
               ],
+            ),
             ),
             const SizedBox(height: 16),
             SectionCard(
@@ -162,11 +169,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _quickActions(),
+            FadeSlideIn(index: 3, child: _quickActions()),
             const SizedBox(height: 16),
             if (data.classScores.isNotEmpty) ...[
               SectionCard(
                 title: AppStrings.classPerformance,
+                icon: Icons.bar_chart_rounded,
+                accent: AppColors.olive,
                 child: Column(
                   children: data.classScores
                       .map(
@@ -199,6 +208,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             if (data.lowAttendance.isNotEmpty) ...[
               SectionCard(
                 title: AppStrings.lowAttendanceChildren,
+                icon: Icons.warning_amber_rounded,
+                accent: AppColors.coral,
                 child: Column(
                   children: data.lowAttendance
                       .map(
@@ -239,6 +250,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             if (data.activity.isNotEmpty)
               SectionCard(
                 title: AppStrings.recentActivity,
+                icon: Icons.history_rounded,
+                accent: AppColors.sky,
                 child: Column(
                   children: data.activity
                       .map(
@@ -286,59 +299,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _greeting(String name, String? yearName) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: AppGradients.navyHeader,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
-            ),
-            child: const AppLogo(size: 44),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${AppStrings.welcome}، $name 👋',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  yearName ?? AppStrings.appSubtitle,
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _greeting(String name, String? yearName) =>
+      GreetingBanner(name: name, subtitle: yearName);
 
   Widget _quickActions() {
     return SectionCard(
       title: AppStrings.quickActions,
+      icon: Icons.bolt_rounded,
+      accent: AppColors.gold,
       child: Wrap(
         spacing: 10,
         runSpacing: 10,

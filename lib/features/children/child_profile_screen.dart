@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/child.dart';
@@ -167,11 +168,13 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               _header(child, data.className),
               const SizedBox(height: 16),
               if (data.yearReport != null) ...[
-                _summary(data.yearReport!, data.monthly),
+                _summary(data.yearReport!, data.monthly, data.history),
                 const SizedBox(height: 16),
               ],
               SectionCard(
                 title: AppStrings.personalInfo,
+                icon: Icons.badge_rounded,
+                accent: AppColors.navyLight,
                 child: Column(
                   children: [
                     InfoRow(
@@ -218,6 +221,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.parentsInfo,
+                icon: Icons.family_restroom_rounded,
+                accent: AppColors.coral,
                 child: Column(
                   children: [
                     InfoRow(
@@ -248,6 +253,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.churchInfo,
+                icon: Icons.church_rounded,
+                accent: AppColors.maroon,
                 child: InfoRow(
                   label: AppStrings.confessionFather,
                   value: child.confessionFather,
@@ -257,6 +264,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.schoolInfo,
+                icon: Icons.school_rounded,
+                accent: AppColors.olive,
                 child: Column(
                   children: [
                     InfoRow(
@@ -355,14 +364,24 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   }
 
   Widget _header(Child child, String className) {
-    return Card(
-      child: Padding(
+    final tint = child.gender == Gender.boy ? AppColors.sky : AppColors.coral;
+    return FadeSlideIn(
+      child: Card(
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.topStart,
+            end: AlignmentDirectional.bottomEnd,
+            colors: [tint.withValues(alpha: 0.22), Colors.white],
+          ),
+        ),
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
             GestureDetector(
               onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
-              child: ChildAvatar(child: child, size: 64),
+              child: ChildAvatar(child: child, size: 72),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -406,22 +425,36 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
-  Widget _summary(ChildYearReport report, List<ChildMonthlyReport> monthly) {
-    // Sessions held so far = sum of monthly sessionsTotal up to current month.
-    final now = DateTime.now();
-    final held = monthly
-        .where((r) =>
-            r.monthStart.year < now.year ||
-            (r.monthStart.year == now.year &&
-                r.monthStart.month <= now.month))
-        .fold(0, (sum, r) => sum + r.sessionsTotal);
-    final pct = held > 0 ? report.sessionsAttended / held * 100 : report.percentage;
+  Widget _summary(
+    ChildYearReport report,
+    List<ChildMonthlyReport> monthly,
+    List<ChildSessionScore> history,
+  ) {
+    // Sessions held so far: only those dated today or earlier, never the
+    // whole year, so the percentages reflect what has actually happened.
+    final today = DateTime.now();
+    final cutoff = DateTime(today.year, today.month, today.day);
+    final past = history.where((h) => !h.sessionDate.isAfter(cutoff)).toList();
+    final held = past.isNotEmpty
+        ? past.length
+        : monthly
+            .where((r) =>
+                r.monthStart.year < today.year ||
+                (r.monthStart.year == today.year &&
+                    r.monthStart.month <= today.month))
+            .fold(0, (sum, r) => sum + r.sessionsTotal);
+    final attended =
+        past.isNotEmpty ? past.where((h) => h.isPresent).length : report.sessionsAttended;
+    final pct = held > 0 ? attended / held * 100 : report.percentage;
 
     return SectionCard(
       title: AppStrings.attendanceSummary,
+      icon: Icons.fact_check_rounded,
+      accent: AppColors.sky,
       child: Column(
         children: [
           PercentageBar(
@@ -432,15 +465,69 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           Row(
             children: [
               Expanded(
-                child: _metric(
-                  AppStrings.totalPoints,
-                  '${report.points}',
+                child: StatTile(
+                  label: AppStrings.totalPoints,
+                  value: '${report.points}',
+                  color: AppColors.olive,
+                  icon: Icons.star_rounded,
                 ),
               ),
+              const SizedBox(width: 8),
               Expanded(
-                child: _metric(
-                  AppStrings.attendedSessions,
-                  '${report.sessionsAttended}/${held > 0 ? held : report.sessionsTotal}',
+                child: StatTile(
+                  label: AppStrings.attendedSessions,
+                  value:
+                      '$attended/${held > 0 ? held : report.sessionsTotal}',
+                  color: AppColors.navy,
+                  icon: Icons.event_available_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _activityTile(
+                  AppStrings.sundaySchoolShort,
+                  past.where((h) => h.sundaySchool).length,
+                  held,
+                  Icons.church_outlined,
+                  AppColors.success,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _activityTile(
+                  AppStrings.vespers,
+                  past.where((h) => h.vespers).length,
+                  held,
+                  Icons.nights_stay_outlined,
+                  AppColors.sky,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _activityTile(
+                  AppStrings.mass,
+                  past.where((h) => h.mass).length,
+                  held,
+                  Icons.account_balance_outlined,
+                  AppColors.gold,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _activityTile(
+                  AppStrings.confession,
+                  past.where((h) => h.confession).length,
+                  held,
+                  Icons.volunteer_activism_outlined,
+                  AppColors.coral,
                 ),
               ),
             ],
@@ -450,27 +537,28 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  Widget _metric(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          textDirection: TextDirection.ltr,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: AppColors.navy,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-      ],
+  /// One activity's attendance on its own: count out of the sessions held.
+  Widget _activityTile(
+    String label,
+    int count,
+    int held,
+    IconData icon,
+    Color color,
+  ) {
+    final pct = held > 0 ? ' (${(count / held * 100).round()}%)' : '';
+    return StatTile(
+      label: '$label$pct',
+      value: '$count/$held',
+      color: color,
+      icon: icon,
     );
   }
 
   Widget _monthlyCard(List<ChildMonthlyReport> monthly) {
     return SectionCard(
       title: AppStrings.monthlyBreakdown,
+      icon: Icons.calendar_view_month_rounded,
+      accent: AppColors.olive,
       child: Column(
         children: monthly.map((row) {
           final isFiltered = _monthFilter != null &&
@@ -527,6 +615,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   Widget _lastActivityCard(ChildLastActivity? activity) {
     return SectionCard(
       title: AppStrings.lastActivityTitle,
+      icon: Icons.bolt_rounded,
+      accent: AppColors.gold,
       child: Column(
         children: [
           _lastActivityRow(
@@ -567,6 +657,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   Widget _visitHistoryCard(List<ChildVisitLog> logs) {
     return SectionCard(
       title: AppStrings.visitHistory,
+      icon: Icons.home_rounded,
+      accent: AppColors.coral,
       collapsible: true,
       child: logs.isEmpty
           ? const Padding(
@@ -664,6 +756,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
     return SectionCard(
       title: AppStrings.attendanceHistory,
+      icon: Icons.history_rounded,
+      accent: AppColors.navyLight,
       trailing: isNarrowing
           ? IconButton(
               tooltip: AppStrings.clearFilters,
@@ -983,6 +1077,8 @@ class _VisitSectionState extends State<_VisitSection> {
   Widget build(BuildContext context) {
     return SectionCard(
       title: AppStrings.visitsSection,
+      icon: Icons.home_rounded,
+      accent: AppColors.coral,
       collapsible: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

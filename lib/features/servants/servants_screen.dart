@@ -8,9 +8,11 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/profile.dart';
+import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../state/session_controller.dart';
+import 'servant_data_screen.dart';
 import 'servant_invite_screen.dart';
 
 /// Admin-only servant management: registered accounts and pending invites.
@@ -31,6 +33,8 @@ class _ServantsScreenState extends State<ServantsScreen> {
         servants: await _repository.servants(),
         invites: await _repository.pendingInvites(),
         assignments: await _classes.allAssignments(),
+        details: await _repository.details(),
+        classes: await _classes.list(),
       );
 
   Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
@@ -40,6 +44,22 @@ class _ServantsScreenState extends State<ServantsScreen> {
       MaterialPageRoute<bool>(builder: (_) => const ServantInviteScreen()),
     );
     if (created == true) await _reload();
+  }
+
+  Future<void> _openData(_ServantsData data, Profile servant) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => ServantDataScreen(
+          servant: servant,
+          details: data.details[servant.id],
+          classes: data.classes,
+          assignment: data.assignments
+              .where((a) => a.servantId == servant.id)
+              .firstOrNull,
+        ),
+      ),
+    );
+    if (saved == true) await _reload();
   }
 
   Future<void> _toggleActive(Profile servant) async {
@@ -114,6 +134,8 @@ class _ServantsScreenState extends State<ServantsScreen> {
                 if (data.invites.isNotEmpty) ...[
                   SectionCard(
                     title: AppStrings.pendingInvites,
+                    icon: Icons.mail_rounded,
+                    accent: AppColors.gold,
                     child: Column(
                       children: data.invites
                           .map(
@@ -153,6 +175,8 @@ class _ServantsScreenState extends State<ServantsScreen> {
                 ],
                 SectionCard(
                   title: AppStrings.registeredServants,
+                  icon: Icons.groups_rounded,
+                  accent: AppColors.olive,
                   child: Column(
                     children: data.servants
                         .map(
@@ -160,6 +184,8 @@ class _ServantsScreenState extends State<ServantsScreen> {
                             servant: servant,
                             classNames: data.classesOf(servant.id),
                             isMe: servant.id == myId,
+                            details: data.details[servant.id],
+                            onOpen: () => _openData(data, servant),
                             onToggleActive: () => _toggleActive(servant),
                           ),
                         )
@@ -185,9 +211,13 @@ class _ServantRow extends StatelessWidget {
     required this.servant,
     required this.classNames,
     required this.isMe,
+    required this.details,
+    required this.onOpen,
     required this.onToggleActive,
   });
 
+  final ServantDetails? details;
+  final VoidCallback onOpen;
   final Profile servant;
   final List<String> classNames;
   final bool isMe;
@@ -201,7 +231,14 @@ class _ServantRow extends StatelessWidget {
       if (classNames.isNotEmpty) classNames.join('، '),
     ].join(' • ');
 
+    final extra = <String>[
+      if (servant.mobile != null) servant.mobile!,
+      if (details?.occupation != null) details!.occupation!,
+      if (details?.confessor != null) details!.confessor!,
+    ].join(' • ');
+
     return ListTile(
+      onTap: onOpen,
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
         backgroundColor: (servant.isAdmin ? AppColors.navy : AppColors.olive)
@@ -223,7 +260,10 @@ class _ServantRow extends StatelessWidget {
           if (!servant.isActive) const StatusBadge(isActive: false),
         ],
       ),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      subtitle: Text(
+        extra.isEmpty ? subtitle : '$subtitle\n$extra',
+        style: const TextStyle(fontSize: 12),
+      ),
       // Locking yourself out of the app is not a useful option.
       trailing: isMe
           ? null
@@ -246,8 +286,12 @@ class _ServantsData {
     required this.servants,
     required this.invites,
     required this.assignments,
+    required this.details,
+    required this.classes,
   });
 
+  final List<SchoolClass> classes;
+  final Map<String, ServantDetails> details;
   final List<Profile> servants;
   final List<ServantInvite> invites;
   final List<ClassServant> assignments;

@@ -184,3 +184,28 @@ class ClassServant {
         servantMobile: asTextOrNull(map['servant_mobile']),
       );
 }
+
+/// A row of `servant_details`: the data only أمين الخدمة may see.
+class ServantDetails {
+  const ServantDetails({
+    required this.profileId,
+    this.address,
+    this.confessor,
+    this.occupation,
+  });
+
+  final String profileId;
+  final String? address;
+  final String? confessor;
+  final String? occupation;
+
+  bool get isEmpty =>
+      address == null && confessor == null && occupation == null;
+
+  factory ServantDetails.fromMap(Map<String, dynamic> map) => ServantDetails(
+        profileId: asText(map['profile_id']),
+        address: asTextOrNull(map['address']),
+        confessor: asTextOrNull(map['confessor']),
+        occupation: asTextOrNull(map['occupation']),
+      );
+}

@@ -43,6 +43,10 @@ class ServantRepository {
     required String fullName,
     required AppRole role,
     String? mobile,
+    DateTime? birthDate,
+    String? address,
+    String? confessor,
+    String? occupation,
     List<String> classIds = const <String>[],
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
@@ -53,6 +57,11 @@ class ServantRepository {
         'full_name': trimmedName,
         'role': role.wire,
         'mobile': _blankToNull(mobile),
+        if (birthDate != null)
+          'birth_date': birthDate.toIso8601String().substring(0, 10),
+        'address': _blankToNull(address),
+        'confessor': _blankToNull(confessor),
+        'occupation': _blankToNull(occupation),
         'class_ids': classIds,
         'created_by': Db.userId,
       });
@@ -85,6 +94,49 @@ class ServantRepository {
         'mobile': _blankToNull(mobile),
         if (role != null) 'role': role.wire,
       }).eq('id', servantId);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The admin-only data of every servant, keyed by profile id.
+  Future<Map<String, ServantDetails>> details() async {
+    try {
+      final data = await Db.client.from(Db.tServantDetails).select();
+      return <String, ServantDetails>{
+        for (final d in rows(data).map(ServantDetails.fromMap)) d.profileId: d,
+      };
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Saves what the secretary typed for one servant: the contact fields on the
+  /// profile and the private fields in `servant_details`.
+  Future<void> saveDetails({
+    required String servantId,
+    required String fullName,
+    String? mobile,
+    DateTime? birthDate,
+    String? address,
+    String? confessor,
+    String? occupation,
+    AppRole? role,
+  }) async {
+    try {
+      await Db.client.from(Db.tProfiles).update(<String, dynamic>{
+        'full_name': fullName.trim(),
+        if (role != null) 'role': role.wire,
+        'mobile': _blankToNull(mobile),
+        'birth_date': birthDate?.toIso8601String().substring(0, 10),
+      }).eq('id', servantId);
+      await Db.client.from(Db.tServantDetails).upsert(<String, dynamic>{
+        'profile_id': servantId,
+        'address': _blankToNull(address),
+        'confessor': _blankToNull(confessor),
+        'occupation': _blankToNull(occupation),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      });
     } catch (e) {
       throw AppFailure.from(e);
     }

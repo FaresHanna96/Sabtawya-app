@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/motion.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -104,13 +105,17 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                     itemCount: visible.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) => _BirthdayTile(
-                      child: visible[index],
-                      className: _classNameOf(classes, visible[index].classId),
-                      onTap: () => Navigator.of(context).push<void>(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              ChildProfileScreen(childId: visible[index].id),
+                    itemBuilder: (context, index) => FadeSlideIn(
+                      index: index,
+                      child: _BirthdayTile(
+                        child: visible[index],
+                        className:
+                            _classNameOf(classes, visible[index].classId),
+                        onTap: () => Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                ChildProfileScreen(childId: visible[index].id),
+                          ),
                         ),
                       ),
                     ),
@@ -289,6 +294,7 @@ class _BirthdayTile extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.zero,
+      color: isToday ? AppColors.goldTint : null,
       child: ListTile(
         onTap: onTap,
         leading: _DayBadge(day: birth.day, isToday: isToday),
@@ -313,7 +319,9 @@ class _BirthdayTile extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.cake, size: 14, color: AppColors.warning),
+                    const Pulse(
+                      child: Text('🎂', style: TextStyle(fontSize: 14)),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       AppStrings.birthdayToday,

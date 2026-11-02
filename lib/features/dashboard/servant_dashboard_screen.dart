@@ -98,6 +98,8 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.quickActions,
+              icon: Icons.bolt_rounded,
+              accent: AppColors.gold,
               child: Wrap(
                 spacing: 10,
                 runSpacing: 10,
@@ -154,6 +156,8 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.myClasses,
+              icon: Icons.menu_book_rounded,
+              accent: AppColors.olive,
               child: Column(
                 children: classes
                     .map(
@@ -251,55 +255,6 @@ class _WelcomeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: AppGradients.navyHeader,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navy.withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
-            ),
-            child: const AppLogo(size: 44),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${AppStrings.welcome}، $name 👋',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  yearName ?? AppStrings.appSubtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return GreetingBanner(name: name, subtitle: yearName);
   }
 }

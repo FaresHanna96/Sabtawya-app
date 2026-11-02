@@ -167,6 +167,8 @@ class _SubmitForm extends StatelessWidget {
       children: [
         SectionCard(
           title: AppStrings.lessonPrep,
+          icon: Icons.menu_book_rounded,
+          accent: AppColors.olive,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -371,6 +373,8 @@ class _SubmittedView extends StatelessWidget {
           const SizedBox(height: 16),
           SectionCard(
             title: AppStrings.addComment,
+            icon: Icons.chat_bubble_rounded,
+            accent: AppColors.sky,
             child: Text(
               prep.adminComment!,
               style: const TextStyle(fontSize: 14, height: 1.6),
@@ -381,6 +385,8 @@ class _SubmittedView extends StatelessWidget {
           const SizedBox(height: 16),
           SectionCard(
             title: AppStrings.lessonPrepTitle,
+            icon: Icons.edit_note_rounded,
+            accent: AppColors.navyLight,
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -394,6 +400,8 @@ class _SubmittedView extends StatelessWidget {
           const SizedBox(height: 16),
           SectionCard(
             title: AppStrings.pdfFile,
+            icon: Icons.picture_as_pdf_rounded,
+            accent: AppColors.coral,
             child: Column(
               children: pdfPhotos
                   .map((p) => _StoragePdfTile(storagePath: p.storagePath))

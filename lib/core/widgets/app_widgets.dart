@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
+import 'illustrations.dart';
+import 'motion.dart';
 
 /// The Sabtawya emblem.
 class AppLogo extends StatelessWidget {
@@ -109,6 +111,158 @@ class BrandHeader extends StatelessWidget {
   }
 }
 
+/// Warm gradient welcome banner shared by both dashboards. The greeting follows
+/// the time of day.
+class GreetingBanner extends StatelessWidget {
+  const GreetingBanner({super.key, required this.name, this.subtitle});
+
+  final String name;
+  final String? subtitle;
+
+  static (String, String) _greetingFor(int hour) {
+    if (hour < 12) return ('صباح الخير', '☀️');
+    if (hour < 18) return ('مساء النور', '🌤️');
+    return ('مساء الخير', '🌙');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (greeting, emoji) = _greetingFor(DateTime.now().hour);
+    return FadeSlideIn(
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          gradient: AppGradients.navyHeader,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.28),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            PositionedDirectional(
+              end: -24,
+              top: -28,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.gold.withValues(alpha: 0.22),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              end: 40,
+              bottom: -30,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.oliveLight.withValues(alpha: 0.20),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const AppLogo(size: 44),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$greeting $emoji',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${AppStrings.welcome}، $name 👋',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (subtitle != null ||
+                            AppStrings.appSubtitle.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle ?? AppStrings.appSubtitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.oliveLight,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The small branded card shown over the screen while an action runs.
+class LoadingCard extends StatelessWidget {
+  const LoadingCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: const [
+          SizedBox(
+            width: 72,
+            height: 72,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: AppColors.oliveLight,
+            ),
+          ),
+          Pulse(child: AppLogo(size: 40)),
+        ],
+      ),
+    );
+  }
+}
+
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key, this.message});
 
@@ -120,7 +274,20 @@ class LoadingView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              const SizedBox(
+                width: 84,
+                height: 84,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: AppColors.oliveLight,
+                ),
+              ),
+              const Pulse(child: AppLogo(size: 52)),
+            ],
+          ),
           if (message != null) ...[
             const SizedBox(height: 16),
             Text(message!, style: const TextStyle(color: AppColors.muted)),
@@ -145,7 +312,7 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
+            const Illustration(IllustrationKind.error, size: 130),
             const SizedBox(height: 12),
             Text(
               message,
@@ -173,13 +340,51 @@ class EmptyState extends StatefulWidget {
     required this.title,
     this.body,
     this.icon = Icons.inbox_outlined,
+    this.illustration,
     this.action,
   });
 
   final String title;
   final String? body;
   final IconData icon;
+
+  /// The picture to show. When null it is chosen from [icon].
+  final IllustrationKind? illustration;
   final Widget? action;
+
+  static IllustrationKind kindForIcon(IconData icon) {
+    if (icon == Icons.groups_outlined || icon == Icons.people_outline) {
+      return IllustrationKind.children;
+    }
+    if (icon == Icons.class_outlined || icon == Icons.photo_library_outlined) {
+      return IllustrationKind.classes;
+    }
+    if (icon == Icons.event_busy_outlined ||
+        icon == Icons.calendar_month_outlined ||
+        icon == Icons.calendar_view_month_outlined) {
+      return IllustrationKind.attendance;
+    }
+    if (icon == Icons.volunteer_activism_outlined ||
+        icon == Icons.assignment_outlined ||
+        icon == Icons.how_to_reg_outlined) {
+      return IllustrationKind.activities;
+    }
+    if (icon == Icons.event_outlined || icon == Icons.payments_outlined) {
+      return IllustrationKind.events;
+    }
+    if (icon == Icons.emoji_events_outlined ||
+        icon == Icons.leaderboard_outlined ||
+        icon == Icons.insert_chart_outlined) {
+      return IllustrationKind.competitions;
+    }
+    if (icon == Icons.cake_outlined) return IllustrationKind.birthdays;
+    if (icon == Icons.person_search_outlined) return IllustrationKind.search;
+    if (icon == Icons.block_outlined ||
+        icon == Icons.settings_suggest_outlined) {
+      return IllustrationKind.error;
+    }
+    return IllustrationKind.generic;
+  }
 
   @override
   State<EmptyState> createState() => _EmptyStateState();
@@ -224,24 +429,9 @@ class _EmptyStateState extends State<EmptyState>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.navy.withValues(alpha: 0.08),
-                        AppColors.olive.withValues(alpha: 0.06),
-                      ],
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    widget.icon,
-                    size: 42,
-                    color: AppColors.navy.withValues(alpha: 0.4),
-                  ),
+                Illustration(
+                  widget.illustration ?? EmptyState.kindForIcon(widget.icon),
+                  size: 160,
                 ),
                 const SizedBox(height: 20),
                 Text(
@@ -255,8 +445,7 @@ class _EmptyStateState extends State<EmptyState>
                   Text(
                     widget.body!,
                     textAlign: TextAlign.center,
-                    style:
-                        const TextStyle(color: AppColors.muted, height: 1.5),
+                    style: const TextStyle(color: AppColors.muted, height: 1.5),
                   ),
                 ],
                 if (widget.action != null) ...[
@@ -272,6 +461,37 @@ class _EmptyStateState extends State<EmptyState>
   }
 }
 
+class _SectionLead extends StatelessWidget {
+  const _SectionLead({required this.icon, required this.accent});
+
+  final IconData? icon;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    if (icon == null) {
+      return Container(
+        width: 4,
+        height: 18,
+        margin: const EdgeInsetsDirectional.only(end: 8),
+        decoration: BoxDecoration(
+          color: accent,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.all(6),
+      margin: const EdgeInsetsDirectional.only(end: 10),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, size: 18, color: accent),
+    );
+  }
+}
+
 /// A titled white panel used throughout the app.
 class SectionCard extends StatelessWidget {
   const SectionCard({
@@ -281,7 +501,13 @@ class SectionCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.collapsible = false,
+    this.icon,
+    this.accent = AppColors.navy,
   });
+
+  /// Optional icon shown in a tinted badge before the title.
+  final IconData? icon;
+  final Color accent;
 
   final String? title;
   final Widget? trailing;
@@ -302,15 +528,7 @@ class SectionCard extends StatelessWidget {
             childrenPadding: padding,
             title: Row(
               children: [
-                Container(
-                  width: 4,
-                  height: 18,
-                  margin: const EdgeInsetsDirectional.only(end: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.navy,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+                _SectionLead(icon: icon, accent: accent),
                 Expanded(
                   child: Text(
                     title!,
@@ -338,15 +556,7 @@ class SectionCard extends StatelessWidget {
             if (title != null) ...[
               Row(
                 children: [
-                  Container(
-                    width: 4,
-                    height: 18,
-                    margin: const EdgeInsetsDirectional.only(end: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.navy,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+                  _SectionLead(icon: icon, accent: accent),
                   Expanded(
                     child: Text(
                       title!,
@@ -390,68 +600,79 @@ class StatCard extends StatelessWidget {
     // Animate numeric values from 0 to the target.
     final numeric = double.tryParse(value);
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(height: 4, color: color),
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+    return Bounce(
+      onTap: onTap,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        color: Color.alphaBlend(color.withValues(alpha: 0.05), Colors.white),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.45)],
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, color: color, size: 20),
                       ),
-                      child: Icon(icon, color: color, size: 20),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  numeric != null
-                      ? TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0, end: numeric),
-                          duration: const Duration(milliseconds: 700),
-                          curve: Curves.easeOut,
-                          builder: (_, v, __) => Text(
-                            numeric == numeric.truncateToDouble()
-                                ? v.round().toString()
-                                : v.toStringAsFixed(1),
+                      const SizedBox(height: 10),
+                    ],
+                    numeric != null
+                        ? TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0, end: numeric),
+                            duration: const Duration(milliseconds: 700),
+                            curve: Curves.easeOut,
+                            builder: (_, v, __) => Text(
+                              numeric == numeric.truncateToDouble()
+                                  ? v.round().toString()
+                                  : v.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: color,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            value,
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w800,
                               color: color,
                             ),
                           ),
-                        )
-                      : Text(
-                          value,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: color,
-                          ),
-                        ),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.muted),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style:
+                          const TextStyle(fontSize: 13, color: AppColors.muted),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -526,7 +747,8 @@ class PercentageBar extends StatelessWidget {
         if (label != null) ...[
           Row(
             children: [
-              Expanded(child: Text(label!, style: const TextStyle(fontSize: 14))),
+              Expanded(
+                  child: Text(label!, style: const TextStyle(fontSize: 14))),
               Text(
                 '${percentage.toStringAsFixed(1)}%',
                 textDirection: TextDirection.ltr,
@@ -542,11 +764,16 @@ class PercentageBar extends StatelessWidget {
         ],
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: (percentage / 100).clamp(0.0, 1.0),
-            minHeight: 10,
-            backgroundColor: AppColors.muted.withValues(alpha: 0.12),
-            valueColor: AlwaysStoppedAnimation<Color>(_color),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: (percentage / 100).clamp(0.0, 1.0)),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, __) => LinearProgressIndicator(
+              value: v,
+              minHeight: 10,
+              backgroundColor: AppColors.muted.withValues(alpha: 0.12),
+              valueColor: AlwaysStoppedAnimation<Color>(_color),
+            ),
           ),
         ),
       ],
@@ -595,8 +822,7 @@ class InfoRow extends StatelessWidget {
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
-          if (isPhone && hasValue)
-            _CallButton(number: value!),
+          if (isPhone && hasValue) _CallButton(number: value!),
         ],
       ),
     );
@@ -637,7 +863,64 @@ class StatusBadge extends StatelessWidget {
       ),
       child: Text(
         isActive ? AppStrings.active : AppStrings.inactive,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+        style:
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+      ),
+    );
+  }
+}
+
+/// Compact tinted tile: icon, big value and a label (profile summaries).
+class StatTile extends StatelessWidget {
+  const StatTile({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.muted,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

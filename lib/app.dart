@@ -38,7 +38,11 @@ class SabtawyaApp extends StatelessWidget {
           value: ConnectivityService.instance,
         ),
         ChangeNotifierProvider<SyncService>(
-          create: (_) => SyncService(),
+          create: (context) {
+            final session = context.read<SessionController>();
+            SyncService.onSynced = session.markChanged;
+            return SyncService();
+          },
         ),
       ],
       child: MaterialApp(

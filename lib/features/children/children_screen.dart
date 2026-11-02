@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
@@ -137,11 +138,14 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                           itemCount: visible.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (context, index) => ChildTile(
-                            child: visible[index],
-                            className:
-                                _classNameOf(classes, visible[index].classId),
-                            onTap: () => _openProfile(visible[index]),
+                          itemBuilder: (context, index) => FadeSlideIn(
+                            index: index,
+                            child: ChildTile(
+                              child: visible[index],
+                              className: _classNameOf(
+                                  classes, visible[index].classId),
+                              onTap: () => _openProfile(visible[index]),
+                            ),
                           ),
                         ),
                 ),

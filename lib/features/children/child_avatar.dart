@@ -55,7 +55,7 @@ class _ChildAvatarState extends State<ChildAvatar> {
   }
 
   Color get _tint =>
-      widget.child.gender == Gender.boy ? AppColors.navyLight : AppColors.olive;
+      widget.child.gender == Gender.boy ? AppColors.sky : AppColors.coral;
 
   @override
   Widget build(BuildContext context) {
@@ -65,8 +65,13 @@ class _ChildAvatarState extends State<ChildAvatar> {
       width: widget.size,
       height: widget.size,
       decoration: BoxDecoration(
-        color: _tint.withValues(alpha: 0.12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, _tint.withValues(alpha: 0.18)],
+        ),
         shape: BoxShape.circle,
+        border: Border.all(color: _tint.withValues(alpha: 0.7), width: 2),
       ),
       clipBehavior: Clip.antiAlias,
       child: preview != null

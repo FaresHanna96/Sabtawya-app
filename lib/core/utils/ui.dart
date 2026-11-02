@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+
+import '../services/connectivity_service.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_strings.dart';
 import '../../state/session_controller.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_widgets.dart';
 import 'app_failure.dart';
 
 /// Snackbars, confirmations, and the "run this and report the outcome" helper
@@ -12,7 +15,8 @@ class Ui {
   const Ui._();
 
   static void success(BuildContext context, String message) =>
-      _show(context, message, AppColors.success, Icons.check_circle_outline);
+      _show(context, message, AppColors.success, Icons.check_circle_rounded,
+          celebrate: true);
 
   static void error(BuildContext context, Object error) => _show(
         context,
@@ -21,6 +25,14 @@ class Ui {
         Icons.error_outline,
       );
 
+  /// For actions that need the server (invites, password, import): says so
+  /// and returns false while offline, instead of failing halfway.
+  static bool requireOnline(BuildContext context) {
+    if (ConnectivityService.instance.isOnline) return true;
+    info(context, AppStrings.needsConnection);
+    return false;
+  }
+
   static void info(BuildContext context, String message) =>
       _show(context, message, AppColors.navy, Icons.info_outline);
 
@@ -28,18 +40,26 @@ class Ui {
     BuildContext context,
     String message,
     Color color,
-    IconData icon,
-  ) {
+    IconData icon, {
+    bool celebrate = false,
+  }) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           backgroundColor: color,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           duration: const Duration(seconds: 3),
           content: Row(
             children: [
-              Icon(icon, color: Colors.white, size: 20),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: celebrate ? 0 : 1, end: 1),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut,
+                builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(message, style: const TextStyle(fontSize: 14)),
@@ -91,7 +111,10 @@ class Ui {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(child: LoadingCard()),
+      ),
     );
 
     try {

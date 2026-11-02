@@ -303,12 +303,25 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               _Stat(
                 label: AppStrings.childrenCount,
                 value: '${overview.activeChildren}',
+                icon: Icons.groups_rounded,
               ),
-              _Stat(label: AppStrings.boys, value: '${overview.boysCount}'),
-              _Stat(label: AppStrings.girls, value: '${overview.girlsCount}'),
+              _Stat(
+                label: AppStrings.boys,
+                value: '${overview.boysCount}',
+                icon: Icons.boy_rounded,
+                color: AppColors.sky,
+              ),
+              _Stat(
+                label: AppStrings.girls,
+                value: '${overview.girlsCount}',
+                icon: Icons.girl_rounded,
+                color: AppColors.coral,
+              ),
               _Stat(
                 label: AppStrings.servantsCount,
                 value: '${overview.servantsCount}',
+                icon: Icons.volunteer_activism_rounded,
+                color: AppColors.olive,
               ),
             ],
           ),
@@ -335,6 +348,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   Widget _patron(ClassOverview overview) {
     return SectionCard(
       title: AppStrings.patronSaint,
+      icon: Icons.auto_awesome_rounded,
+      accent: AppColors.gold,
       child: Row(
         children: [
           PatronAvatar(photoPath: overview.patronPhotoPath, size: 64),
@@ -381,6 +396,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   Widget _servants(List<ClassServant> servants) {
     return SectionCard(
       title: AppStrings.assignedServants,
+      icon: Icons.volunteer_activism_rounded,
+      accent: AppColors.olive,
       child: servants.isEmpty
           ? const Text(
               AppStrings.noServants,
@@ -420,23 +437,41 @@ class _ClassDetail {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
+  const _Stat({
+    required this.label,
+    required this.value,
+    this.icon,
+    this.color = AppColors.navy,
+  });
 
   final String label;
   final String value;
+  final IconData? icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Column(
         children: [
+          if (icon != null) ...[
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 18, color: color),
+            ),
+            const SizedBox(height: 6),
+          ],
           Text(
             value,
             textDirection: TextDirection.ltr,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppColors.navy,
+              color: color,
             ),
           ),
           const SizedBox(height: 2),

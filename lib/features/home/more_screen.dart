@@ -17,6 +17,7 @@ import '../servants/servants_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
 import '../settings/settings_screen.dart';
+import '../sync/sync_screen.dart';
 
 /// The hub for everything that does not deserve its own tab.
 ///
@@ -41,6 +42,8 @@ class MoreScreen extends StatelessWidget {
           children: [
             SectionCard(
               title: AppStrings.reportsTitle,
+              icon: Icons.insights_rounded,
+              accent: AppColors.sky,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: Column(
                 children: [
@@ -48,16 +51,19 @@ class MoreScreen extends StatelessWidget {
                     icon: Icons.insert_chart_outlined,
                     title: AppStrings.reportsTitle,
                     screen: const ReportsScreen(),
+                    color: AppColors.sky,
                   ),
                   _Entry(
                     icon: Icons.history,
                     title: AppStrings.attendanceHistory,
                     screen: const AttendanceHistoryScreen(),
+                    color: AppColors.navyLight,
                   ),
                   _Entry(
                     icon: Icons.cake_outlined,
                     title: AppStrings.birthdaysTitle,
                     screen: const BirthdayScreen(),
+                    color: AppColors.coral,
                   ),
                 ],
               ),
@@ -66,6 +72,8 @@ class MoreScreen extends StatelessWidget {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.importTitle,
+                icon: Icons.swap_vert_rounded,
+                accent: AppColors.navyLight,
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Column(
                   children: [
@@ -88,17 +96,21 @@ class MoreScreen extends StatelessWidget {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.competitions,
+              icon: Icons.emoji_events_rounded,
+              accent: AppColors.gold,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: _Entry(
                 icon: Icons.emoji_events_outlined,
                 title: AppStrings.competitions,
                 screen: const CompetitionsScreen(),
-                color: AppColors.olive,
+                color: AppColors.gold,
               ),
             ),
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.events,
+              icon: Icons.celebration_rounded,
+              accent: AppColors.olive,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: _Entry(
                 icon: Icons.event_outlined,
@@ -111,6 +123,8 @@ class MoreScreen extends StatelessWidget {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.systemManagement,
+                icon: Icons.admin_panel_settings_rounded,
+                accent: AppColors.maroon,
                 padding:
                     const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Column(
@@ -146,11 +160,24 @@ class MoreScreen extends StatelessWidget {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.account,
+              icon: Icons.person_rounded,
+              accent: AppColors.muted,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: _Entry(
-                icon: Icons.settings_outlined,
-                title: AppStrings.settingsTitle,
-                screen: const SettingsScreen(),
+              child: Column(
+                children: [
+                  _Entry(
+                    icon: Icons.sync_rounded,
+                    title: AppStrings.syncTitle,
+                    screen: const SyncScreen(),
+                    color: AppColors.sky,
+                  ),
+                  _Entry(
+                    icon: Icons.settings_outlined,
+                    title: AppStrings.settingsTitle,
+                    screen: const SettingsScreen(),
+                    color: AppColors.muted,
+                  ),
+                ],
               ),
             ),
           ],
@@ -180,8 +207,8 @@ class _Entry extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(icon, color: color, size: 20),
       ),

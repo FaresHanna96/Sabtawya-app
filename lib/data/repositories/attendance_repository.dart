@@ -1,5 +1,3 @@
-import '../../core/services/connectivity_service.dart';
-import '../../core/services/offline_store.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 import '../models/attendance.dart';
@@ -136,14 +134,8 @@ class AttendanceRepository {
           .eq('class_id', classId)
           .eq('year_id', yearId)
           .order('session_date');
-      final rawRows = rows(data);
-      await OfflineStore.cacheSessions(classId, yearId, rawRows);
-      return rawRows.map(AttendanceSession.fromMap).toList();
+      return rows(data).map(AttendanceSession.fromMap).toList();
     } catch (e) {
-      if (!ConnectivityService.instance.isOnline) {
-        final cached = OfflineStore.getCachedSessions(classId, yearId);
-        if (cached != null) return cached.map(AttendanceSession.fromMap).toList();
-      }
       throw AppFailure.from(e);
     }
   }
@@ -225,31 +217,20 @@ class AttendanceRepository {
           .from(Db.vSessionScores)
           .select()
           .eq('session_id', sessionId);
-      final rawRows = rows(data);
-      await OfflineStore.cacheRecords(sessionId, rawRows);
-      return rawRows.map(AttendanceRecord.fromMap).toList();
+      return rows(data).map(AttendanceRecord.fromMap).toList();
     } catch (e) {
-      if (!ConnectivityService.instance.isOnline) {
-        final cached = OfflineStore.getCachedRecords(sessionId);
-        if (cached != null) return cached.map(AttendanceRecord.fromMap).toList();
-      }
       throw AppFailure.from(e);
     }
   }
 
   /// Writes the three flags for each changed line. The database recomputes the
   /// score, so a tampered client cannot invent a grade.
-  /// When offline, writes are queued locally and synced on reconnect.
+  /// Offline, the write is queued by the HTTP layer and synced on reconnect.
   Future<void> saveEntries({
     required String sessionId,
     required List<AttendanceEntry> entries,
   }) async {
     if (entries.isEmpty) return;
-    if (!ConnectivityService.instance.isOnline) {
-      await OfflineStore.applyWriteToCache(sessionId, entries);
-      await OfflineStore.enqueueWrite(sessionId, entries);
-      return;
-    }
     try {
       await Db.client.from(Db.tAttendanceRecords).upsert(
             entries.map((entry) => entry.toUpsertMap(sessionId)).toList(),

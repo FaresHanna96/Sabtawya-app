@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
@@ -146,9 +147,13 @@ class _ClassesScreenState extends State<ClassesScreen> {
               padding: EdgeInsets.fromLTRB(16, 12, 16, isAdmin ? 96 : 24),
               itemCount: classes.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) => _ClassCard(
-                overview: classes[index],
-                onTap: () => _open(classes[index]),
+              itemBuilder: (context, index) => FadeSlideIn(
+                index: index,
+                child: _ClassCard(
+                  overview: classes[index],
+                  accent: _palette[index % _palette.length],
+                  onTap: () => _open(classes[index]),
+                ),
               ),
             );
           },
@@ -156,9 +161,23 @@ class _ClassesScreenState extends State<ClassesScreen> {
   }
 }
 
-class _ClassCard extends StatelessWidget {
-  const _ClassCard({required this.overview, required this.onTap});
+const _palette = <Color>[
+  AppColors.navyLight,
+  AppColors.olive,
+  AppColors.coral,
+  AppColors.gold,
+  AppColors.sky,
+  AppColors.maroon,
+];
 
+class _ClassCard extends StatelessWidget {
+  const _ClassCard({
+    required this.overview,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final Color accent;
   final ClassOverview overview;
   final VoidCallback onTap;
 
@@ -173,8 +192,12 @@ class _ClassCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              height: 4,
-              decoration: const BoxDecoration(gradient: AppGradients.navyHeader),
+              height: 5,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [accent, accent.withValues(alpha: 0.4)],
+                ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(16),

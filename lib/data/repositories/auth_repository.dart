@@ -1,3 +1,4 @@
+import '../../core/services/offline_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -68,6 +69,8 @@ class AuthRepository {
   Future<void> signOut() async {
     try {
       await Db.client.auth.signOut();
+      // The next person on this device must not see this one's data.
+      await OfflineStore.clearCache();
     } catch (e) {
       throw AppFailure.from(e);
     }

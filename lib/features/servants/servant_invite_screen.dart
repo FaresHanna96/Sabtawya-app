@@ -10,6 +10,7 @@ import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../data/repositories/servant_repository.dart';
+import 'servant_data_fields.dart';
 
 /// Creates an invite for a new servant.
 ///
@@ -32,6 +33,7 @@ class _ServantInviteScreenState extends State<ServantInviteScreen> {
   final _email = TextEditingController();
   final _fullName = TextEditingController();
   final _mobile = TextEditingController();
+  final _data = ServantDataControllers();
 
   AppRole _role = AppRole.servant;
   final Set<String> _classIds = <String>{};
@@ -41,10 +43,12 @@ class _ServantInviteScreenState extends State<ServantInviteScreen> {
     _email.dispose();
     _fullName.dispose();
     _mobile.dispose();
+    _data.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
+    if (!Ui.requireOnline(context)) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     FocusScope.of(context).unfocus();
 
@@ -55,6 +59,10 @@ class _ServantInviteScreenState extends State<ServantInviteScreen> {
         fullName: _fullName.text,
         role: _role,
         mobile: _mobile.text,
+        birthDate: _data.birthDate,
+        address: _data.address.text,
+        confessor: _data.confessor.text,
+        occupation: _data.occupation.text,
         classIds: _classIds.toList(),
       ),
       successMessage: AppStrings.inviteCreated,
@@ -139,8 +147,15 @@ class _ServantInviteScreenState extends State<ServantInviteScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                ServantDataFields(
+                  controllers: _data,
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: 16),
                 SectionCard(
                   title: AppStrings.assignedClasses,
+                  icon: Icons.class_rounded,
+                  accent: AppColors.olive,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

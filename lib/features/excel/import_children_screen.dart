@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/celebration.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -69,6 +70,7 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
   }
 
   Future<void> _pickFile() async {
+    if (!Ui.requireOnline(context)) return;
     if (_classId == null) {
       Ui.info(context, AppStrings.selectClass);
       return;
@@ -150,6 +152,7 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
     if (!mounted) return;
 
     final applied = result!;
+    Celebration.show(context);
     Ui.success(
       context,
       '${AppStrings.importDone}: '
@@ -222,6 +225,8 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
   Widget _setupCard() {
     return SectionCard(
       title: AppStrings.importMode,
+      icon: Icons.tune_rounded,
+      accent: AppColors.gold,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -303,6 +308,8 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
   Widget _summaryCard(ImportPlan plan) {
     return SectionCard(
       title: AppStrings.importPreview,
+      icon: Icons.table_chart_rounded,
+      accent: AppColors.navyLight,
       child: Wrap(
         spacing: 8,
         runSpacing: 8,

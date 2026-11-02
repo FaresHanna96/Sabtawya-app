@@ -42,7 +42,13 @@ class ChildTile extends StatelessWidget {
               width: 4,
               decoration: BoxDecoration(
                 gradient: child.isActive
-                    ? AppGradients.navyHeader
+                    ? LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: child.gender == Gender.boy
+                            ? const [AppColors.sky, AppColors.navyLight]
+                            : const [AppColors.coral, AppColors.gold],
+                      )
                     : LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,

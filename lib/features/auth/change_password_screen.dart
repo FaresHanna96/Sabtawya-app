@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/ui.dart';
+import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -33,6 +35,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!Ui.requireOnline(context)) return;
     FocusScope.of(context).unfocus();
     setState(() => _busy = true);
 
@@ -74,6 +77,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const FadeSlideIn(
+                      child: Center(child: Pulse(child: AppLogo(size: 76))),
+                    ),
+                    const SizedBox(height: 20),
                     TextFormField(
                       controller: _currentPasswordController,
                       obscureText: _obscureCurrent,

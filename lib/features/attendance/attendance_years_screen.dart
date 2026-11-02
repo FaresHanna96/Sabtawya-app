@@ -10,6 +10,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/class_repository.dart';
 import '../../state/session_controller.dart';
 
 /// Admin-only management of attendance years.
@@ -304,7 +305,26 @@ class _YearFormScreenState extends State<_YearFormScreen> {
       },
       successMessage: AppStrings.saved,
     );
+    if (ok && mounted && existing == null) await _offerPromotion();
     if (ok && mounted) Navigator.of(context).pop(true);
+  }
+
+  /// A new year is when classes grow a grade; ask before renaming anything.
+  Future<void> _offerPromotion() async {
+    if (!Ui.requireOnline(context)) return;
+    final confirmed = await Ui.confirm(
+      context,
+      title: AppStrings.promoteClassesTitle,
+      message: AppStrings.promoteClassesBody,
+    );
+    if (!confirmed || !mounted) return;
+    final session = context.read<SessionController>();
+    final ok = await Ui.runGuarded(
+      context,
+      () => const ClassRepository().promoteGrades(archiveSuffix: _name.text.trim()),
+      successMessage: AppStrings.saved,
+    );
+    if (ok) await session.refreshClasses();
   }
 
   @override
@@ -357,6 +377,8 @@ class _YearFormScreenState extends State<_YearFormScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.pointsPerActivity,
+                icon: Icons.star_rounded,
+                accent: AppColors.gold,
                 child: Column(
                   children: [
                     _pointsField(AppStrings.sundaySchool, _sundaySchool),

@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/event.dart';
 import '../../data/repositories/event_repository.dart';
@@ -96,12 +97,15 @@ class _EventsScreenState extends State<EventsScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final e = events[index];
-                    return _EventTile(
-                      event: e,
-                      isAdmin: isAdmin,
-                      onTap: () => _open(e),
-                      onEdit: () => _edit(e),
-                      onDelete: () => _delete(e),
+                    return FadeSlideIn(
+                      index: index,
+                      child: _EventTile(
+                        event: e,
+                        isAdmin: isAdmin,
+                        onTap: () => _open(e),
+                        onEdit: () => _edit(e),
+                        onDelete: () => _delete(e),
+                      ),
                     );
                   },
                 );
@@ -153,12 +157,12 @@ class _EventTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.navy.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.goldTint,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  Icons.event_outlined,
-                  color: AppColors.navy,
+                  Icons.event_rounded,
+                  color: AppColors.gold,
                   size: 22,
                 ),
               ),

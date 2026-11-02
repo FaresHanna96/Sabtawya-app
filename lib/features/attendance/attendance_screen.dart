@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/celebration.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -8,6 +9,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
@@ -246,6 +248,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      if (!isOffline) Celebration.show(context);
       if (isOffline) {
         // Scores are DB-computed; skip reload while offline.
         // Commit local state so the unsaved-changes flag clears.
@@ -375,10 +378,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           for (var i = 0; i < _entries.length; i++)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: _EntryCard(
-                entry: _entries[i],
-                enabled: _canEdit,
-                onToggle: (activity) => _toggle(_entries[i], activity),
+              child: FadeSlideIn(
+                index: i,
+                child: _EntryCard(
+                  entry: _entries[i],
+                  enabled: _canEdit,
+                  onToggle: (activity) => _toggle(_entries[i], activity),
+                ),
               ),
             ),
       ],
@@ -390,6 +396,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       child: SectionCard(
+        icon: Icons.fact_check_rounded,
+        accent: AppColors.sky,
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -726,8 +734,11 @@ class _MarkToggle extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: enabled ? onTap : null,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeInOut,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutBack,
+          transform: Matrix4.diagonal3Values(
+              selected ? 1.04 : 1, selected ? 1.04 : 1, 1),
+          transformAlignment: Alignment.center,
           padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 6),
           decoration: BoxDecoration(
             color: selected

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/motion.dart';
+import '../../core/widgets/illustrations.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../state/session_controller.dart';
@@ -68,8 +70,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Column(
       children: [
         const SizedBox(height: 24),
-        const Icon(Icons.mark_email_read_outlined,
-            size: 64, color: AppColors.success),
+        const Illustration(IllustrationKind.success, size: 150),
         const SizedBox(height: 16),
         const Text(
           AppStrings.resetLinkSent,
@@ -98,7 +99,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 8),
-          const Center(child: AppLogo(size: 100)),
+          const FadeSlideIn(
+            child: Center(child: Pulse(child: AppLogo(size: 100))),
+          ),
           const SizedBox(height: 24),
           const Text(
             AppStrings.resetPasswordHint,

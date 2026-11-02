@@ -295,6 +295,8 @@ class _ExportScreenState extends State<ExportScreen> {
             if (classes.length > 1)
               SectionCard(
                 title: AppStrings.classLabel,
+                icon: Icons.class_rounded,
+                accent: AppColors.olive,
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -318,6 +320,8 @@ class _ExportScreenState extends State<ExportScreen> {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.exportTitle,
+              icon: Icons.ios_share_rounded,
+              accent: AppColors.navyLight,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: Column(
                 children: [
@@ -358,6 +362,8 @@ class _ExportScreenState extends State<ExportScreen> {
             if (context.read<SessionController>().isAdmin)
               SectionCard(
                 title: AppStrings.activitiesNav,
+                icon: Icons.volunteer_activism_rounded,
+                accent: AppColors.coral,
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Column(
                   children: [
@@ -379,6 +385,8 @@ class _ExportScreenState extends State<ExportScreen> {
             const SizedBox(height: 16),
             SectionCard(
               title: AppStrings.importTitle,
+              icon: Icons.upload_file_rounded,
+              accent: AppColors.sky,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: _ExportTile(
                 icon: Icons.download_outlined,

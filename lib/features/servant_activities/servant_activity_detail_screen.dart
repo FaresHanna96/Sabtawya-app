@@ -112,6 +112,83 @@ class _ServantActivityDetailScreenState
     }
   }
 
+  Widget _summary(_DetailData data) {
+    final pending = data.preps.where((p) => p.status == 'pending').length;
+    // Only sessions already held (one per date, whatever the class count).
+    final now = DateTime.now();
+    final cutoff = DateTime(now.year, now.month, now.day);
+    final total = data.sessions
+        .where((x) => !x.sessionDate.isAfter(cutoff))
+        .map((x) => x.sessionDate)
+        .toSet()
+        .length;
+
+    String pct(int n) => total == 0 ? '' : ' (${(n / total * 100).round()}%)';
+
+    Widget row(Widget a, Widget b) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Expanded(child: a),
+              const SizedBox(width: 8),
+              Expanded(child: b),
+            ],
+          ),
+        );
+
+    return SectionCard(
+      title: AppStrings.servantActivityReport,
+      icon: Icons.insert_chart_rounded,
+      accent: AppColors.navy,
+      child: Column(
+        children: [
+          row(
+            StatTile(
+              label: '${AppStrings.sundaySchoolShort}${pct(data.sundaySchool.length)}',
+              value: '${data.sundaySchool.length}/$total',
+              color: AppColors.success,
+              icon: Icons.church_outlined,
+            ),
+            StatTile(
+              label: '${AppStrings.servantMeetingShort}${pct(data.servantMeeting.length)}',
+              value: '${data.servantMeeting.length}/$total',
+              color: AppColors.success,
+              icon: Icons.groups_outlined,
+            ),
+          ),
+          row(
+            StatTile(
+              label: '${AppStrings.mass}${pct(data.mass.length)}',
+              value: '${data.mass.length}/$total',
+              color: AppColors.gold,
+              icon: Icons.account_balance_outlined,
+            ),
+            StatTile(
+              label: '${AppStrings.confession}${pct(data.confession.length)}',
+              value: '${data.confession.length}/$total',
+              color: AppColors.coral,
+              icon: Icons.volunteer_activism_outlined,
+            ),
+          ),
+          row(
+            StatTile(
+              label: AppStrings.lessonPrep,
+              value: '${data.preps.length}',
+              color: AppColors.navy,
+              icon: Icons.assignment_outlined,
+            ),
+            StatTile(
+              label: AppStrings.prepPending,
+              value: '$pending',
+              color: pending > 0 ? AppColors.warning : AppColors.muted,
+              icon: Icons.hourglass_empty_outlined,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,6 +201,8 @@ class _ServantActivityDetailScreenState
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
               children: [
+                _summary(data),
+                const SizedBox(height: 12),
                 // ------------------------------------------------- Lesson Prep
                 _SectionHeader(title: AppStrings.lessonPrep),
                 const SizedBox(height: 8),

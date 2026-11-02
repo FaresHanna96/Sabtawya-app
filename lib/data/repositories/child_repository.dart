@@ -1,5 +1,3 @@
-import '../../core/services/connectivity_service.dart';
-import '../../core/services/offline_store.dart';
 import '../../core/utils/app_failure.dart';
 import '../models/child.dart';
 import '../supabase/db.dart';
@@ -15,14 +13,8 @@ class ChildRepository {
       var query = Db.client.from(Db.tChildren).select().eq('class_id', classId);
       if (!includeInactive) query = query.eq('is_active', true);
       final data = await query.order('full_name');
-      final rawRows = rows(data);
-      if (!includeInactive) await OfflineStore.cacheChildren(classId, rawRows);
-      return rawRows.map(Child.fromMap).toList();
+      return rows(data).map(Child.fromMap).toList();
     } catch (e) {
-      if (!ConnectivityService.instance.isOnline && !includeInactive) {
-        final cached = OfflineStore.getCachedChildren(classId);
-        if (cached != null) return cached.map(Child.fromMap).toList();
-      }
       throw AppFailure.from(e);
     }
   }
