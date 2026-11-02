@@ -153,6 +153,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
       floatingActionButton: classes.isEmpty
           ? null
           : FloatingActionButton.extended(
+              heroTag: null,
               onPressed: _addChild,
               icon: const Icon(Icons.person_add_alt),
               label: const Text(AppStrings.addChild),

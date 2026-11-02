@@ -300,6 +300,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         floatingActionButton: (_sheet == null || !_canEdit || !_hasChanges)
             ? null
             : FloatingActionButton.extended(
+                heroTag: null,
                 onPressed: _saving ? null : _save,
                 icon: const Icon(Icons.save_outlined),
                 label: const Text(AppStrings.saveAttendance),
@@ -586,11 +587,27 @@ class _EntryCard extends StatelessWidget {
   final bool enabled;
   final ValueChanged<_Activity> onToggle;
 
+  Color get _accentColor {
+    if (!entry.isRecorded) return AppColors.muted;
+    if (entry.maxScore <= 0) return AppColors.muted;
+    final ratio = entry.score / entry.maxScore;
+    if (ratio >= 0.8) return AppColors.success;
+    if (ratio >= 0.4) return AppColors.warning;
+    return AppColors.danger;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
+      clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
-      child: Padding(
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: _accentColor),
+            Expanded(
+              child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -671,6 +688,10 @@ class _EntryCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 10, color: AppColors.muted),
               ),
             ],
+          ],
+        ),
+              ),
+            ),
           ],
         ),
       ),

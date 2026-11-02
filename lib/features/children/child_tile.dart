@@ -30,40 +30,66 @@ class ChildTile extends StatelessWidget {
       if (child.school != null) child.school!,
     ].join(' • ');
 
+    final accentColor = child.isActive ? AppColors.navy : AppColors.muted;
+
     return Card(
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        leading: ChildAvatar(child: child),
-        title: Row(
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Text(
-                child.fullName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                gradient: child.isActive
+                    ? AppGradients.navyHeader
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.muted, AppColors.muted],
+                      ),
               ),
             ),
-            const SizedBox(width: 6),
-            GenderBadge(gender: child.gender, compact: true),
+            Expanded(
+              child: ListTile(
+                onTap: onTap,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                leading: ChildAvatar(child: child),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        child.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GenderBadge(gender: child.gender, compact: true),
+                  ],
+                ),
+                subtitle: subtitle.isEmpty
+                    ? null
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.muted),
+                        ),
+                      ),
+                trailing: child.isActive
+                    ? const Icon(Icons.chevron_left, color: AppColors.muted)
+                    : const StatusBadge(isActive: false),
+              ),
+            ),
           ],
         ),
-        subtitle: subtitle.isEmpty
-            ? null
-            : Padding(
-                padding: const EdgeInsets.only(top: 3),
-                child: Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                ),
-              ),
-        trailing: child.isActive
-            ? const Icon(Icons.chevron_left, color: AppColors.muted)
-            : const StatusBadge(isActive: false),
       ),
     );
   }

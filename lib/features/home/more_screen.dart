@@ -73,11 +73,13 @@ class MoreScreen extends StatelessWidget {
                       icon: Icons.upload_file,
                       title: AppStrings.importChildren,
                       screen: const ImportChildrenScreen(),
+                      color: AppColors.navyLight,
                     ),
                     _Entry(
                       icon: Icons.ios_share,
                       title: AppStrings.exportTitle,
                       screen: const ExportScreen(),
+                      color: AppColors.navyLight,
                     ),
                   ],
                 ),
@@ -91,6 +93,7 @@ class MoreScreen extends StatelessWidget {
                 icon: Icons.emoji_events_outlined,
                 title: AppStrings.competitions,
                 screen: const CompetitionsScreen(),
+                color: AppColors.olive,
               ),
             ),
             const SizedBox(height: 16),
@@ -101,6 +104,7 @@ class MoreScreen extends StatelessWidget {
                 icon: Icons.event_outlined,
                 title: AppStrings.events,
                 screen: const EventsScreen(),
+                color: AppColors.olive,
               ),
             ),
             if (isAdmin) ...[
@@ -115,21 +119,25 @@ class MoreScreen extends StatelessWidget {
                       icon: Icons.how_to_reg_outlined,
                       title: AppStrings.pendingRequests,
                       screen: const PendingRequestsScreen(),
+                      color: AppColors.maroon,
                     ),
                     _Entry(
                       icon: Icons.volunteer_activism_outlined,
                       title: AppStrings.servantsTitle,
                       screen: const ServantsScreen(),
+                      color: AppColors.maroon,
                     ),
                     _Entry(
                       icon: Icons.link,
                       title: AppStrings.assignmentsTitle,
                       screen: const ServantAssignmentsScreen(),
+                      color: AppColors.maroon,
                     ),
                     _Entry(
                       icon: Icons.calendar_month_outlined,
                       title: AppStrings.attendanceYears,
                       screen: const AttendanceYearsScreen(),
+                      color: AppColors.maroon,
                     ),
                   ],
                 ),
@@ -153,11 +161,17 @@ class MoreScreen extends StatelessWidget {
 }
 
 class _Entry extends StatelessWidget {
-  const _Entry({required this.icon, required this.title, required this.screen});
+  const _Entry({
+    required this.icon,
+    required this.title,
+    required this.screen,
+    this.color = AppColors.navy,
+  });
 
   final IconData icon;
   final String title;
   final Widget screen;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -166,10 +180,10 @@ class _Entry extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.navy.withValues(alpha: 0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: AppColors.navy, size: 20),
+        child: Icon(icon, color: color, size: 20),
       ),
       title: Text(
         title,

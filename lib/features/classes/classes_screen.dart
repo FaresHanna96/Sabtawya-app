@@ -106,6 +106,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
       ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: _add,
               icon: const Icon(Icons.add),
               label: const Text(AppStrings.addClass),
@@ -164,95 +165,105 @@ class _ClassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 4,
+              decoration: const BoxDecoration(gradient: AppGradients.navyHeader),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  PatronAvatar(photoPath: overview.patronPhotoPath, size: 42),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    children: [
+                      PatronAvatar(photoPath: overview.patronPhotoPath, size: 42),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              overview.className,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (overview.patronName != null)
+                              Text(
+                                overview.patronName!,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.maroon,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (!overview.isActive) const StatusBadge(isActive: false),
+                      const Icon(Icons.chevron_left, color: AppColors.muted),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _Pill(
+                        icon: Icons.groups_outlined,
+                        label: '${overview.activeChildren}',
+                        tooltip: AppStrings.childrenCount,
+                      ),
+                      _Pill(
+                        icon: Icons.boy,
+                        label: '${overview.boysCount}',
+                        tooltip: AppStrings.boys,
+                        color: AppColors.navyLight,
+                      ),
+                      _Pill(
+                        icon: Icons.girl,
+                        label: '${overview.girlsCount}',
+                        tooltip: AppStrings.girls,
+                        color: AppColors.olive,
+                      ),
+                      _Pill(
+                        icon: Icons.volunteer_activism_outlined,
+                        label: '${overview.servantsCount}',
+                        tooltip: AppStrings.servantsCount,
+                      ),
+                    ],
+                  ),
+                  if (overview.lastSessionDate != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
                       children: [
+                        const Icon(
+                          Icons.event_available_outlined,
+                          size: 14,
+                          color: AppColors.muted,
+                        ),
+                        const SizedBox(width: 6),
                         Text(
-                          overview.className,
+                          '${AppStrings.lastAttendance}: '
+                          '${AppDateUtils.formatDate(overview.lastSessionDate!)}',
                           style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                            color: AppColors.muted,
                           ),
                         ),
-                        if (overview.patronName != null)
-                          Text(
-                            overview.patronName!,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.maroon,
-                            ),
-                          ),
                       ],
                     ),
-                  ),
-                  if (!overview.isActive) const StatusBadge(isActive: false),
-                  const Icon(Icons.chevron_left, color: AppColors.muted),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _Pill(
-                    icon: Icons.groups_outlined,
-                    label: '${overview.activeChildren}',
-                    tooltip: AppStrings.childrenCount,
-                  ),
-                  _Pill(
-                    icon: Icons.boy,
-                    label: '${overview.boysCount}',
-                    tooltip: AppStrings.boys,
-                    color: AppColors.navyLight,
-                  ),
-                  _Pill(
-                    icon: Icons.girl,
-                    label: '${overview.girlsCount}',
-                    tooltip: AppStrings.girls,
-                    color: AppColors.olive,
-                  ),
-                  _Pill(
-                    icon: Icons.volunteer_activism_outlined,
-                    label: '${overview.servantsCount}',
-                    tooltip: AppStrings.servantsCount,
-                  ),
-                ],
-              ),
-              if (overview.lastSessionDate != null) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.event_available_outlined,
-                      size: 14,
-                      color: AppColors.muted,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${AppStrings.lastAttendance}: '
-                      '${AppDateUtils.formatDate(overview.lastSessionDate!)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.muted,
-                      ),
-                    ),
                   ],
-                ),
-              ],
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
