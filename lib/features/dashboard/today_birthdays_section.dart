@@ -219,17 +219,16 @@ class _ServantBirthdayRow extends StatelessWidget {
         '${AppStrings.turningAge} $age ${AppStrings.years}',
         style: const TextStyle(fontSize: 11),
       ),
-      trailing: hasPhone
-          ? IconButton(
-              icon: const Icon(Icons.call, size: 18),
-              color: AppColors.success,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              tooltip: 'اتصال',
-              onPressed: () =>
-                  launchUrl(Uri(scheme: 'tel', path: servant.mobile!)),
-            )
-          : null,
+      trailing: IconButton(
+        icon: const Icon(Icons.call, size: 18),
+        color: hasPhone ? AppColors.success : AppColors.muted,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        tooltip: hasPhone ? 'اتصال' : 'لا يوجد رقم',
+        onPressed: hasPhone
+            ? () => launchUrl(Uri(scheme: 'tel', path: servant.mobile!))
+            : null,
+      ),
     );
   }
 }
