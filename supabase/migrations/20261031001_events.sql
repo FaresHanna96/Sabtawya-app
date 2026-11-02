@@ -9,7 +9,7 @@
 -- Tables
 -- ---------------------------------------------------------------------------
 
-create table public.events (
+create table if not exists public.events (
   id           uuid primary key default gen_random_uuid(),
   title        text not null,
   description  text,
@@ -20,7 +20,7 @@ create table public.events (
   created_at   timestamptz not null default now()
 );
 
-create table public.event_payments (
+create table if not exists public.event_payments (
   id         uuid primary key default gen_random_uuid(),
   event_id   uuid not null references public.events(id) on delete cascade,
   child_id   uuid not null references public.children(id) on delete cascade,
@@ -34,7 +34,7 @@ create table public.event_payments (
 -- View: balance per child per event (every active child is auto-enrolled)
 -- ---------------------------------------------------------------------------
 
-create view public.v_child_event_balances as
+create or replace view public.v_child_event_balances as
 select
   e.id                                          as event_id,
   e.title                                       as event_title,
@@ -57,15 +57,19 @@ group by e.id, e.title, e.cost, c.id, c.full_name, c.class_id;
 
 alter table public.events enable row level security;
 
+drop policy if exists "events_select" on public.events;
 create policy "events_select" on public.events
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "events_insert" on public.events;
 create policy "events_insert" on public.events
   for insert with check (public.is_admin());
 
+drop policy if exists "events_update" on public.events;
 create policy "events_update" on public.events
   for update using (public.is_admin());
 
+drop policy if exists "events_delete" on public.events;
 create policy "events_delete" on public.events
   for delete using (public.is_admin());
 
@@ -75,6 +79,7 @@ create policy "events_delete" on public.events
 
 alter table public.event_payments enable row level security;
 
+drop policy if exists "ep_select" on public.event_payments;
 create policy "ep_select" on public.event_payments
   for select using (
     public.is_admin()
@@ -87,6 +92,7 @@ create policy "ep_select" on public.event_payments
     )
   );
 
+drop policy if exists "ep_insert" on public.event_payments;
 create policy "ep_insert" on public.event_payments
   for insert with check (
     public.is_admin()
@@ -99,6 +105,7 @@ create policy "ep_insert" on public.event_payments
     )
   );
 
+drop policy if exists "ep_delete" on public.event_payments;
 create policy "ep_delete" on public.event_payments
   for delete using (
     public.is_admin()

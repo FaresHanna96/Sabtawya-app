@@ -275,6 +275,7 @@ class AppStrings {
   static const visitsSaved = 'تم حفظ بيانات الافتقاد';
   static const visitHistory = 'سجل الافتقادات';
   static const noVisitHistory = 'لا يوجد سجل افتقادات بعد';
+  static const childBirthdaysTitle = 'أعياد ميلاد المخدومين';
   static const servantBirthdays = 'أعياد ميلاد الخدام';
   static const attendanceSummary = 'ملخص الحضور';
   static const monthlyBreakdown = 'التفصيل الشهري';
