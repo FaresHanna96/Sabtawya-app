@@ -523,7 +523,7 @@ class AppStrings {
   static const paymentAmountExceeds    = 'المبلغ يتجاوز المتبقي';
   static const paymentMethodLabel      = 'طريقة الدفع';
   static const paymentMethodCash       = 'كاش';
-  static const paymentMethodTayo       = 'طايو';
+  static const paymentMethodTayo       = 'كيتي';
   static const confirmDeletePayment    = 'هل تريد حذف هذه الدفعة؟';
   static const paymentHistory          = 'سجل الدفعات';
   static const collected               = 'محصَّل';
