@@ -7,9 +7,10 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
-import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
+import '../../data/repositories/class_repository.dart';
+import '../../data/repositories/servant_repository.dart';
 import '../../state/session_controller.dart';
 import 'child_profile_screen.dart';
 
@@ -26,30 +27,64 @@ class BirthdayScreen extends StatefulWidget {
 class _BirthdayScreenState extends State<BirthdayScreen> {
   static const _repository = ChildRepository();
 
-  final _sectionKey = GlobalKey<AsyncSectionState<List<Child>>>();
+  static const _servantRepository = ServantRepository();
+  static const _classRepository = ClassRepository();
+
+  final _sectionKey = GlobalKey<AsyncSectionState<List<_Person>>>();
+
+  /// false = children (المخدومين), true = servants (الخدام).
+  bool _servants = false;
 
   /// Selected months (1–12). Empty = no filter (show all).
   Set<int> _selectedMonths = {DateTime.now().month};
 
   String? _classFilter;
 
-  Future<List<Child>> _load() => _repository.all(includeInactive: false);
+  Future<List<_Person>> _load() async {
+    if (!_servants) {
+      final children = await _repository.all(includeInactive: false);
+      return [
+        for (final c in children)
+          if (c.birthDate != null)
+            _Person(
+              name: c.fullName,
+              birth: c.birthDate!,
+              classIds: [c.classId],
+              childId: c.id,
+            ),
+      ];
+    }
+    final servants = await _servantRepository.servants(includeInactive: false);
+    final assignments = await _classRepository.allAssignments();
+    return [
+      for (final p in servants)
+        if (p.birthDate != null)
+          _Person(
+            name: p.fullName,
+            birth: p.birthDate!,
+            classIds: [
+              for (final a in assignments)
+                if (a.servantId == p.id) a.classId,
+            ],
+            role: p.roleLabel,
+          ),
+    ];
+  }
 
-  List<Child> _filter(List<Child> all) {
+  List<_Person> _filter(List<_Person> all) {
     if (_selectedMonths.isEmpty) return [];
     return all
         .where(
           (c) =>
-              c.birthDate != null &&
-              _selectedMonths.contains(c.birthDate!.month) &&
-              (_classFilter == null || c.classId == _classFilter),
+              _selectedMonths.contains(c.birth.month) &&
+              (_classFilter == null || c.classIds.contains(_classFilter)),
         )
         .toList()
       ..sort((a, b) {
-        final da = a.birthDate!.day;
-        final db = b.birthDate!.day;
+        final da = a.birth.day;
+        final db = b.birth.day;
         if (da != db) return da.compareTo(db);
-        return a.fullName.compareTo(b.fullName);
+        return a.name.compareTo(b.name);
       });
   }
 
@@ -62,11 +97,35 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: SegmentedButton<bool>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: false,
+                    icon: Icon(Icons.child_care),
+                    label: Text(AppStrings.childBirthdaysShort),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: Icon(Icons.volunteer_activism_outlined),
+                    label: Text(AppStrings.servantBirthdaysShort),
+                  ),
+                ],
+                selected: {_servants},
+                onSelectionChanged: (value) => setState(() {
+                  _servants = value.first;
+                  _classFilter = null;
+                  _sectionKey.currentState?.reload();
+                }),
+              ),
+            ),
             _MonthSelector(
               selected: _selectedMonths,
               onChanged: (months) => setState(() => _selectedMonths = months),
             ),
-            if (classes.length > 1)
+            if (!_servants && classes.length > 1)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: SingleChildScrollView(
@@ -82,7 +141,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                 ),
               ),
             Expanded(
-              child: AsyncSection<List<Child>>(
+              child: AsyncSection<List<_Person>>(
                 key: _sectionKey,
                 load: _load,
                 builder: (context, all, _) {
@@ -108,15 +167,20 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                     itemBuilder: (context, index) => FadeSlideIn(
                       index: index,
                       child: _BirthdayTile(
-                        child: visible[index],
-                        className:
-                            _classNameOf(classes, visible[index].classId),
-                        onTap: () => Navigator.of(context).push<void>(
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                ChildProfileScreen(childId: visible[index].id),
-                          ),
-                        ),
+                        person: visible[index],
+                        className: visible[index].classIds
+                            .map((id) => _classNameOf(classes, id))
+                            .whereType<String>()
+                            .join('، '),
+                        onTap: visible[index].childId == null
+                            ? null
+                            : () => Navigator.of(context).push<void>(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => ChildProfileScreen(
+                                      childId: visible[index].childId!,
+                                    ),
+                                  ),
+                                ),
                       ),
                     ),
                   );
@@ -273,20 +337,41 @@ class _MonthSelector extends StatelessWidget {
 
 // ----------------------------------------------------------------- birthday tile
 
+/// One birthday: a child or a servant.
+class _Person {
+  const _Person({
+    required this.name,
+    required this.birth,
+    required this.classIds,
+    this.childId,
+    this.role,
+  });
+
+  final String name;
+  final DateTime birth;
+  final List<String> classIds;
+
+  /// Set for a child, so the tile can open the profile.
+  final String? childId;
+
+  /// Set for a servant (أمين الخدمة / خادم / خادم عام).
+  final String? role;
+}
+
 class _BirthdayTile extends StatelessWidget {
   const _BirthdayTile({
-    required this.child,
+    required this.person,
     required this.onTap,
     this.className,
   });
 
-  final Child child;
+  final _Person person;
   final String? className;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final birth = child.birthDate!;
+    final birth = person.birth;
     final today = DateTime.now();
     final isToday = birth.month == today.month && birth.day == today.day;
     final nextAge = today.year - birth.year +
@@ -299,12 +384,13 @@ class _BirthdayTile extends StatelessWidget {
         onTap: onTap,
         leading: _DayBadge(day: birth.day, isToday: isToday),
         title: Text(
-          child.fullName,
+          person.name,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
           [
-            if (className != null) className!,
+            if (person.role != null) person.role!,
+            if (className != null && className!.isNotEmpty) className!,
             '${AppStrings.turningAge} $nextAge ${AppStrings.years}',
           ].join(' • '),
           style: const TextStyle(fontSize: 12),

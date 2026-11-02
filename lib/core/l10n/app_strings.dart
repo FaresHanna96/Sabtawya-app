@@ -286,6 +286,8 @@ class AppStrings {
   static const noVisitHistory = 'لا يوجد سجل افتقادات بعد';
   static const childBirthdaysTitle = 'أعياد ميلاد المخدومين';
   static const servantBirthdays = 'أعياد ميلاد الخدام';
+  static const childBirthdaysShort = 'المخدومين';
+  static const servantBirthdaysShort = 'الخدام';
   static const attendanceSummary = 'ملخص الحضور';
   static const monthlyBreakdown = 'التفصيل الشهري';
   static const searchChildHint = 'ابحث بالاسم أو الموبايل أو الكود';
