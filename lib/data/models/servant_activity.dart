@@ -142,6 +142,8 @@ class ServantActivitySummary {
     required this.pendingPreps,
     required this.sundaySchoolCount,
     required this.servantMeetingCount,
+    required this.massCount,
+    required this.confessionCount,
   });
 
   final String servantId;
@@ -150,4 +152,6 @@ class ServantActivitySummary {
   final int pendingPreps;
   final int sundaySchoolCount;
   final int servantMeetingCount;
+  final int massCount;
+  final int confessionCount;
 }

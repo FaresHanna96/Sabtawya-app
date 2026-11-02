@@ -430,10 +430,15 @@ class ServantActivityRepository {
       for (final row in attendanceRows) {
         final id = row['servant_id'] as String;
         map.putIfAbsent(id, () => _SummaryBuilder(id, ''));
-        if (row['activity_type'] == 'sunday_school') {
-          map[id]!.sundaySchoolCount++;
-        } else {
-          map[id]!.servantMeetingCount++;
+        switch (row['activity_type'] as String?) {
+          case 'sunday_school':
+            map[id]!.sundaySchoolCount++;
+          case 'servant_meeting':
+            map[id]!.servantMeetingCount++;
+          case 'mass':
+            map[id]!.massCount++;
+          case 'confession':
+            map[id]!.confessionCount++;
         }
       }
 
@@ -466,6 +471,8 @@ class _SummaryBuilder {
   int pendingPreps = 0;
   int sundaySchoolCount = 0;
   int servantMeetingCount = 0;
+  int massCount = 0;
+  int confessionCount = 0;
 
   ServantActivitySummary toSummary() => ServantActivitySummary(
         servantId: servantId,
@@ -474,5 +481,7 @@ class _SummaryBuilder {
         pendingPreps: pendingPreps,
         sundaySchoolCount: sundaySchoolCount,
         servantMeetingCount: servantMeetingCount,
+        massCount: massCount,
+        confessionCount: confessionCount,
       );
 }

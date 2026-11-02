@@ -521,12 +521,16 @@ class _AttendanceTabState extends State<_AttendanceTab>
                     final servant = _servants[index];
                     final ss = _find(servant.id, 'sunday_school');
                     final sm = _find(servant.id, 'servant_meeting');
+                    final mass = _find(servant.id, 'mass');
+                    final conf = _find(servant.id, 'confession');
                     final prep = _findPrep(servant.id);
                     final lp = _find(servant.id, 'lesson_prep');
                     return _BulkServantRow(
                       servant: servant,
                       sundaySchoolPresent: ss != null,
                       servantMeetingPresent: sm != null,
+                      massPresent: mass != null,
+                      confessionPresent: conf != null,
                       prep: prep,
                       lessonPrepManual: lp != null,
                       disabled: _toggling,
@@ -534,6 +538,10 @@ class _AttendanceTabState extends State<_AttendanceTab>
                           _toggle(servant.id, 'sunday_school'),
                       onToggleMeeting: () =>
                           _toggle(servant.id, 'servant_meeting'),
+                      onToggleMass: () =>
+                          _toggle(servant.id, 'mass'),
+                      onToggleConfession: () =>
+                          _toggle(servant.id, 'confession'),
                       onPrep: prep != null
                           ? () => _reviewPrep(prep)
                           : () => _toggle(servant.id, 'lesson_prep'),
@@ -552,11 +560,15 @@ class _BulkServantRow extends StatelessWidget {
     required this.servant,
     required this.sundaySchoolPresent,
     required this.servantMeetingPresent,
+    required this.massPresent,
+    required this.confessionPresent,
     required this.prep,
     required this.lessonPrepManual,
     required this.disabled,
     required this.onToggleSunday,
     required this.onToggleMeeting,
+    required this.onToggleMass,
+    required this.onToggleConfession,
     required this.onPrep,
     required this.onDetail,
   });
@@ -564,11 +576,15 @@ class _BulkServantRow extends StatelessWidget {
   final Profile servant;
   final bool sundaySchoolPresent;
   final bool servantMeetingPresent;
+  final bool massPresent;
+  final bool confessionPresent;
   final LessonPrep? prep;
   final bool lessonPrepManual;
   final bool disabled;
   final VoidCallback onToggleSunday;
   final VoidCallback onToggleMeeting;
+  final VoidCallback onToggleMass;
+  final VoidCallback onToggleConfession;
   final VoidCallback onPrep;
   final VoidCallback onDetail;
 
@@ -613,10 +629,11 @@ class _BulkServantRow extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               // Row 2: chips
-              Row(
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 children: [
                   _PrepChip(prep: prep, manualPresent: lessonPrepManual, disabled: disabled, onTap: onPrep),
-                  const SizedBox(width: 6),
                   _Toggle(
                     label: 'خدمة',
                     icon: Icons.church_outlined,
@@ -624,13 +641,26 @@ class _BulkServantRow extends StatelessWidget {
                     disabled: disabled,
                     onTap: onToggleSunday,
                   ),
-                  const SizedBox(width: 6),
                   _Toggle(
                     label: 'اجتماع',
                     icon: Icons.groups_outlined,
                     present: servantMeetingPresent,
                     disabled: disabled,
                     onTap: onToggleMeeting,
+                  ),
+                  _Toggle(
+                    label: AppStrings.massShort,
+                    icon: Icons.brightness_high_outlined,
+                    present: massPresent,
+                    disabled: disabled,
+                    onTap: onToggleMass,
+                  ),
+                  _Toggle(
+                    label: AppStrings.confessionShort,
+                    icon: Icons.volunteer_activism_outlined,
+                    present: confessionPresent,
+                    disabled: disabled,
+                    onTap: onToggleConfession,
                   ),
                 ],
               ),
@@ -960,6 +990,24 @@ class _ServantCard extends StatelessWidget {
                 pctLabel: _pctLabel(summary.servantMeetingCount),
                 progress: _pctValue(summary.servantMeetingCount),
                 color: AppColors.olive,
+              ),
+              const SizedBox(height: 8),
+              _AttendanceBar(
+                icon: Icons.brightness_high_outlined,
+                label: AppStrings.massShort,
+                count: summary.massCount,
+                pctLabel: _pctLabel(summary.massCount),
+                progress: _pctValue(summary.massCount),
+                color: AppColors.navy,
+              ),
+              const SizedBox(height: 8),
+              _AttendanceBar(
+                icon: Icons.volunteer_activism_outlined,
+                label: AppStrings.confessionShort,
+                count: summary.confessionCount,
+                pctLabel: _pctLabel(summary.confessionCount),
+                progress: _pctValue(summary.confessionCount),
+                color: AppColors.muted,
               ),
             ],
           ),
