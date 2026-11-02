@@ -54,3 +54,6 @@ app.*.map.json
 .vercel
 .env*
 backups/
+
+# Real children data (personal data): applied to the database, kept local only
+supabase/migrations/20261104003_real_children.sql
