@@ -251,19 +251,7 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
                 accent: AppColors.gold,
                 child: Column(
                   children: [
-                    // Only أمين الخدمة may change the picture (the storage
-                    // policy is admin-only); a servant sees it but not the
-                    // change buttons.
-                    if (context.read<SessionController>().isAdmin)
-                      _patronPicker()
-                    else if (widget.existing?.patronPhotoPath != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: PatronAvatar(
-                          photoPath: widget.existing?.patronPhotoPath,
-                          size: 104,
-                        ),
-                      ),
+                    _patronPicker(),
                     TextFormField(
                       controller: _patronName,
                       decoration: const InputDecoration(
