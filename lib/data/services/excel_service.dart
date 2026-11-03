@@ -129,6 +129,7 @@ class ImportRow {
         fatherName: fatherName ?? current.fatherName,
         fatherMobile: fatherMobile ?? current.fatherMobile,
         confessionFather: confessionFather ?? current.confessionFather,
+        isDeacon: current.isDeacon,
         school: school ?? current.school,
         address: address ?? current.address,
         notes: notes ?? current.notes,

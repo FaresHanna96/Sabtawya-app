@@ -67,6 +67,7 @@ class Child {
     this.fatherName,
     this.fatherMobile,
     this.confessionFather,
+    this.isDeacon = false,
     this.school,
     this.address,
     this.notes,
@@ -92,6 +93,9 @@ class Child {
   final String? fatherName;
   final String? fatherMobile;
   final String? confessionFather;
+
+  /// شماس: only asked for boys.
+  final bool isDeacon;
   final String? school;
   final String? address;
   final String? notes;
@@ -139,6 +143,7 @@ class Child {
         fatherName: asTextOrNull(map['father_name']),
         fatherMobile: asTextOrNull(map['father_mobile']),
         confessionFather: asTextOrNull(map['confession_father']),
+        isDeacon: asBool(map['is_deacon']),
         school: asTextOrNull(map['school']),
         address: asTextOrNull(map['address']),
         notes: asTextOrNull(map['notes']),
@@ -167,6 +172,7 @@ class Child {
         'father_name': _nullIfBlank(fatherName),
         'father_mobile': _nullIfBlank(fatherMobile),
         'confession_father': _nullIfBlank(confessionFather),
+        'is_deacon': gender == Gender.boy && isDeacon,
         'school': _nullIfBlank(school),
         'address': _nullIfBlank(address),
         'notes': _nullIfBlank(notes),
@@ -199,6 +205,7 @@ class Child {
     String? fatherName,
     String? fatherMobile,
     String? confessionFather,
+    bool? isDeacon,
     String? school,
     String? address,
     String? notes,
@@ -219,6 +226,7 @@ class Child {
         fatherName: fatherName ?? this.fatherName,
         fatherMobile: fatherMobile ?? this.fatherMobile,
         confessionFather: confessionFather ?? this.confessionFather,
+        isDeacon: isDeacon ?? this.isDeacon,
         school: school ?? this.school,
         address: address ?? this.address,
         notes: notes ?? this.notes,
@@ -253,6 +261,7 @@ class Child {
         fatherName: fatherName,
         fatherMobile: fatherMobile,
         confessionFather: confessionFather,
+        isDeacon: isDeacon,
         school: school,
         address: address,
         notes: notes,

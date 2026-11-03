@@ -66,6 +66,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
   /// The row inserted by an earlier save attempt in this form, if any.
   Child? _created;
   Gender _gender = Gender.boy;
+  bool _isDeacon = false;
   DateTime? _birthDate;
 
   /// A photo chosen but not uploaded yet: the upload needs the child id, which
@@ -79,6 +80,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
     super.initState();
     _classId = widget.child?.classId ?? widget.initialClassId;
     _gender = widget.child?.gender ?? Gender.boy;
+    _isDeacon = widget.child?.isDeacon ?? false;
     _birthDate = widget.child?.birthDate;
   }
 
@@ -230,6 +232,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       fatherName: _fatherName.text,
       fatherMobile: _fatherMobile.text,
       confessionFather: _confessionFather.text,
+      isDeacon: _gender == Gender.boy && _isDeacon,
       school: _school.text,
       address: _address.text,
       notes: _notes.text,
@@ -385,6 +388,16 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                     label: AppStrings.confessionFather,
                     icon: Icons.church_outlined,
                   ),
+                  if (_gender == Gender.boy)
+                    CheckboxListTile(
+                      value: _isDeacon,
+                      onChanged: (value) =>
+                          setState(() => _isDeacon = value ?? false),
+                      title: const Text(AppStrings.deacon),
+                      secondary: const Icon(Icons.volunteer_activism_outlined),
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
                 ]),
                 _group(AppStrings.schoolInfo, [
                   _field(

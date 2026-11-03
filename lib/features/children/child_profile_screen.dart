@@ -255,10 +255,20 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 title: AppStrings.churchInfo,
                 icon: Icons.church_rounded,
                 accent: AppColors.maroon,
-                child: InfoRow(
-                  label: AppStrings.confessionFather,
-                  value: child.confessionFather,
-                  icon: Icons.church_outlined,
+                child: Column(
+                  children: [
+                    InfoRow(
+                      label: AppStrings.confessionFather,
+                      value: child.confessionFather,
+                      icon: Icons.church_outlined,
+                    ),
+                    if (child.gender == Gender.boy)
+                      InfoRow(
+                        label: AppStrings.deacon,
+                        value: child.isDeacon ? AppStrings.yes : AppStrings.no,
+                        icon: Icons.volunteer_activism_outlined,
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),

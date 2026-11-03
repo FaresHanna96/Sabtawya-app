@@ -32,6 +32,7 @@ class AppStrings {
   static const active = 'نشط';
   static const inactive = 'غير نشط';
   static const optional = 'اختياري';
+  static const deacon = 'شماس';
   static const yes = 'نعم';
   static const no = 'لا';
   static const total = 'الإجمالي';
