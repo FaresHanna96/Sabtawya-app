@@ -153,7 +153,9 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<SessionController>().isAdmin;
+    final session = context.watch<SessionController>();
+    final isAdmin = session.isAdmin;
+    final canEdit = !session.isGeneralServant;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.childProfile)),
@@ -311,12 +313,14 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _VisitSection(
-                key: ValueKey(child.id),
-                child: child,
-                onSaved: _reload,
-              ),
-              const SizedBox(height: 16),
+              if (canEdit) ...[
+                _VisitSection(
+                  key: ValueKey(child.id),
+                  child: child,
+                  onSaved: _reload,
+                ),
+                const SizedBox(height: 16),
+              ],
               _visitHistoryCard(data.visitLogs),
               const SizedBox(height: 16),
               _lastActivityCard(data.lastActivity),
@@ -327,7 +331,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               _historyCard(data),
               const SizedBox(height: 20),
-              _actions(child, data.className, isAdmin),
+              if (canEdit) _actions(child, data.className, isAdmin),
               const SizedBox(height: 24),
             ],
           );

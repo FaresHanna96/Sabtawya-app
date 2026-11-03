@@ -105,7 +105,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
           ],
         ),
       ),
-      floatingActionButton: (isAdmin || isGeneralServant)
+      floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
               heroTag: null,
               onPressed: _add,
@@ -131,7 +131,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                         ? AppStrings.noClasses
                         : AppStrings.noClassesAssigned,
                     body: (isAdmin || isGeneralServant) ? null : AppStrings.noClassesAssignedBody,
-                    action: (isAdmin || isGeneralServant)
+                    action: isAdmin
                         ? FilledButton.icon(
                             onPressed: _add,
                             icon: const Icon(Icons.add),
@@ -144,8 +144,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
             }
 
             return ListView.separated(
-              padding: EdgeInsets.fromLTRB(
-                16, 12, 16, (isAdmin || isGeneralServant) ? 96 : 24),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, isAdmin ? 96 : 24),
               itemCount: classes.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) => FadeSlideIn(

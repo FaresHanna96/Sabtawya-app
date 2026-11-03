@@ -80,18 +80,22 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final classes = context.watch<SessionController>().myClasses;
+    final session = context.watch<SessionController>();
+    final classes = session.myClasses;
+    // خادم عام sees every child but does not add, edit or import them.
+    final canEdit = !session.isGeneralServant;
 
     return Scaffold(
       appBar: widget.showAppBar
           ? AppBar(
               title: const Text(AppStrings.childrenTitle),
               actions: [
-                IconButton(
-                  tooltip: AppStrings.importChildren,
-                  onPressed: _importChildren,
-                  icon: const Icon(Icons.upload_file),
-                ),
+                if (canEdit)
+                  IconButton(
+                    tooltip: AppStrings.importChildren,
+                    onPressed: _importChildren,
+                    icon: const Icon(Icons.upload_file),
+                  ),
               ],
             )
           : null,
@@ -154,7 +158,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
           },
         ),
       ),
-      floatingActionButton: classes.isEmpty
+      floatingActionButton: (classes.isEmpty || !canEdit)
           ? null
           : FloatingActionButton.extended(
               heroTag: null,

@@ -190,7 +190,6 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   // edit it (the database allows exactly that) but not archive
                   // or delete it. Without any item the menu is not shown.
                   if (isAdmin ||
-                      isGeneralServant ||
                       session.myClasses
                           .any((c) => c.classId == overview.classId))
                     PopupMenuButton<_ClassAction>(
@@ -248,11 +247,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                             ),
                           ),
                         ),
-                        TextButton.icon(
-                          onPressed: _addChild,
-                          icon: const Icon(Icons.person_add_alt, size: 18),
-                          label: const Text(AppStrings.addChild),
-                        ),
+                        if (!isGeneralServant)
+                          TextButton.icon(
+                            onPressed: _addChild,
+                            icon: const Icon(Icons.person_add_alt, size: 18),
+                            label: const Text(AppStrings.addChild),
+                          ),
                       ],
                     ),
                   ],

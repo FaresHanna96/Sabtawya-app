@@ -306,6 +306,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       GreetingBanner(name: name, subtitle: yearName);
 
   Widget _quickActions() {
+    // خادم عام sees everything but does not add or import children.
+    final canEditChildren = !context.read<SessionController>().isGeneralServant;
     return SectionCard(
       title: AppStrings.quickActions,
       icon: Icons.bolt_rounded,
@@ -319,16 +321,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             label: AppStrings.attendanceTitle,
             onTap: () => _push(const AttendanceScreen(showAppBar: true)),
           ),
-          _ActionChip(
-            icon: Icons.person_add_alt,
-            label: AppStrings.addChild,
-            onTap: () => _push(const ChildFormScreen()),
-          ),
-          _ActionChip(
-            icon: Icons.upload_file,
-            label: AppStrings.importChildren,
-            onTap: () => _push(const ImportChildrenScreen()),
-          ),
+          if (canEditChildren) ...[
+            _ActionChip(
+              icon: Icons.person_add_alt,
+              label: AppStrings.addChild,
+              onTap: () => _push(const ChildFormScreen()),
+            ),
+            _ActionChip(
+              icon: Icons.upload_file,
+              label: AppStrings.importChildren,
+              onTap: () => _push(const ImportChildrenScreen()),
+            ),
+          ],
           _ActionChip(
             icon: Icons.calendar_month_outlined,
             label: AppStrings.calendarTitle,
