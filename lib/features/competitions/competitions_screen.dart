@@ -33,7 +33,9 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<SessionController>().isAdmin;
+    final session = context.watch<SessionController>();
+    // أمين الخدمة and خادم عام add and edit competitions; only the admin deletes.
+    final canManage = session.isAdmin || session.isGeneralServant;
 
     return Scaffold(
       appBar: AppBar(
@@ -53,7 +55,7 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
         child: TabBarView(
           controller: _tabs,
           children: [
-            _ListTab(isAdmin: isAdmin),
+            _ListTab(canManage: canManage, canDelete: session.isAdmin),
             const _ScoresTab(),
           ],
         ),
@@ -67,9 +69,10 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
 // ---------------------------------------------------------------------------
 
 class _ListTab extends StatefulWidget {
-  const _ListTab({required this.isAdmin});
+  const _ListTab({required this.canManage, required this.canDelete});
 
-  final bool isAdmin;
+  final bool canManage;
+  final bool canDelete;
 
   @override
   State<_ListTab> createState() => _ListTabState();
@@ -162,7 +165,8 @@ class _ListTabState extends State<_ListTab> with AutomaticKeepAliveClientMixin {
                   index: index,
                   child: _CompetitionTile(
                     competition: c,
-                    isAdmin: widget.isAdmin,
+                    canManage: widget.canManage,
+                    canDelete: widget.canDelete,
                     onTap: () => _openDetail(c),
                     onEdit: () => _edit(c),
                     onDelete: () => _delete(c),
@@ -172,7 +176,7 @@ class _ListTabState extends State<_ListTab> with AutomaticKeepAliveClientMixin {
             );
           },
         ),
-        if (widget.isAdmin)
+        if (widget.canManage)
           Positioned(
             bottom: 24,
             left: 16,
@@ -294,14 +298,16 @@ class _ScoresTab extends StatelessWidget {
 class _CompetitionTile extends StatelessWidget {
   const _CompetitionTile({
     required this.competition,
-    required this.isAdmin,
+    required this.canManage,
+    required this.canDelete,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
   });
 
   final Competition competition;
-  final bool isAdmin;
+  final bool canManage;
+  final bool canDelete;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -366,7 +372,7 @@ class _CompetitionTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (isAdmin) ...[
+              if (canManage) ...[
                 const SizedBox(width: 4),
                 PopupMenuButton<_Action>(
                   onSelected: (action) {
@@ -382,20 +388,21 @@ class _CompetitionTile extends StatelessWidget {
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
-                    const PopupMenuItem(
-                      value: _Action.delete,
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.delete_outline,
-                          color: AppColors.danger,
+                    if (canDelete)
+                      const PopupMenuItem(
+                        value: _Action.delete,
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.delete_outline,
+                            color: AppColors.danger,
+                          ),
+                          title: Text(
+                            AppStrings.deleteCompetition,
+                            style: TextStyle(color: AppColors.danger),
+                          ),
+                          contentPadding: EdgeInsets.zero,
                         ),
-                        title: Text(
-                          AppStrings.deleteCompetition,
-                          style: TextStyle(color: AppColors.danger),
-                        ),
-                        contentPadding: EdgeInsets.zero,
                       ),
-                    ),
                   ],
                 ),
               ],
