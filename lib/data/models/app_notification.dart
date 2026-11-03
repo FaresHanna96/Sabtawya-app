@@ -9,6 +9,7 @@ class AppNotification {
     required this.body,
     required this.createdAt,
     this.readAt,
+    this.refId,
   });
 
   final String id;
@@ -20,6 +21,9 @@ class AppNotification {
   final DateTime createdAt;
   final DateTime? readAt;
 
+  /// What it is about: a servant, a child or a class, depending on [kind].
+  final String? refId;
+
   bool get isRead => readAt != null;
 
   factory AppNotification.fromMap(Map<String, dynamic> map) => AppNotification(
@@ -29,5 +33,6 @@ class AppNotification {
         body: asText(map['body']),
         createdAt: asDate(map['created_at']).toLocal(),
         readAt: asDateOrNull(map['read_at']),
+        refId: asTextOrNull(map['ref_id']),
       );
 }

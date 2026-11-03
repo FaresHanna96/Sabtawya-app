@@ -7,7 +7,13 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/repositories/notification_repository.dart';
+import '../../data/repositories/servant_repository.dart';
 import '../calendar/calendar_screen.dart';
+import '../children/child_profile_screen.dart';
+import '../classes/class_detail_screen.dart';
+import '../servant_activities/admin_servant_activities_screen.dart';
+import '../servant_activities/my_activities_screen.dart';
+import '../servant_activities/servant_activity_detail_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
 import '../lessons/lesson_schedule_screen.dart';
@@ -35,20 +41,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       } catch (_) {}
     }
     if (!mounted) return;
-    final screen = switch (n.kind) {
+    final ref = n.refId;
+    final Widget? screen = switch (n.kind) {
       'signup' => const PendingRequestsScreen(),
       'lesson_changed' => const LessonScheduleScreen(),
       'birthdays' => const CalendarScreen(),
       'event_added' => const EventsScreen(),
       'competition_added' => const CompetitionsScreen(),
+      'child_added' when ref != null => ChildProfileScreen(childId: ref),
+      'attendance_taken' || 'class_assigned' when ref != null =>
+        ClassDetailScreen(classId: ref),
+      'prep_submitted' => (ref == null ? null : await _servantDetail(ref)) ??
+          const AdminServantActivitiesScreen(),
+      'prep_reviewed' => const MyActivitiesScreen(showAppBar: true),
       _ => null,
     };
+    if (!mounted) return;
     if (screen != null) {
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(builder: (_) => screen),
       );
     }
     await _reload();
+  }
+
+  /// The activity page of the servant a prep notification is about.
+  Future<Widget?> _servantDetail(String servantId) async {
+    try {
+      final servants = await const ServantRepository().servants();
+      final match = servants.where((s) => s.id == servantId);
+      if (match.isEmpty) return null;
+      return ServantActivityDetailScreen(
+        servantId: servantId,
+        servantName: match.first.fullName,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _markAll() async {

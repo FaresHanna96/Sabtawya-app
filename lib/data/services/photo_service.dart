@@ -60,9 +60,15 @@ class PhotoService {
         allowedExtensions: ['pdf'],
       );
       if (files.isEmpty) return null;
-      final path = files.single.path;
-      if (path == null) return null;
-      return XFile(path);
+      // Read through the picker rather than a path: on the web there is no
+      // path, and on Android the file often sits behind a content URI.
+      final file = files.first;
+      final bytes = await file.readAsBytes();
+      return XFile.fromData(
+        Uint8List.fromList(bytes),
+        name: file.name,
+        mimeType: 'application/pdf',
+      );
     } catch (e) {
       throw AppFailure.from(e);
     }
