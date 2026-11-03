@@ -60,9 +60,14 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
   }
 
   Future<void> _pickPdf() async {
-    final file = await PhotoService.pickPdf();
-    if (file == null || !mounted) return;
-    setState(() => _pickedPdfs.add(file));
+    try {
+      final file = await PhotoService.pickPdf();
+      if (file == null || !mounted) return;
+      setState(() => _pickedPdfs.add(file));
+    } catch (e) {
+      // Without this a failed pick was silent; show what went wrong.
+      if (mounted) Ui.error(context, e);
+    }
   }
 
   void _removePickedImage(int index) => setState(() {

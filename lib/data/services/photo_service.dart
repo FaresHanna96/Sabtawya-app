@@ -70,7 +70,9 @@ class PhotoService {
         mimeType: 'application/pdf',
       );
     } catch (e) {
-      throw AppFailure.from(e);
+      // AppFailure.from would turn this into a generic message; keep the cause
+      // visible so a failing picker can be diagnosed.
+      throw AppFailure('تعذّر اختيار ملف PDF: $e', cause: e);
     }
   }
 
