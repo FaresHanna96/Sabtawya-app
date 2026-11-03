@@ -177,6 +177,9 @@ class AppStrings {
   static const roleServantFemale = 'خادمة';
   static const roleGeneralServant = 'خادم عام';
   static const pendingRequests = 'طلبات الانضمام';
+  static const notificationsTitle = 'الإشعارات';
+  static const noNotifications = 'لا توجد إشعارات';
+  static const markAllRead = 'تعليم الكل كمقروء';
   static const pendingRequestsBody =
       'طلبات تحتاج موافقتك قبل أن يرى أصحابها أي بيانات.';
   static const noPendingRequests = 'لا توجد طلبات انضمام';

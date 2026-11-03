@@ -16,7 +16,7 @@ import '../dashboard/servant_dashboard_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../servant_activities/admin_servant_activities_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
-import '../servants/pending_requests_bell.dart';
+import '../notifications/notifications_bell.dart';
 import 'more_screen.dart';
 
 /// The signed-in shell: five tabs, with the dashboard and the labels adapting
@@ -95,7 +95,7 @@ class _HomeShellState extends State<HomeShell> {
             ? AppStrings.appTitle
             : current.label),
         actions: [
-          if (isAdmin) const PendingRequestsBell(),
+          const NotificationsBell(),
           if (_index == 2 && isAdmin)
             IconButton(
               tooltip: AppStrings.importChildren,

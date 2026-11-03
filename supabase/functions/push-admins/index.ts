@@ -135,9 +135,34 @@ async function announceDecision(profileId: string): Promise<Response> {
   return new Response(JSON.stringify({ sent }), { status: 200 });
 }
 
+// Pushes one stored notification to its user's devices, once.
+async function pushNotification(id: string): Promise<Response> {
+  const { data: n } = await supabase
+    .from('notifications')
+    .update({ pushed_at: new Date().toISOString() })
+    .eq('id', id)
+    .is('pushed_at', null)
+    .select('user_id, title, body')
+    .maybeSingle();
+  if (!n) return new Response('nothing to announce', { status: 200 });
+
+  const { data: tokens } = await supabase
+    .from('device_tokens')
+    .select('token')
+    .eq('user_id', n.user_id);
+  if (!tokens || tokens.length === 0) {
+    return new Response('no devices', { status: 200 });
+  }
+  const sent = await sendPush(tokens, n.title, n.body ?? '');
+  return new Response(JSON.stringify({ sent }), { status: 200 });
+}
+
 serve(async (req) => {
   try {
-    const { profile_id, kind } = await req.json();
+    const { profile_id, kind, notification_id } = await req.json();
+    if (kind === 'notification' && notification_id) {
+      return await pushNotification(notification_id);
+    }
     if (!profile_id) return new Response('missing profile_id', { status: 400 });
     if (kind === 'decision') return await announceDecision(profile_id);
 
