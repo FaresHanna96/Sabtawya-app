@@ -695,6 +695,10 @@ class ExcelService {
       _text('% مدارس الأحد'),
       _text('حضور اجتماع الخدمة'),
       _text('% اجتماع الخدمة'),
+      _text('حضور القداس'),
+      _text('% القداس'),
+      _text('الاعتراف'),
+      _text('% الاعتراف'),
     ]);
 
     String pct(int count) =>
@@ -711,6 +715,10 @@ class ExcelService {
         _text(pct(s.sundaySchoolCount)),
         IntCellValue(s.servantMeetingCount),
         _text(pct(s.servantMeetingCount)),
+        IntCellValue(s.massCount),
+        _text(pct(s.massCount)),
+        IntCellValue(s.confessionCount),
+        _text(pct(s.confessionCount)),
       ]);
     }
     return _encode(book);
@@ -727,6 +735,8 @@ class ExcelService {
       _text('اسم الخادم'),
       _text('حضور مدارس الأحد'),
       _text('حضور اجتماع الخدمة'),
+      _text('حضور القداس'),
+      _text('الاعتراف'),
       _text('تحضير الدرس'),
     ]);
 
@@ -735,6 +745,8 @@ class ExcelService {
         _text(r.servantName),
         IntCellValue(r.sundaySchool),
         IntCellValue(r.servantMeeting),
+        IntCellValue(r.mass),
+        IntCellValue(r.confession),
         IntCellValue(r.prepsCount),
       ]);
     }

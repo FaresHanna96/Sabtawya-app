@@ -124,6 +124,8 @@ class ServantMonthlyReport {
     required this.sundaySchool,
     required this.servantMeeting,
     required this.prepsCount,
+    this.mass = 0,
+    this.confession = 0,
   });
 
   final String servantId;
@@ -131,6 +133,8 @@ class ServantMonthlyReport {
   final int sundaySchool;
   final int servantMeeting;
   final int prepsCount;
+  final int mass;
+  final int confession;
 }
 
 /// Summary data used on the admin servant list.

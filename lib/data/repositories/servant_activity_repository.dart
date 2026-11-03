@@ -351,10 +351,15 @@ class ServantActivityRepository {
         if (builder.servantName.isEmpty && name.isNotEmpty) {
           builder.servantName = name;
         }
-        if (row['activity_type'] == 'sunday_school') {
-          builder.sundaySchool++;
-        } else {
-          builder.servantMeeting++;
+        switch (row['activity_type']) {
+          case 'sunday_school':
+            builder.sundaySchool++;
+          case 'servant_meeting':
+            builder.servantMeeting++;
+          case 'mass':
+            builder.mass++;
+          case 'confession':
+            builder.confession++;
         }
       }
 
@@ -374,6 +379,8 @@ class ServantActivityRepository {
               sundaySchool: b.sundaySchool,
               servantMeeting: b.servantMeeting,
               prepsCount: b.prepsCount,
+              mass: b.mass,
+              confession: b.confession,
             ),
           )
           .toList()
@@ -459,6 +466,8 @@ class _MonthBuilder {
   String servantName;
   int sundaySchool = 0;
   int servantMeeting = 0;
+  int mass = 0;
+  int confession = 0;
   int prepsCount = 0;
 }
 

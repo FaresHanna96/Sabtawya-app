@@ -70,6 +70,10 @@ class _ServantActivitiesReportScreenState
                 data.summaries.fold(0, (s, e) => s + e.sundaySchoolCount);
             final totalMeeting =
                 data.summaries.fold(0, (s, e) => s + e.servantMeetingCount);
+            final totalMass =
+                data.summaries.fold(0, (s, e) => s + e.massCount);
+            final totalConfession =
+                data.summaries.fold(0, (s, e) => s + e.confessionCount);
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
@@ -131,6 +135,28 @@ class _ServantActivitiesReportScreenState
                                 value: '$totalMeeting',
                                 color: AppColors.success,
                                 icon: Icons.groups_outlined,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: StatTile(
+                                label: AppStrings.massShort,
+                                value: '$totalMass',
+                                color: AppColors.success,
+                                icon: Icons.brightness_high_outlined,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: StatTile(
+                                label: AppStrings.confessionShort,
+                                value: '$totalConfession',
+                                color: AppColors.success,
+                                icon: Icons.volunteer_activism_outlined,
                               ),
                             ),
                           ],
@@ -285,6 +311,18 @@ class _ServantReportRow extends StatelessWidget {
                   Icons.groups_outlined,
                   AppStrings.servantMeetingShort,
                   '${summary.servantMeetingCount} (${_pct(summary.servantMeetingCount)})',
+                  AppColors.success,
+                ),
+                _chip(
+                  Icons.brightness_high_outlined,
+                  AppStrings.massShort,
+                  '${summary.massCount} (${_pct(summary.massCount)})',
+                  AppColors.success,
+                ),
+                _chip(
+                  Icons.volunteer_activism_outlined,
+                  AppStrings.confessionShort,
+                  '${summary.confessionCount} (${_pct(summary.confessionCount)})',
                   AppColors.success,
                 ),
               ],
