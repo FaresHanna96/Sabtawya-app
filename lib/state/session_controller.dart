@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/services/push_service.dart';
 import '../core/utils/app_failure.dart';
 import '../data/models/attendance.dart';
+import '../data/models/child.dart';
 import '../data/models/profile.dart';
 import '../data/models/school_class.dart';
 import '../data/repositories/attendance_repository.dart';
@@ -222,6 +223,7 @@ class SessionController extends ChangeNotifier {
     required String password,
     required String fullName,
     required AppRole role,
+    Gender? gender,
     String? mobile,
     DateTime? birthDate,
   }) =>
@@ -230,6 +232,7 @@ class SessionController extends ChangeNotifier {
         password: password,
         fullName: fullName,
         role: role,
+        gender: gender,
         mobile: mobile,
         birthDate: birthDate,
       );

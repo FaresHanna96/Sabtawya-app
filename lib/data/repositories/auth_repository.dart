@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/utils/app_failure.dart';
+import '../models/child.dart';
 import '../models/profile.dart';
 import '../supabase/db.dart';
 
@@ -38,6 +39,7 @@ class AuthRepository {
     required String password,
     required String fullName,
     required AppRole role,
+    Gender? gender,
     String? mobile,
     DateTime? birthDate,
   }) async {
@@ -51,6 +53,7 @@ class AuthRepository {
         data: <String, dynamic>{
           'full_name': fullName.trim(),
           'requested_role': role.wire,
+          if (gender != null) 'gender': gender.wire,
           if (mobile != null && mobile.trim().isNotEmpty)
             'mobile': mobile.trim(),
           if (birthDate != null)

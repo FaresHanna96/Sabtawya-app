@@ -90,6 +90,7 @@ class PendingServant {
     this.email,
     this.mobile,
     this.gender,
+    this.role = AppRole.servant,
   });
 
   final String id;
@@ -98,8 +99,9 @@ class PendingServant {
   final String? email;
   final String? mobile;
   final Gender? gender;
+  final AppRole role;
 
-  String get roleLabel => AppRole.servant.labelFor(gender);
+  String get roleLabel => role.labelFor(gender);
 
   factory PendingServant.fromMap(Map<String, dynamic> map) => PendingServant(
         id: asText(map['id']),
@@ -108,6 +110,7 @@ class PendingServant {
         email: asTextOrNull(map['email']),
         mobile: asTextOrNull(map['mobile']),
         gender: Gender.tryParse(map['gender']),
+        role: AppRole.fromWire(map['role']),
       );
 }
 

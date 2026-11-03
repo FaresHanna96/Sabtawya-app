@@ -544,15 +544,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (_sessions.isEmpty) return;
 
     final today = AppDateUtils.dateOnly(DateTime.now());
+    // Oldest first, opened on the selected Saturday (or the one nearest today).
+    final ordered = [..._sessions]
+      ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
+    var focus = ordered.indexWhere(
+      (s) => _date != null && AppDateUtils.isSameDay(s.sessionDate, _date!),
+    );
+    if (focus < 0) {
+      focus = ordered.indexWhere((s) => !s.sessionDate.isBefore(today));
+    }
+    if (focus < 0) focus = ordered.length - 1;
+    const tileHeight = 56.0;
+    final controller = ScrollController(
+      initialScrollOffset: (focus * tileHeight - tileHeight * 2)
+          .clamp(0.0, double.infinity),
+    );
+
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
         child: ListView.builder(
+          controller: controller,
           shrinkWrap: true,
-          itemCount: _sessions.length,
+          itemExtent: tileHeight,
+          itemCount: ordered.length,
           itemBuilder: (context, index) {
-            final session = _sessions[index];
+            final session = ordered[index];
             final selected = _date != null &&
                 AppDateUtils.isSameDay(session.sessionDate, _date!);
             final future = session.sessionDate.isAfter(today);
@@ -577,6 +595,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
     );
 
+    controller.dispose();
     if (picked != null) await _goToDate(picked);
   }
 }

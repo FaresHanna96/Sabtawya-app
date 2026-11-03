@@ -7,12 +7,26 @@ import '../../core/widgets/motion.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
+import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../state/session_controller.dart';
 import 'login_screen.dart';
 
-/// Open sign-up for a servant. The role is never sent: the database creates
-/// an inactive servant profile, and أمين الخدمة accepts or rejects it.
+/// What a person signs up as. خادم and خادمة are the same role with a different
+/// gender (only the wording differs); خادم عام is its own role.
+enum _SignUpType {
+  servant(AppRole.servant, Gender.boy),
+  servantFemale(AppRole.servant, Gender.girl),
+  general(AppRole.generalServant, null);
+
+  const _SignUpType(this.role, this.gender);
+
+  final AppRole role;
+  final Gender? gender;
+}
+
+/// Open sign-up for a servant. The database creates an inactive profile with
+/// the requested role (never admin), and أمين الخدمة accepts or rejects it.
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -28,7 +42,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
-  AppRole _role = AppRole.servant;
+  _SignUpType _type = _SignUpType.servant;
   DateTime? _birthDate;
   bool _obscure = true;
   bool _busy = false;
@@ -53,7 +67,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             email: _emailController.text,
             password: _passwordController.text,
             fullName: _nameController.text,
-            role: _role,
+            role: _type.role,
+            gender: _type.gender,
             mobile: _mobileController.text,
             birthDate: _birthDate,
           );
@@ -131,21 +146,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         labelText: AppStrings.role,
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
-                      child: SegmentedButton<AppRole>(
+                      child: SegmentedButton<_SignUpType>(
                         segments: const [
-                          ButtonSegment<AppRole>(
-                            value: AppRole.servant,
+                          ButtonSegment<_SignUpType>(
+                            value: _SignUpType.servant,
                             label: Text(AppStrings.roleServant),
                           ),
-                          ButtonSegment<AppRole>(
-                            value: AppRole.generalServant,
+                          ButtonSegment<_SignUpType>(
+                            value: _SignUpType.servantFemale,
+                            label: Text(AppStrings.roleServantFemale),
+                          ),
+                          ButtonSegment<_SignUpType>(
+                            value: _SignUpType.general,
                             label: Text(AppStrings.roleGeneralServant),
                           ),
                         ],
-                        selected: <AppRole>{_role},
+                        selected: <_SignUpType>{_type},
                         showSelectedIcon: false,
                         onSelectionChanged: (selection) =>
-                            setState(() => _role = selection.first),
+                            setState(() => _type = selection.first),
                       ),
                     ),
                     const SizedBox(height: 14),
