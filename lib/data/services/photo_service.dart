@@ -8,8 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_failure.dart';
 import '../supabase/db.dart';
-import 'web_picker_options_stub.dart'
-    if (dart.library.js_interop) 'web_picker_options_web.dart';
+import 'web_pdf_picker_stub.dart'
+    if (dart.library.js_interop) 'web_pdf_picker_web.dart';
 
 /// Photos stored in a private bucket: children, and class patron saints.
 ///
@@ -59,13 +59,19 @@ class PhotoService {
   /// Picks a PDF file. Returns null when the user cancels.
   static Future<XFile?> pickPdf() async {
     try {
+      if (kIsWeb) {
+        // A plain input, like the photo picker: file_picker's web input made
+        // Safari on iPhone reload the page.
+        final picked = await pickPdfInBrowser();
+        if (picked != null && !picked.name.toLowerCase().endsWith('.pdf')) {
+          throw AppFailure(AppStrings.pickAPdfFile);
+        }
+        return picked;
+      }
+
       final files = await FilePicker.pickFiles(
-        // Safari on iPhone is picky about the `accept` filter the picker builds
-        // (" .pdf"), so on the web the filter is dropped and the extension is
-        // checked after picking.
-        type: kIsWeb ? FileType.any : FileType.custom,
-        allowedExtensions: kIsWeb ? null : ['pdf'],
-        webOptions: pdfWebOptions(),
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
       );
       if (files.isEmpty) return null;
       // Read through the picker rather than a path: on the web there is no

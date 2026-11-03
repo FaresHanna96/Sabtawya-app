@@ -154,7 +154,7 @@ packages:
     source: hosted
     version: "3.1.2"
   cross_file:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: cross_file
       sha256: f141ea4f277af142a0356955707f6556f37b03947d39d55585981a06ca437bd6
@@ -274,7 +274,7 @@ packages:
     source: hosted
     version: "4.2.0"
   file_picker_web:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: file_picker_web
       sha256: a2288008280aabe371aff029466b3405e60838e0a1d714767488c59b926c8b8c
@@ -1083,7 +1083,7 @@ packages:
     source: hosted
     version: "15.4.0"
   web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: web
       sha256: e119e82ac4795c7925103b7cf3768191f33941b99e7ccffbd6c645201d9f606b
