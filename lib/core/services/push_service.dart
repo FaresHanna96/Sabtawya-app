@@ -14,11 +14,11 @@ class PushService {
   /// Bumped when a push arrives while the app is open, so the bell can refresh.
   final ValueNotifier<int> received = ValueNotifier<int>(0);
 
-  bool _started = false;
+  bool _listening = false;
 
+  /// Registers this device for the signed-in user. Safe to call after every
+  /// sign-in: the token is re-attached to whoever is using the device now.
   Future<void> registerDevice() async {
-    if (_started) return;
-    _started = true;
     try {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(options: DefaultFirebaseOptions.current);
@@ -32,23 +32,22 @@ class PushService {
       );
       if (token != null) await _save(token);
 
-      messaging.onTokenRefresh.listen(_save);
-      FirebaseMessaging.onMessage.listen((_) => received.value++);
+      if (!_listening) {
+        _listening = true;
+        messaging.onTokenRefresh.listen(_save);
+        FirebaseMessaging.onMessage.listen((_) => received.value++);
+      }
     } catch (e) {
       // Push is a convenience; the app works without it.
       debugPrint('push registration skipped: $e');
-      _started = false;
     }
   }
 
   Future<void> _save(String token) async {
-    final user = Db.client.auth.currentUser;
-    if (user == null) return;
-    await Db.client.from('device_tokens').upsert({
-      'token': token,
-      'user_id': user.id,
-      'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }, onConflict: 'token');
+    if (Db.client.auth.currentUser == null) return;
+    await Db.client.rpc('register_device_token', params: {
+      'p_token': token,
+      'p_platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
+    });
   }
 }

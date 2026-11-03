@@ -24,7 +24,6 @@ class _PendingRequestsBellState extends State<PendingRequestsBell> {
     super.initState();
     _load();
     PushService.instance.received.addListener(_load);
-    PushService.instance.registerDevice();
   }
 
   @override

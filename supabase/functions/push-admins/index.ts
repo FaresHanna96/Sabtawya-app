@@ -64,10 +64,82 @@ async function accessToken(): Promise<string> {
   return json.access_token as string;
 }
 
+async function sendPush(
+  tokens: { token: string }[],
+  title: string,
+  body: string,
+): Promise<number> {
+  const bearer = await accessToken();
+  const url =
+    `https://fcm.googleapis.com/v1/projects/${SERVICE_ACCOUNT.project_id}/messages:send`;
+  let sent = 0;
+  for (const { token } of tokens) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${bearer}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: {
+          token,
+          notification: { title, body },
+          webpush: { fcm_options: { link: '/' } },
+        },
+      }),
+    });
+    if (res.ok) {
+      sent++;
+    } else if (res.status === 404 || res.status === 400) {
+      // The device is gone; forget its token.
+      await supabase.from('device_tokens').delete().eq('token', token);
+    }
+  }
+  return sent;
+}
+
+// The admin decided on a sign-up: tell the servant who asked.
+async function announceDecision(profileId: string): Promise<Response> {
+  const { data: p } = await supabase
+    .from('profiles')
+    .select('full_name, is_active, rejected_at, push_decided_at')
+    .eq('id', profileId)
+    .maybeSingle();
+  if (!p || p.push_decided_at || (!p.is_active && !p.rejected_at)) {
+    return new Response('nothing to announce', { status: 200 });
+  }
+  const { data: claimed } = await supabase
+    .from('profiles')
+    .update({ push_decided_at: new Date().toISOString() })
+    .eq('id', profileId)
+    .is('push_decided_at', null)
+    .select('id')
+    .maybeSingle();
+  if (!claimed) return new Response('nothing to announce', { status: 200 });
+
+  const { data: tokens } = await supabase
+    .from('device_tokens')
+    .select('token')
+    .eq('user_id', profileId);
+  if (!tokens || tokens.length === 0) {
+    return new Response('no devices', { status: 200 });
+  }
+  const accepted = p.is_active && !p.rejected_at;
+  const sent = await sendPush(
+    tokens,
+    accepted ? 'تم قبول طلبك' : 'بخصوص طلب الانضمام',
+    accepted
+      ? 'تمت الموافقة على طلب انضمامك، يمكنك الآن تسجيل الدخول'
+      : 'لم يتم قبول طلب انضمامك، تواصل مع أمين الخدمة',
+  );
+  return new Response(JSON.stringify({ sent }), { status: 200 });
+}
+
 serve(async (req) => {
   try {
-    const { profile_id } = await req.json();
+    const { profile_id, kind } = await req.json();
     if (!profile_id) return new Response('missing profile_id', { status: 400 });
+    if (kind === 'decision') return await announceDecision(profile_id);
 
     // Claim the announcement: only a still-pending, not-yet-announced sign-up.
     const { data: claimed } = await supabase
@@ -98,36 +170,11 @@ serve(async (req) => {
       return new Response('no devices', { status: 200 });
     }
 
-    const bearer = await accessToken();
-    const url =
-      `https://fcm.googleapis.com/v1/projects/${SERVICE_ACCOUNT.project_id}/messages:send`;
-
-    let sent = 0;
-    for (const { token } of tokens) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${bearer}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: {
-            token,
-            notification: {
-              title: 'طلب انضمام جديد',
-              body: `${claimed.full_name} يطلب الانضمام للخدمة`,
-            },
-            webpush: { fcm_options: { link: '/' } },
-          },
-        }),
-      });
-      if (res.ok) {
-        sent++;
-      } else if (res.status === 404 || res.status === 400) {
-        // The device is gone; forget its token.
-        await supabase.from('device_tokens').delete().eq('token', token);
-      }
-    }
+    const sent = await sendPush(
+      tokens,
+      'طلب انضمام جديد',
+      `${claimed.full_name} يطلب الانضمام للخدمة`,
+    );
     return new Response(JSON.stringify({ sent }), { status: 200 });
   } catch (e) {
     return new Response(String(e), { status: 500 });

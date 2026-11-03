@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/services/push_service.dart';
 import '../core/utils/app_failure.dart';
 import '../data/models/attendance.dart';
 import '../data/models/profile.dart';
@@ -45,6 +46,15 @@ class SessionController extends ChangeNotifier {
       _onAuthChanged,
       onError: (Object error) => _fail(error),
     );
+    PushService.instance.received.addListener(_onPush);
+  }
+
+  /// A push while the app is open: a servant waiting for approval re-checks.
+  void _onPush() {
+    if (_status == SessionStatus.inactive ||
+        _status == SessionStatus.rejected) {
+      load();
+    }
   }
 
   final AuthRepository _auth;
@@ -130,6 +140,9 @@ class SessionController extends ChangeNotifier {
         notifyListeners();
         return;
       }
+      // Servants waiting for approval are registered too, so the decision
+      // reaches them as a push.
+      PushService.instance.registerDevice();
       if (profile.isRejected) {
         _status = SessionStatus.rejected;
         notifyListeners();
@@ -236,6 +249,7 @@ class SessionController extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    PushService.instance.received.removeListener(_onPush);
     super.dispose();
   }
 }
