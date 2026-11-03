@@ -1,5 +1,6 @@
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/arabic_sort.dart';
 import '../models/attendance.dart';
 import '../models/child.dart';
 import '../supabase/db.dart';
@@ -195,7 +196,9 @@ class AttendanceRepository {
     required AttendanceSession session,
     required AttendanceYear year,
   }) async {
-    final roster = await _children.byClass(session.classId);
+    // Alphabetical (Arabic) order, not the database's collation order.
+    final roster = (await _children.byClass(session.classId))
+      ..sort((a, b) => ArabicSort.compare(a.fullName, b.fullName));
     final records = await recordsForSession(session.id);
     final byChild = <String, AttendanceRecord>{
       for (final record in records) record.childId: record,

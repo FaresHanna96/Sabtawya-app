@@ -25,8 +25,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     with SingleTickerProviderStateMixin {
   static const _repository = EventRepository();
 
-  final _sectionKey =
-      GlobalKey<AsyncSectionState<List<ChildEventBalance>>>();
+  final _sectionKey = GlobalKey<AsyncSectionState<List<ChildEventBalance>>>();
   late final TabController _tabController;
 
   @override
@@ -103,10 +102,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             final partial = balances
                 .where((b) => b.totalPaid > 0 && b.remaining > 0)
                 .toList();
-            final notPaid =
-                balances.where((b) => b.totalPaid == 0).toList();
-            final fullPaid =
-                balances.where((b) => b.remaining <= 0).toList();
+            final notPaid = balances.where((b) => b.totalPaid == 0).toList();
+            final fullPaid = balances.where((b) => b.remaining <= 0).toList();
 
             final session = context.read<SessionController>();
             String getClassName(String id) {
@@ -154,9 +151,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                               minHeight: 8,
                               backgroundColor:
                                   AppColors.navy.withValues(alpha: 0.1),
-                              valueColor:
-                                  const AlwaysStoppedAnimation<Color>(
-                                      AppColors.olive),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.olive),
                             ),
                           ),
                         ],
@@ -216,8 +212,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         (byClass[b.classId] ??= []).add(b);
                       }
                       final sortedClasses = byClass.entries.toList()
-                        ..sort((a, b) => getClassName(b.key)
-                            .compareTo(getClassName(a.key)));
+                        ..sort((a, b) =>
+                            getClassName(a.key).compareTo(getClassName(b.key)));
 
                       return ListView(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -253,8 +249,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                             ),
                           for (final entry in sortedClasses) ...[
                             Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: 8, top: 4),
+                              padding: const EdgeInsets.only(bottom: 8, top: 4),
                               child: Text(
                                 getClassName(entry.key),
                                 style: const TextStyle(
@@ -289,7 +284,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 // ---------------------------------------------------------------------------
 
 class _MiniStat extends StatelessWidget {
-  const _MiniStat({required this.label, required this.value, required this.color});
+  const _MiniStat(
+      {required this.label, required this.value, required this.color});
 
   final String label;
   final String value;
@@ -300,8 +296,11 @@ class _MiniStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label: ', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-        Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+        Text('$label: ',
+            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: color)),
       ],
     );
   }
@@ -343,8 +342,8 @@ class _BalanceRow extends StatelessWidget {
               ),
               if (isPaid)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: chipColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -434,8 +433,8 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
       _error = null;
     });
     try {
-      final p = await _repository.payments(
-          widget.event.id, widget.balance.childId);
+      final p =
+          await _repository.payments(widget.event.id, widget.balance.childId);
       if (mounted) setState(() => _payments = p);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -498,8 +497,7 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
 
     final maxListHeight = MediaQuery.of(context).size.height * 0.45;
     final effectiveRemaining = _payments != null
-        ? balance.cost -
-            _payments!.fold<double>(0, (s, p) => s + p.amount)
+        ? balance.cost - _payments!.fold<double>(0, (s, p) => s + p.amount)
         : balance.remaining;
 
     return Column(
@@ -511,7 +509,10 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
             width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -573,8 +574,7 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
                           ),
                         )
                       : ListView.separated(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                           itemCount: _payments!.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 4),
@@ -689,8 +689,7 @@ class _AddPaymentDialogState extends State<_AddPaymentDialog> {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(
-                    RegExp(r'^\d+\.?\d{0,2}')),
+                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
               decoration: InputDecoration(
                 labelText: AppStrings.paymentAmount,
@@ -701,7 +700,9 @@ class _AddPaymentDialogState extends State<_AddPaymentDialog> {
                 final n = double.tryParse(v?.trim() ?? '');
                 if (n == null) return AppStrings.paymentAmountRequired;
                 if (n <= 0) return AppStrings.paymentAmountInvalid;
-                if (n > widget.maxAmount) return AppStrings.paymentAmountExceeds;
+                if (n > widget.maxAmount) {
+                  return AppStrings.paymentAmountExceeds;
+                }
                 return null;
               },
             ),
@@ -747,10 +748,8 @@ class _AddPaymentDialogState extends State<_AddPaymentDialog> {
         FilledButton(
           onPressed: () {
             if (!(_formKey.currentState?.validate() ?? false)) return;
-            final amount =
-                double.tryParse(_amountController.text.trim()) ?? 0;
-            Navigator.of(context)
-                .pop((amount: amount, method: _method));
+            final amount = double.tryParse(_amountController.text.trim()) ?? 0;
+            Navigator.of(context).pop((amount: amount, method: _method));
           },
           child: const Text(AppStrings.save),
         ),

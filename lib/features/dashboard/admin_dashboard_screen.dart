@@ -15,6 +15,7 @@ import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../classes/class_detail_screen.dart';
 import '../excel/import_children_screen.dart';
+import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
 import 'today_birthdays_section.dart';
 
@@ -327,6 +328,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             icon: Icons.upload_file,
             label: AppStrings.importChildren,
             onTap: () => _push(const ImportChildrenScreen()),
+          ),
+          _ActionChip(
+            icon: Icons.calendar_month_outlined,
+            label: AppStrings.calendarTitle,
+            onTap: () => _push(const CalendarScreen()),
           ),
         ],
       ),

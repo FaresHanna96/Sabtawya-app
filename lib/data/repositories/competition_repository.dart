@@ -1,4 +1,5 @@
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/arabic_sort.dart';
 import '../models/competition.dart';
 import '../supabase/db.dart';
 
@@ -97,7 +98,11 @@ class CompetitionRepository {
         for (final m in rows(marksData)) m['child_id'] as String: m,
       };
 
-      return rows(childrenData).map((child) {
+      final children = rows(childrenData)
+        ..sort((a, b) => ArabicSort.compare(
+            a['full_name'].toString(), b['full_name'].toString()));
+
+      return children.map((child) {
         final existing = marksByChild[child['id'] as String];
         return {
           ...child,

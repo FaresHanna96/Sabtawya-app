@@ -22,16 +22,13 @@ class _EventFormScreenState extends State<EventFormScreen> {
   static const _repository = EventRepository();
 
   final _formKey = GlobalKey<FormState>();
-  late final _title =
-      TextEditingController(text: widget.event?.title ?? '');
+  late final _title = TextEditingController(text: widget.event?.title ?? '');
   late final _description =
       TextEditingController(text: widget.event?.description ?? '');
   late final _cost = TextEditingController(
     text: widget.event != null
         ? widget.event!.cost.toStringAsFixed(
-            widget.event!.cost == widget.event!.cost.truncateToDouble()
-                ? 0
-                : 2)
+            widget.event!.cost == widget.event!.cost.truncateToDouble() ? 0 : 2)
         : '',
   );
 
@@ -93,8 +90,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            widget.isEdit ? AppStrings.editEvent : AppStrings.addEvent),
+        title: Text(widget.isEdit ? AppStrings.editEvent : AppStrings.addEvent),
       ),
       body: SafeArea(
         child: Form(
@@ -132,8 +128,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                   decoration: const InputDecoration(
                     labelText: AppStrings.eventDateLabel,
                     prefixIcon: Icon(Icons.calendar_today_outlined),
-                    suffixIcon:
-                        Icon(Icons.edit_calendar_outlined, size: 20),
+                    suffixIcon: Icon(Icons.edit_calendar_outlined, size: 20),
                   ),
                   child: Text(
                     AppDateUtils.formatDate(_eventDate),
@@ -147,8 +142,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d+\.?\d{0,2}')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                 ],
                 decoration: const InputDecoration(
                   labelText: AppStrings.eventCost,

@@ -75,8 +75,7 @@ class _ListTab extends StatefulWidget {
   State<_ListTab> createState() => _ListTabState();
 }
 
-class _ListTabState extends State<_ListTab>
-    with AutomaticKeepAliveClientMixin {
+class _ListTabState extends State<_ListTab> with AutomaticKeepAliveClientMixin {
   static const _repository = CompetitionRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<List<Competition>>>();
@@ -222,8 +221,8 @@ class _ScoresTab extends StatelessWidget {
             final rank = index + 1;
             return Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     SizedBox(
@@ -233,9 +232,8 @@ class _ScoresTab extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: rank <= 3
-                              ? AppColors.warning
-                              : AppColors.muted,
+                          color:
+                              rank <= 3 ? AppColors.warning : AppColors.muted,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -354,8 +352,7 @@ class _CompetitionTile extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.olive.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),

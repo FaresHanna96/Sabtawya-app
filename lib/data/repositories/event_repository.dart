@@ -1,4 +1,5 @@
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/arabic_sort.dart';
 import '../models/event.dart';
 import '../supabase/db.dart';
 
@@ -85,7 +86,9 @@ class EventRepository {
           .select()
           .eq('event_id', eventId)
           .order('child_name');
-      return rows(data).map(ChildEventBalance.fromMap).toList();
+      // Arabic alphabetical order, not the database's collation order.
+      return rows(data).map(ChildEventBalance.fromMap).toList()
+        ..sort((a, b) => ArabicSort.compare(a.childName, b.childName));
     } catch (e) {
       throw AppFailure.from(e);
     }

@@ -59,8 +59,7 @@ class _MarksTabState extends State<_MarksTab> {
   }
 
   Future<List<Map<String, dynamic>>> _load() async {
-    final rows =
-        await _repository.childrenWithMarks(widget.competition.id);
+    final rows = await _repository.childrenWithMarks(widget.competition.id);
     for (final row in rows) {
       final id = row['id'] as String;
       final mark = row['mark'];
@@ -224,7 +223,9 @@ class _MarksTabState extends State<_MarksTab> {
                         ),
                       ),
                     ),
-                  for (final entry in byClass.entries) ...[
+                  for (final entry in byClass.entries.toList()
+                    ..sort((a, b) =>
+                        className(a.key).compareTo(className(b.key)))) ...[
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8, top: 4),
                       child: Text(
@@ -293,11 +294,11 @@ class _MarkRow extends StatelessWidget {
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: InputDecoration(
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 8, horizontal: 10),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                 hintText: '— / $maxMark',
-                hintStyle: const TextStyle(
-                    fontSize: 12, color: AppColors.muted),
+                hintStyle:
+                    const TextStyle(fontSize: 12, color: AppColors.muted),
                 border: const OutlineInputBorder(),
               ),
             ),

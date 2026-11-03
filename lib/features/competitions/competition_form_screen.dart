@@ -25,11 +25,10 @@ class _CompetitionFormScreenState extends State<CompetitionFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _title =
       TextEditingController(text: widget.competition?.title ?? '');
-  late final TextEditingController _maxMark = TextEditingController(
-      text: '${widget.competition?.maxMark ?? 10}');
+  late final TextEditingController _maxMark =
+      TextEditingController(text: '${widget.competition?.maxMark ?? 10}');
 
-  late DateTime _weekDate =
-      widget.competition?.weekDate ?? _nearestSaturday();
+  late DateTime _weekDate = widget.competition?.weekDate ?? _nearestSaturday();
 
   @override
   void dispose() {
@@ -41,8 +40,7 @@ class _CompetitionFormScreenState extends State<CompetitionFormScreen> {
   static DateTime _nearestSaturday() {
     final now = DateTime.now();
     final daysUntilSaturday = (6 - now.weekday) % 7;
-    return DateTime(
-        now.year, now.month, now.day + daysUntilSaturday);
+    return DateTime(now.year, now.month, now.day + daysUntilSaturday);
   }
 
   Future<void> _pickDate() async {

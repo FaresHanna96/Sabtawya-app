@@ -6,12 +6,12 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_history_screen.dart';
+import '../calendar/calendar_screen.dart';
 import '../children/birthday_screen.dart';
 import '../attendance/attendance_years_screen.dart';
 import '../excel/export_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../reports/reports_screen.dart';
-import '../servants/pending_requests_screen.dart';
 import '../servants/servant_assignments_screen.dart';
 import '../servants/servants_screen.dart';
 import '../competitions/competitions_screen.dart';
@@ -65,6 +65,12 @@ class MoreScreen extends StatelessWidget {
                     title: AppStrings.birthdaysTitle,
                     screen: const BirthdayScreen(),
                     color: AppColors.coral,
+                  ),
+                  _Entry(
+                    icon: Icons.calendar_month_outlined,
+                    title: AppStrings.calendarTitle,
+                    screen: const CalendarScreen(),
+                    color: AppColors.gold,
                   ),
                 ],
               ),
@@ -130,12 +136,6 @@ class MoreScreen extends StatelessWidget {
                     const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Column(
                   children: [
-                    _Entry(
-                      icon: Icons.how_to_reg_outlined,
-                      title: AppStrings.pendingRequests,
-                      screen: const PendingRequestsScreen(),
-                      color: AppColors.maroon,
-                    ),
                     _Entry(
                       icon: Icons.volunteer_activism_outlined,
                       title: AppStrings.servantsTitle,

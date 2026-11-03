@@ -339,6 +339,11 @@ class AppStrings {
   static const birthdaysEmptyBody = 'اختر شهراً آخر أو أضف تاريخ الميلاد للمخدومين.';
   static const turningAge = 'يكمل';
   static const birthdayToday = 'عيد ميلاده اليوم';
+  static const calendarTitle = 'التقويم';
+  static const calendarNothing = 'لا يوجد شيء في هذا اليوم';
+  static const today = 'اليوم';
+  static const previousMonth = 'الشهر السابق';
+  static const nextMonth = 'الشهر التالي';
   static const todayBirthdays = 'أعياد الميلاد اليوم';
   static const attendanceStreak = 'حضور متصل';
   static const sessionsSoFar = 'السبوت المنقضية';
