@@ -126,15 +126,17 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                     label: const Text(AppStrings.calendarTitle),
                     onPressed: () => _push(const CalendarScreen()),
                   ),
-                  ActionChip(
-                    avatar: const Icon(
-                      Icons.person_add_alt,
-                      size: 16,
-                      color: AppColors.navy,
+                  // A servant with no class has nowhere to add a child.
+                  if (session.myClasses.isNotEmpty)
+                    ActionChip(
+                      avatar: const Icon(
+                        Icons.person_add_alt,
+                        size: 16,
+                        color: AppColors.navy,
+                      ),
+                      label: const Text(AppStrings.addChild),
+                      onPressed: () => _push(const ChildFormScreen()),
                     ),
-                    label: const Text(AppStrings.addChild),
-                    onPressed: () => _push(const ChildFormScreen()),
-                  ),
                   ActionChip(
                     avatar: const Icon(
                       Icons.assignment_outlined,
