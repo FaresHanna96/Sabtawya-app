@@ -507,6 +507,7 @@ class AppStrings {
   static const pickPhotos                 = 'اختيار صور';
   static const pickPdf                    = 'اختيار PDF';
   static const pdfFile                    = 'ملف PDF';
+  static const pickAPdfFile               = 'اختر ملف بصيغة PDF';
   static const photosSelected             = 'صور مختارة';
   static const submittedSuccessfully      = 'تم رفع التحضير بنجاح';
   static const reviewedSuccessfully       = 'تمت المراجعة';

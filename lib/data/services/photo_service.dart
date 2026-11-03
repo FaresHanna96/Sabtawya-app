@@ -1,11 +1,15 @@
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_failure.dart';
 import '../supabase/db.dart';
+import 'web_picker_options_stub.dart'
+    if (dart.library.js_interop) 'web_picker_options_web.dart';
 
 /// Photos stored in a private bucket: children, and class patron saints.
 ///
@@ -56,13 +60,20 @@ class PhotoService {
   static Future<XFile?> pickPdf() async {
     try {
       final files = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
+        // Safari on iPhone is picky about the `accept` filter the picker builds
+        // (" .pdf"), so on the web the filter is dropped and the extension is
+        // checked after picking.
+        type: kIsWeb ? FileType.any : FileType.custom,
+        allowedExtensions: kIsWeb ? null : ['pdf'],
+        webOptions: pdfWebOptions(),
       );
       if (files.isEmpty) return null;
       // Read through the picker rather than a path: on the web there is no
       // path, and on Android the file often sits behind a content URI.
       final file = files.first;
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        throw AppFailure(AppStrings.pickAPdfFile);
+      }
       final bytes = await file.readAsBytes();
       return XFile.fromData(
         Uint8List.fromList(bytes),

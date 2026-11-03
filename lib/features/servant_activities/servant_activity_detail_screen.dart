@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'servant_summary_card.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -675,6 +676,19 @@ class _StorageImageState extends State<_StorageImage> {
   Widget build(BuildContext context) {
     if (_url == null) {
       return const Center(child: CircularProgressIndicator());
+    }
+    // A PDF is not an image: show a card that opens it.
+    if (widget.storagePath.toLowerCase().endsWith('.pdf')) {
+      return Card(
+        child: ListTile(
+          leading: const Icon(Icons.picture_as_pdf_outlined,
+              color: AppColors.danger),
+          title: Text(widget.storagePath.split('/').last,
+              style: const TextStyle(fontSize: 13)),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () => launchUrl(Uri.parse(_url!)),
+        ),
+      );
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
