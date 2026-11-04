@@ -43,16 +43,6 @@ class MoreScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
             SectionCard(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: _Entry(
-                icon: Icons.account_circle_outlined,
-                title: AppStrings.myData,
-                screen: const MyProfileScreen(),
-                color: AppColors.olive,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SectionCard(
               title: AppStrings.reportsTitle,
               icon: Icons.insights_rounded,
               accent: AppColors.sky,
@@ -188,6 +178,12 @@ class MoreScreen extends StatelessWidget {
                     title: AppStrings.syncTitle,
                     screen: const SyncScreen(),
                     color: AppColors.sky,
+                  ),
+                  _Entry(
+                    icon: Icons.person_outline,
+                    title: AppStrings.myData,
+                    screen: const MyProfileScreen(),
+                    color: AppColors.olive,
                   ),
                   _Entry(
                     icon: Icons.settings_outlined,
