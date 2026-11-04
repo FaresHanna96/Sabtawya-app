@@ -206,7 +206,7 @@ class AppStrings {
   // ------------------------------------------------------------- assignments
   static const assignmentsTitle = 'تعيين الخدام';
   static const assignServant = 'تعيين خادم';
-  static const myData = 'بياناتي';
+  static const myData = 'تعديل بياناتي';
   static const myDataHint =
       'عدّل بياناتك الشخصية: الاسم، الموبايل، تاريخ الميلاد، العنوان وغيرها.';
   static const deleteServant ='حذف الخادم';

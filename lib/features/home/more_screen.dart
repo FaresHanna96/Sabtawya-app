@@ -16,7 +16,6 @@ import '../servants/servant_assignments_screen.dart';
 import '../servants/servants_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
-import '../profile/my_profile_screen.dart';
 import '../settings/settings_screen.dart';
 import '../lessons/lesson_schedule_screen.dart';
 import '../sync/sync_screen.dart';
@@ -178,12 +177,6 @@ class MoreScreen extends StatelessWidget {
                     title: AppStrings.syncTitle,
                     screen: const SyncScreen(),
                     color: AppColors.sky,
-                  ),
-                  _Entry(
-                    icon: Icons.person_outline,
-                    title: AppStrings.myData,
-                    screen: const MyProfileScreen(),
-                    color: AppColors.olive,
                   ),
                   _Entry(
                     icon: Icons.settings_outlined,
