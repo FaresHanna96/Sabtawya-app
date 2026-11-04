@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/services/app_badge_stub.dart'
+    if (dart.library.js_interop) '../core/services/app_badge_web.dart';
 import '../core/services/push_service.dart';
 import '../core/utils/app_failure.dart';
 import '../data/models/attendance.dart';
@@ -237,7 +239,10 @@ class SessionController extends ChangeNotifier {
         birthDate: birthDate,
       );
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() {
+    setAppBadge(0); // the next person to sign in must not see this count
+    return _auth.signOut();
+  }
 
   Future<void> sendPasswordReset(String email) => _auth.sendPasswordReset(email);
 

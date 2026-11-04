@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_strings.dart';
+import '../../core/services/app_badge_stub.dart'
+    if (dart.library.js_interop) '../../core/services/app_badge_web.dart';
 import '../../core/services/push_service.dart';
 import '../../data/repositories/notification_repository.dart';
 import 'notifications_screen.dart';
@@ -41,6 +43,7 @@ class _NotificationsBellState extends State<NotificationsBell> {
   Future<void> _load() async {
     try {
       final count = await _repository.unreadCount();
+      setAppBadge(count);
       if (mounted) setState(() => _count = count);
     } catch (_) {
       // The bell is a hint; a failed count just leaves it as it was.

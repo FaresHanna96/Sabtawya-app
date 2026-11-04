@@ -12,6 +12,22 @@ firebase.initializeApp({
 // Messages carry a `notification` block, so the browser displays them itself.
 firebase.messaging();
 
+// Puts the unread count (sent with the push) on the home-screen icon, also
+// while the app is closed. Ignored where the Badging API does not exist.
+self.addEventListener('push', function (event) {
+  try {
+    const payload = event.data ? event.data.json() : null;
+    const badge = parseInt((payload && payload.data && payload.data.badge) || '', 10);
+    if (!isNaN(badge) && self.navigator && self.navigator.setAppBadge) {
+      event.waitUntil(
+        badge > 0 ? self.navigator.setAppBadge(badge) : self.navigator.clearAppBadge(),
+      );
+    }
+  } catch (e) {
+    // A badge is a nicety; never break the notification.
+  }
+});
+
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   event.waitUntil(clients.openWindow('/'));

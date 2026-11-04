@@ -68,6 +68,7 @@ async function sendPush(
   tokens: { token: string }[],
   title: string,
   body: string,
+  badge?: number,
 ): Promise<number> {
   const bearer = await accessToken();
   const url =
@@ -84,6 +85,8 @@ async function sendPush(
         message: {
           token,
           notification: { title, body },
+          // The unread count, which the service worker shows on the app icon.
+          ...(badge === undefined ? {} : { data: { badge: String(badge) } }),
           webpush: { fcm_options: { link: '/' } },
         },
       }),
@@ -153,7 +156,12 @@ async function pushNotification(id: string): Promise<Response> {
   if (!tokens || tokens.length === 0) {
     return new Response('no devices', { status: 200 });
   }
-  const sent = await sendPush(tokens, n.title, n.body ?? '');
+  const { count } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', n.user_id)
+    .is('read_at', null);
+  const sent = await sendPush(tokens, n.title, n.body ?? '', count ?? undefined);
   return new Response(JSON.stringify({ sent }), { status: 200 });
 }
 
