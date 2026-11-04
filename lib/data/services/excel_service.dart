@@ -882,7 +882,84 @@ class ExcelService {
   static CellValue? _text(String? value) =>
       (value == null || value.isEmpty) ? null : TextCellValue(value);
 
+  /// Gives every sheet the look of an Excel table: a coloured bold header,
+  /// bordered cells, banded rows and sized columns. Every export goes through
+  /// [_encode], so none is left plain.
+  static void _formatAsTable(Excel book) {
+    final border = Border(
+      borderStyle: BorderStyle.Thin,
+      borderColorHex: ExcelColor.fromHexString('#B8C2CC'),
+    );
+    final headerStyle = CellStyle(
+      bold: true,
+      fontColorHex: ExcelColor.white,
+      backgroundColorHex: ExcelColor.fromHexString('#1F3A5F'),
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+      textWrapping: TextWrapping.WrapText,
+      leftBorder: border,
+      rightBorder: border,
+      topBorder: border,
+      bottomBorder: border,
+    );
+    CellStyle body(bool banded) => CellStyle(
+          backgroundColorHex: banded
+              ? ExcelColor.fromHexString('#EEF3F8')
+              : ExcelColor.none,
+          horizontalAlign: HorizontalAlign.Center,
+          verticalAlign: VerticalAlign.Center,
+          leftBorder: border,
+          rightBorder: border,
+          topBorder: border,
+          bottomBorder: border,
+        );
+
+    for (final sheet in book.tables.values) {
+      final rows = sheet.rows;
+      if (rows.isEmpty) continue;
+
+      bool filled(Data? c) => c?.value != null && '${c!.value}'.isNotEmpty;
+      // The header is the first row that has more than one filled cell; rows
+      // before it are titles and stay as they are.
+      final headerRow = rows.indexWhere((r) => r.where(filled).length > 1);
+      if (headerRow < 0) continue;
+
+      final columns = rows.fold<int>(0, (m, r) => r.length > m ? r.length : m);
+      final widths = List<double>.filled(columns, 10);
+
+      for (var r = headerRow; r < rows.length; r++) {
+        final cells = rows[r];
+        final isGroupRow = r > headerRow && cells.where(filled).length == 1;
+        final isBlank = cells.where(filled).isEmpty;
+        if (isBlank) continue;
+        for (var c = 0; c < columns; c++) {
+          final cell = sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r),
+          );
+          if (r == headerRow) {
+            cell.cellStyle = headerStyle;
+          } else if (isGroupRow) {
+            cell.cellStyle = headerStyle;
+          } else {
+            cell.cellStyle = body((r - headerRow).isEven);
+          }
+          final length = c < cells.length && filled(cells[c])
+              ? '${cells[c]!.value}'.length
+              : 0;
+          if (!isGroupRow && length + 4 > widths[c]) {
+            widths[c] = (length + 4).toDouble();
+          }
+        }
+      }
+      for (var c = 0; c < columns; c++) {
+        sheet.setColumnWidth(c, widths[c].clamp(10, 45).toDouble());
+      }
+      sheet.setRowHeight(headerRow, 32);
+    }
+  }
+
   static List<int> _encode(Excel book) {
+    _formatAsTable(book);
     final bytes = book.encode();
     if (bytes == null) {
       throw Exception(AppStrings.somethingWentWrong);

@@ -200,6 +200,31 @@ class ServantRepository {
     }
   }
 
+  /// Deletes the servant's account for good (admin only, enforced in the
+  /// database). Their lesson-prep files are removed from storage first, since
+  /// deleting the rows would leave the files behind.
+  Future<void> deleteServant(String servantId) async {
+    try {
+      final photos = await Db.client
+          .from(Db.tServantLessonPrepPhotos)
+          .select('storage_path, servant_lesson_preps!inner(servant_id)')
+          .eq('servant_lesson_preps.servant_id', servantId);
+      final paths = rows(photos)
+          .map((r) => r['storage_path'].toString())
+          .toList();
+      if (paths.isNotEmpty) {
+        await Db.client.storage
+            .from(Db.bucketServantSubmissions)
+            .remove(paths);
+      }
+      await Db.client.rpc('admin_delete_servant', params: {
+        'p_servant_id': servantId,
+      });
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Every active servant with a birth date (name, role and date only), for
   /// every signed-in user: the view is not limited to the caller's classes.
   Future<List<Profile>> birthdays() async {

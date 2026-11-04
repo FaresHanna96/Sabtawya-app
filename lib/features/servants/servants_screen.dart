@@ -82,6 +82,23 @@ class _ServantsScreenState extends State<ServantsScreen> {
     if (ok) await _reload();
   }
 
+  Future<void> _deleteServant(Profile servant) async {
+    final confirmed = await Ui.confirm(
+      context,
+      title: '${AppStrings.deleteServant}: ${servant.fullName}',
+      message: AppStrings.confirmDeleteServant,
+      destructive: true,
+    );
+    if (!confirmed || !mounted) return;
+
+    final ok = await Ui.runGuarded(
+      context,
+      () => _repository.deleteServant(servant.id),
+      successMessage: AppStrings.saved,
+    );
+    if (ok) await _reload();
+  }
+
   Future<void> _deleteInvite(ServantInvite invite) async {
     final confirmed = await Ui.confirm(
       context,
@@ -187,6 +204,7 @@ class _ServantsScreenState extends State<ServantsScreen> {
                             details: data.details[servant.id],
                             onOpen: () => _openData(data, servant),
                             onToggleActive: () => _toggleActive(servant),
+                            onDelete: () => _deleteServant(servant),
                           ),
                         )
                         .toList(),
@@ -214,8 +232,10 @@ class _ServantRow extends StatelessWidget {
     required this.details,
     required this.onOpen,
     required this.onToggleActive,
+    required this.onDelete,
   });
 
+  final VoidCallback onDelete;
   final ServantDetails? details;
   final VoidCallback onOpen;
   final Profile servant;
@@ -267,15 +287,29 @@ class _ServantRow extends StatelessWidget {
       // Locking yourself out of the app is not a useful option.
       trailing: isMe
           ? null
-          : IconButton(
-              tooltip: servant.isActive
-                  ? AppStrings.deactivateServant
-                  : AppStrings.activateServant,
-              icon: Icon(
-                servant.isActive ? Icons.block : Icons.check_circle_outline,
-                color: servant.isActive ? AppColors.danger : AppColors.success,
-              ),
-              onPressed: onToggleActive,
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: servant.isActive
+                      ? AppStrings.deactivateServant
+                      : AppStrings.activateServant,
+                  icon: Icon(
+                    servant.isActive ? Icons.block : Icons.check_circle_outline,
+                    color:
+                        servant.isActive ? AppColors.danger : AppColors.success,
+                  ),
+                  onPressed: onToggleActive,
+                ),
+                IconButton(
+                  tooltip: AppStrings.deleteServant,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.danger,
+                  ),
+                  onPressed: onDelete,
+                ),
+              ],
             ),
     );
   }

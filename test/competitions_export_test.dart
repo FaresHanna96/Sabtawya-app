@@ -56,4 +56,18 @@ void main() {
     expect(name(2), 'أ'); // 5 + 4 = 9, tied with ج, so by name
     expect(name(3), 'ج'); // 9
   });
+
+  test('exports are formatted as a table: styled header and banded body', () {
+    final bytes = ExcelService.childrenTemplate();
+    final sheet = Excel.decodeBytes(bytes).tables.values.first;
+    final header = sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
+        .cellStyle;
+    expect(header?.isBold, isTrue);
+    expect(header?.backgroundColor.colorHex, 'FF1F3A5F');
+    final body = sheet
+        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1))
+        .cellStyle;
+    expect(body?.topBorder.borderStyle, BorderStyle.Thin);
+  });
 }
