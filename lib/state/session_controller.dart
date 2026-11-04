@@ -228,6 +228,9 @@ class SessionController extends ChangeNotifier {
     Gender? gender,
     String? mobile,
     DateTime? birthDate,
+    String? address,
+    String? confessor,
+    String? occupation,
   }) =>
       _auth.signUp(
         email: email,
@@ -237,6 +240,9 @@ class SessionController extends ChangeNotifier {
         gender: gender,
         mobile: mobile,
         birthDate: birthDate,
+        address: address,
+        confessor: confessor,
+        occupation: occupation,
       );
 
   Future<void> signOut() {

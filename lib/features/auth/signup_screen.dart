@@ -39,6 +39,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _mobileController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _confessorController = TextEditingController();
+  final _occupationController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
@@ -52,6 +55,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _mobileController.dispose();
+    _addressController.dispose();
+    _confessorController.dispose();
+    _occupationController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -71,6 +77,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             gender: _type.gender,
             mobile: _mobileController.text,
             birthDate: _birthDate,
+            address: _addressController.text,
+            confessor: _confessorController.text,
+            occupation: _occupationController.text,
           );
       if (!mounted) return;
       if (signedIn) {
@@ -194,6 +203,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     _BirthDateField(
                       value: _birthDate,
                       onChanged: (d) => setState(() => _birthDate = d),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _addressController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.address,
+                        helperText: AppStrings.optional,
+                        prefixIcon: Icon(Icons.home_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _occupationController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.occupation,
+                        helperText: AppStrings.optional,
+                        prefixIcon: Icon(Icons.work_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _confessorController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.confessor,
+                        helperText: AppStrings.optional,
+                        prefixIcon: Icon(Icons.church_outlined),
+                      ),
                     ),
                     const SizedBox(height: 14),
                     TextFormField(

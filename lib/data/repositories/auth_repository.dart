@@ -42,6 +42,9 @@ class AuthRepository {
     Gender? gender,
     String? mobile,
     DateTime? birthDate,
+    String? address,
+    String? confessor,
+    String? occupation,
   }) async {
     try {
       final response = await Db.client.auth.signUp(
@@ -56,6 +59,12 @@ class AuthRepository {
           if (gender != null) 'gender': gender.wire,
           if (mobile != null && mobile.trim().isNotEmpty)
             'mobile': mobile.trim(),
+          if (address != null && address.trim().isNotEmpty)
+            'address': address.trim(),
+          if (confessor != null && confessor.trim().isNotEmpty)
+            'confessor': confessor.trim(),
+          if (occupation != null && occupation.trim().isNotEmpty)
+            'occupation': occupation.trim(),
           if (birthDate != null)
             'birth_date': '${birthDate.year.toString().padLeft(4, '0')}-'
                 '${birthDate.month.toString().padLeft(2, '0')}-'
