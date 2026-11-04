@@ -4,6 +4,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../models/attendance.dart';
 import '../models/child.dart';
+import '../models/competition.dart';
 import '../models/reports.dart';
 import '../models/servant_activity.dart';
 
@@ -677,6 +678,117 @@ class ExcelService {
         DoubleCellValue(pct),
       ]);
     }
+    return _encode(book);
+  }
+
+  // ------------------------------------------------------ competition exports
+
+  /// One sheet per competition plus a cumulative sheet over the same set,
+  /// ordered by total mark, highest first.
+  static List<int> competitionsWorkbook({
+    required List<Competition> competitions,
+    required List<Child> children,
+    required List<CompetitionMark> marks,
+    required String Function(String classId) classNameOf,
+  }) {
+    final byCompetition = <String, Map<String, int>>{};
+    for (final m in marks) {
+      (byCompetition[m.competitionId] ??= <String, int>{})[m.childId] = m.mark;
+    }
+    final ordered = [...competitions]
+      ..sort((a, b) => a.weekDate.compareTo(b.weekDate));
+
+    final book = Excel.createExcel();
+    final usedNames = <String>{};
+    String sheetName(Competition c) {
+      var base = c.title.replaceAll(RegExp(r'[\\/*?:\[\]]'), ' ').trim();
+      if (base.isEmpty) base = AppStrings.weeklyCompetition;
+      if (base.length > 28) base = base.substring(0, 28);
+      var name = base;
+      for (var i = 2; !usedNames.add(name); i++) {
+        name = '$base $i';
+      }
+      return name;
+    }
+
+    // Cumulative sheet first.
+    final totals = <String, int>{};
+    for (final c in ordered) {
+      byCompetition[c.id]?.forEach((childId, mark) {
+        totals[childId] = (totals[childId] ?? 0) + mark;
+      });
+    }
+    final totalMax = ordered.fold<int>(0, (sum, c) => sum + c.maxMark);
+    final ranked = children.where((c) => totals.containsKey(c.id)).toList()
+      ..sort((a, b) {
+        final byTotal = totals[b.id]!.compareTo(totals[a.id]!);
+        return byTotal != 0 ? byTotal : a.fullName.compareTo(b.fullName);
+      });
+
+    usedNames.add(AppStrings.cumulativeScores);
+    final summary = book[AppStrings.cumulativeScores];
+    book.setDefaultSheet(AppStrings.cumulativeScores);
+    summary.appendRow(<CellValue?>[
+      _text(AppStrings.rank),
+      _text(AppStrings.childName),
+      _text(AppStrings.classLabel),
+      for (final c in ordered)
+        _text('${c.title} (${AppDateUtils.toIsoDate(c.weekDate)}) / ${c.maxMark}'),
+      _text('${AppStrings.totalMarks} / $totalMax'),
+    ]);
+    var rank = 0;
+    int? previous;
+    for (var i = 0; i < ranked.length; i++) {
+      final child = ranked[i];
+      final total = totals[child.id]!;
+      if (total != previous) rank = i + 1; // ties share a rank
+      previous = total;
+      summary.appendRow(<CellValue?>[
+        IntCellValue(rank),
+        _text(child.fullName),
+        _text(classNameOf(child.classId)),
+        for (final c in ordered)
+          byCompetition[c.id]?[child.id] == null
+              ? null
+              : IntCellValue(byCompetition[c.id]![child.id]!),
+        IntCellValue(total),
+      ]);
+    }
+
+    for (final c in ordered) {
+      final sheet = book[sheetName(c)];
+      sheet.appendRow(<CellValue?>[
+        _text('${c.title} - ${AppDateUtils.toIsoDate(c.weekDate)}'),
+      ]);
+      sheet.appendRow(<CellValue?>[]);
+      sheet.appendRow(<CellValue?>[
+        _text(AppStrings.rank),
+        _text(AppStrings.childName),
+        _text(AppStrings.classLabel),
+        _text('${AppStrings.mark} / ${c.maxMark}'),
+      ]);
+      final marksOf = byCompetition[c.id] ?? const <String, int>{};
+      final rows = children.where((ch) => marksOf.containsKey(ch.id)).toList()
+        ..sort((a, b) {
+          final byMark = marksOf[b.id]!.compareTo(marksOf[a.id]!);
+          return byMark != 0 ? byMark : a.fullName.compareTo(b.fullName);
+        });
+      var r = 0;
+      int? last;
+      for (var i = 0; i < rows.length; i++) {
+        final mark = marksOf[rows[i].id]!;
+        if (mark != last) r = i + 1;
+        last = mark;
+        sheet.appendRow(<CellValue?>[
+          IntCellValue(r),
+          _text(rows[i].fullName),
+          _text(classNameOf(rows[i].classId)),
+          IntCellValue(mark),
+        ]);
+      }
+    }
+
+    if (book.tables.containsKey('Sheet1')) book.delete('Sheet1');
     return _encode(book);
   }
 

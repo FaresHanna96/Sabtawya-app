@@ -9,7 +9,10 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/competition.dart';
+import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/competition_repository.dart';
+import '../../data/services/excel_service.dart';
+import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
 import 'competition_detail_screen.dart';
 import 'competition_form_screen.dart';
@@ -31,6 +34,54 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
     super.dispose();
   }
 
+  static const _repository = CompetitionRepository();
+  bool _exporting = false;
+
+  Future<void> _export() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final all = await _repository.listCompetitions();
+      if (!mounted) return;
+      if (all.isEmpty) {
+        Ui.info(context, AppStrings.noCompetitions);
+        return;
+      }
+      final picked = await showModalBottomSheet<List<Competition>>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (_) => _ExportPickerSheet(competitions: all),
+      );
+      if (picked == null || picked.isEmpty || !mounted) return;
+
+      final session = context.read<SessionController>();
+      final names = {
+        for (final c in session.myClasses) c.classId: c.className,
+      };
+      final children =
+          await const ChildRepository().all(includeInactive: true);
+      final marks =
+          await _repository.marksFor([for (final c in picked) c.id]);
+      final bytes = ExcelService.competitionsWorkbook(
+        competitions: picked,
+        children: children,
+        marks: marks,
+        classNameOf: (id) => names[id] ?? AppStrings.unknown,
+      );
+      await FileService.saveAndShare(
+        fileName: FileService.timestampedName(AppStrings.exportCompetitions),
+        bytes: bytes,
+        shareText: AppStrings.exportCompetitions,
+      );
+      if (mounted) Ui.success(context, AppStrings.exportDone);
+    } catch (e) {
+      if (mounted) Ui.error(context, e);
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
@@ -40,6 +91,19 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.competitions),
+        actions: [
+          IconButton(
+            tooltip: AppStrings.exportCompetitions,
+            onPressed: _exporting ? null : _export,
+            icon: _exporting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.ios_share_rounded),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabs,
           labelColor: Colors.white,
@@ -57,6 +121,96 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
           children: [
             _ListTab(canManage: canManage, canDelete: session.isAdmin),
             const _ScoresTab(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExportPickerSheet extends StatefulWidget {
+  const _ExportPickerSheet({required this.competitions});
+
+  final List<Competition> competitions;
+
+  @override
+  State<_ExportPickerSheet> createState() => _ExportPickerSheetState();
+}
+
+class _ExportPickerSheetState extends State<_ExportPickerSheet> {
+  final _selected = <String>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final all = widget.competitions;
+    final allSelected = _selected.length == all.length;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      AppStrings.exportCompetitionsHint,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      if (allSelected) {
+                        _selected.clear();
+                      } else {
+                        _selected.addAll(all.map((c) => c.id));
+                      }
+                    }),
+                    child: Text(allSelected
+                        ? AppStrings.clearSelection
+                        : AppStrings.selectAll),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: all.length,
+                itemBuilder: (context, i) {
+                  final c = all[i];
+                  return CheckboxListTile(
+                    value: _selected.contains(c.id),
+                    onChanged: (v) => setState(() {
+                      v == true ? _selected.add(c.id) : _selected.remove(c.id);
+                    }),
+                    title: Text(c.title),
+                    subtitle: Text(
+                        '${AppDateUtils.formatDate(c.weekDate)}  •  / ${c.maxMark}'),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () => Navigator.of(context).pop(
+                            all.where((c) => _selected.contains(c.id)).toList(),
+                          ),
+                  icon: const Icon(Icons.ios_share_rounded),
+                  label: Text('${AppStrings.exportSelected} (${_selected.length})'),
+                ),
+              ),
+            ),
           ],
         ),
       ),

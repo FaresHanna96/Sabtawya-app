@@ -536,6 +536,12 @@ class AppStrings {
   static const markSaved               = 'تم حفظ العلامات';
   static const totalMarks              = 'مجموع العلامات';
   static const avgMark                 = 'متوسط العلامة';
+  static const exportCompetitions      = 'تصدير درجات المسابقات';
+  static const exportCompetitionsHint  = 'اختر المسابقات المطلوبة';
+  static const selectAll               = 'تحديد الكل';
+  static const clearSelection          = 'إلغاء التحديد';
+  static const exportSelected          = 'تصدير المحدد';
+  static const mark                    = 'الدرجة';
   static const competitionTitleRequired = 'عنوان المسابقة مطلوب';
   static const confirmDeleteCompetition = 'هل تريد حذف هذه المسابقة وكل علاماتها؟';
 

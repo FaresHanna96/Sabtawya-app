@@ -147,6 +147,29 @@ class CompetitionRepository {
     }
   }
 
+  /// Every mark of the given competitions, paged so more than 1000 rows work.
+  Future<List<CompetitionMark>> marksFor(List<String> competitionIds) async {
+    if (competitionIds.isEmpty) return const [];
+    try {
+      final result = <CompetitionMark>[];
+      const page = 1000;
+      for (var from = 0;; from += page) {
+        final data = await Db.client
+            .from(Db.tCompetitionMarks)
+            .select()
+            .inFilter('competition_id', competitionIds)
+            .order('id')
+            .range(from, from + page - 1);
+        final batch = rows(data);
+        result.addAll(batch.map(CompetitionMark.fromMap));
+        if (batch.length < page) break;
+      }
+      return result;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<List<ChildCompetitionScore>> cumulativeScores({
     String? classId,
   }) async {
