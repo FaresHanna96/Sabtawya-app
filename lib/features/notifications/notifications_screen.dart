@@ -99,6 +99,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'event_added' => (Icons.celebration_outlined, AppColors.olive),
         'competition_added' => (Icons.emoji_events_outlined, AppColors.gold),
         'class_assigned' => (Icons.class_outlined, AppColors.sky),
+        'class_removed' => (Icons.person_remove_outlined, AppColors.coral),
         _ => (Icons.notifications_none_rounded, AppColors.navy),
       };
 
