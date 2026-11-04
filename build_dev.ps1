@@ -14,7 +14,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if ($Deploy) {
     Copy-Item "$PSScriptRoot\vercel.json" "$PSScriptRoot\build\web_dev\vercel.json" -Force
-    npx vercel deploy --prod --yes --project sabtawya-dev "$PSScriptRoot\build\web_dev"
+    Push-Location $PSScriptRoot; npx vercel deploy --prod --yes --project sabtawya-dev build/web_dev; Pop-Location
 }
 
 if ($Apk) {
