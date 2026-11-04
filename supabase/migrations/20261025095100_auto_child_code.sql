@@ -2,6 +2,8 @@
 
 create sequence if not exists public.children_code_seq;
 
+-- With no children yet (a fresh database) the next code must be C001, but a
+-- sequence cannot be set to 0, so it starts at 1 and is marked "not yet used".
 select setval(
   'public.children_code_seq',
   greatest(
@@ -10,8 +12,13 @@ select setval(
       from public.children
       where code ~ '^C[0-9]+$'
     ), 0),
-    0
-  )
+    1
+  ),
+  coalesce((
+    select max((regexp_match(code, '^C([0-9]+)$'))[1]::int)
+    from public.children
+    where code ~ '^C[0-9]+$'
+  ), 0) > 0
 );
 
 create or replace function public.children_stamp()

@@ -38,6 +38,15 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // The dev/test build (build_dev.ps1 sets SABT_DEV=1) installs next to the
+        // real app: its own package name and label.
+        if (System.getenv("SABT_DEV") == "1") {
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders["appLabel"] = "سبتاوية DEV"
+        } else {
+            manifestPlaceholders["appLabel"] = "خدمة 3:6 ابتدائي السبت"
+        }
     }
 
     buildTypes {

@@ -1,29 +1,56 @@
 {
-  "project_info": {
-    "project_number": "202734221696",
-    "project_id": "sabtawya-a4907",
-    "storage_bucket": "sabtawya-a4907.firebasestorage.app"
-  },
-  "client": [
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:202734221696:android:821a79a906be27eb7b6965",
-        "android_client_info": {
-          "package_name": "com.sabtawya.sabtawya"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyASmWEC8FPkfXLRt1VLX4gj4mcRdOrE114"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    }
-  ],
-  "configuration_version": "1"
+    "project_info":  {
+                         "project_number":  "202734221696",
+                         "project_id":  "sabtawya-a4907",
+                         "storage_bucket":  "sabtawya-a4907.firebasestorage.app"
+                     },
+    "client":  [
+                   {
+                       "client_info":  {
+                                           "mobilesdk_app_id":  "1:202734221696:android:821a79a906be27eb7b6965",
+                                           "android_client_info":  {
+                                                                       "package_name":  "com.sabtawya.sabtawya"
+                                                                   }
+                                       },
+                       "oauth_client":  [
+
+                                        ],
+                       "api_key":  [
+                                       {
+                                           "current_key":  "AIzaSyASmWEC8FPkfXLRt1VLX4gj4mcRdOrE114"
+                                       }
+                                   ],
+                       "services":  {
+                                        "appinvite_service":  {
+                                                                  "other_platform_oauth_client":  [
+
+                                                                                                  ]
+                                                              }
+                                    }
+                   },
+                   {
+                       "client_info":  {
+                                           "mobilesdk_app_id":  "1:202734221696:android:821a79a906be27eb7b6965",
+                                           "android_client_info":  {
+                                                                       "package_name":  "com.sabtawya.sabtawya.dev"
+                                                                   }
+                                       },
+                       "oauth_client":  [
+
+                                        ],
+                       "api_key":  [
+                                       {
+                                           "current_key":  "AIzaSyASmWEC8FPkfXLRt1VLX4gj4mcRdOrE114"
+                                       }
+                                   ],
+                       "services":  {
+                                        "appinvite_service":  {
+                                                                  "other_platform_oauth_client":  [
+
+                                                                                                  ]
+                                                              }
+                                    }
+                   }
+               ],
+    "configuration_version":  "1"
 }

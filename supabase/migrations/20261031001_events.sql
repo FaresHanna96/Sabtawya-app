@@ -5,6 +5,28 @@
 -- Servant records payments for their class; admin/general_servant for all.
 -- =============================================================================
 
+-- The policies below use is_general_servant(), which migration 20261031002
+-- defines. On a database built from scratch this file runs first, so the role
+-- and the helper are created here too (both are idempotent).
+alter type public.app_role add value if not exists 'general_servant';
+
+create or replace function public.is_general_servant()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(
+    (select p.role::text = 'general_servant'
+     from public.profiles p
+     where p.id = auth.uid() and p.is_active),
+    false
+  );
+$$;
+
+grant execute on function public.is_general_servant() to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Tables
 -- ---------------------------------------------------------------------------
