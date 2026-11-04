@@ -97,6 +97,22 @@ class ServantRepository {
     }
   }
 
+  /// The signed-in user's own private data, or null when none is saved yet.
+  Future<ServantDetails?> myDetails() async {
+    try {
+      final id = Db.userId;
+      if (id == null) return null;
+      final data = await Db.client
+          .from(Db.tServantDetails)
+          .select()
+          .eq('profile_id', id)
+          .maybeSingle();
+      return data == null ? null : ServantDetails.fromMap(data);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// The admin-only data of every servant, keyed by profile id.
   Future<Map<String, ServantDetails>> details() async {
     try {
