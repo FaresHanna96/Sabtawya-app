@@ -59,7 +59,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final classes = context.watch<SessionController>().myClasses;
+    final session = context.watch<SessionController>();
+    final classes = session.myClasses;
+    final year = session.currentYear;
 
     return DefaultTabController(
       length: 3,
@@ -120,6 +122,39 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                     return Column(
                       children: [
+                        // The period picker narrows the general and class tabs.
+                        // The monthly tab already has its month chips, so the
+                        // picker is hidden there (kept alive, so its choice is
+                        // not lost when switching tabs).
+                        if (allDates.isNotEmpty)
+                          Builder(
+                            builder: (context) {
+                              final tabs = DefaultTabController.of(context);
+                              return AnimatedBuilder(
+                                animation: tabs,
+                                builder: (context, child) => Visibility(
+                                  visible: tabs.index != 2,
+                                  maintainState: true,
+                                  child: child!,
+                                ),
+                                child: DateGranularityFilter(
+                                  availableDates: allDates,
+                                  firstDate: year?.startDate,
+                                  lastDate: year?.endDate,
+                                  modes: const [
+                                    DateGranularity.month,
+                                    DateGranularity.year,
+                                  ],
+                                  initialGranularity: _granularity,
+                                  onChanged: (g, from, to) => setState(() {
+                                    _granularity = g;
+                                    _filterFrom = from;
+                                    _filterTo = to;
+                                  }),
+                                ),
+                              );
+                            },
+                          ),
                         Expanded(
                           child: TabBarView(
                             children: [
@@ -333,7 +368,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     List<ChildMonthlyReport> report,
     List<DateTime> allMonths,
   ) {
-    final visibleMonths = _filterMonths(allMonths);
+    // Month chips always list the whole year; the period picker only applies
+    // to the other two tabs.
+    final visibleMonths = allMonths;
 
     if (visibleMonths.isEmpty) {
       return const EmptyState(
@@ -436,11 +473,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       from: _filterFrom,
       to: _filterTo,
     );
-  }
-
-  List<DateTime> _filterMonths(List<DateTime> months) {
-    if (_granularity == null) return months;
-    return months.where(_matchesFilter).toList();
   }
 
   List<_ChildScore> _aggregateChildren(List<ChildMonthlyReport> monthly) {
