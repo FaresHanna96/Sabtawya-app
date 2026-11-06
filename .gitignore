@@ -57,3 +57,7 @@ backups/
 
 # Real children data (personal data): applied to the database, kept local only
 supabase/migrations/20261104003_real_children.sql
+
+# built installers live in Downloads, not in git
+*.apk
+*.xlsx

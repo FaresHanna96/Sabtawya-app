@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تثبيت تطبيق الخدمة على التليفون</title>
+<style>
+  :root { --navy:#1f3a5f; --bg:#f6f7fb; --card:#fff; --text:#1d2433; --muted:#4a5568; --accent:#e8765a; --line:#e3e7ee; --green:#2e9e6b; }
+  * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI",Tahoma,Arial,sans-serif; line-height:1.8; font-size:17px; }
+  header { background:var(--navy); color:#fff; padding:22px 16px; text-align:center; }
+  header h1 { margin:0 0 4px; font-size:25px; }
+  header p { margin:0; opacity:.9; font-size:16px; }
+  main { max-width:640px; margin:0 auto; padding:14px; }
+  .step { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:14px 0; break-inside:avoid; }
+  .head { display:flex; gap:12px; align-items:center; }
+  .num { flex:none; width:40px; height:40px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:21px; display:grid; place-items:center; }
+  .step h2 { margin:0; font-size:20px; }
+  .step p { margin:6px 0 0; color:var(--muted); }
+  b { color:var(--text); }
+  .shots { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+  .cap { text-align:center; font-size:13px; color:var(--muted); margin-top:4px; }
+
+  /* simple phone mock-up */
+  .phone { width:190px; border:6px solid #2b3445; border-radius:26px; background:#fff; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  .bar { height:20px; background:#eef0f5; font-size:10px; color:#6b7385; padding:2px 10px; display:flex; justify-content:space-between; direction:ltr; }
+  .screen { min-height:215px; padding:12px; font-size:12.5px; line-height:1.6; color:#222; position:relative; background:#f4f5f8; }
+  .dialog { background:#fff; border-radius:14px; padding:12px; margin-top:22px; box-shadow:0 1px 6px rgba(0,0,0,.18); }
+  .dialog .t { font-weight:700; margin-bottom:4px; }
+  .btns { display:flex; justify-content:flex-start; gap:14px; margin-top:12px; font-weight:700; color:#1a73e8; }
+  .btn { display:inline-block; background:#1a73e8; color:#fff; border-radius:20px; padding:5px 16px; font-weight:700; }
+  .file { background:#fff; border-radius:10px; padding:10px; display:flex; align-items:center; gap:8px; box-shadow:0 1px 4px rgba(0,0,0,.12); direction:rtl; }
+  .icon { width:32px; height:32px; border-radius:8px; background:var(--navy); color:#fff; display:grid; place-items:center; font-size:11px; }
+  .hit { outline:3px solid #e53935; outline-offset:3px; border-radius:20px; }
+  .tap { position:absolute; font-size:24px; }
+  .row { display:flex; justify-content:space-between; align-items:center; background:#fff; border-radius:10px; padding:10px; margin-top:10px; }
+  .sw { width:38px; height:20px; border-radius:12px; background:#cfd3dc; position:relative; direction:ltr; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; }
+  .sw.on { background:var(--green); }
+  .sw.on::after { left:20px; }
+  .arrow { text-align:center; align-self:center; font-size:28px; color:var(--accent); }
+
+  .tip { background:var(--card); border-inline-start:5px solid var(--accent); border-radius:12px; padding:12px 16px; margin:14px 0; break-inside:avoid; }
+  .tip h3 { margin:0 0 4px; font-size:19px; }
+  .tip p, .tip li { color:var(--muted); margin:3px 0; }
+  .tip ol { padding-inline-start:22px; margin:6px 0; }
+  .note { text-align:center; color:var(--muted); font-size:13px; margin:10px 0 0; }
+  @media print { body { background:#fff; } .pb { break-before:page; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>تثبيت تطبيق الخدمة</h1>
+  <p>على تليفون أندرويد، وهياخد دقيقة واحدة</p>
+</header>
+<main>
+
+  <!-- 1 -->
+  <div class="step">
+    <div class="head"><div class="num">1</div><h2>نزّل التطبيق</h2></div>
+    <p>افتح اللينك اللي اتبعتلك واضغط على <b>sabtawya.apk</b>. لو ظهرت رسالة تحذير اضغط <b>تحميل</b>.</p>
+    <div class="shots">
+      <div>
+        <div class="phone"><div class="bar"><span>12:30</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="file"><div class="icon">APK</div><div><b>sabtawya.apk</b><br><span style="color:#777;direction:ltr;unicode-bidi:isolate">70 MB</span></div></div>
+            <div class="dialog"><div class="t">تحميل الملف؟</div>
+              <div style="color:#666">هذا النوع من الملفات قد يضر بجهازك.</div>
+              <div class="btns"><span class="hit" style="padding:0 10px">تحميل</span><span>إلغاء</span></div></div>
+          </div></div>
+        <div class="cap">اضغط "تحميل"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="step">
+    <div class="head"><div class="num">2</div><h2>افتح الملف</h2></div>
+    <p>لما التحميل يخلص اضغط على <b>فتح</b> (أو اسحب الشاشة من فوق لتحت واضغط على الملف).</p>
+    <div class="shots">
+      <div>
+        <div class="phone"><div class="bar"><span>12:31</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="dialog" style="margin-top:8px"><div class="t">تم التنزيل</div>
+              <div style="color:#666">sabtawya.apk</div>
+              <div class="btns"><span class="hit" style="padding:0 10px">فتح</span></div></div>
+          </div></div>
+        <div class="cap">اضغط "فتح"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="step">
+    <div class="head"><div class="num">3</div><h2>اسمح بالتثبيت (مرة واحدة بس)</h2></div>
+    <p>هتظهر رسالة بتقول إن التثبيت مش مسموح. اضغط <b>إعدادات</b>، وبعدين شغّل الزرار <b>السماح من هذا المصدر</b>، وارجع للخلف بالسهم.</p>
+    <div class="shots">
+      <div>
+        <div class="phone"><div class="bar"><span>12:31</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="dialog"><div class="t">للأمان، التثبيت غير مسموح</div>
+              <div style="color:#666">هذا التطبيق غير مسموح له بتثبيت تطبيقات غير معروفة.</div>
+              <div class="btns"><span class="hit" style="padding:0 10px">إعدادات</span><span>إلغاء</span></div></div>
+          </div></div>
+        <div class="cap">اضغط "إعدادات"</div>
+      </div>
+      <div class="arrow">⬅</div>
+      <div>
+        <div class="phone"><div class="bar"><span>12:31</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="t" style="font-weight:700;margin-bottom:6px">تثبيت تطبيقات غير معروفة</div>
+            <div class="row"><span class="hit" style="padding:2px 8px;border-radius:8px">السماح من هذا المصدر</span><span class="sw on"></span></div>
+            <div style="color:#666;margin-top:8px;font-size:11.5px">شغّل الزرار لحد ما يبقى أخضر ✔</div>
+          </div></div>
+        <div class="cap">شغّل الزرار</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="step">
+    <div class="head"><div class="num">4</div><h2>اضغط "تثبيت"</h2></div>
+    <p>استنى ثواني لحد ما يخلص. لو ظهر تحذير تاني اضغط <b>تثبيت على أي حال</b>. التطبيق آمن.</p>
+    <div class="shots">
+      <div>
+        <div class="phone"><div class="bar"><span>12:32</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="dialog" style="margin-top:8px"><div class="t">هل تريد تثبيت هذا التطبيق؟</div>
+              <div class="file" style="box-shadow:none;padding:4px 0"><div class="icon">خدمة</div><b>خدمة 3:6</b></div>
+              <div class="btns"><span class="btn hit">تثبيت</span><span>إلغاء</span></div></div>
+          </div></div>
+        <div class="cap">اضغط "تثبيت"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="step">
+    <div class="head"><div class="num">5</div><h2>افتح التطبيق</h2></div>
+    <p>اضغط <b>فتح</b> وادخل بالإيميل وكلمة المرور. ولما يسألك عن <b>الإشعارات</b> اضغط <b>سماح</b>.</p>
+    <div class="shots">
+      <div>
+        <div class="phone"><div class="bar"><span>12:32</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="dialog" style="margin-top:8px"><div class="t">تم تثبيت التطبيق ✔</div>
+              <div class="btns"><span class="btn hit">فتح</span><span>تم</span></div></div>
+          </div></div>
+        <div class="cap">اضغط "فتح"</div>
+      </div>
+      <div class="arrow">⬅</div>
+      <div>
+        <div class="phone"><div class="bar"><span>12:33</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="dialog" style="margin-top:8px"><div class="t">السماح بإرسال الإشعارات؟</div>
+              <div class="btns"><span class="btn hit">سماح</span><span>عدم السماح</span></div></div>
+          </div></div>
+        <div class="cap">اضغط "سماح"</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pb"></div>
+  <div class="tip">
+    <h3>لو مفيش رسالة "السماح من هذا المصدر"</h3>
+    <p>فعّل الإذن من إعدادات التليفون بنفسك (الأسماء بتختلف شوية من تليفون للتاني):</p>
+    <ol>
+      <li>افتح <b>الإعدادات</b> في التليفون.</li>
+      <li>ادخل على <b>التطبيقات</b> (أو <b>الأمان</b>).</li>
+      <li>دوّر على <b>تثبيت التطبيقات غير المعروفة</b> (أو <b>مصادر غير معروفة</b>). ممكن تلاقيها في <b>الوصول الخاص</b>.</li>
+      <li>اختار التطبيق اللي نزّلت منه: <b>كروم</b> أو <b>الملفات</b> أو <b>واتساب</b>.</li>
+      <li>شغّل <b>السماح من هذا المصدر</b>.</li>
+    </ol>
+    <p>بعد ما تخلص التثبيت تقدر تقفل الإذن ده تاني لو حبيت.</p>
+    <div class="shots" style="margin-top:8px">
+      <div>
+        <div class="phone"><div class="bar"><span>12:30</span><span>●●●</span></div>
+          <div class="screen">
+            <div class="t" style="font-weight:700;margin-bottom:4px">تثبيت تطبيقات غير معروفة</div>
+            <div class="row"><span>Chrome</span><span>غير مسموح</span></div>
+            <div class="row"><span>الملفات</span><span>غير مسموح</span></div>
+            <div class="row" style="outline:3px solid #e53935;outline-offset:2px"><span>WhatsApp</span><span style="color:var(--green)">مسموح ✔</span></div>
+          </div></div>
+        <div class="cap">اختار التطبيق اللي نزّلت منه</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tip">
+    <h3>محتاج مساعدة؟</h3>
+    <p>ابعت رسالة لأمين الخدمة وهنساعدك.</p>
+    <p>لو معاك آيفون: افتح <b>sabtawya.vercel.app</b> في Safari، اضغط زر المشاركة، وبعدين <b>إضافة إلى الشاشة الرئيسية</b>.</p>
+  </div>
+  <p class="note">الصور توضيحية، وشكل الشاشة بيختلف حسب نوع التليفون.</p>
+
+</main>
+</body>
+</html>
