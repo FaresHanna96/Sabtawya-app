@@ -59,9 +59,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionController>();
-    final classes = session.myClasses;
-    final year = session.currentYear;
+    final classes = context.watch<SessionController>().myClasses;
 
     return DefaultTabController(
       length: 3,
@@ -122,22 +120,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                     return Column(
                       children: [
-                        if (allDates.isNotEmpty)
-                          DateGranularityFilter(
-                            availableDates: allDates,
-                            firstDate: year?.startDate,
-                            lastDate: year?.endDate,
-                            modes: const [
-                              DateGranularity.month,
-                              DateGranularity.year,
-                            ],
-                            initialGranularity: _granularity,
-                            onChanged: (g, from, to) => setState(() {
-                              _granularity = g;
-                              _filterFrom = from;
-                              _filterTo = to;
-                            }),
-                          ),
                         Expanded(
                           child: TabBarView(
                             children: [
