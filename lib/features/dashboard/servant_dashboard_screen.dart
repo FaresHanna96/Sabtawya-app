@@ -12,7 +12,6 @@ import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
-import '../children/follow_up_section.dart';
 import '../classes/class_detail_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
@@ -34,17 +33,10 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
   static const _reports = ReportRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<List<ClassYearScore>>>();
-  List<ChildStreak> _streaks = const [];
 
   Future<List<ClassYearScore>> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
     if (yearId == null) return <ClassYearScore>[];
-    // A hint only: if it cannot load, the home screen still works.
-    try {
-      _streaks = await _reports.streaks(yearId: yearId);
-    } catch (_) {
-      _streaks = const [];
-    }
     return _reports.classScores(yearId);
   }
 
@@ -89,17 +81,6 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
             ),
             const SizedBox(height: 16),
             const TodayBirthdaysSection(),
-            FollowUpSection(
-              streaks: _streaks,
-              showClass: classes.length > 1,
-              onReturn: _reload,
-            ),
-            FollowUpSection(
-              streaks: _streaks,
-              kind: StreakKind.present,
-              showClass: classes.length > 1,
-              onReturn: _reload,
-            ),
             LessonOfDay(date: upcomingSaturday()),
             StatCard(
               label: AppStrings.totalChildren,
