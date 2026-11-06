@@ -35,6 +35,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   DateTime? _filterFrom;
   DateTime? _filterTo;
 
+  /// The month chip tapped on the monthly tab.
+  DateTime? _selectedMonth;
+
   Future<_ReportsData> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
     if (yearId == null) return const _ReportsData.empty();
@@ -56,7 +59,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final classes = context.watch<SessionController>().myClasses;
+    final session = context.watch<SessionController>();
+    final classes = session.myClasses;
+    final year = session.currentYear;
 
     return DefaultTabController(
       length: 3,
@@ -75,6 +80,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
           bottom: const TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
             tabs: [
               Tab(text: AppStrings.overallReport),
               Tab(text: AppStrings.classReport),
@@ -117,6 +125,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         if (allDates.isNotEmpty)
                           DateGranularityFilter(
                             availableDates: allDates,
+                            firstDate: year?.startDate,
+                            lastDate: year?.endDate,
                             modes: const [
                               DateGranularity.month,
                               DateGranularity.year,
@@ -350,7 +360,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
     }
 
-    final selected = visibleMonths.last;
+    // The month the user tapped; otherwise the latest month that has started,
+    // so the tab opens on "now" and not on a future month with no data.
+    final now = DateTime.now();
+    final started =
+        visibleMonths.where((m) => !m.isAfter(now)).toList();
+    final selected = _selectedMonth != null &&
+            visibleMonths.any((m) => AppDateUtils.isSameDay(m, _selectedMonth!))
+        ? visibleMonths
+            .firstWhere((m) => AppDateUtils.isSameDay(m, _selectedMonth!))
+        : (started.isNotEmpty ? started.last : visibleMonths.first);
 
     final visible = report
         .where((row) => AppDateUtils.isSameDay(row.monthStart, selected))
@@ -372,7 +391,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         child: ChoiceChip(
                           label: Text(AppDateUtils.formatMonth(month)),
                           selected: AppDateUtils.isSameDay(month, selected),
-                          onSelected: (_) => setState(() {}),
+                          onSelected: (_) =>
+                              setState(() => _selectedMonth = month),
                         ),
                       ),
                     )

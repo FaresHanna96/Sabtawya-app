@@ -76,8 +76,21 @@ class ReportRepository {
       if (childId != null) query = query.eq('child_id', childId);
       if (classId != null) query = query.eq('class_id', classId);
       if (onlyActive) query = query.eq('child_is_active', true);
-      final data = await query.order('month_start');
-      return rows(data).map(ChildMonthlyReport.fromMap).toList();
+      // A year of monthly rows is 13 months x every child, well over the
+      // 1000 rows one response may hold, so read it page by page. Without
+      // this the later months silently went missing from the reports.
+      const page = 1000;
+      final all = <ChildMonthlyReport>[];
+      for (var from = 0;; from += page) {
+        final data = await query
+            .order('month_start')
+            .order('child_id')
+            .range(from, from + page - 1);
+        final batch = rows(data);
+        all.addAll(batch.map(ChildMonthlyReport.fromMap));
+        if (batch.length < page) break;
+      }
+      return all;
     } catch (e) {
       throw AppFailure.from(e);
     }

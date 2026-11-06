@@ -22,9 +22,17 @@ class DateGranularityFilter extends StatefulWidget {
     // modes / initialGranularity kept for API compatibility; not used by UI.
     this.modes,
     this.initialGranularity,
+    this.firstDate,
+    this.lastDate,
   });
 
   final List<DateTime> availableDates;
+
+  /// Bounds of the calendar. When given (the attendance year's start and end)
+  /// they win over the dates found in the data, so the calendar always spans
+  /// the whole year.
+  final DateTime? firstDate;
+  final DateTime? lastDate;
   final List<DateGranularity>? modes;
   final DateGranularity? initialGranularity;
 
@@ -88,13 +96,23 @@ class DateGranularityFilterState extends State<DateGranularityFilter> {
   }
 
   DateTime get _firstDate {
+    if (widget.firstDate != null) return widget.firstDate!;
     if (widget.availableDates.isEmpty) return DateTime(2020);
     return widget.availableDates.reduce((a, b) => a.isBefore(b) ? a : b);
   }
 
   DateTime get _lastDate {
+    if (widget.lastDate != null) return widget.lastDate!;
     if (widget.availableDates.isEmpty) return DateTime.now();
     return widget.availableDates.reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  /// [value] limited to [low]..[high], so the picker never opens outside its
+  /// own range.
+  DateTime _clamp(DateTime value, DateTime low, DateTime high) {
+    if (value.isBefore(low)) return low;
+    if (value.isAfter(high)) return high;
+    return value;
   }
 
   Future<void> _pickFrom() async {
@@ -110,7 +128,7 @@ class DateGranularityFilterState extends State<DateGranularityFilter> {
   Future<void> _pickTo() async {
     final day = await showDatePicker(
       context: context,
-      initialDate: _to ?? (_from ?? _lastDate),
+      initialDate: _to ?? _clamp(DateTime.now(), _from ?? _firstDate, _lastDate),
       firstDate: _from ?? _firstDate,
       lastDate: _lastDate,
     );
