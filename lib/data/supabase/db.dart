@@ -36,6 +36,7 @@ class Db {
   static const vAdminStats = 'v_admin_stats';
   static const vChildLastActivity = 'v_child_last_activity';
   static const vChildCommitment = 'v_child_commitment';
+  static const vChildAttendanceStreak = 'v_child_attendance_streak';
   static const vPendingServants = 'v_pending_servants';
   static const vChildBirthdays = 'v_child_birthdays';
   static const vServantBirthdays = 'v_servant_birthdays';

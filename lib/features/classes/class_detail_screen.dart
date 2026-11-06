@@ -10,9 +10,11 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
+import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/class_repository.dart';
+import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_history_screen.dart';
 import '../attendance/attendance_screen.dart';
@@ -20,6 +22,7 @@ import '../children/child_filters.dart';
 import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../children/child_tile.dart';
+import '../children/follow_up_section.dart';
 import 'class_form_screen.dart';
 import 'patron_avatar.dart';
 
@@ -58,7 +61,22 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       overview: overview,
       servants: await _classes.servantsOfClass(widget.classId),
       children: await _children.byClass(widget.classId, includeInactive: true),
+      streaks: await _loadStreaks(),
     );
+  }
+
+  /// The runs are a hint on top of the page: a failure leaves them out rather
+  /// than breaking the class screen.
+  Future<Map<String, ChildStreak>> _loadStreaks() async {
+    try {
+      final yearId = context.read<SessionController>().currentYear?.id;
+      if (yearId == null) return const {};
+      final list = await const ReportRepository()
+          .streaks(yearId: yearId, classId: widget.classId);
+      return {for (final s in list) s.childId: s};
+    } catch (_) {
+      return const {};
+    }
   }
 
   Future<void> _reload() =>
@@ -234,6 +252,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     const SizedBox(height: 12),
                     _actions(),
                     const SizedBox(height: 12),
+                    FollowUpSection(
+                      streaks: data.streaks.values.toList(),
+                      onReturn: _reload,
+                    ),
                     _servants(data.servants),
                     const SizedBox(height: 16),
                     Row(
@@ -290,6 +312,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) => ChildTile(
                       child: visible[index],
+                      presentStreak:
+                          data.streaks[visible[index].id]?.presentStreak ?? 0,
                       onTap: () => _openChild(visible[index]),
                     ),
                   ),
@@ -436,8 +460,10 @@ class _ClassDetail {
     required this.overview,
     required this.servants,
     required this.children,
+    required this.streaks,
   });
 
+  final Map<String, ChildStreak> streaks;
   final ClassOverview overview;
   final List<ClassServant> servants;
   final List<Child> children;

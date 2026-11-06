@@ -14,11 +14,15 @@ class ChildTile extends StatelessWidget {
     required this.child,
     required this.onTap,
     this.className,
+    this.presentStreak = 0,
   });
 
   final Child child;
   final VoidCallback onTap;
   final String? className;
+
+  /// Saturdays attended in a row; a flame shows from 4 up.
+  final int presentStreak;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +77,24 @@ class ChildTile extends StatelessWidget {
                             fontWeight: FontWeight.w700, fontSize: 15),
                       ),
                     ),
+                    if (presentStreak >= 4) ...[
+                      const SizedBox(width: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.local_fire_department_rounded,
+                              size: 16, color: AppColors.coral),
+                          Text(
+                            '$presentStreak',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.coral,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(width: 6),
                     GenderBadge(gender: child.gender, compact: true),
                   ],

@@ -345,3 +345,35 @@ class ActivityLogEntry {
     return '$who $verb $what';
   }
 }
+
+/// How many Saturdays in a row a child has been absent / present, counting
+/// back from the latest Saturday whose attendance was taken.
+class ChildStreak {
+  const ChildStreak({
+    required this.childId,
+    required this.childName,
+    required this.classId,
+    required this.className,
+    required this.absentStreak,
+    required this.presentStreak,
+    this.lastPresentDate,
+  });
+
+  final String childId;
+  final String childName;
+  final String classId;
+  final String className;
+  final int absentStreak;
+  final int presentStreak;
+  final DateTime? lastPresentDate;
+
+  factory ChildStreak.fromMap(Map<String, dynamic> map) => ChildStreak(
+        childId: asText(map['child_id']),
+        childName: asText(map['child_name']),
+        classId: asText(map['class_id']),
+        className: asText(map['class_name']),
+        absentStreak: asInt(map['absent_streak']),
+        presentStreak: asInt(map['present_streak']),
+        lastPresentDate: asDateOrNull(map['last_present_date']),
+      );
+}

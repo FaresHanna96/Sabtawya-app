@@ -206,6 +206,10 @@ class AppStrings {
   // ------------------------------------------------------------- assignments
   static const assignmentsTitle = 'تعيين الخدام';
   static const assignServant = 'تعيين خادم';
+  static const needFollowUp = 'محتاجين متابعة';
+  static const absentInARow = 'غايب';
+  static const timesInARow = 'مرات ورا بعض';
+  static const needFollowUpHint = 'مخدومين غابوا أكتر من مرة ورا بعض. اتصل بيهم أو زورهم.';
   static const myData = 'تعديل بياناتي';
   static const myDataHint =
       'عدّل بياناتك الشخصية: الاسم، الموبايل، تاريخ الميلاد، العنوان وغيرها.';

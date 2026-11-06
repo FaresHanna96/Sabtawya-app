@@ -139,6 +139,29 @@ class ReportRepository {
     }
   }
 
+  /// Children with a run of absences or a run of attendance worth noticing,
+  /// for the current year. Row level security limits it to the caller's
+  /// classes, so a servant only ever sees their own children.
+  Future<List<ChildStreak>> streaks({
+    required String yearId,
+    String? classId,
+    int minAbsent = 2,
+    int minPresent = 4,
+  }) async {
+    try {
+      var query = Db.client
+          .from(Db.vChildAttendanceStreak)
+          .select()
+          .eq('year_id', yearId)
+          .or('absent_streak.gte.$minAbsent,present_streak.gte.$minPresent');
+      if (classId != null) query = query.eq('class_id', classId);
+      final data = await query;
+      return rows(data).map(ChildStreak.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Children who keep showing up: الملتزمون.
   ///
   /// Ordered by the unbroken run of Saturdays first and the overall rate
