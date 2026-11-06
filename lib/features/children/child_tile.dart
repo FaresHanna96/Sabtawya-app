@@ -21,7 +21,7 @@ class ChildTile extends StatelessWidget {
   final VoidCallback onTap;
   final String? className;
 
-  /// Saturdays attended in a row; a flame shows from 4 up.
+  /// Saturdays attended in a row; a flame shows from 3 up.
   final int presentStreak;
 
   @override
@@ -77,7 +77,7 @@ class ChildTile extends StatelessWidget {
                             fontWeight: FontWeight.w700, fontSize: 15),
                       ),
                     ),
-                    if (presentStreak >= 4) ...[
+                    if (presentStreak >= 3) ...[
                       const SizedBox(width: 6),
                       Row(
                         mainAxisSize: MainAxisSize.min,

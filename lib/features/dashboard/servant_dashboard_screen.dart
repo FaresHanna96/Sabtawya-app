@@ -41,7 +41,7 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
     if (yearId == null) return <ClassYearScore>[];
     // A hint only: if it cannot load, the home screen still works.
     try {
-      _streaks = await _reports.streaks(yearId: yearId, minPresent: 1000);
+      _streaks = await _reports.streaks(yearId: yearId);
     } catch (_) {
       _streaks = const [];
     }
@@ -91,6 +91,12 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
             const TodayBirthdaysSection(),
             FollowUpSection(
               streaks: _streaks,
+              showClass: classes.length > 1,
+              onReturn: _reload,
+            ),
+            FollowUpSection(
+              streaks: _streaks,
+              kind: StreakKind.present,
               showClass: classes.length > 1,
               onReturn: _reload,
             ),

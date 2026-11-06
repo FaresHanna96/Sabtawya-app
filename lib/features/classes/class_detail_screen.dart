@@ -257,6 +257,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       onReturn: _reload,
                       collapsible: true,
                     ),
+                    FollowUpSection(
+                      streaks: data.streaks.values.toList(),
+                      kind: StreakKind.present,
+                      onReturn: _reload,
+                      collapsible: true,
+                    ),
                     _servants(data.servants),
                     const SizedBox(height: 16),
                     Row(

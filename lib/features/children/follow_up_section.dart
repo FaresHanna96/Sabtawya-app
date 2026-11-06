@@ -6,19 +6,38 @@ import '../../core/widgets/app_widgets.dart';
 import '../../data/models/reports.dart';
 import 'child_profile_screen.dart';
 
-/// "محتاجين متابعة": children who missed two or more Saturdays in a row, the
-/// longest runs first. Hidden when nobody needs following up.
+enum StreakKind { absent, present }
+
+/// A list of children by their run of Saturdays, longest first:
+/// [StreakKind.absent] is "محتاجين متابعة" (missed 2 or more in a row) and
+/// [StreakKind.present] is "ملتزمين" (attended 3 or more in a row). Hidden when
+/// nobody qualifies.
 class FollowUpSection extends StatelessWidget {
   const FollowUpSection({
     super.key,
     required this.streaks,
     this.showClass = false,
     this.onReturn,
+    this.kind = StreakKind.absent,
     this.collapsible = false,
     this.initiallyExpanded = false,
   });
 
   final List<ChildStreak> streaks;
+  final StreakKind kind;
+
+  bool get _isAbsent => kind == StreakKind.absent;
+  int _run(ChildStreak s) => _isAbsent ? s.absentStreak : s.presentStreak;
+  Color get _color => _isAbsent ? AppColors.coral : AppColors.success;
+  IconData get _icon => _isAbsent
+      ? Icons.support_agent_rounded
+      : Icons.local_fire_department_rounded;
+  String get _title =>
+      _isAbsent ? AppStrings.needFollowUp : AppStrings.committedStreak;
+  String get _hint =>
+      _isAbsent ? AppStrings.needFollowUpHint : AppStrings.committedStreakHint;
+  String get _label =>
+      _isAbsent ? AppStrings.absentInARow : AppStrings.presentInARow;
 
   /// Show the class name too, for lists that span several classes.
   final bool showClass;
@@ -33,16 +52,16 @@ class FollowUpSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final absent = streaks.where((s) => s.absentStreak >= 2).toList()
+    final absent = streaks.where((s) => _run(s) >= (_isAbsent ? 2 : 3)).toList()
       ..sort((a, b) {
-        final byRun = b.absentStreak.compareTo(a.absentStreak);
+        final byRun = _run(b).compareTo(_run(a));
         return byRun != 0 ? byRun : a.childName.compareTo(b.childName);
       });
     if (absent.isEmpty) return const SizedBox.shrink();
 
     final rows = <Widget>[
-      const Text(
-        AppStrings.needFollowUpHint,
+      Text(
+        _hint,
         style: TextStyle(fontSize: 12, color: AppColors.muted),
       ),
       const SizedBox(height: 6),
@@ -58,10 +77,9 @@ class FollowUpSection extends StatelessWidget {
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               initiallyExpanded: initiallyExpanded,
-              leading: const Icon(Icons.support_agent_rounded,
-                  color: AppColors.coral),
+              leading: Icon(_icon, color: _color),
               title: Text(
-                '${AppStrings.needFollowUp} (${absent.length})',
+                '$_title (${absent.length})',
                 style:
                     const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
               ),
@@ -77,9 +95,9 @@ class FollowUpSection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: SectionCard(
-        title: '${AppStrings.needFollowUp} (${absent.length})',
-        icon: Icons.support_agent_rounded,
-        accent: AppColors.coral,
+        title: '$_title (${absent.length})',
+        icon: _icon,
+        accent: _color,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: rows,
@@ -108,15 +126,15 @@ class FollowUpSection extends StatelessWidget {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.coral.withValues(alpha: 0.14),
+          color: _color.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
-          '${AppStrings.absentInARow} ${s.absentStreak} ${AppStrings.timesInARow}',
-          style: const TextStyle(
+          '$_label ${_run(s)} ${AppStrings.timesInARow}',
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: AppColors.coral,
+            color: _color,
           ),
         ),
       ),

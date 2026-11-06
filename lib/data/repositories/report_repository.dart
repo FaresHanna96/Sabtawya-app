@@ -146,7 +146,7 @@ class ReportRepository {
     required String yearId,
     String? classId,
     int minAbsent = 2,
-    int minPresent = 4,
+    int minPresent = 3,
   }) async {
     try {
       var query = Db.client

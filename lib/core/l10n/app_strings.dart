@@ -206,6 +206,9 @@ class AppStrings {
   // ------------------------------------------------------------- assignments
   static const assignmentsTitle = 'تعيين الخدام';
   static const assignServant = 'تعيين خادم';
+  static const committedStreak = 'ملتزمين';
+  static const committedStreakHint = 'مخدومين بيحضروا كل سبت. شجّعهم!';
+  static const presentInARow = 'حاضر';
   static const needFollowUp = 'محتاجين متابعة';
   static const absentInARow = 'غايب';
   static const timesInARow = 'مرات ورا بعض';
