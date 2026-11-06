@@ -255,6 +255,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     FollowUpSection(
                       streaks: data.streaks.values.toList(),
                       onReturn: _reload,
+                      collapsible: true,
                     ),
                     _servants(data.servants),
                     const SizedBox(height: 16),

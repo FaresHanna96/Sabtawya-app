@@ -14,6 +14,8 @@ class FollowUpSection extends StatelessWidget {
     required this.streaks,
     this.showClass = false,
     this.onReturn,
+    this.collapsible = false,
+    this.initiallyExpanded = false,
   });
 
   final List<ChildStreak> streaks;
@@ -24,6 +26,11 @@ class FollowUpSection extends StatelessWidget {
   /// Called after the profile screen closes, so the list can refresh.
   final VoidCallback? onReturn;
 
+  /// Lets the user fold the list away under its title (the title keeps the
+  /// count, so a folded list still says how many need following up).
+  final bool collapsible;
+  final bool initiallyExpanded;
+
   @override
   Widget build(BuildContext context) {
     final absent = streaks.where((s) => s.absentStreak >= 2).toList()
@@ -33,6 +40,40 @@ class FollowUpSection extends StatelessWidget {
       });
     if (absent.isEmpty) return const SizedBox.shrink();
 
+    final rows = <Widget>[
+      const Text(
+        AppStrings.needFollowUpHint,
+        style: TextStyle(fontSize: 12, color: AppColors.muted),
+      ),
+      const SizedBox(height: 6),
+      for (final s in absent) _row(context, s),
+    ];
+
+    if (collapsible) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: initiallyExpanded,
+              leading: const Icon(Icons.support_agent_rounded,
+                  color: AppColors.coral),
+              title: Text(
+                '${AppStrings.needFollowUp} (${absent.length})',
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+              children: rows,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: SectionCard(
@@ -41,48 +82,42 @@ class FollowUpSection extends StatelessWidget {
         accent: AppColors.coral,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              AppStrings.needFollowUpHint,
-              style: TextStyle(fontSize: 12, color: AppColors.muted),
-            ),
-            const SizedBox(height: 6),
-            for (final s in absent)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                onTap: () async {
-                  await Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ChildProfileScreen(childId: s.childId),
-                    ),
-                  );
-                  onReturn?.call();
-                },
-                title: Text(
-                  s.childName,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w700),
-                ),
-                subtitle: showClass ? Text(s.className) : null,
-                trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.coral.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${AppStrings.absentInARow} ${s.absentStreak} ${AppStrings.timesInARow}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.coral,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+          children: rows,
+        ),
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, ChildStreak s) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      onTap: () async {
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => ChildProfileScreen(childId: s.childId),
+          ),
+        );
+        onReturn?.call();
+      },
+      title: Text(
+        s.childName,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+      subtitle: showClass ? Text(s.className) : null,
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.coral.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          '${AppStrings.absentInARow} ${s.absentStreak} ${AppStrings.timesInARow}',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.coral,
+          ),
         ),
       ),
     );
