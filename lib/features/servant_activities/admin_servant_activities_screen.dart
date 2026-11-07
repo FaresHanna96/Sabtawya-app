@@ -17,46 +17,79 @@ import 'servant_activities_report_screen.dart';
 import 'servant_activity_detail_screen.dart';
 
 /// Admin overview of all servants' activity stats.
+///
+/// [showAppBar] is false when the screen sits inside the home shell, which
+/// already has its own title bar; the tabs and the report button then sit in a
+/// strip under it instead of a second title bar.
 class AdminServantActivitiesScreen extends StatelessWidget {
-  const AdminServantActivitiesScreen({super.key});
+  const AdminServantActivitiesScreen({super.key, this.showAppBar = true});
+
+  final bool showAppBar;
+
+  void _openReport(BuildContext context) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const ServantActivitiesReportScreen(),
+      ),
+    );
+  }
+
+  static const _tabBar = TabBar(
+    tabs: [
+      Tab(text: 'الخدام'),
+      Tab(text: 'تسجيل الحضور'),
+    ],
+    indicatorColor: Colors.white,
+    labelColor: Colors.white,
+    unselectedLabelColor: Colors.white60,
+  );
 
   @override
   Widget build(BuildContext context) {
+    const body = TabBarView(
+      children: [
+        _SummaryTab(),
+        _AttendanceTab(),
+      ],
+    );
+
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(AppStrings.servantActivities),
-          actions: [
-            IconButton(
-              tooltip: AppStrings.servantActivityReport,
-              icon: const Icon(Icons.insert_chart_outlined),
-              onPressed: () => Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (_) => const ServantActivitiesReportScreen(),
-                ),
+      child: showAppBar
+          ? Scaffold(
+              appBar: AppBar(
+                title: const Text(AppStrings.servantActivities),
+                actions: [
+                  IconButton(
+                    tooltip: AppStrings.servantActivityReport,
+                    icon: const Icon(Icons.insert_chart_outlined),
+                    onPressed: () => _openReport(context),
+                  ),
+                ],
+                bottom: _tabBar,
               ),
+              body: const SafeArea(child: body),
+            )
+          : Column(
+              children: [
+                Material(
+                  color: Theme.of(context).appBarTheme.backgroundColor ??
+                      Theme.of(context).colorScheme.primary,
+                  child: Row(
+                    children: [
+                      const Expanded(child: _tabBar),
+                      IconButton(
+                        tooltip: AppStrings.servantActivityReport,
+                        color: Colors.white,
+                        icon: const Icon(Icons.insert_chart_outlined),
+                        onPressed: () => _openReport(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Expanded(child: body),
+              ],
             ),
-          ],
-          bottom: TabBar(
-            tabs: const [
-              Tab(text: 'الخدام'),
-              Tab(text: 'تسجيل الحضور'),
-            ],
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-          ),
-        ),
-        body: const SafeArea(
-          child: TabBarView(
-            children: [
-              _SummaryTab(),
-              _AttendanceTab(),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

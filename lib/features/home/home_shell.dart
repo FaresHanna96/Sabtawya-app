@@ -76,7 +76,7 @@ class _HomeShellState extends State<HomeShell> {
           icon: Icons.volunteer_activism_outlined,
           selectedIcon: Icons.volunteer_activism,
           child: isAdmin
-              ? const AdminServantActivitiesScreen()
+              ? const AdminServantActivitiesScreen(showAppBar: false)
               : const MyActivitiesScreen(),
         ),
       const _Tab(
