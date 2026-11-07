@@ -1,3 +1,4 @@
+import '../../core/widgets/image_viewer.dart';
 import 'package:flutter/material.dart';
 
 import 'servant_summary_card.dart';
@@ -690,9 +691,29 @@ class _StorageImageState extends State<_StorageImage> {
         ),
       );
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Image.network(_url!, fit: BoxFit.contain),
+    return GestureDetector(
+      onTap: () => showZoomableImage(context, _url!),
+      child: Stack(
+        alignment: Alignment.bottomLeft,
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(_url!, fit: BoxFit.contain),
+            ),
+          ),
+          // Hint that the picture opens full screen.
+          Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Colors.black54,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.zoom_in, color: Colors.white, size: 18),
+          ),
+        ],
+      ),
     );
   }
 }
