@@ -96,6 +96,53 @@ class ReportRepository {
     }
   }
 
+  /// Every child's score at each Saturday between [from] and [to] (both
+  /// inclusive, either may be open), so a report over a date range counts
+  /// exactly the Saturdays inside it. Only Saturdays whose attendance was
+  /// taken have records, so the rest never count against anybody.
+  Future<List<SessionScore>> sessionScores({
+    required String yearId,
+    String? classId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    String iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+    try {
+      var query = Db.client
+          .from(Db.tAttendanceRecords)
+          .select(
+            'child_id, score, '
+            'attendance_sessions!inner(session_date, class_id, year_id), '
+            'children!inner(full_name, is_active, classes(name))',
+          )
+          .eq('attendance_sessions.year_id', yearId)
+          .eq('children.is_active', true);
+      if (classId != null) {
+        query = query.eq('attendance_sessions.class_id', classId);
+      }
+      if (from != null) {
+        query = query.gte('attendance_sessions.session_date', iso(from));
+      }
+      if (to != null) {
+        query = query.lte('attendance_sessions.session_date', iso(to));
+      }
+      // Paged: a year of Saturdays for every child is well over 1000 rows.
+      const page = 1000;
+      final all = <SessionScore>[];
+      for (var start = 0;; start += page) {
+        final data = await query.order('id').range(start, start + page - 1);
+        final batch = rows(data);
+        all.addAll(batch.map(SessionScore.fromMap));
+        if (batch.length < page) break;
+      }
+      return all;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Children below [threshold] percent for the year, lowest first.
   Future<List<ChildYearReport>> lowAttendance({
     required String yearId,

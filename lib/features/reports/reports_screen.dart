@@ -49,6 +49,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final yearId = context.read<SessionController>().currentYear?.id;
     if (yearId == null) return _latest = const _ReportsData.empty();
 
+    final ranged = _filterFrom != null || _filterTo != null;
+    final maxPerSession =
+        context.read<SessionController>().currentYear?.maxPointsPerSession ?? 20;
     return _latest = _ReportsData(
       children: await _reports.childYearReports(
         yearId: yearId,
@@ -59,6 +62,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
         yearId: yearId,
         classId: _classId,
       ),
+      // With a date range the exact Saturdays inside it are read, instead of
+      // whole months (a range such as 5-20 Nov used to match nothing, as the
+      // months are dated the 1st).
+      sessions: ranged
+          ? await _reports.sessionScores(
+              yearId: yearId,
+              classId: _classId,
+              from: _filterFrom,
+              to: _filterTo,
+            )
+          : null,
+      maxPerSession: maxPerSession,
     );
   }
 
@@ -219,9 +234,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               if (classes.length > 1)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+                  // All classes visible at once (no sideways swiping).
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         _classChip(null, AppStrings.all),
                         ...classes.map(
@@ -269,11 +287,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     DateGranularity.year,
                                   ],
                                   initialGranularity: _granularity,
-                                  onChanged: (g, from, to) => setState(() {
-                                    _granularity = g;
-                                    _filterFrom = from;
-                                    _filterTo = to;
-                                  }),
+                                  onChanged: (g, from, to) {
+                                    setState(() {
+                                      _granularity = g;
+                                      _filterFrom = from;
+                                      _filterTo = to;
+                                    });
+                                    _reload();
+                                  },
                                 ),
                               );
                             },
@@ -300,21 +321,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _classChip(String? classId, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: _classId == classId,
-        onSelected: (_) {
-          setState(() {
-            _classId = classId;
-            _granularity = null;
-            _filterFrom = null;
-            _filterTo = null;
-          });
-          _reload();
-        },
-      ),
+    return ChoiceChip(
+      label: Text(label),
+      selected: _classId == classId,
+      onSelected: (_) {
+        // The period stays: class and period combine.
+        setState(() => _classId = classId);
+        _reload();
+      },
     );
   }
 
@@ -323,7 +337,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   List<_ChildScore> _childScores(_ReportsData data) {
     final List<_ChildScore> scores;
 
-    if (_granularity == null) {
+    if (data.sessions == null) {
       // Build sessionsHeld per child from monthly data up to current month.
       final now = DateTime.now();
       final held = <String, int>{};
@@ -349,7 +363,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           .toList()
         ..sort((a, b) => b.points.compareTo(a.points));
     } else {
-      scores = _aggregateChildren(data.monthly);
+      scores = _aggregateChildren(data);
     }
     return scores;
   }
@@ -407,7 +421,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   List<_ClassScore> _classScores(_ReportsData data) {
     final List<_ClassScore> scores;
 
-    if (_granularity == null) {
+    if (data.sessions == null) {
       // Correct max points to sessions held so far (months up to now).
       final now = DateTime.now();
       final classMaxHeld = <String, int>{};
@@ -437,7 +451,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           return bp.compareTo(ap);
         });
     } else {
-      scores = _aggregateClasses(data.monthly);
+      scores = _aggregateClasses(data);
     }
     return scores;
   }
@@ -588,75 +602,42 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   // -------------------------------------------------------------- aggregation
 
-  bool _matchesFilter(DateTime date) {
-    return DateGranularityFilter.matchesFilter(
-      date: date,
-      granularity: _granularity,
-      from: _filterFrom,
-      to: _filterTo,
-    );
-  }
-
-  List<_ChildScore> _aggregateChildren(List<ChildMonthlyReport> monthly) {
-    final points = <String, int>{};
-    final maxPoints = <String, int>{};
-    final attended = <String, int>{};
-    final total = <String, int>{};
-    final names = <String, String>{};
-    final classes = <String, String>{};
-
-    for (final row in monthly) {
-      if (!_matchesFilter(row.monthStart)) continue;
-      names[row.childId] = row.childName;
-      classes[row.childId] = row.className;
-      points[row.childId] = (points[row.childId] ?? 0) + row.points;
-      maxPoints[row.childId] = (maxPoints[row.childId] ?? 0) + row.maxPoints;
-      attended[row.childId] =
-          (attended[row.childId] ?? 0) + row.sessionsAttended;
-      total[row.childId] = (total[row.childId] ?? 0) + row.sessionsTotal;
+  /// Children's standings over the Saturdays inside the chosen range.
+  List<_ChildScore> _aggregateChildren(_ReportsData data) {
+    final byChild = <String, List<SessionScore>>{};
+    for (final r in data.sessions ?? const <SessionScore>[]) {
+      (byChild[r.childId] ??= []).add(r);
     }
-
-    return names.keys
-        .map(
-          (id) => _ChildScore(
-            childId: id,
-            childName: names[id]!,
-            className: classes[id]!,
-            points: points[id] ?? 0,
-            maxPoints: maxPoints[id] ?? 0,
-            sessionsAttended: attended[id] ?? 0,
-            sessionsTotal: total[id] ?? 0,
-          ),
-        )
-        .toList()
+    return byChild.entries.map((e) {
+      final first = e.value.first;
+      return _ChildScore(
+        childId: e.key,
+        childName: first.childName,
+        className: first.className,
+        points: e.value.fold<int>(0, (a, r) => a + r.score),
+        maxPoints: e.value.length * data.maxPerSession,
+        sessionsAttended: e.value.where((r) => r.present).length,
+        sessionsTotal: e.value.length,
+      );
+    }).toList()
       ..sort((a, b) => b.points.compareTo(a.points));
   }
 
-  List<_ClassScore> _aggregateClasses(List<ChildMonthlyReport> monthly) {
-    final points = <String, int>{};
-    final maxPoints = <String, int>{};
-    final childIds = <String, Set<String>>{};
-    final names = <String, String>{};
-
-    for (final row in monthly) {
-      if (!_matchesFilter(row.monthStart)) continue;
-      names[row.classId] = row.className;
-      points[row.classId] = (points[row.classId] ?? 0) + row.points;
-      maxPoints[row.classId] = (maxPoints[row.classId] ?? 0) + row.maxPoints;
-      (childIds[row.classId] ??= <String>{}).add(row.childId);
+  /// Classes' standings over the Saturdays inside the chosen range.
+  List<_ClassScore> _aggregateClasses(_ReportsData data) {
+    final byClass = <String, List<SessionScore>>{};
+    for (final r in data.sessions ?? const <SessionScore>[]) {
+      (byClass[r.classId] ??= []).add(r);
     }
-
-    return names.keys
-        .map(
-          (id) => _ClassScore(
-            classId: id,
-            className: names[id]!,
-            children: childIds[id]?.length ?? 0,
-            points: points[id] ?? 0,
-            maxPoints: maxPoints[id] ?? 0,
-          ),
-        )
-        .toList()
+    return byClass.entries.map((e) {
+      return _ClassScore(
+        classId: e.key,
+        className: e.value.first.className,
+        children: e.value.map((r) => r.childId).toSet().length,
+        points: e.value.fold<int>(0, (a, r) => a + r.score),
+        maxPoints: e.value.length * data.maxPerSession,
+      );
+    }).toList()
       ..sort((a, b) {
         final ap = a.maxPoints > 0 ? a.points / a.maxPoints : 0.0;
         final bp = b.maxPoints > 0 ? b.points / b.maxPoints : 0.0;
@@ -708,16 +689,24 @@ class _ReportsData {
     required this.children,
     required this.classes,
     required this.monthly,
+    this.sessions,
+    this.maxPerSession = 20,
   });
 
   const _ReportsData.empty()
       : children = const <ChildYearReport>[],
         classes = const <ClassYearScore>[],
-        monthly = const <ChildMonthlyReport>[];
+        monthly = const <ChildMonthlyReport>[],
+        sessions = null,
+        maxPerSession = 20;
 
   final List<ChildYearReport> children;
   final List<ClassYearScore> classes;
   final List<ChildMonthlyReport> monthly;
+
+  /// The Saturdays inside the chosen date range; null when no range is set.
+  final List<SessionScore>? sessions;
+  final int maxPerSession;
 }
 
 // ---------------------------------------------------------------- rank badge

@@ -377,3 +377,38 @@ class ChildStreak {
         lastPresentDate: asDateOrNull(map['last_present_date']),
       );
 }
+
+/// One child's score at one Saturday, for reports over an exact date range.
+class SessionScore {
+  const SessionScore({
+    required this.childId,
+    required this.childName,
+    required this.classId,
+    required this.className,
+    required this.sessionDate,
+    required this.score,
+  });
+
+  final String childId;
+  final String childName;
+  final String classId;
+  final String className;
+  final DateTime sessionDate;
+  final int score;
+
+  bool get present => score > 0;
+
+  factory SessionScore.fromMap(Map<String, dynamic> map) {
+    final session = (map['attendance_sessions'] as Map).cast<String, dynamic>();
+    final child = (map['children'] as Map).cast<String, dynamic>();
+    final cls = child['classes'];
+    return SessionScore(
+      childId: asText(map['child_id']),
+      childName: asText(child['full_name']),
+      classId: asText(session['class_id']),
+      className: cls is Map ? asText(cls['name']) : '',
+      sessionDate: asDate(session['session_date']),
+      score: asInt(map['score']),
+    );
+  }
+}
