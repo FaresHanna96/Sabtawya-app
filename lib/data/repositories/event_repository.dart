@@ -94,6 +94,26 @@ class EventRepository {
     }
   }
 
+  /// What has been collected for an event, split by how it was paid
+  /// (`cash` / `tayo`). RLS limits a servant to their own classes' payments.
+  Future<Map<String, double>> methodTotals(String eventId) async {
+    try {
+      final data = await Db.client
+          .from(Db.tEventPayments)
+          .select('amount, payment_method')
+          .eq('event_id', eventId);
+      final totals = <String, double>{'cash': 0, 'tayo': 0};
+      for (final r in rows(data)) {
+        final method = (r['payment_method'] as String?) ?? 'cash';
+        final amount = double.tryParse('${r['amount']}') ?? 0;
+        totals[method] = (totals[method] ?? 0) + amount;
+      }
+      return totals;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Payment history for one child in one event, newest first.
   Future<List<EventPayment>> payments(String eventId, String childId) async {
     try {

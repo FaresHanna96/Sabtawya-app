@@ -594,6 +594,7 @@ class AppStrings {
   static const collected               = 'محصَّل';
   static const expected                = 'متوقع';
   static const partialPay              = 'بدأ الدفع';
+  static const bookedTab               = 'حاجزين';
   static const notPaidTab              = 'لم يدفع';
 
   // ---------------------------------------------------------------- settings

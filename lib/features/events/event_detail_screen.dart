@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -9,6 +10,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/event.dart';
+import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../state/session_controller.dart';
 
@@ -40,8 +42,37 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     super.dispose();
   }
 
-  Future<List<ChildEventBalance>> _load() =>
-      _repository.balances(widget.event.id);
+  /// Collected so far, by payment method (`cash` / `tayo`).
+  Map<String, double> _byMethod = const {};
+
+  /// Who to ring for each child: his own number, else his mother's, else his
+  /// father's. Children with no number at all are left out.
+  Map<String, String> _phones = const {};
+
+  Future<List<ChildEventBalance>> _load() async {
+    final balances = await _repository.balances(widget.event.id);
+    try {
+      final children = await const ChildRepository().all();
+      final phones = <String, String>{};
+      for (final c in children) {
+        for (final n in [c.mobile, c.motherMobile, c.fatherMobile]) {
+          if (n != null && n.trim().isNotEmpty) {
+            phones[c.id] = n.trim();
+            break;
+          }
+        }
+      }
+      _phones = phones;
+    } catch (_) {
+      _phones = const {}; // the call button is an extra; never block the list
+    }
+    try {
+      _byMethod = await _repository.methodTotals(widget.event.id);
+    } catch (_) {
+      _byMethod = const {}; // the split is a extra; never block the list
+    }
+    return balances;
+  }
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
@@ -99,11 +130,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             final progress =
                 totalExpected > 0 ? totalCollected / totalExpected : 0.0;
 
-            final partial = balances
-                .where((b) => b.totalPaid > 0 && b.remaining > 0)
-                .toList();
             final notPaid = balances.where((b) => b.totalPaid == 0).toList();
             final fullPaid = balances.where((b) => b.remaining <= 0).toList();
+            // Everyone who has booked the trip: paid in full or started paying.
+            final booked = balances.where((b) => b.totalPaid > 0).toList();
 
             final session = context.read<SessionController>();
             String getClassName(String id) {
@@ -155,6 +185,19 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                   AppColors.olive),
                             ),
                           ),
+                          if (_byMethod.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '${AppStrings.paymentMethodCash}: '
+                              '${(_byMethod['cash'] ?? 0).toStringAsFixed(0)} ج.م'
+                              '   •   ${AppStrings.paymentMethodTayo}: '
+                              '${(_byMethod['tayo'] ?? 0).toStringAsFixed(0)} ج.م',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -168,7 +211,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   tabAlignment: TabAlignment.start,
                   tabs: [
                     Tab(text: '${AppStrings.all} (${balances.length})'),
-                    Tab(text: '${AppStrings.partialPay} (${partial.length})'),
+                    Tab(text: '${AppStrings.bookedTab} (${booked.length})'),
                     Tab(text: '${AppStrings.notPaidTab} (${notPaid.length})'),
                     Tab(text: '${AppStrings.paidInFull} (${fullPaid.length})'),
                   ],
@@ -181,7 +224,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                       final List<ChildEventBalance> filtered;
                       switch (_tabController.index) {
                         case 1:
-                          filtered = partial;
+                          filtered = booked;
                         case 2:
                           filtered = notPaid;
                         case 3:
@@ -263,6 +306,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                               (b) => _BalanceRow(
                                 balance: b,
                                 onTap: () => _openPayments(b),
+                                // Only on "لم يدفع", to chase the payment.
+                                phone: _tabController.index == 2
+                                    ? _phones[b.childId]
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -309,10 +356,17 @@ class _MiniStat extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _BalanceRow extends StatelessWidget {
-  const _BalanceRow({required this.balance, required this.onTap});
+  const _BalanceRow({
+    required this.balance,
+    required this.onTap,
+    this.phone,
+  });
 
   final ChildEventBalance balance;
   final VoidCallback onTap;
+
+  /// When set, a call button is shown beside the row.
+  final String? phone;
 
   @override
   Widget build(BuildContext context) {
@@ -385,6 +439,16 @@ class _BalanceRow extends StatelessWidget {
                   ],
                 ),
               ],
+              if (phone != null)
+                IconButton(
+                  icon: const Icon(Icons.call, size: 20),
+                  color: AppColors.success,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  tooltip: 'اتصال',
+                  onPressed: () =>
+                      launchUrl(Uri(scheme: 'tel', path: phone!)),
+                ),
               const SizedBox(width: 8),
               const Icon(Icons.chevron_left, size: 18, color: AppColors.muted),
             ],

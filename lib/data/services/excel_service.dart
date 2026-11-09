@@ -150,6 +150,39 @@ class ExcelParseResult {
 ///
 /// Excel is only a transport format here. The database stays the source of
 /// truth, so nothing in this file writes a score or a derived total.
+/// One child's line on the reports screen (already narrowed to the period
+/// and class the user picked).
+class ChildScoreRow {
+  const ChildScoreRow({
+    required this.className,
+    required this.childName,
+    required this.attended,
+    required this.total,
+    required this.points,
+  });
+
+  final String className;
+  final String childName;
+  final int attended;
+  final int total;
+  final int points;
+}
+
+/// One class's line on the reports screen.
+class ClassScoreRow {
+  const ClassScoreRow({
+    required this.className,
+    required this.children,
+    required this.points,
+    required this.maxPoints,
+  });
+
+  final String className;
+  final int children;
+  final int points;
+  final int maxPoints;
+}
+
 class ExcelService {
   const ExcelService._();
 
@@ -676,6 +709,61 @@ class ExcelService {
         IntCellValue(row.children),
         IntCellValue(row.points),
         DoubleCellValue(pct),
+      ]);
+    }
+    return _encode(book);
+  }
+
+  /// The reports screen's children tab, exactly as listed: [rows] keep the
+  /// order the screen shows (highest points first), so rank is the position.
+  static List<int> childScoresWorkbook(List<ChildScoreRow> rows) {
+    final (book, sheet) = _book(AppStrings.overallReport);
+    sheet.appendRow(<CellValue?>[
+      _text(AppStrings.rank),
+      _text(AppStrings.classLabel),
+      _text(AppStrings.childName),
+      _text(AppStrings.attendedSessions),
+      _text(AppStrings.totalSessions),
+      _text(AppStrings.totalPoints),
+      _text('${AppStrings.averageAttendance} %'),
+    ]);
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      sheet.appendRow(<CellValue?>[
+        IntCellValue(i + 1),
+        _text(row.className),
+        _text(row.childName),
+        IntCellValue(row.attended),
+        IntCellValue(row.total),
+        IntCellValue(row.points),
+        DoubleCellValue(
+          row.total > 0 ? row.attended / row.total * 100 : 0,
+        ),
+      ]);
+    }
+    return _encode(book);
+  }
+
+  /// The reports screen's class tab, in the order the screen shows.
+  static List<int> classScoresWorkbook(List<ClassScoreRow> rows) {
+    final (book, sheet) = _book(AppStrings.classReport);
+    sheet.appendRow(<CellValue?>[
+      _text(AppStrings.rank),
+      _text(AppStrings.classLabel),
+      _text(AppStrings.childrenCount),
+      _text(AppStrings.totalPoints),
+      _text('${AppStrings.averageAttendance} %'),
+    ]);
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      sheet.appendRow(<CellValue?>[
+        IntCellValue(i + 1),
+        _text(row.className),
+        IntCellValue(row.children),
+        IntCellValue(row.points),
+        DoubleCellValue(
+          row.maxPoints > 0 ? row.points / row.maxPoints * 100 : 0,
+        ),
       ]);
     }
     return _encode(book);

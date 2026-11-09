@@ -57,6 +57,27 @@ void main() {
     expect(name(3), 'ج'); // 9
   });
 
+  test('reports-screen exports keep the on-screen order and rank by position',
+      () {
+    final children = Excel.decodeBytes(ExcelService.childScoresWorkbook(const [
+      ChildScoreRow(
+          className: 'فصل', childName: 'أ', attended: 3, total: 4, points: 50),
+      ChildScoreRow(
+          className: 'فصل', childName: 'ب', attended: 1, total: 4, points: 20),
+    ])).tables.values.first.rows;
+    expect(children.length, 3); // header + 2
+    expect(children[1][0]!.value.toString(), '1');
+    expect(children[1][2]!.value.toString(), 'أ');
+    expect(children[2][0]!.value.toString(), '2');
+    expect(double.parse(children[2][6]!.value.toString()), 25); // 1 / 4
+
+    final classes = Excel.decodeBytes(ExcelService.classScoresWorkbook(const [
+      ClassScoreRow(className: 'س', children: 10, points: 80, maxPoints: 100),
+    ])).tables.values.first.rows;
+    expect(classes[1][1]!.value.toString(), 'س');
+    expect(double.parse(classes[1][4]!.value.toString()), 80);
+  });
+
   test('exports are formatted as a table: styled header and banded body', () {
     final bytes = ExcelService.childrenTemplate();
     final sheet = Excel.decodeBytes(bytes).tables.values.first;

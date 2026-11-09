@@ -4,14 +4,16 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/report_repository.dart';
+import '../../data/services/excel_service.dart';
+import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
 import '../children/child_profile_screen.dart';
-import '../excel/export_screen.dart';
 
 /// Year standings, class standings, and the monthly breakdown.
 ///
@@ -38,11 +40,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
   /// The month chip tapped on the monthly tab.
   DateTime? _selectedMonth;
 
+  /// The data the screen is showing, kept so the export button writes the same
+  /// numbers the user sees.
+  _ReportsData? _latest;
+  bool _exporting = false;
+
   Future<_ReportsData> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
-    if (yearId == null) return const _ReportsData.empty();
+    if (yearId == null) return _latest = const _ReportsData.empty();
 
-    return _ReportsData(
+    return _latest = _ReportsData(
       children: await _reports.childYearReports(
         yearId: yearId,
         classId: _classId,
@@ -57,6 +64,107 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
 
+  /// Exports the tab on screen with the class and period currently chosen.
+  Future<void> _exportCurrent(int tab) async {
+    final data = _latest;
+    if (_exporting || data == null) return;
+
+    final session = context.read<SessionController>();
+    var scope = AppStrings.all;
+    for (final item in session.myClasses) {
+      if (item.classId == _classId) scope = item.className;
+    }
+
+    final List<int>? bytes;
+    final String name;
+    switch (tab) {
+      case 0:
+        final rows = _childScores(data);
+        bytes = rows.isEmpty
+            ? null
+            : ExcelService.childScoresWorkbook(
+                rows
+                    .map(
+                      (r) => ChildScoreRow(
+                        className: r.className,
+                        childName: r.childName,
+                        attended: r.sessionsAttended,
+                        total: r.sessionsTotal,
+                        points: r.points,
+                      ),
+                    )
+                    .toList(),
+              );
+        name = '${AppStrings.overallReport} - $scope';
+      case 1:
+        final rows = _classScores(data);
+        bytes = rows.isEmpty
+            ? null
+            : ExcelService.classScoresWorkbook(
+                rows
+                    .map(
+                      (r) => ClassScoreRow(
+                        className: r.className,
+                        children: r.children,
+                        points: r.points,
+                        maxPoints: r.maxPoints,
+                      ),
+                    )
+                    .toList(),
+              );
+        name = '${AppStrings.classReport} - $scope';
+      default:
+        final month = _monthShown(_monthsOf(data.monthly));
+        final rows = month == null ? <ChildMonthlyReport>[] : _monthRows(data.monthly, month);
+        bytes = rows.isEmpty ? null : ExcelService.monthlyWorkbook(rows);
+        name = '${AppStrings.monthlyReport} - $scope'
+            '${month == null ? '' : ' - ${AppDateUtils.formatMonth(month)}'}';
+    }
+
+    if (bytes == null) {
+      Ui.info(context, AppStrings.noData);
+      return;
+    }
+
+    setState(() => _exporting = true);
+    try {
+      await FileService.saveAndShare(
+        fileName: FileService.timestampedName(name),
+        bytes: bytes,
+        shareText: name,
+      );
+      if (mounted) Ui.success(context, AppStrings.exportDone);
+    } catch (e) {
+      if (mounted) Ui.error(context, e);
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  List<DateTime> _monthsOf(List<ChildMonthlyReport> monthly) =>
+      monthly.map((r) => r.monthStart).toSet().toList()..sort();
+
+  /// The month the monthly tab is showing: the chip the user tapped, else the
+  /// latest month that has started.
+  DateTime? _monthShown(List<DateTime> months) {
+    if (months.isEmpty) return null;
+    if (_selectedMonth != null) {
+      for (final m in months) {
+        if (AppDateUtils.isSameDay(m, _selectedMonth!)) return m;
+      }
+    }
+    final now = DateTime.now();
+    final started = months.where((m) => !m.isAfter(now)).toList();
+    return started.isNotEmpty ? started.last : months.first;
+  }
+
+  List<ChildMonthlyReport> _monthRows(
+    List<ChildMonthlyReport> monthly,
+    DateTime month,
+  ) =>
+      monthly.where((r) => AppDateUtils.isSameDay(r.monthStart, month)).toList()
+        ..sort((a, b) => b.points.compareTo(a.points));
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
@@ -69,11 +177,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
         appBar: AppBar(
           title: const Text(AppStrings.reportsTitle),
           actions: [
-            IconButton(
-              tooltip: AppStrings.exportTitle,
-              icon: const Icon(Icons.ios_share),
-              onPressed: () => Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(builder: (_) => const ExportScreen()),
+            // Exports the tab on screen (with the class and period chosen),
+            // not the general export menu.
+            Builder(
+              builder: (context) => IconButton(
+                tooltip: AppStrings.exportTitle,
+                icon: _exporting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.ios_share),
+                onPressed: _exporting
+                    ? null
+                    : () => _exportCurrent(
+                          DefaultTabController.of(context).index,
+                        ),
               ),
             ),
           ],
@@ -197,7 +320,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   // ------------------------------------------------------------------ tabs
 
-  Widget _childrenTab(_ReportsData data) {
+  List<_ChildScore> _childScores(_ReportsData data) {
     final List<_ChildScore> scores;
 
     if (_granularity == null) {
@@ -228,6 +351,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } else {
       scores = _aggregateChildren(data.monthly);
     }
+    return scores;
+  }
+
+  Widget _childrenTab(_ReportsData data) {
+    final scores = _childScores(data);
 
     if (scores.isEmpty) {
       return const EmptyState(
@@ -276,7 +404,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _classesTab(_ReportsData data) {
+  List<_ClassScore> _classScores(_ReportsData data) {
     final List<_ClassScore> scores;
 
     if (_granularity == null) {
@@ -311,6 +439,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } else {
       scores = _aggregateClasses(data.monthly);
     }
+    return scores;
+  }
+
+  Widget _classesTab(_ReportsData data) {
+    final scores = _classScores(data);
 
     if (scores.isEmpty) {
       return const EmptyState(
@@ -381,19 +514,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     // The month the user tapped; otherwise the latest month that has started,
     // so the tab opens on "now" and not on a future month with no data.
-    final now = DateTime.now();
-    final started =
-        visibleMonths.where((m) => !m.isAfter(now)).toList();
-    final selected = _selectedMonth != null &&
-            visibleMonths.any((m) => AppDateUtils.isSameDay(m, _selectedMonth!))
-        ? visibleMonths
-            .firstWhere((m) => AppDateUtils.isSameDay(m, _selectedMonth!))
-        : (started.isNotEmpty ? started.last : visibleMonths.first);
-
-    final visible = report
-        .where((row) => AppDateUtils.isSameDay(row.monthStart, selected))
-        .toList()
-      ..sort((a, b) => b.points.compareTo(a.points));
+    final selected = _monthShown(visibleMonths)!;
+    final visible = _monthRows(report, selected);
 
     return Column(
       children: [
