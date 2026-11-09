@@ -568,7 +568,11 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  Widget _monthlyCard(List<ChildMonthlyReport> monthly) {
+  Widget _monthlyCard(List<ChildMonthlyReport> unsorted) {
+    // Oldest month first (the year's first month on top), whatever order the
+    // rows arrived in.
+    final monthly = [...unsorted]
+      ..sort((a, b) => a.monthStart.compareTo(b.monthStart));
     return SectionCard(
       title: AppStrings.monthlyBreakdown,
       icon: Icons.calendar_view_month_rounded,
@@ -1056,9 +1060,17 @@ class _VisitSectionState extends State<_VisitSection> {
       context,
       () async {
         await _children.update(updated);
-        // Append a history entry only when the date actually changed.
-        if (_phoneDate != null &&
-            _phoneDate != widget.child.lastPhoneVisitDate) {
+        // The history only ever grows (no update policy on purpose), so append
+        // an entry whenever the date OR the notes changed. A second call on
+        // the same day, or a corrected note, used to be saved on the card
+        // but never reached the history.
+        String? clean(String? s) =>
+            (s == null || s.trim().isEmpty) ? null : s.trim();
+        final phoneChanged = _phoneDate != widget.child.lastPhoneVisitDate ||
+            phoneNotes != clean(widget.child.lastPhoneVisitNotes);
+        final homeChanged = _homeDate != widget.child.lastHomeVisitDate ||
+            homeNotes != clean(widget.child.lastHomeVisitNotes);
+        if (_phoneDate != null && phoneChanged) {
           await _children.insertVisitLog(
             childId: widget.child.id,
             visitType: 'phone',
@@ -1066,8 +1078,7 @@ class _VisitSectionState extends State<_VisitSection> {
             notes: phoneNotes,
           );
         }
-        if (_homeDate != null &&
-            _homeDate != widget.child.lastHomeVisitDate) {
+        if (_homeDate != null && homeChanged) {
           await _children.insertVisitLog(
             childId: widget.child.id,
             visitType: 'home',
