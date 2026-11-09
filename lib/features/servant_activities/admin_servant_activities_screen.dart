@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/servant_activity.dart';
@@ -111,6 +112,9 @@ class _SummaryTabState extends State<_SummaryTab>
   @override
   bool get wantKeepAlive => true;
 
+  /// Typed into the search box above the servants.
+  String _query = '';
+
   Future<_ScreenData> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
     final results = await Future.wait([
@@ -155,23 +159,30 @@ class _SummaryTabState extends State<_SummaryTab>
 
         final totalPending =
             data.summaries.fold(0, (s, e) => s + e.pendingPreps);
+        final shown = data.summaries
+            .where((s) => _matches(s.servantName, _query))
+            .toList();
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          itemCount: data.summaries.length + 1,
+          itemCount: shown.length + 1,
           itemBuilder: (context, index) {
             if (index == 0) {
               return Column(children: [
-                _StatsHeader(
-                  totalServants: data.summaries.length,
-                  totalSessions: data.totalSessions,
-                  totalPending: totalPending,
+                FadeSlideIn(
+                  child: _StatsHeader(
+                    totalServants: data.summaries.length,
+                    totalSessions: data.totalSessions,
+                    totalPending: totalPending,
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                _SearchBox(onChanged: (q) => setState(() => _query = q)),
+                const SizedBox(height: 12),
               ]);
             }
-            final s = data.summaries[index - 1];
-            return Padding(
+            final s = shown[index - 1];
+            final card = Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _ServantCard(
                 summary: s,
@@ -179,6 +190,8 @@ class _SummaryTabState extends State<_SummaryTab>
                 onTap: () => _openDetail(s),
               ),
             );
+            // Only the first screenful slides in.
+            return index <= 12 ? FadeSlideIn(index: index, child: card) : card;
           },
         );
       },
@@ -208,6 +221,9 @@ class _AttendanceTabState extends State<_AttendanceTab>
   List<ServantAttendance> _attendances = [];
   List<LessonPrep> _preps = [];
   bool _toggling = false;
+
+  /// Typed into the search box above the servants.
+  String _query = '';
 
   final _dateScrollController = ScrollController();
 
@@ -277,6 +293,35 @@ class _AttendanceTabState extends State<_AttendanceTab>
     if (_selectedDate == null) return -1;
     final iso = AppDateUtils.toIsoDate(_selectedDate!);
     return _sessionDates.indexWhere((d) => AppDateUtils.toIsoDate(d) == iso);
+  }
+
+  List<Profile> get _shownServants =>
+      _servants.where((s) => _matches(s.fullName, _query)).toList();
+
+  /// All Saturdays in a sheet, newest first; tapping one selects it.
+  Future<void> _pickDate() async {
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final date in _sessionDates.reversed)
+              ListTile(
+                leading: const Icon(Icons.event_outlined, size: 20),
+                title: Text(AppDateUtils.formatDayDate(date)),
+                trailing: _selectedDate != null &&
+                        AppDateUtils.isSameDay(date, _selectedDate!)
+                    ? const Icon(Icons.check, color: AppColors.success)
+                    : null,
+                onTap: () => Navigator.of(context).pop(date),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null && mounted) await _selectDate(picked);
   }
 
   void _goPrev() {
@@ -457,78 +502,76 @@ class _AttendanceTabState extends State<_AttendanceTab>
 
     return Column(
       children: [
-        // Session date selector
+        // Saturday picker: arrows either side of the date, the date itself
+        // opens the full list. Replaces a strip of chips that had to be
+        // scrolled sideways.
         if (_sessionDates.isNotEmpty)
-          Container(
-            height: 56,
-            color: Theme.of(context).scaffoldBackgroundColor,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Row(
               children: [
-                // Prev arrow
-                IconButton(
-                  icon: const Icon(Icons.chevron_right, size: 22),
-                  color: _selectedIndex > 0 ? AppColors.navy : AppColors.muted,
+                IconButton.filledTonal(
                   onPressed: _selectedIndex > 0 ? _goPrev : null,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 36, minHeight: 36),
+                  icon: const Icon(Icons.chevron_right),
                 ),
-                // Scrollable date chips
+                const SizedBox(width: 8),
                 Expanded(
-                  child: ListView.separated(
-                    controller: _dateScrollController,
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    itemCount: _sessionDates.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, i) {
-                      final date = _sessionDates[i];
-                      final selected = _selectedDate != null &&
-                          AppDateUtils.toIsoDate(date) ==
-                              AppDateUtils.toIsoDate(_selectedDate!);
-                      return GestureDetector(
-                        onTap: selected ? null : () => _selectDate(date),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.navy
-                                : AppColors.navy.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            AppDateUtils.formatDayDate(date),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: selected ? Colors.white : AppColors.navy,
+                  child: Material(
+                    color: AppColors.navy.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: _pickDate,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.event_rounded,
+                              size: 16,
+                              color: AppColors.navy,
                             ),
-                          ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                _selectedDate == null
+                                    ? AppStrings.selectSaturday
+                                    : AppDateUtils.formatDayDate(
+                                        _selectedDate!,
+                                      ),
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_drop_down,
+                              color: AppColors.muted,
+                            ),
+                          ],
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
-                // Next arrow
-                IconButton(
-                  icon: const Icon(Icons.chevron_left, size: 22),
-                  color: _selectedIndex >= 0 &&
-                          _selectedIndex < _sessionDates.length - 1
-                      ? AppColors.navy
-                      : AppColors.muted,
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
                   onPressed: _selectedIndex >= 0 &&
                           _selectedIndex < _sessionDates.length - 1
                       ? _goNext
                       : null,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 36, minHeight: 36),
+                  icon: const Icon(Icons.chevron_left),
                 ),
               ],
             ),
           ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: _SearchBox(onChanged: (q) => setState(() => _query = q)),
+        ),
         const Divider(height: 1, thickness: 0.5),
         // Servant list
         if (_loading) const LinearProgressIndicator(minHeight: 2),
@@ -544,10 +587,10 @@ class _AttendanceTabState extends State<_AttendanceTab>
                 ])
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                  itemCount: _servants.length,
+                  itemCount: _shownServants.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    final servant = _servants[index];
+                    final servant = _shownServants[index];
                     final ss = _find(servant.id, 'sunday_school');
                     final sm = _find(servant.id, 'servant_meeting');
                     final mass = _find(servant.id, 'mass');
@@ -1119,6 +1162,32 @@ class _SmallChip extends StatelessWidget {
                 fontSize: 11, color: color, fontWeight: FontWeight.w600),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Case- and space-insensitive "contains" for the servant search.
+bool _matches(String name, String query) {
+  final q = query.trim();
+  if (q.isEmpty) return true;
+  return name.replaceAll(' ', '').contains(q.replaceAll(' ', ''));
+}
+
+/// Search field above the servant lists.
+class _SearchBox extends StatelessWidget {
+  const _SearchBox({required this.onChanged});
+
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      onChanged: onChanged,
+      decoration: const InputDecoration(
+        hintText: AppStrings.searchServantHint,
+        prefixIcon: Icon(Icons.search),
+        isDense: true,
       ),
     );
   }

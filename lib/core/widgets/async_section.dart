@@ -20,8 +20,8 @@ class AsyncSection<T> extends StatefulWidget {
   });
 
   final Future<T> Function() load;
-  final Widget Function(BuildContext context, T data, Future<void> Function() reload)
-      builder;
+  final Widget Function(
+      BuildContext context, T data, Future<void> Function() reload) builder;
   final bool enableRefresh;
   final String? loadingMessage;
 
@@ -43,7 +43,9 @@ class AsyncSectionState<T> extends State<AsyncSection<T>> {
 
   Future<void> reload() async {
     final next = widget.load();
-    setState(() { _future = next; });
+    setState(() {
+      _future = next;
+    });
     // The failure is swallowed here because the FutureBuilder below already
     // renders it; rethrowing would also break RefreshIndicator's animation.
     await next.then<void>((_) {}, onError: (Object _) {});
@@ -68,21 +70,38 @@ class AsyncSectionState<T> extends State<AsyncSection<T>> {
     return FutureBuilder<T>(
       future: _future,
       builder: (context, snapshot) {
+        // The loader, an error and the content cross-fade instead of
+        // popping in. Content keeps one key, so a background reload swaps
+        // the data in place without fading the screen again.
+        final Widget child;
+        final String state;
         if (snapshot.connectionState == ConnectionState.waiting) {
           // Keep the old content on screen while a background reload runs.
-          if (_hasLast) return _content(context, _last as T);
-          return LoadingView(message: widget.loadingMessage);
-        }
-        if (snapshot.hasError) {
-          return ErrorView(
+          if (_hasLast) {
+            child = _content(context, _last as T);
+            state = 'content';
+          } else {
+            child = LoadingView(message: widget.loadingMessage);
+            state = 'loading';
+          }
+        } else if (snapshot.hasError) {
+          child = ErrorView(
             message: AppFailure.from(snapshot.error!).message,
             onRetry: reload,
           );
+          state = 'error';
+        } else {
+          _last = snapshot.data as T;
+          _hasLast = true;
+          child = _content(context, _last as T);
+          state = 'content';
         }
-
-        _last = snapshot.data as T;
-        _hasLast = true;
-        return _content(context, _last as T);
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 280),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: KeyedSubtree(key: ValueKey(state), child: child),
+        );
       },
     );
   }

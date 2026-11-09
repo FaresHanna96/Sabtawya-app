@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/report_repository.dart';
@@ -18,6 +19,7 @@ import '../events/events_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
+import 'quick_action_grid.dart';
 import 'today_birthdays_section.dart';
 
 /// The servant landing page. It shows only the assigned classes, which is a
@@ -40,7 +42,8 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
     return _reports.classScores(yearId);
   }
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _push(Widget screen) async {
     await Navigator.of(context).push<void>(
@@ -75,114 +78,115 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
-            _WelcomeBanner(
-              name: session.displayName,
-              yearName: session.currentYear?.name,
-            ),
-            const SizedBox(height: 16),
-            const TodayBirthdaysSection(),
-            LessonOfDay(date: upcomingSaturday()),
-            StatCard(
-              label: AppStrings.totalChildren,
-              value: '$totalChildren',
-              icon: Icons.groups_outlined,
-              color: AppColors.olive,
-            ),
-            const SizedBox(height: 16),
-            SectionCard(
-              child: InfoRow(
-                label: AppStrings.lastAttendance,
-                value: currentSession == null
-                    ? AppStrings.noUpcomingSession
-                    : AppDateUtils.formatDayDate(currentSession),
-                icon: Icons.event_available_outlined,
+            // Same order as the admin home: glance (greeting, numbers), today
+            // (birthdays, lesson), then shortcuts and the classes.
+            FadeSlideIn(
+              index: 0,
+              child: _WelcomeBanner(
+                name: session.displayName,
+                yearName: session.currentYear?.name,
               ),
             ),
             const SizedBox(height: 16),
-            SectionCard(
-              title: AppStrings.quickActions,
-              icon: Icons.bolt_rounded,
-              accent: AppColors.gold,
-              child: Wrap(
-                spacing: 10,
-                runSpacing: 10,
+            FadeSlideIn(
+              index: 1,
+              child: Row(
                 children: [
-                  ActionChip(
-                    avatar: const Icon(
-                      Icons.fact_check_outlined,
-                      size: 16,
-                      color: AppColors.navy,
+                  Expanded(
+                    child: StatCard(
+                      label: AppStrings.totalChildren,
+                      value: '$totalChildren',
+                      icon: Icons.groups_outlined,
+                      color: AppColors.olive,
                     ),
-                    label: const Text(AppStrings.attendanceTitle),
-                    onPressed: () =>
-                        _push(const AttendanceScreen(showAppBar: true)),
                   ),
-                  ActionChip(
-                    avatar: const Icon(
-                      Icons.calendar_month_outlined,
-                      size: 16,
-                      color: AppColors.navy,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: StatCard(
+                      label: AppStrings.myClasses,
+                      value: '${classes.length}',
+                      icon: Icons.menu_book_rounded,
                     ),
-                    label: const Text(AppStrings.calendarTitle),
-                    onPressed: () => _push(const CalendarScreen()),
-                  ),
-                  // A servant with no class has nowhere to add a child.
-                  if (session.myClasses.isNotEmpty)
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.person_add_alt,
-                        size: 16,
-                        color: AppColors.navy,
-                      ),
-                      label: const Text(AppStrings.addChild),
-                      onPressed: () => _push(const ChildFormScreen()),
-                    ),
-                  ActionChip(
-                    avatar: const Icon(
-                      Icons.assignment_outlined,
-                      size: 16,
-                      color: AppColors.navy,
-                    ),
-                    label: const Text(AppStrings.myActivities),
-                    onPressed: () => _push(const MyActivitiesScreen(showAppBar: true)),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(
-                      Icons.emoji_events_outlined,
-                      size: 16,
-                      color: AppColors.navy,
-                    ),
-                    label: const Text(AppStrings.weeklyCompetition),
-                    onPressed: () => _push(const CompetitionsScreen()),
-                  ),
-                  ActionChip(
-                    avatar: const Icon(
-                      Icons.event_outlined,
-                      size: 16,
-                      color: AppColors.navy,
-                    ),
-                    label: const Text(AppStrings.events),
-                    onPressed: () => _push(const EventsScreen()),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            SectionCard(
-              title: AppStrings.myClasses,
-              icon: Icons.menu_book_rounded,
-              accent: AppColors.olive,
-              child: Column(
-                children: classes
-                    .map(
-                      (item) => _ClassRow(
+            const FadeSlideIn(index: 2, child: TodayBirthdaysSection()),
+            FadeSlideIn(
+              index: 3,
+              child: LessonOfDay(date: upcomingSaturday()),
+            ),
+            FadeSlideIn(
+              index: 4,
+              child: QuickActionGrid(
+                actions: [
+                  QuickAction(
+                    Icons.fact_check_rounded,
+                    AppStrings.attendanceTitle,
+                    AppColors.success,
+                    () => _push(const AttendanceScreen(showAppBar: true)),
+                  ),
+                  QuickAction(
+                    Icons.assignment_rounded,
+                    AppStrings.myActivities,
+                    AppColors.navy,
+                    () => _push(const MyActivitiesScreen(showAppBar: true)),
+                  ),
+                  QuickAction(
+                    Icons.person_add_alt_1_rounded,
+                    AppStrings.addChild,
+                    AppColors.olive,
+                    () => _push(const ChildFormScreen()),
+                  ),
+                  QuickAction(
+                    Icons.emoji_events_rounded,
+                    AppStrings.weeklyCompetition,
+                    AppColors.gold,
+                    () => _push(const CompetitionsScreen()),
+                  ),
+                  QuickAction(
+                    Icons.event_rounded,
+                    AppStrings.events,
+                    AppColors.coral,
+                    () => _push(const EventsScreen()),
+                  ),
+                  QuickAction(
+                    Icons.calendar_month_rounded,
+                    AppStrings.calendarTitle,
+                    AppColors.sky,
+                    () => _push(const CalendarScreen()),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            FadeSlideIn(
+              index: 5,
+              child: SectionCard(
+                title: AppStrings.myClasses,
+                icon: Icons.menu_book_rounded,
+                accent: AppColors.olive,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InfoRow(
+                      label: AppStrings.lastAttendance,
+                      value: currentSession == null
+                          ? AppStrings.noUpcomingSession
+                          : AppDateUtils.formatDayDate(currentSession),
+                      icon: Icons.event_available_outlined,
+                    ),
+                    const Divider(height: 16),
+                    for (final item in classes)
+                      _ClassRow(
                         overview: item,
                         score: _scoreOf(scores, item.classId),
                         onTap: () =>
                             _push(ClassDetailScreen(classId: item.classId)),
                       ),
-                    )
-                    .toList(),
+                  ],
+                ),
               ),
             ),
           ],
@@ -247,7 +251,8 @@ class _ClassRow extends StatelessWidget {
                   '${overview.activeChildren} ${AppStrings.childrenTitle}',
                   style: const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
-                const Icon(Icons.chevron_left, color: AppColors.muted, size: 20),
+                const Icon(Icons.chevron_left,
+                    color: AppColors.muted, size: 20),
               ],
             ),
             if (score != null) ...[

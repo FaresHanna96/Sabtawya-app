@@ -6,6 +6,7 @@ import '../../core/services/offline_store.dart';
 import '../../core/services/sync_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 
 /// What is waiting to sync and what the server refused, with retry and discard.
 class SyncScreen extends StatelessWidget {
@@ -32,7 +33,7 @@ class SyncScreen extends StatelessWidget {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
-          children: [
+          children: staggerAll([
             FilledButton.icon(
               onPressed: sync.syncing ? null : sync.flush,
               icon: const Icon(Icons.sync),
@@ -102,7 +103,7 @@ class SyncScreen extends StatelessWidget {
                 ),
               ),
             ],
-          ],
+          ]),
         ),
       ),
     );

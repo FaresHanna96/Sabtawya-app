@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/event.dart';
 import '../../data/repositories/child_repository.dart';
@@ -175,15 +176,28 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                '${AppStrings.collected}: ${totalCollected.toStringAsFixed(0)} ج.م',
+                                '${AppStrings.collected}: ',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.olive,
                                 ),
                               ),
+                              // The collected amount counts up.
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0, end: totalCollected),
+                                duration: const Duration(milliseconds: 900),
+                                curve: Curves.easeOutCubic,
+                                builder: (_, v, __) => Text(
+                                  '${v.toStringAsFixed(0)} ج.م',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.olive,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
                               Text(
                                 '${AppStrings.expected}: ${totalExpected.toStringAsFixed(0)} ج.م',
                                 style: const TextStyle(
@@ -196,13 +210,23 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                           const SizedBox(height: 8),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: progress.clamp(0.0, 1.0),
-                              minHeight: 8,
-                              backgroundColor:
-                                  AppColors.navy.withValues(alpha: 0.1),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppColors.olive),
+                            // The bar fills up when the trip opens.
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(
+                                begin: 0,
+                                end: progress.clamp(0.0, 1.0),
+                              ),
+                              duration: const Duration(milliseconds: 900),
+                              curve: Curves.easeOutCubic,
+                              builder: (_, v, __) => LinearProgressIndicator(
+                                value: v,
+                                minHeight: 8,
+                                backgroundColor:
+                                    AppColors.navy.withValues(alpha: 0.1),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.olive,
+                                ),
+                              ),
                             ),
                           ),
                           if (_byChild.isNotEmpty) ...[
@@ -280,92 +304,107 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         ..sort((a, b) =>
                             getClassName(a.key).compareTo(getClassName(b.key)));
 
-                      return ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                        children: [
-                          // Estimated payment summary for the filtered group
-                          if (_tabController.index > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              // Two short lines: totals, then cash / kitty for
-                              // the children in this tab.
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              Text.rich(
-                                TextSpan(
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.muted,
-                                  ),
-                                  children: [
-                                    const TextSpan(text: '${AppStrings.collected} '),
-                                    TextSpan(
-                                      text: filteredCollected.toStringAsFixed(0),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.olive,
-                                      ),
-                                    ),
-                                    TextSpan(
-                                      text:
-                                          ' من ${filteredExpected.toStringAsFixed(0)}',
-                                    ),
-                                    if (filteredRemaining > 0) ...[
-                                      const TextSpan(
-                                          text: '  •  ${AppStrings.remaining} '),
-                                      TextSpan(
-                                        text: filteredRemaining
-                                            .toStringAsFixed(0),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.danger,
+                      var row = 0;
+                      return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: ListView(
+                            key: ValueKey(_tabController.index),
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                            children: [
+                              // Estimated payment summary for the filtered group
+                              if (_tabController.index > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  // Two short lines: totals, then cash / kitty for
+                                  // the children in this tab.
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text.rich(
+                                        TextSpan(
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.muted,
+                                          ),
+                                          children: [
+                                            const TextSpan(
+                                                text:
+                                                    '${AppStrings.collected} '),
+                                            TextSpan(
+                                              text: filteredCollected
+                                                  .toStringAsFixed(0),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.olive,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text:
+                                                  ' من ${filteredExpected.toStringAsFixed(0)}',
+                                            ),
+                                            if (filteredRemaining > 0) ...[
+                                              const TextSpan(
+                                                  text:
+                                                      '  •  ${AppStrings.remaining} '),
+                                              TextSpan(
+                                                text: filteredRemaining
+                                                    .toStringAsFixed(0),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.danger,
+                                                ),
+                                              ),
+                                            ],
+                                            const TextSpan(text: ' ج.م'),
+                                          ],
                                         ),
                                       ),
+                                      if (_byChild.isNotEmpty)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            _methodLine(_methodSum(filtered
+                                                .map((b) => b.childId))),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.muted,
+                                            ),
+                                          ),
+                                        ),
                                     ],
-                                    const TextSpan(text: ' ج.م'),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              if (_byChild.isNotEmpty)
+                              for (final entry in sortedClasses) ...[
                                 Padding(
-                                  padding: const EdgeInsets.only(top: 2),
+                                  padding:
+                                      const EdgeInsets.only(bottom: 8, top: 4),
                                   child: Text(
-                                    _methodLine(_methodSum(
-                                        filtered.map((b) => b.childId))),
+                                    getClassName(entry.key),
                                     style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.muted,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.navy,
                                     ),
                                   ),
                                 ),
-                                ],
-                              ),
-                            ),
-                          for (final entry in sortedClasses) ...[
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8, top: 4),
-                              child: Text(
-                                getClassName(entry.key),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.navy,
+                                ...entry.value.map(
+                                  (b) => staggered(
+                                    row++,
+                                    _BalanceRow(
+                                      balance: b,
+                                      onTap: () => _openPayments(b),
+                                      // A call button on every tab (no number,
+                                      // no button).
+                                      phone: _phones[b.childId],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            ...entry.value.map(
-                              (b) => _BalanceRow(
-                                balance: b,
-                                onTap: () => _openPayments(b),
-                                // A call button on every tab (no number, no button).
-                                phone: _phones[b.childId],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ],
-                      );
+                                const SizedBox(height: 8),
+                              ],
+                            ],
+                          ));
                     },
                   ),
                 ),
@@ -492,10 +531,10 @@ class _BalanceRow extends StatelessWidget {
                   icon: const Icon(Icons.call, size: 20),
                   color: AppColors.success,
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
                   tooltip: 'اتصال',
-                  onPressed: () =>
-                      launchUrl(Uri(scheme: 'tel', path: phone!)),
+                  onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone!)),
                 ),
               const SizedBox(width: 8),
               const Icon(Icons.chevron_left, size: 18, color: AppColors.muted),

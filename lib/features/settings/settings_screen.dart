@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import '../auth/change_password_screen.dart';
 import '../profile/my_profile_screen.dart';
@@ -35,7 +36,7 @@ class SettingsScreen extends StatelessWidget {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: [
+          children: staggerAll([
             SectionCard(
               title: AppStrings.myProfile,
               icon: Icons.person_rounded,
@@ -198,7 +199,7 @@ class SettingsScreen extends StatelessWidget {
               icon: const Icon(Icons.logout),
               label: const Text(AppStrings.logout),
             ),
-          ],
+          ]),
         ),
       ),
     );

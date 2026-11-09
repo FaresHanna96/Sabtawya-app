@@ -8,6 +8,7 @@ import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/reports.dart';
@@ -246,26 +247,22 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 sliver: SliverList.list(
                   children: [
-                    _stats(overview),
+                    // Sections slide in one after another.
+                    FadeSlideIn(index: 0, child: _stats(overview)),
                     const SizedBox(height: 12),
-                    _patron(overview),
+                    FadeSlideIn(index: 1, child: _patron(overview)),
                     const SizedBox(height: 12),
-                    _actions(),
+                    FadeSlideIn(index: 2, child: _actions()),
                     const SizedBox(height: 12),
-                    FollowUpSection(
-                      streaks: data.streaks.values.toList(),
-                      onReturn: _reload,
-                      collapsible: true,
-                      showWhenEmpty: true,
+                    FadeSlideIn(
+                      index: 3,
+                      child: FollowUpTiles(
+                        streaks: data.streaks.values.toList(),
+                        onReturn: _reload,
+                      ),
                     ),
-                    FollowUpSection(
-                      streaks: data.streaks.values.toList(),
-                      kind: StreakKind.present,
-                      onReturn: _reload,
-                      collapsible: true,
-                      showWhenEmpty: true,
-                    ),
-                    _servants(data.servants),
+                    const SizedBox(height: 12),
+                    FadeSlideIn(index: 4, child: _servants(data.servants)),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -295,6 +292,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   searchController: _searchController,
                   resultCount: visible.length,
                   totalCount: totalVisible,
+                  // A class of only girls (or only boys) needs no gender chips.
+                  showGender: overview.boysCount > 0 && overview.girlsCount > 0,
                   onChanged: (next) => setState(() => _filter = next),
                 ),
               ),
@@ -319,12 +318,19 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   sliver: SliverList.separated(
                     itemCount: visible.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) => ChildTile(
-                      child: visible[index],
-                      presentStreak:
-                          data.streaks[visible[index].id]?.presentStreak ?? 0,
-                      onTap: () => _openChild(visible[index]),
-                    ),
+                    itemBuilder: (context, index) {
+                      final tile = ChildTile(
+                        child: visible[index],
+                        presentStreak:
+                            data.streaks[visible[index].id]?.presentStreak ?? 0,
+                        onTap: () => _openChild(visible[index]),
+                      );
+                      // Only the first screenful slides in; rows further down
+                      // appear at once so scrolling never waits on a delay.
+                      return index < 12
+                          ? FadeSlideIn(index: index, child: tile)
+                          : tile;
+                    },
                   ),
                 ),
             ],
@@ -345,18 +351,21 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 value: '${overview.activeChildren}',
                 icon: Icons.groups_rounded,
               ),
-              _Stat(
-                label: AppStrings.boys,
-                value: '${overview.boysCount}',
-                icon: Icons.boy_rounded,
-                color: AppColors.sky,
-              ),
-              _Stat(
-                label: AppStrings.girls,
-                value: '${overview.girlsCount}',
-                icon: Icons.girl_rounded,
-                color: AppColors.coral,
-              ),
+              // Boys / girls only matter in a mixed class.
+              if (overview.boysCount > 0 && overview.girlsCount > 0) ...[
+                _Stat(
+                  label: AppStrings.boys,
+                  value: '${overview.boysCount}',
+                  icon: Icons.boy_rounded,
+                  color: AppColors.sky,
+                ),
+                _Stat(
+                  label: AppStrings.girls,
+                  value: '${overview.girlsCount}',
+                  icon: Icons.girl_rounded,
+                  color: AppColors.coral,
+                ),
+              ],
               _Stat(
                 label: AppStrings.servantsCount,
                 value: '${overview.servantsCount}',
@@ -507,13 +516,19 @@ class _Stat extends StatelessWidget {
             ),
             const SizedBox(height: 6),
           ],
-          Text(
-            value,
-            textDirection: TextDirection.ltr,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: color,
+          // Numbers count up when the screen opens.
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: int.tryParse(value) ?? 0),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, __) => Text(
+              int.tryParse(value) == null ? value : '$v',
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
             ),
           ),
           const SizedBox(height: 2),

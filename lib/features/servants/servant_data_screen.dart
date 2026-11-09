@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
@@ -117,7 +118,7 @@ class _ServantDataScreenState extends State<ServantDataScreen> {
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
-            children: [
+            children: staggerAll([
               SectionCard(
                 child: Column(
                   children: [
@@ -199,7 +200,7 @@ class _ServantDataScreenState extends State<ServantDataScreen> {
                 icon: const Icon(Icons.save_outlined),
                 label: const Text(AppStrings.save),
               ),
-            ],
+            ]),
           ),
         ),
       ),

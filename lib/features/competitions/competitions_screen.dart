@@ -59,10 +59,8 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
       final names = {
         for (final c in session.myClasses) c.classId: c.className,
       };
-      final children =
-          await const ChildRepository().all(includeInactive: true);
-      final marks =
-          await _repository.marksFor([for (final c in picked) c.id]);
+      final children = await const ChildRepository().all(includeInactive: true);
+      final marks = await _repository.marksFor([for (final c in picked) c.id]);
       final bytes = ExcelService.competitionsWorkbook(
         competitions: picked,
         children: children,
@@ -207,7 +205,8 @@ class _ExportPickerSheetState extends State<_ExportPickerSheet> {
                             all.where((c) => _selected.contains(c.id)).toList(),
                           ),
                   icon: const Icon(Icons.ios_share_rounded),
-                  label: Text('${AppStrings.exportSelected} (${_selected.length})'),
+                  label: Text(
+                      '${AppStrings.exportSelected} (${_selected.length})'),
                 ),
               ),
             ),

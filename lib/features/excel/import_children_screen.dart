@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/school_class.dart';
 import '../../data/services/child_import_service.dart';
 import '../../data/services/excel_service.dart';
@@ -129,9 +130,9 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
     final parts = <String>[
       if (plan.insertCount > 0)
         '${AppStrings.importInserted} ${plan.insertCount}',
-      if (plan.updateCount > 0) '${AppStrings.importUpdated} ${plan.updateCount}',
-      if (plan.movesCount > 0)
-        '${AppStrings.moveChild}: ${plan.movesCount}',
+      if (plan.updateCount > 0)
+        '${AppStrings.importUpdated} ${plan.updateCount}',
+      if (plan.movesCount > 0) '${AppStrings.moveChild}: ${plan.movesCount}',
     ];
 
     final confirmed = await Ui.confirm(
@@ -186,7 +187,8 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
               // Setup card, then the summary, then one card per row.
               itemCount: 2 + rows.length,
-              itemBuilder: (context, index) {
+              itemBuilder: (context, index) =>
+                  staggered(index, Builder(builder: (context) {
                 if (index == 0) return _setupCard();
                 if (index == 1) {
                   return plan == null
@@ -197,7 +199,7 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
                         );
                 }
                 return _RowCard(row: rows[index - 2]);
-              },
+              })),
             ),
           ),
         ],

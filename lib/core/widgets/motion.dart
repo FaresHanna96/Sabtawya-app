@@ -172,3 +172,20 @@ class _FloatState extends State<Float> with SingleTickerProviderStateMixin {
     );
   }
 }
+
+/// List rows: the first screenful slides in one after another; rows further
+/// down appear at once, so scrolling never waits on an entrance delay.
+Widget staggered(int index, Widget child) =>
+    index < 12 ? FadeSlideIn(index: index, child: child) : child;
+
+/// Wraps each section of a page so they slide in one after another. Plain
+/// spacers are left alone (animating empty space only adds delay).
+List<Widget> staggerAll(List<Widget> children) {
+  var n = 0;
+  return [
+    for (final child in children)
+      child is SizedBox && child.child == null
+          ? child
+          : FadeSlideIn(index: n++, child: child),
+  ];
+}

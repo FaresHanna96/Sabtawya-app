@@ -138,7 +138,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     // Prefer this week's Saturday when a session exists for it.
     final thisSaturday = AppDateUtils.lastSaturday(DateTime.now());
-    if (sessions.any((s) => AppDateUtils.isSameDay(s.sessionDate, thisSaturday))) {
+    if (sessions
+        .any((s) => AppDateUtils.isSameDay(s.sessionDate, thisSaturday))) {
       return thisSaturday;
     }
 
@@ -242,8 +243,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         sessionId: sheet.session.id,
         entries: changed,
       ),
-      successMessage:
-          isOffline ? AppStrings.attendanceSavedOffline : AppStrings.attendanceSaved,
+      successMessage: isOffline
+          ? AppStrings.attendanceSavedOffline
+          : AppStrings.attendanceSaved,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -420,90 +422,35 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             else
               Text(
                 _classes.first.className,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                IconButton(
-                  tooltip: AppStrings.attendanceDate,
-                  onPressed: () => _step(-1),
-                  icon: const Icon(Icons.chevron_right),
-                ),
-                Expanded(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: _pickSession,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        children: [
-                          Text(
-                            _date == null
-                                ? AppStrings.selectSaturday
-                                : AppDateUtils.formatDayDate(_date!),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            AppStrings.selectSaturday,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: AppStrings.attendanceDate,
-                  onPressed: () => _step(1),
-                  icon: const Icon(Icons.chevron_left),
-                ),
-              ],
-            ),
+            _dateNavigator(),
             if (sheet != null) ...[
-              const Divider(height: 20),
-              Row(
-                children: [
-                  _HeaderStat(
-                    label: AppStrings.presentCount,
-                    value: '${sheet.presentCount}/${_entries.length}',
-                  ),
-                  _HeaderStat(
-                    label: AppStrings.recordedCount,
-                    value: '${sheet.recordedCount}/${_entries.length}',
-                  ),
-                  _HeaderStat(
-                    label: AppStrings.totalPoints,
-                    value: '${_totalScore()}/${sheet.maxScore}',
-                  ),
-                ],
-              ),
+              const SizedBox(height: 12),
+              _progress(sheet),
               if (_canEdit) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: FilledButton.tonalIcon(
                         onPressed: () => _markAll(true),
                         icon: const Icon(Icons.done_all, size: 18),
                         label: const Text(AppStrings.markAllPresent),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _markAll(false),
-                        icon: const Icon(Icons.remove_done, size: 18),
-                        label: const Text(AppStrings.clearAll),
+                    TextButton.icon(
+                      onPressed: _entries.any((e) => e.isPresent)
+                          ? _confirmClearAll
+                          : null,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
                       ),
+                      icon: const Icon(Icons.remove_done, size: 18),
+                      label: const Text(AppStrings.clearAll),
                     ),
                   ],
                 ),
@@ -513,6 +460,186 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
       ),
     );
+  }
+
+  /// Previous / next Saturday around the chosen date. The arrows grey out at
+  /// the ends of the year, and the line under the date says how long ago it
+  /// was (or that it is still to come).
+  Widget _dateNavigator() {
+    final index = _date == null
+        ? -1
+        : _sessions
+            .indexWhere((s) => AppDateUtils.isSameDay(s.sessionDate, _date!));
+    final canBack = index > 0;
+    final canForward = index >= 0 && index < _sessions.length - 1;
+    final today = AppDateUtils.dateOnly(DateTime.now());
+    final upcoming = _date != null && _date!.isAfter(today);
+
+    Widget arrow(IconData icon, bool enabled, int step) =>
+        IconButton.filledTonal(
+          tooltip: AppStrings.attendanceDate,
+          onPressed: enabled ? () => _step(step) : null,
+          icon: Icon(icon),
+        );
+
+    return Row(
+      children: [
+        arrow(Icons.chevron_right, canBack, -1),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Material(
+            color: AppColors.navy.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _pickSession,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.event_rounded,
+                          size: 16,
+                          color: AppColors.navy,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            _date == null
+                                ? AppStrings.selectSaturday
+                                : AppDateUtils.formatDayDate(_date!),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_drop_down,
+                          size: 20,
+                          color: AppColors.muted,
+                        ),
+                      ],
+                    ),
+                    if (_date != null)
+                      Text(
+                        upcoming
+                            ? AppStrings.upcomingSaturday
+                            : AppDateUtils.sinceLabel(_date!),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        arrow(Icons.chevron_left, canForward, 1),
+      ],
+    );
+  }
+
+  /// "حضر 8 من 13" with a bar, a status badge (not taken / partly / done),
+  /// and the points as a smaller line.
+  Widget _progress(AttendanceSheet sheet) {
+    final total = _entries.length;
+    final present = sheet.presentCount;
+    final recorded = sheet.recordedCount;
+    final ratio = total == 0 ? 0.0 : present / total;
+
+    final (statusText, statusColor) = recorded == 0
+        ? (AppStrings.notTakenYet, AppColors.warning)
+        : recorded < total
+            ? (AppStrings.partlyTaken, AppColors.coral)
+            : (AppStrings.takenDone, AppColors.success);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text.rich(
+              TextSpan(
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                children: [
+                  const TextSpan(text: '${AppStrings.presentOf} '),
+                  TextSpan(
+                    text: '$present',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  TextSpan(text: ' ${AppStrings.ofWord} $total'),
+                ],
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                statusText,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 8,
+            backgroundColor: AppColors.navy.withValues(alpha: 0.08),
+            valueColor: const AlwaysStoppedAnimation(AppColors.success),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Text(
+              '${AppStrings.recordedCount}: $recorded/$total',
+              style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            ),
+            const Spacer(),
+            Text(
+              '${AppStrings.totalPoints}: ${_totalScore()}/${sheet.maxScore}',
+              style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Clearing wipes every mark on screen in one tap, so ask first.
+  Future<void> _confirmClearAll() async {
+    final yes = await Ui.confirm(
+      context,
+      title: AppStrings.clearAllConfirm,
+      message: AppStrings.clearAllConfirmBody,
+      confirmLabel: AppStrings.clearAll,
+      destructive: true,
+    );
+    if (yes && mounted) _markAll(false);
   }
 
   int _totalScore() => _entries.fold(0, (sum, entry) => sum + entry.score);
@@ -531,7 +658,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _isAdmin ? AppStrings.sessionLocked : AppStrings.sessionLockedBody,
+              _isAdmin
+                  ? AppStrings.sessionLocked
+                  : AppStrings.sessionLockedBody,
               style: const TextStyle(fontSize: 12, color: AppColors.warning),
             ),
           ),
@@ -556,8 +685,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (focus < 0) focus = ordered.length - 1;
     const tileHeight = 56.0;
     final controller = ScrollController(
-      initialScrollOffset: (focus * tileHeight - tileHeight * 2)
-          .clamp(0.0, double.infinity),
+      initialScrollOffset:
+          (focus * tileHeight - tileHeight * 2).clamp(0.0, double.infinity),
     );
 
     final picked = await showModalBottomSheet<DateTime>(
@@ -580,7 +709,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               leading: Icon(
                 session.isLocked
                     ? Icons.lock_outline
-                    : (future ? Icons.schedule : Icons.event_available_outlined),
+                    : (future
+                        ? Icons.schedule
+                        : Icons.event_available_outlined),
                 size: 20,
                 color: future ? AppColors.muted : AppColors.navy,
               ),
@@ -635,88 +766,94 @@ class _EntryCard extends StatelessWidget {
             Container(width: 4, color: _accentColor),
             Expanded(
               child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          entry.child.fullName,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  entry.child.fullName,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              GenderBadge(
+                                  gender: entry.child.gender, compact: true),
+                            ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      GenderBadge(gender: entry.child.gender, compact: true),
-                    ],
-                  ),
-                ),
-                if (!entry.isRecorded)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 6),
-                    child: Icon(
-                      Icons.fiber_new_outlined,
-                      size: 16,
-                      color: AppColors.muted,
+                        if (!entry.isRecorded)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 6),
+                            child: Icon(
+                              Icons.fiber_new_outlined,
+                              size: 16,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        ScoreChip(
+                            score: entry.score,
+                            maxScore: entry.maxScore,
+                            compact: true),
+                      ],
                     ),
-                  ),
-                ScoreChip(score: entry.score, maxScore: entry.maxScore, compact: true),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _MarkToggle(
-                  label: AppStrings.sundaySchoolShort,
-                  points: entry.pointsSundaySchool,
-                  selected: entry.sundaySchool,
-                  enabled: enabled,
-                  onTap: () => onToggle(_Activity.sundaySchool),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _MarkToggle(
+                          label: AppStrings.sundaySchoolShort,
+                          points: entry.pointsSundaySchool,
+                          selected: entry.sundaySchool,
+                          enabled: enabled,
+                          onTap: () => onToggle(_Activity.sundaySchool),
+                        ),
+                        const SizedBox(width: 6),
+                        _MarkToggle(
+                          label: AppStrings.vespersShort,
+                          points: entry.pointsVespers,
+                          selected: entry.vespers,
+                          enabled: enabled,
+                          onTap: () => onToggle(_Activity.vespers),
+                        ),
+                        const SizedBox(width: 6),
+                        _MarkToggle(
+                          label: AppStrings.massShort,
+                          points: entry.pointsMass,
+                          selected: entry.mass,
+                          enabled: enabled,
+                          onTap: () => onToggle(_Activity.mass),
+                        ),
+                        const SizedBox(width: 6),
+                        _MarkToggle(
+                          label: AppStrings.confessionShort,
+                          points: entry.pointsConfession,
+                          selected: entry.confession,
+                          enabled: enabled,
+                          onTap: () => onToggle(_Activity.confession),
+                        ),
+                      ],
+                    ),
+                    if (entry.updatedByName != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '${AppStrings.lastModifiedBy}: ${entry.updatedByName}'
+                        '${entry.updatedAt == null ? '' : ' • ${AppDateUtils.formatDateTime(entry.updatedAt!)}'}',
+                        style: const TextStyle(
+                            fontSize: 10, color: AppColors.muted),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(width: 6),
-                _MarkToggle(
-                  label: AppStrings.vespersShort,
-                  points: entry.pointsVespers,
-                  selected: entry.vespers,
-                  enabled: enabled,
-                  onTap: () => onToggle(_Activity.vespers),
-                ),
-                const SizedBox(width: 6),
-                _MarkToggle(
-                  label: AppStrings.massShort,
-                  points: entry.pointsMass,
-                  selected: entry.mass,
-                  enabled: enabled,
-                  onTap: () => onToggle(_Activity.mass),
-                ),
-                const SizedBox(width: 6),
-                _MarkToggle(
-                  label: AppStrings.confessionShort,
-                  points: entry.pointsConfession,
-                  selected: entry.confession,
-                  enabled: enabled,
-                  onTap: () => onToggle(_Activity.confession),
-                ),
-              ],
-            ),
-            if (entry.updatedByName != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                '${AppStrings.lastModifiedBy}: ${entry.updatedByName}'
-                '${entry.updatedAt == null ? '' : ' • ${AppDateUtils.formatDateTime(entry.updatedAt!)}'}',
-                style: const TextStyle(fontSize: 10, color: AppColors.muted),
-              ),
-            ],
-          ],
-        ),
               ),
             ),
           ],
@@ -796,31 +933,6 @@ class _MarkToggle extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-
-class _HeaderStat extends StatelessWidget {
-  const _HeaderStat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            textDirection: TextDirection.ltr,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-        ],
       ),
     );
   }

@@ -57,7 +57,8 @@ class Ui {
                 tween: Tween(begin: celebrate ? 0 : 1, end: 1),
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.elasticOut,
-                builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                builder: (_, v, child) =>
+                    Transform.scale(scale: v, child: child),
                 child: Icon(icon, color: Colors.white, size: 22),
               ),
               const SizedBox(width: 10),
@@ -81,7 +82,9 @@ class Ui {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title, style: const TextStyle(fontSize: 17)),
-        content: message == null ? null : Text(message, style: const TextStyle(height: 1.5)),
+        content: message == null
+            ? null
+            : Text(message, style: const TextStyle(height: 1.5)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

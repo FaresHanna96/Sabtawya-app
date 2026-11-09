@@ -7,6 +7,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../data/services/photo_service.dart';
@@ -57,7 +58,9 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
       for (final grade in [3, 4, 5, 6]) ...['$grade ولاد', '$grade بنات'],
     ];
     final current = _name.text.trim();
-    if (current.isNotEmpty && !names.contains(current)) names.insert(0, current);
+    if (current.isNotEmpty && !names.contains(current)) {
+      names.insert(0, current);
+    }
     return names;
   }
 
@@ -204,14 +207,15 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditing ? AppStrings.editClass : AppStrings.addClass),
+        title:
+            Text(widget.isEditing ? AppStrings.editClass : AppStrings.addClass),
       ),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
-            children: [
+            children: staggerAll([
               SectionCard(
                 child: Column(
                   children: [
@@ -269,7 +273,7 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
                 icon: const Icon(Icons.check),
                 label: const Text(AppStrings.save),
               ),
-            ],
+            ]),
           ),
         ),
       ),

@@ -105,7 +105,8 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: TextStyle(fontFamily: _font, 
+        titleTextStyle: TextStyle(
+          fontFamily: _font,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: Colors.white,
@@ -154,7 +155,8 @@ class AppTheme {
           minimumSize: const Size.fromHeight(50),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: TextStyle(fontFamily: _font, 
+          textStyle: TextStyle(
+            fontFamily: _font,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -173,7 +175,8 @@ class AppTheme {
         side: const BorderSide(color: Color(0xFFE5E7EB)),
         backgroundColor: Colors.white,
         selectedColor: AppColors.oliveTint,
-        labelStyle: TextStyle(fontFamily: _font, fontSize: 13, color: AppColors.navy),
+        labelStyle:
+            TextStyle(fontFamily: _font, fontSize: 13, color: AppColors.navy),
         iconTheme: const IconThemeData(color: AppColors.navy),
         padding: const EdgeInsets.symmetric(horizontal: 4),
       ),
@@ -184,7 +187,8 @@ class AppTheme {
         indicatorColor: AppColors.oliveLight.withValues(alpha: 0.35),
         indicatorShape: const StadiumBorder(),
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(fontFamily: _font, fontSize: 12, fontWeight: FontWeight.w600),
+          TextStyle(
+              fontFamily: _font, fontSize: 12, fontWeight: FontWeight.w600),
         ),
       ),
       dividerTheme: const DividerThemeData(color: Color(0xFFE5E7EB), space: 1),
@@ -193,6 +197,8 @@ class AppTheme {
           TargetPlatform.android: ZoomPageTransitionsBuilder(),
           TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
           TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+          TargetPlatform.macOS: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
         },
       ),
       dialogTheme: DialogThemeData(

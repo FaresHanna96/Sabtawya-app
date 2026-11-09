@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/class_filter_chips.dart';
 import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
@@ -49,7 +50,8 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
         classId: _classFilter,
       );
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _addChild() async {
     final added = await Navigator.of(context).push<bool>(
@@ -117,6 +119,9 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                   searchController: _searchController,
                   resultCount: visible.length,
                   totalCount: totalVisible,
+                  // Only offer boys / girls when the list holds both.
+                  showGender: all.any((c) => c.gender == Gender.boy) &&
+                      all.any((c) => c.gender == Gender.girl),
                   onChanged: (next) => setState(() => _filter = next),
                 ),
                 Expanded(
@@ -141,16 +146,21 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                           itemCount: visible.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (context, index) => FadeSlideIn(
-                            index: index,
-                            child: ChildTile(
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final tile = ChildTile(
                               child: visible[index],
-                              className: _classNameOf(
-                                  classes, visible[index].classId),
+                              className:
+                                  _classNameOf(classes, visible[index].classId),
                               onTap: () => _openProfile(visible[index]),
-                            ),
-                          ),
+                            );
+                            // Only the first screenful slides in, so rows
+                            // further down never wait on a delay.
+                            return index < 12
+                                ? FadeSlideIn(index: index, child: tile)
+                                : tile;
+                          },
                         ),
                 ),
               ],
@@ -169,29 +179,18 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
     );
   }
 
+  /// Classes as the same tidy grid as the reports screen (year columns,
+  /// boys / girls rows), so every class is visible without swiping.
   Widget _classFilterRow(List<ClassOverview> classes) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _classChip(null, AppStrings.all),
-            ...classes.map((item) => _classChip(item.classId, item.className)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _classChip(String? classId, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: _classFilter == classId,
-        onSelected: (_) {
-          setState(() => _classFilter = classId);
+      child: ClassFilterChips(
+        classes: classes
+            .map((c) => ClassFilterOption(id: c.classId, name: c.className))
+            .toList(),
+        selectedId: _classFilter,
+        onSelected: (id) {
+          setState(() => _classFilter = id);
           _reload();
         },
       ),

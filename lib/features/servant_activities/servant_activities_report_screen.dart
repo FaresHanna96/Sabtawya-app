@@ -70,8 +70,7 @@ class _ServantActivitiesReportScreenState
                 data.summaries.fold(0, (s, e) => s + e.sundaySchoolCount);
             final totalMeeting =
                 data.summaries.fold(0, (s, e) => s + e.servantMeetingCount);
-            final totalMass =
-                data.summaries.fold(0, (s, e) => s + e.massCount);
+            final totalMass = data.summaries.fold(0, (s, e) => s + e.massCount);
             final totalConfession =
                 data.summaries.fold(0, (s, e) => s + e.confessionCount);
 

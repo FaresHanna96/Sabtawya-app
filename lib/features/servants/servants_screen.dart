@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
@@ -37,7 +38,8 @@ class _ServantsScreenState extends State<ServantsScreen> {
         classes: await _classes.list(),
       );
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _invite() async {
     final created = await Navigator.of(context).push<bool>(
@@ -147,7 +149,7 @@ class _ServantsScreenState extends State<ServantsScreen> {
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-              children: [
+              children: staggerAll([
                 if (data.invites.isNotEmpty) ...[
                   SectionCard(
                     title: AppStrings.pendingInvites,
@@ -210,7 +212,7 @@ class _ServantsScreenState extends State<ServantsScreen> {
                         .toList(),
                   ),
                 ),
-              ],
+              ]),
             );
           },
         ),

@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
@@ -82,7 +83,7 @@ class _ServantInviteScreenState extends State<ServantInviteScreen> {
             key: _formKey,
             child: ListView(
               padding: const EdgeInsets.all(16),
-              children: [
+              children: staggerAll([
                 SectionCard(
                   child: Column(
                     children: [
@@ -194,7 +195,7 @@ class _ServantInviteScreenState extends State<ServantInviteScreen> {
                   icon: const Icon(Icons.send_outlined),
                   label: const Text(AppStrings.save),
                 ),
-              ],
+              ]),
             ),
           ),
         ),

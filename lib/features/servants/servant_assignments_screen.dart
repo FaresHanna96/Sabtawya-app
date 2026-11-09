@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
@@ -43,8 +44,10 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
   Future<void> _assign(SchoolClass target, _AssignmentsData data) async {
     // Exclude servants already in this class — moving within the same class
     // makes no sense.
-    final alreadyInTarget =
-        data.assignments.where((a) => a.classId == target.id).map((a) => a.servantId).toSet();
+    final alreadyInTarget = data.assignments
+        .where((a) => a.classId == target.id)
+        .map((a) => a.servantId)
+        .toSet();
     final available =
         data.servants.where((s) => !alreadyInTarget.contains(s.id)).toList();
 
@@ -91,7 +94,8 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
                           ? null
                           : Text(servant.email!),
                   trailing: fromClass != null
-                      ? const Icon(Icons.swap_horiz, size: 18, color: AppColors.muted)
+                      ? const Icon(Icons.swap_horiz,
+                          size: 18, color: AppColors.muted)
                       : null,
                   onTap: () => Navigator.of(context).pop(servant.id),
                 );
@@ -107,7 +111,8 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
     final ok = await Ui.runGuarded(
       context,
       () => _classes.assignServant(classId: target.id, servantId: servantId),
-      successMessage: isMove ? AppStrings.servantMoved : AppStrings.servantAssigned,
+      successMessage:
+          isMove ? AppStrings.servantMoved : AppStrings.servantAssigned,
     );
     if (ok) await _reload();
   }
@@ -149,7 +154,8 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               itemCount: data.classes.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
+              itemBuilder: (context, index) =>
+                  staggered(index, Builder(builder: (context) {
                 final schoolClass = data.classes[index];
                 final servants = data.assignments
                     .where((item) => item.classId == schoolClass.id)
@@ -165,7 +171,8 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
                   child: servants.isEmpty
                       ? const Text(
                           AppStrings.noServants,
-                          style: TextStyle(fontSize: 13, color: AppColors.muted),
+                          style:
+                              TextStyle(fontSize: 13, color: AppColors.muted),
                         )
                       : Column(
                           children: servants
@@ -201,7 +208,7 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
                               .toList(),
                         ),
                 );
-              },
+              })),
             );
           },
         ),

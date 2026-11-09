@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
@@ -138,7 +139,8 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
             ),
             if (hasPhoto)
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppColors.danger),
+                leading:
+                    const Icon(Icons.delete_outline, color: AppColors.danger),
                 title: const Text(
                   AppStrings.removePhoto,
                   style: TextStyle(color: AppColors.danger),
@@ -298,7 +300,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
             key: _formKey,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              children: [
+              children: staggerAll([
                 _photoPicker(),
                 _group(AppStrings.personalInfo, [
                   DropdownButtonFormField<String>(
@@ -423,7 +425,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                   icon: const Icon(Icons.check),
                   label: const Text(AppStrings.save),
                 ),
-              ],
+              ]),
             ),
           );
         },
@@ -473,7 +475,8 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
           const SizedBox(height: 8),
           TextButton(
             onPressed: _choosePhoto,
-            child: Text(hasPhoto ? AppStrings.changePhoto : AppStrings.addPhoto),
+            child:
+                Text(hasPhoto ? AppStrings.changePhoto : AppStrings.addPhoto),
           ),
         ],
       ),
@@ -493,7 +496,9 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                 value: gender,
                 label: Text(gender.label),
                 icon: Icon(
-                  gender == Gender.boy ? Icons.boy_outlined : Icons.girl_outlined,
+                  gender == Gender.boy
+                      ? Icons.boy_outlined
+                      : Icons.girl_outlined,
                 ),
               ),
             )
@@ -604,7 +609,9 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
   static String? _validatePhone(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
-    return (text.length < 7 || text.length > 15) ? AppStrings.mobileInvalid : null;
+    return (text.length < 7 || text.length > 15)
+        ? AppStrings.mobileInvalid
+        : null;
   }
 }
 

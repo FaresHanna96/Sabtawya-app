@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
@@ -149,86 +150,90 @@ class _LoginScreenState extends State<LoginScreen>
                         horizontal: 24, vertical: 28),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 420),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                              autofillHints: const [AutofillHints.email],
-                              decoration: const InputDecoration(
-                                labelText: AppStrings.email,
-                                prefixIcon: Icon(Icons.alternate_email),
-                              ),
-                              validator: _validateEmail,
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: _obscure,
-                              textInputAction: TextInputAction.done,
-                              autofillHints: const [AutofillHints.password],
-                              onFieldSubmitted: (_) => _submit(),
-                              decoration: InputDecoration(
-                                labelText: AppStrings.password,
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscure
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _obscure = !_obscure),
+                      child: FadeSlideIn(
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextFormField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [AutofillHints.email],
+                                decoration: const InputDecoration(
+                                  labelText: AppStrings.email,
+                                  prefixIcon: Icon(Icons.alternate_email),
                                 ),
+                                validator: _validateEmail,
                               ),
-                              validator: (value) =>
-                                  (value == null || value.isEmpty)
-                                      ? AppStrings.passwordRequired
-                                      : null,
-                            ),
-                            const SizedBox(height: 24),
-                            FilledButton(
-                              onPressed: _busy ? null : _submit,
-                              child: _busy
-                                  ? const SizedBox(
-                                      height: 22,
-                                      width: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.4,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text(AppStrings.login),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: _busy
-                                  ? null
-                                  : () => Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => ForgotPasswordScreen(
-                                            initialEmail:
-                                                _emailController.text,
+                              const SizedBox(height: 14),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: _obscure,
+                                textInputAction: TextInputAction.done,
+                                autofillHints: const [AutofillHints.password],
+                                onFieldSubmitted: (_) => _submit(),
+                                decoration: InputDecoration(
+                                  labelText: AppStrings.password,
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscure
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                    ),
+                                    onPressed: () =>
+                                        setState(() => _obscure = !_obscure),
+                                  ),
+                                ),
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
+                                        ? AppStrings.passwordRequired
+                                        : null,
+                              ),
+                              const SizedBox(height: 24),
+                              FilledButton(
+                                onPressed: _busy ? null : _submit,
+                                child: _busy
+                                    ? const SizedBox(
+                                        height: 22,
+                                        width: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.4,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(AppStrings.login),
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) =>
+                                                ForgotPasswordScreen(
+                                              initialEmail:
+                                                  _emailController.text,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                              child: const Text(AppStrings.forgotPassword),
-                            ),
-                            TextButton(
-                              onPressed: _busy
-                                  ? null
-                                  : () => Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => const SignUpScreen(),
+                                child: const Text(AppStrings.forgotPassword),
+                              ),
+                              TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) =>
+                                                const SignUpScreen(),
+                                          ),
                                         ),
-                                      ),
-                              child: const Text(AppStrings.noAccountYet),
-                            ),
-                          ],
+                                child: const Text(AppStrings.noAccountYet),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -251,4 +256,5 @@ class _LoginScreenState extends State<LoginScreen>
 }
 
 /// Reused by the forgot-password screen and the teacher invite form.
-String? validateEmailField(String? value) => _LoginScreenState._validateEmail(value);
+String? validateEmailField(String? value) =>
+    _LoginScreenState._validateEmail(value);

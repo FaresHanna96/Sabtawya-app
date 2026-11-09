@@ -17,6 +17,7 @@ import '../classes/class_detail_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
+import 'quick_action_grid.dart';
 import 'today_birthdays_section.dart';
 
 /// The admin landing page: system-wide counters, class standings, the children
@@ -32,6 +33,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   static const _reports = ReportRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<_AdminDashboard>>();
+
+  /// "عرض الكل" on the low-attendance list and the activity feed.
+  bool _showAllLow = false;
+  bool _showAllActivity = false;
 
   Future<_AdminDashboard> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
@@ -67,7 +72,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _push(Widget screen) async {
     await Navigator.of(context).push<void>(
@@ -104,211 +110,433 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
-            _greeting(session.displayName, session.currentYear?.name),
+            // Glance first (greeting, the four numbers), then today
+            // (birthdays, the lesson), then what to do and the details.
+            FadeSlideIn(
+              index: 0,
+              child: _greeting(session.displayName, session.currentYear?.name),
+            ),
             const SizedBox(height: 16),
-            const TodayBirthdaysSection(),
-            LessonOfDay(date: upcomingSaturday()),
             FadeSlideIn(
               index: 1,
               child: Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    label: AppStrings.totalChildren,
-                    value: '${stats.childrenCount}',
-                    icon: Icons.groups_outlined,
+                children: [
+                  Expanded(
+                    child: StatCard(
+                      label: AppStrings.totalChildren,
+                      value: '${stats.childrenCount}',
+                      icon: Icons.groups_outlined,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: StatCard(
-                    label: AppStrings.totalClasses,
-                    value: '${stats.classesCount}',
-                    icon: Icons.class_outlined,
-                    color: AppColors.olive,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: StatCard(
+                      label: AppStrings.totalClasses,
+                      value: '${stats.classesCount}',
+                      icon: Icons.class_outlined,
+                      color: AppColors.olive,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             FadeSlideIn(
               index: 2,
               child: Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    label: AppStrings.totalServants,
-                    value: '${stats.servantsCount}',
-                    icon: Icons.volunteer_activism_outlined,
-                    color: AppColors.navyLight,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: StatCard(
-                    label: AppStrings.totalPoints,
-                    value: '${stats.totalPoints}',
-                    icon: Icons.star_outline,
-                    color: AppColors.gold,
-                  ),
-                ),
-              ],
-            ),
-            ),
-            const SizedBox(height: 16),
-            SectionCard(
-              child: Column(
                 children: [
-                  InfoRow(
-                    label: AppStrings.lastAttendance,
-                    value: stats.lastSessionDate == null
-                        ? AppStrings.noUpcomingSession
-                        : AppDateUtils.formatDayDate(stats.lastSessionDate!),
-                    icon: Icons.event_available_outlined,
+                  Expanded(
+                    child: StatCard(
+                      label: AppStrings.totalServants,
+                      value: '${stats.servantsCount}',
+                      icon: Icons.volunteer_activism_outlined,
+                      color: AppColors.navyLight,
+                    ),
                   ),
-                  InfoRow(
-                    label: AppStrings.boys,
-                    value: '${stats.boysCount}',
-                    icon: Icons.boy,
-                  ),
-                  InfoRow(
-                    label: AppStrings.girls,
-                    value: '${stats.girlsCount}',
-                    icon: Icons.girl,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: StatCard(
+                      label: AppStrings.totalPoints,
+                      value: '${stats.totalPoints}',
+                      icon: Icons.star_outline,
+                      color: AppColors.gold,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            FadeSlideIn(index: 3, child: _quickActions()),
+            const FadeSlideIn(index: 3, child: TodayBirthdaysSection()),
+            FadeSlideIn(
+              index: 4,
+              child: LessonOfDay(date: upcomingSaturday()),
+            ),
+            FadeSlideIn(index: 5, child: _quickActions()),
+            const SizedBox(height: 16),
+            FadeSlideIn(index: 6, child: _overview(stats)),
             const SizedBox(height: 16),
             if (data.classScores.isNotEmpty) ...[
-              SectionCard(
-                title: AppStrings.classPerformance,
-                icon: Icons.bar_chart_rounded,
-                accent: AppColors.olive,
-                child: Column(
-                  children: data.classScores
-                      .map(
-                        (score) {
-                          final maxHeld =
-                              classMaxHeld[score.classId] ?? score.maxPoints;
-                          final pct = maxHeld > 0
-                              ? score.points / maxHeld * 100
-                              : score.percentage;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: InkWell(
-                              onTap: () => _push(
-                                ClassDetailScreen(classId: score.classId),
-                              ),
-                              child: PercentageBar(
-                                percentage: pct,
-                                label: '${score.className} '
-                                    '(${score.children} ${AppStrings.childLabel})',
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                      .toList(),
+              FadeSlideIn(
+                index: 7,
+                child: SectionCard(
+                  title: AppStrings.classPerformance,
+                  icon: Icons.bar_chart_rounded,
+                  accent: AppColors.olive,
+                  child: Column(
+                    children: [
+                      for (final (i, score) in _ranked(
+                        data.classScores,
+                        classMaxHeld,
+                      ).indexed)
+                        _classRow(i, score, classMaxHeld),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
             ],
             if (data.lowAttendance.isNotEmpty) ...[
-              SectionCard(
-                title: AppStrings.lowAttendanceChildren,
-                icon: Icons.warning_amber_rounded,
-                accent: AppColors.coral,
-                child: Column(
-                  children: data.lowAttendance
-                      .map(
-                        (report) {
-                          final maxHeld =
-                              childMaxHeld[report.childId] ?? report.maxPoints;
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                            title: Text(
-                              report.childName,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              report.className,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            trailing: ScoreChip(
-                              score: report.points,
-                              maxScore: maxHeld,
-                              compact: true,
-                              showMax: false,
-                            ),
-                            onTap: () => _push(
-                              ChildProfileScreen(childId: report.childId),
-                            ),
-                          );
-                        },
-                      )
-                      .toList(),
-                ),
+              FadeSlideIn(
+                index: 8,
+                child: _lowAttendance(data.lowAttendance, childMaxHeld),
               ),
               const SizedBox(height: 16),
             ],
             if (data.activity.isNotEmpty)
-              SectionCard(
-                title: AppStrings.recentActivity,
-                icon: Icons.history_rounded,
-                accent: AppColors.sky,
-                child: Column(
-                  children: data.activity
-                      .map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.history,
-                                size: 15,
-                                color: AppColors.muted,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      entry.description,
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                    Text(
-                                      AppDateUtils.formatDateTime(
-                                        entry.createdAt,
-                                      ),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.muted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
+              FadeSlideIn(index: 8, child: _activity(data.activity)),
           ],
         );
       },
     );
+  }
+
+  // ------------------------------------------------------------- sections
+
+  /// Last Saturday taken, and boys vs girls as one split bar.
+  Widget _overview(AdminStats stats) {
+    final total = stats.boysCount + stats.girlsCount;
+    final boysShare = total == 0 ? 0.5 : stats.boysCount / total;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InfoRow(
+            label: AppStrings.lastAttendance,
+            value: stats.lastSessionDate == null
+                ? AppStrings.noUpcomingSession
+                : AppDateUtils.formatDayDate(stats.lastSessionDate!),
+            icon: Icons.event_available_outlined,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.boy_rounded, size: 18, color: AppColors.sky),
+              Text(
+                ' ${AppStrings.boys} ${stats.boysCount}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.sky,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${stats.girlsCount} ${AppStrings.girls} ',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.coral,
+                ),
+              ),
+              const Icon(Icons.girl_rounded, size: 18, color: AppColors.coral),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.5, end: boysShare),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (_, share, __) => SizedBox(
+                height: 8,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: (share * 1000).round().clamp(1, 999),
+                      child: Container(color: AppColors.sky),
+                    ),
+                    Expanded(
+                      flex: ((1 - share) * 1000).round().clamp(1, 999),
+                      child: Container(color: AppColors.coral),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Classes best first by the percentage actually shown (points over the
+  /// Saturdays held so far), so the rank badge matches the bar.
+  List<ClassYearScore> _ranked(
+    List<ClassYearScore> scores,
+    Map<String, int> maxHeldOf,
+  ) {
+    double pct(ClassYearScore s) {
+      final max = maxHeldOf[s.classId] ?? s.maxPoints;
+      return max > 0 ? s.points / max * 100 : s.percentage;
+    }
+
+    return [...scores]..sort((a, b) => pct(b).compareTo(pct(a)));
+  }
+
+  /// One class in the ranking: its place, the bar, and an arrow to open it.
+  Widget _classRow(int i, ClassYearScore score, Map<String, int> maxHeldOf) {
+    final maxHeld = maxHeldOf[score.classId] ?? score.maxPoints;
+    final pct = maxHeld > 0 ? score.points / maxHeld * 100 : score.percentage;
+    final medal = switch (i) {
+      0 => AppColors.warning,
+      1 => AppColors.navyLight,
+      2 => AppColors.olive,
+      _ => AppColors.muted,
+    };
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _push(ClassDetailScreen(classId: score.classId)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: medal.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${i + 1}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: medal,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: PercentageBar(
+                percentage: pct,
+                label: '${score.className} '
+                    '(${score.children} ${AppStrings.childLabel})',
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_left, size: 18, color: AppColors.muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Lowest attenders: the first five, the rest behind "عرض الكل".
+  Widget _lowAttendance(
+    List<ChildYearReport> all,
+    Map<String, int> maxHeldOf,
+  ) {
+    final shown = _showAllLow ? all : all.take(5).toList();
+    return SectionCard(
+      title: '${AppStrings.lowAttendanceChildren} (${all.length})',
+      icon: Icons.warning_amber_rounded,
+      accent: AppColors.coral,
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final report in shown)
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _push(ChildProfileScreen(childId: report.childId)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor:
+                            AppColors.coral.withValues(alpha: 0.14),
+                        child: Text(
+                          report.childName.isEmpty
+                              ? '?'
+                              : report.childName.characters.first,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.coral,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              report.childName,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              report.className,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ScoreChip(
+                        score: report.points,
+                        maxScore: maxHeldOf[report.childId] ?? report.maxPoints,
+                        compact: true,
+                        showMax: false,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (all.length > 5)
+              TextButton(
+                onPressed: () => setState(() => _showAllLow = !_showAllLow),
+                child: Text(
+                  _showAllLow ? AppStrings.showLess : AppStrings.showAll,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Recent activity as a small timeline: an icon per kind of change and how
+  /// long ago it happened. Five at first, the rest behind "عرض الكل".
+  Widget _activity(List<ActivityLogEntry> all) {
+    final shown = _showAllActivity ? all : all.take(5).toList();
+    return SectionCard(
+      title: AppStrings.recentActivity,
+      icon: Icons.history_rounded,
+      accent: AppColors.sky,
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < shown.length; i++)
+              _activityRow(shown[i], last: i == shown.length - 1),
+            if (all.length > 5)
+              TextButton(
+                onPressed: () =>
+                    setState(() => _showAllActivity = !_showAllActivity),
+                child: Text(
+                  _showAllActivity ? AppStrings.showLess : AppStrings.showAll,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _activityRow(ActivityLogEntry entry, {required bool last}) {
+    final (icon, color) = switch (entry.entity) {
+      'attendance_records' => (Icons.fact_check_rounded, AppColors.success),
+      'children' => (Icons.child_care_rounded, AppColors.navy),
+      'class_servants' => (Icons.group_add_rounded, AppColors.olive),
+      'profiles' => (Icons.person_add_alt_1_rounded, AppColors.sky),
+      'event_payments' => (Icons.payments_rounded, AppColors.gold),
+      _ => (Icons.history_rounded, AppColors.muted),
+    };
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // The dot and the line joining it to the next entry.
+          Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 14, color: color),
+              ),
+              if (!last)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: AppColors.muted.withValues(alpha: 0.18),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12, top: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(entry.description, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(height: 2),
+                  Text(
+                    _ago(entry.createdAt),
+                    style:
+                        const TextStyle(fontSize: 11, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "منذ 5 دقائق" / "منذ ساعتين" today, the day-level wording after that.
+  String _ago(DateTime at) {
+    final diff = DateTime.now().difference(at.toLocal());
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inMinutes < 60) {
+      final m = diff.inMinutes;
+      return m == 1
+          ? 'منذ دقيقة'
+          : m == 2
+              ? 'منذ دقيقتين'
+              : 'منذ $m دقيقة';
+    }
+    if (diff.inHours < 24) {
+      final h = diff.inHours;
+      return h == 1
+          ? 'منذ ساعة'
+          : h == 2
+              ? 'منذ ساعتين'
+              : 'منذ $h ساعات';
+    }
+    return '${AppDateUtils.sinceLabel(at)} • ${AppDateUtils.formatDateTime(at)}';
   }
 
   Widget _greeting(String name, String? yearName) =>
@@ -317,59 +545,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _quickActions() {
     // خادم عام sees everything but does not add or import children.
     final canEditChildren = !context.read<SessionController>().isGeneralServant;
-    return SectionCard(
-      title: AppStrings.quickActions,
-      icon: Icons.bolt_rounded,
-      accent: AppColors.gold,
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _ActionChip(
-            icon: Icons.fact_check_outlined,
-            label: AppStrings.attendanceTitle,
-            onTap: () => _push(const AttendanceScreen(showAppBar: true)),
+    return QuickActionGrid(
+      actions: [
+        QuickAction(
+          Icons.fact_check_rounded,
+          AppStrings.attendanceTitle,
+          AppColors.success,
+          () => _push(const AttendanceScreen(showAppBar: true)),
+        ),
+        if (canEditChildren) ...[
+          QuickAction(
+            Icons.person_add_alt_1_rounded,
+            AppStrings.addChild,
+            AppColors.navy,
+            () => _push(const ChildFormScreen()),
           ),
-          if (canEditChildren) ...[
-            _ActionChip(
-              icon: Icons.person_add_alt,
-              label: AppStrings.addChild,
-              onTap: () => _push(const ChildFormScreen()),
-            ),
-            _ActionChip(
-              icon: Icons.upload_file,
-              label: AppStrings.importChildren,
-              onTap: () => _push(const ImportChildrenScreen()),
-            ),
-          ],
-          _ActionChip(
-            icon: Icons.calendar_month_outlined,
-            label: AppStrings.calendarTitle,
-            onTap: () => _push(const CalendarScreen()),
+          // Short label: the full one is cut off in a quarter-width tile.
+          QuickAction(
+            Icons.upload_file_rounded,
+            AppStrings.importExcelShort,
+            AppColors.olive,
+            () => _push(const ImportChildrenScreen()),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  const _ActionChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 16, color: AppColors.navy),
-      label: Text(label),
-      onPressed: onTap,
+        QuickAction(
+          Icons.calendar_month_rounded,
+          AppStrings.calendarTitle,
+          AppColors.gold,
+          () => _push(const CalendarScreen()),
+        ),
+      ],
     );
   }
 }

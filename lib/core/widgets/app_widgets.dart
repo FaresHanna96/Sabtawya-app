@@ -521,6 +521,25 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Every card fades in the first time it appears (once per card, not on
+    // every rebuild), so screens without their own entrance still feel alive.
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return _card(context);
+    }
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      builder: (_, t, child) => Opacity(
+        opacity: t,
+        child:
+            Transform.translate(offset: Offset(0, 8 * (1 - t)), child: child),
+      ),
+      child: _card(context),
+    );
+  }
+
+  Widget _card(BuildContext context) {
     if (collapsible && title != null) {
       return Card(
         child: Theme(

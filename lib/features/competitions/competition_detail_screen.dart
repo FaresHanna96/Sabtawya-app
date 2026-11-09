@@ -6,6 +6,8 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/class_filter_chips.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/competition.dart';
 import '../../data/repositories/competition_repository.dart';
@@ -168,6 +170,7 @@ class _MarksTabState extends State<_MarksTab> {
           return id;
         }
 
+        var rowIndex = 0;
         return Column(
           children: [
             Padding(
@@ -180,33 +183,17 @@ class _MarksTabState extends State<_MarksTab> {
                 ),
               ),
             ),
+            // Classes as the year x boys/girls grid (no sideways scrolling).
             if (allClassIds.length > 1)
-              SizedBox(
-                height: 48,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(end: 8),
-                      child: ChoiceChip(
-                        label: const Text(AppStrings.all),
-                        selected: _classId == null,
-                        onSelected: (_) => setState(() => _classId = null),
-                      ),
-                    ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: ClassFilterChips(
+                  classes: [
                     for (final id in allClassIds)
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 8),
-                        child: ChoiceChip(
-                          label: Text(className(id)),
-                          selected: _classId == id,
-                          onSelected: (selected) =>
-                              setState(() => _classId = selected ? id : null),
-                        ),
-                      ),
+                      ClassFilterOption(id: id, name: className(id)),
                   ],
+                  selectedId: _classId,
+                  onSelected: (id) => setState(() => _classId = id),
                 ),
               ),
             Expanded(
@@ -237,10 +224,13 @@ class _MarksTabState extends State<_MarksTab> {
                         ),
                       ),
                     ),
-                    ...entry.value.map((row) => _MarkRow(
-                          row: row,
-                          maxMark: widget.competition.maxMark,
-                          controller: _controllers[row['id'] as String]!,
+                    ...entry.value.map((row) => staggered(
+                          rowIndex++,
+                          _MarkRow(
+                            row: row,
+                            maxMark: widget.competition.maxMark,
+                            controller: _controllers[row['id'] as String]!,
+                          ),
                         )),
                     const SizedBox(height: 8),
                   ],

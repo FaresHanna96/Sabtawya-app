@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/lesson.dart';
 import 'lesson_editor.dart';
@@ -110,7 +111,8 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               itemCount: days.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
+              itemBuilder: (context, i) =>
+                  staggered(i, Builder(builder: (context) {
                 final day = days[i];
                 final brk = programme.breakOn(day);
                 return Opacity(
@@ -165,7 +167,7 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
                     ),
                   ),
                 );
-              },
+              })),
             );
           },
         ),

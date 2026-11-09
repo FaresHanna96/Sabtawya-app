@@ -65,7 +65,9 @@ class _ClassesScreenState extends State<ClassesScreen> {
     return Scaffold(
       appBar: widget.showAppBar
           ? AppBar(
-              title: Text((isAdmin || isGeneralServant) ? AppStrings.classesTitle : AppStrings.myClasses),
+              title: Text((isAdmin || isGeneralServant)
+                  ? AppStrings.classesTitle
+                  : AppStrings.myClasses),
               actions: [
                 if (isAdmin)
                   IconButton(
@@ -118,45 +120,47 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
   Widget _buildList(bool isAdmin, bool isGeneralServant) {
     return AsyncSection<List<ClassOverview>>(
-          key: _sectionKey,
-          load: _load,
-          builder: (context, classes, reload) {
-            if (classes.isEmpty) {
-              return ListView(
-                children: [
-                  const SizedBox(height: 40),
-                  EmptyState(
-                    icon: Icons.class_outlined,
-                    title: (isAdmin || isGeneralServant)
-                        ? AppStrings.noClasses
-                        : AppStrings.noClassesAssigned,
-                    body: (isAdmin || isGeneralServant) ? null : AppStrings.noClassesAssignedBody,
-                    action: isAdmin
-                        ? FilledButton.icon(
-                            onPressed: _add,
-                            icon: const Icon(Icons.add),
-                            label: const Text(AppStrings.addClass),
-                          )
-                        : null,
-                  ),
-                ],
-              );
-            }
-
-            return ListView.separated(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, isAdmin ? 96 : 24),
-              itemCount: classes.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) => FadeSlideIn(
-                index: index,
-                child: _ClassCard(
-                  overview: classes[index],
-                  accent: _palette[index % _palette.length],
-                  onTap: () => _open(classes[index]),
-                ),
+      key: _sectionKey,
+      load: _load,
+      builder: (context, classes, reload) {
+        if (classes.isEmpty) {
+          return ListView(
+            children: [
+              const SizedBox(height: 40),
+              EmptyState(
+                icon: Icons.class_outlined,
+                title: (isAdmin || isGeneralServant)
+                    ? AppStrings.noClasses
+                    : AppStrings.noClassesAssigned,
+                body: (isAdmin || isGeneralServant)
+                    ? null
+                    : AppStrings.noClassesAssignedBody,
+                action: isAdmin
+                    ? FilledButton.icon(
+                        onPressed: _add,
+                        icon: const Icon(Icons.add),
+                        label: const Text(AppStrings.addClass),
+                      )
+                    : null,
               ),
-            );
-          },
+            ],
+          );
+        }
+
+        return ListView.separated(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, isAdmin ? 96 : 24),
+          itemCount: classes.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) => FadeSlideIn(
+            index: index,
+            child: _ClassCard(
+              overview: classes[index],
+              accent: _palette[index % _palette.length],
+              onTap: () => _open(classes[index]),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -206,7 +210,8 @@ class _ClassCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      PatronAvatar(photoPath: overview.patronPhotoPath, size: 42),
+                      PatronAvatar(
+                          photoPath: overview.patronPhotoPath, size: 42),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -231,7 +236,8 @@ class _ClassCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (!overview.isActive) const StatusBadge(isActive: false),
+                      if (!overview.isActive)
+                        const StatusBadge(isActive: false),
                       const Icon(Icons.chevron_left, color: AppColors.muted),
                     ],
                   ),

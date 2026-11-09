@@ -93,7 +93,11 @@ class ChildFilterBar extends StatelessWidget {
     required this.searchController,
     this.resultCount,
     this.totalCount,
+    this.showGender = true,
   });
+
+  /// Off for a class of only boys or only girls, where the chips do nothing.
+  final bool showGender;
 
   final ChildFilter filter;
   final ValueChanged<ChildFilter> onChanged;
@@ -129,16 +133,18 @@ class ChildFilterBar extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _genderChip(null, AppStrings.all),
-                      _genderChip(Gender.boy, AppStrings.boys),
-                      _genderChip(Gender.girl, AppStrings.girls),
-                    ],
-                  ),
-                ),
+                child: !showGender
+                    ? const SizedBox.shrink()
+                    : SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _genderChip(null, AppStrings.all),
+                            _genderChip(Gender.boy, AppStrings.boys),
+                            _genderChip(Gender.girl, AppStrings.girls),
+                          ],
+                        ),
+                      ),
               ),
               IconButton(
                 tooltip: AppStrings.showInactive,

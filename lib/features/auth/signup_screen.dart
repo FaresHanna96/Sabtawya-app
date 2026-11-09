@@ -246,15 +246,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           icon: Icon(
                             _obscure ? Icons.visibility_off : Icons.visibility,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return AppStrings.passwordRequired;
                         }
-                        if (value.length < 8) return AppStrings.passwordTooShort;
+                        if (value.length < 8) {
+                          return AppStrings.passwordTooShort;
+                        }
                         return null;
                       },
                     ),

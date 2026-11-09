@@ -6,6 +6,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/class_filter_chips.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/school_class.dart';
@@ -61,7 +63,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     return _repository.sessionSummaries(classId: classId, yearId: yearId);
   }
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _open(SessionSummary summary) async {
     await Navigator.of(context).push<void>(
@@ -95,34 +98,32 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 builder: (context, all, reload) {
                   final today = AppDateUtils.dateOnly(DateTime.now());
 
-                  final visible = all
-                      .where(
-                        (item) {
-                          bool passes;
-                          if (_showUpcoming && _recordedOnly) {
-                            // Union: upcoming unrecorded + all recorded.
-                            passes = (item.sessionDate.isAfter(today) &&
-                                    !item.hasData) ||
-                                item.hasData;
-                          } else if (_showUpcoming) {
-                            passes = item.sessionDate.isAfter(today);
-                          } else if (_recordedOnly) {
-                            passes = item.hasData;
-                          } else {
-                            // Default: past + any future that already has data.
-                            passes = !item.sessionDate.isAfter(today) ||
-                                item.hasData;
-                          }
-                          return passes &&
-                              DateGranularityFilter.matchesFilter(
-                                date: item.sessionDate,
-                                granularity: _granularity,
-                                from: _filterFrom,
-                                to: _filterTo,
-                              );
-                        },
-                      )
-                      .toList()
+                  final visible = all.where(
+                    (item) {
+                      bool passes;
+                      if (_showUpcoming && _recordedOnly) {
+                        // Union: upcoming unrecorded + all recorded.
+                        passes = (item.sessionDate.isAfter(today) &&
+                                !item.hasData) ||
+                            item.hasData;
+                      } else if (_showUpcoming) {
+                        passes = item.sessionDate.isAfter(today);
+                      } else if (_recordedOnly) {
+                        passes = item.hasData;
+                      } else {
+                        // Default: past + any future that already has data.
+                        passes =
+                            !item.sessionDate.isAfter(today) || item.hasData;
+                      }
+                      return passes &&
+                          DateGranularityFilter.matchesFilter(
+                            date: item.sessionDate,
+                            granularity: _granularity,
+                            from: _filterFrom,
+                            to: _filterTo,
+                          );
+                    },
+                  ).toList()
                     ..sort((a, b) {
                       final aUpcoming =
                           a.sessionDate.isAfter(today) && !a.hasData;
@@ -139,22 +140,18 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                   final allDates = all.map((s) => s.sessionDate).toList()
                     ..sort();
 
-                  final isFiltered =
-                      _granularity != null &&
+                  final isFiltered = _granularity != null &&
                       (_filterFrom != null || _filterTo != null);
 
                   // Total score when a filter is active.
                   final totalPoints =
-                      isFiltered
-                          ? visible.fold(0, (s, r) => s + r.points)
-                          : 0;
-                  final maxTotalPoints =
-                      isFiltered
-                          ? visible.fold(
-                              0,
-                              (s, r) => s + r.activeChildren * maxPerSession,
-                            )
-                          : 0;
+                      isFiltered ? visible.fold(0, (s, r) => s + r.points) : 0;
+                  final maxTotalPoints = isFiltered
+                      ? visible.fold(
+                          0,
+                          (s, r) => s + r.activeChildren * maxPerSession,
+                        )
+                      : 0;
 
                   return Column(
                     children: [
@@ -205,16 +202,20 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                       else
                         Expanded(
                           child: ListView.separated(
-                            padding:
-                                const EdgeInsets.fromLTRB(12, 4, 12, 24),
+                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                             itemCount: visible.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 8),
-                            itemBuilder: (context, index) => _SummaryTile(
-                              summary: visible[index],
-                              maxPerSession: maxPerSession,
-                              onTap: () => _open(visible[index]),
-                            ),
+                            itemBuilder: (context, index) {
+                              final tile = _SummaryTile(
+                                summary: visible[index],
+                                maxPerSession: maxPerSession,
+                                onTap: () => _open(visible[index]),
+                              );
+                              return index < 12
+                                  ? FadeSlideIn(index: index, child: tile)
+                                  : tile;
+                            },
                           ),
                         ),
                     ],
@@ -235,22 +236,17 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Classes as a one-tap grid (year columns, boys / girls rows)
+          // instead of a dropdown.
           if (classes.length > 1)
-            DropdownButtonFormField<String>(
-              initialValue: _classId,
-              isDense: true,
-              isExpanded: true,
-              decoration:
-                  const InputDecoration(labelText: AppStrings.classLabel),
-              items: classes
-                  .map(
-                    (item) => DropdownMenuItem<String>(
-                      value: item.classId,
-                      child: Text(item.className),
-                    ),
-                  )
+            ClassFilterChips(
+              showAll: false,
+              classes: classes
+                  .map((c) =>
+                      ClassFilterOption(id: c.classId, name: c.className))
                   .toList(),
-              onChanged: (value) {
+              selectedId: _classId,
+              onSelected: (value) {
                 if (value == null || value == _classId) return;
                 setState(() => _classId = value);
                 _reload();
@@ -303,32 +299,118 @@ class _SummaryTile extends StatelessWidget {
       AppDateUtils.dateOnly(DateTime.now()),
     );
 
+    // A past Saturday with nothing recorded is the one that needs doing.
+    final missing = !future && !summary.hasData;
+    final ratio = summary.activeChildren == 0
+        ? 0.0
+        : summary.presentCount / summary.activeChildren;
+    final statusColor = summary.isLocked
+        ? AppColors.muted
+        : summary.hasData
+            ? AppColors.olive
+            : missing
+                ? AppColors.warning
+                : AppColors.muted;
+
     return Card(
       margin: EdgeInsets.zero,
-      child: ListTile(
+      shape: missing
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: AppColors.warning.withValues(alpha: 0.5),
+              ),
+            )
+          : null,
+      child: InkWell(
         onTap: onTap,
-        leading: Icon(
-          summary.isLocked
-              ? Icons.lock_outline
-              : summary.hasData
-                  ? Icons.event_available_outlined
-                  : Icons.event_note_outlined,
-          color: summary.hasData ? AppColors.olive : AppColors.muted,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  summary.isLocked
+                      ? Icons.lock_outline
+                      : summary.hasData
+                          ? Icons.event_available_rounded
+                          : Icons.event_note_outlined,
+                  size: 20,
+                  color: statusColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppDateUtils.formatDayDate(summary.sessionDate),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (summary.hasData) ...[
+                      Text(
+                        '${AppStrings.presentOf} ${summary.presentCount} '
+                        '${AppStrings.ofWord} ${summary.activeChildren}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: ratio),
+                          duration: const Duration(milliseconds: 700),
+                          curve: Curves.easeOutCubic,
+                          builder: (_, v, __) => LinearProgressIndicator(
+                            value: v,
+                            minHeight: 5,
+                            backgroundColor:
+                                AppColors.navy.withValues(alpha: 0.08),
+                            valueColor:
+                                const AlwaysStoppedAnimation(AppColors.olive),
+                          ),
+                        ),
+                      ),
+                    ] else
+                      Text(
+                        future
+                            ? AppStrings.nextAttendance
+                            : AppStrings.notTakenYet,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight:
+                              missing ? FontWeight.w700 : FontWeight.normal,
+                          color: missing ? AppColors.warning : AppColors.muted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (summary.hasData)
+                ScoreChip(
+                  score: summary.points,
+                  maxScore: maxPoints,
+                  compact: true,
+                )
+              else
+                const Icon(Icons.chevron_left, color: AppColors.muted),
+            ],
+          ),
         ),
-        title: Text(
-          AppDateUtils.formatDayDate(summary.sessionDate),
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          future && !summary.hasData
-              ? AppStrings.nextAttendance
-              : '${AppStrings.presentCount} ${summary.presentCount}/${summary.activeChildren}'
-                  ' • ${AppStrings.recordedCount} ${summary.recordedCount}',
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: summary.hasData
-            ? ScoreChip(score: summary.points, maxScore: maxPoints, compact: true)
-            : null,
       ),
     );
   }

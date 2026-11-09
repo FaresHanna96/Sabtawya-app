@@ -28,7 +28,8 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
   late final Future<(List<Child>, List<Profile>)> _future = Future.wait([
     _childRepo.all(),
     _servantRepo.servantsWithBirthdayToday(),
-  ]).then((results) => (results[0] as List<Child>, results[1] as List<Profile>));
+  ]).then(
+      (results) => (results[0] as List<Child>, results[1] as List<Profile>));
 
   @override
   Widget build(BuildContext context) {
@@ -50,28 +51,22 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
 
         final session = context.read<SessionController>();
 
-        return Column(
-          children: [
-            _BirthdayCard(
-              title: AppStrings.childBirthdaysTitle,
-              count: childBirthdays.length,
-              content: childBirthdays.isEmpty
-                  ? const _EmptyBirthdays()
-                  : session.isAdmin
-                      ? _GroupedBirthdays(
-                          birthdays: childBirthdays,
-                          classes: session.myClasses,
-                        )
-                      : _FlatBirthdays(birthdays: childBirthdays),
-            ),
-            _BirthdayCard(
-              title: AppStrings.servantBirthdays,
-              count: servantBirthdays.length,
-              content: servantBirthdays.isEmpty
-                  ? const _EmptyBirthdays()
-                  : _ServantBirthdays(servants: servantBirthdays),
-            ),
-          ],
+        // Nothing until the first answer, so the cards do not flash empty.
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _BirthdayTiles(
+            childCount: childBirthdays.length,
+            servantCount: servantBirthdays.length,
+            childContent: session.isAdmin
+                ? _GroupedBirthdays(
+                    birthdays: childBirthdays,
+                    classes: session.myClasses,
+                  )
+                : _FlatBirthdays(birthdays: childBirthdays),
+            servantContent: _ServantBirthdays(servants: servantBirthdays),
+          ),
         );
       },
     );
@@ -80,62 +75,180 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
 
 // --------------------------------------------------------------- shared card
 
-class _BirthdayCard extends StatelessWidget {
-  const _BirthdayCard({
-    required this.title,
-    required this.count,
-    required this.content,
+/// Today's birthdays as two tiles (children / servants) with their counts.
+/// A day with none is a single slim line instead of two empty cards; on a day
+/// with birthdays the first list with someone in it opens by itself.
+class _BirthdayTiles extends StatefulWidget {
+  const _BirthdayTiles({
+    required this.childCount,
+    required this.servantCount,
+    required this.childContent,
+    required this.servantContent,
   });
 
-  final String title;
-  final int count;
-  final Widget content;
+  final int childCount;
+  final int servantCount;
+  final Widget childContent;
+  final Widget servantContent;
+
+  @override
+  State<_BirthdayTiles> createState() => _BirthdayTilesState();
+}
+
+class _BirthdayTilesState extends State<_BirthdayTiles> {
+  /// 0 = children, 1 = servants, null = closed.
+  late int? _open = widget.childCount > 0
+      ? 0
+      : widget.servantCount > 0
+          ? 1
+          : null;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Card(
-        child: Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            initiallyExpanded: false,
-            tilePadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            title: Row(
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (count > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '$count',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.warning,
+    if (widget.childCount == 0 && widget.servantCount == 0) {
+      return const Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: _EmptyBirthdays(),
+        ),
+      );
+    }
+
+    final open = _open;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child:
+                  _tile(0, widget.childCount, AppStrings.childBirthdaysTitle),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _tile(1, widget.servantCount, AppStrings.servantBirthdays),
+            ),
+          ],
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: open == null
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: KeyedSubtree(
+                          key: ValueKey(open),
+                          child: (open == 0
+                                      ? widget.childCount
+                                      : widget.servantCount) ==
+                                  0
+                              ? const _EmptyBirthdays()
+                              : (open == 0
+                                  ? widget.childContent
+                                  : widget.servantContent),
+                        ),
                       ),
                     ),
                   ),
-                ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tile(int which, int count, String label) {
+    final selected = _open == which;
+    const color = AppColors.warning;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: selected
+            ? color.withValues(alpha: 0.12)
+            : Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: selected ? color.withValues(alpha: 0.6) : Colors.transparent,
+          width: 1.4,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => setState(() => _open = selected ? null : which),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: count > 0 ? 0.18 : 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.cake_rounded,
+                    size: 18,
+                    color: count > 0 ? color : AppColors.muted,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TweenAnimationBuilder<int>(
+                        tween: IntTween(begin: 0, end: count),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, v, __) => Text(
+                          '$v',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: count > 0 ? color : AppColors.muted,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: selected ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(
+                    Icons.expand_more,
+                    size: 20,
+                    color: AppColors.muted,
+                  ),
+                ),
               ],
             ),
-            children: [content],
           ),
         ),
       ),

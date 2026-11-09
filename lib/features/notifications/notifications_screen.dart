@@ -4,6 +4,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/repositories/notification_repository.dart';
@@ -32,7 +33,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   static const _repository = NotificationRepository();
   final _sectionKey = GlobalKey<AsyncSectionState<List<AppNotification>>>();
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _open(AppNotification n) async {
     if (!n.isRead) {
@@ -49,7 +51,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'event_added' => const EventsScreen(),
       'competition_added' => const CompetitionsScreen(),
       'child_added' when ref != null => ChildProfileScreen(childId: ref),
-      'attendance_taken' || 'class_assigned' when ref != null =>
+      'attendance_taken' ||
+      'class_assigned' when ref != null =>
         ClassDetailScreen(classId: ref),
       'prep_submitted' => (ref == null ? null : await _servantDetail(ref)) ??
           const AdminServantActivitiesScreen(),
@@ -133,32 +136,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemBuilder: (context, i) {
                 final n = items[i];
                 final (icon, color) = _look(n.kind);
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  color: n.isRead ? null : color.withValues(alpha: 0.07),
-                  child: ListTile(
-                    onTap: () => _open(n),
-                    leading: CircleAvatar(
-                      backgroundColor: color.withValues(alpha: 0.15),
-                      child: Icon(icon, color: color, size: 20),
-                    ),
-                    title: Text(
-                      n.title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: n.isRead ? FontWeight.w600 : FontWeight.w800,
+                return staggered(
+                    i,
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      color: n.isRead ? null : color.withValues(alpha: 0.07),
+                      child: ListTile(
+                        onTap: () => _open(n),
+                        leading: CircleAvatar(
+                          backgroundColor: color.withValues(alpha: 0.15),
+                          child: Icon(icon, color: color, size: 20),
+                        ),
+                        title: Text(
+                          n.title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                                n.isRead ? FontWeight.w600 : FontWeight.w800,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${n.body}\n${AppDateUtils.sinceLabel(n.createdAt)}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        isThreeLine: true,
+                        trailing: n.isRead
+                            ? null
+                            : Icon(Icons.circle, size: 10, color: color),
                       ),
-                    ),
-                    subtitle: Text(
-                      '${n.body}\n${AppDateUtils.sinceLabel(n.createdAt)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    isThreeLine: true,
-                    trailing: n.isRead
-                        ? null
-                        : Icon(Icons.circle, size: 10, color: color),
-                  ),
-                );
+                    ));
               },
             );
           },

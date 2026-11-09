@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/repositories/attendance_repository.dart';
@@ -104,7 +105,8 @@ class _AttendanceYearsScreenState extends State<AttendanceYearsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
               itemCount: years.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
+              itemBuilder: (context, index) =>
+                  staggered(index, Builder(builder: (context) {
                 final year = years[index];
                 return SectionCard(
                   title: year.name,
@@ -179,7 +181,7 @@ class _AttendanceYearsScreenState extends State<AttendanceYearsScreen> {
                     ],
                   ),
                 );
-              },
+              })),
             );
           },
         ),
@@ -321,7 +323,8 @@ class _YearFormScreenState extends State<_YearFormScreen> {
     final session = context.read<SessionController>();
     final ok = await Ui.runGuarded(
       context,
-      () => const ClassRepository().promoteGrades(archiveSuffix: _name.text.trim()),
+      () => const ClassRepository()
+          .promoteGrades(archiveSuffix: _name.text.trim()),
       successMessage: AppStrings.saved,
     );
     if (ok) await session.refreshClasses();

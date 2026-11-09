@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/profile.dart';
 import '../../data/repositories/servant_repository.dart';
@@ -98,7 +99,7 @@ class _FormState extends State<_Form> {
       key: _formKey,
       child: ListView(
         padding: const EdgeInsets.all(16),
-        children: [
+        children: staggerAll([
           const Padding(
             padding: EdgeInsets.only(bottom: 12),
             child: Text(
@@ -155,7 +156,7 @@ class _FormState extends State<_Form> {
             icon: const Icon(Icons.save_outlined),
             label: const Text(AppStrings.save),
           ),
-        ],
+        ]),
       ),
     );
   }

@@ -83,8 +83,7 @@ class AppDateUtils {
     return date.subtract(Duration(days: diff));
   }
 
-  static String formatPercentage(num value) =>
-      '${value.toStringAsFixed(1)}%';
+  static String formatPercentage(num value) => '${value.toStringAsFixed(1)}%';
 
   /// How long ago [date] was, in Arabic: `اليوم`, `منذ أسبوعين`, `منذ 5 أسابيع`.
   ///
@@ -95,7 +94,13 @@ class AppDateUtils {
     final days = today.difference(dateOnly(date)).inDays;
 
     if (days <= 0) return 'اليوم';
-    if (days < 7) return days == 1 ? 'منذ يوم' : 'منذ $days أيام';
+    if (days < 7) {
+      return switch (days) {
+        1 => 'منذ يوم',
+        2 => 'منذ يومين',
+        _ => 'منذ $days أيام',
+      };
+    }
 
     final weeks = days ~/ 7;
     if (weeks < 5) {

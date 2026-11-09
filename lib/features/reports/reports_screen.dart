@@ -51,7 +51,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (yearId == null) return _latest = const _ReportsData.empty();
 
     final maxPerSession =
-        context.read<SessionController>().currentYear?.maxPointsPerSession ?? 20;
+        context.read<SessionController>().currentYear?.maxPointsPerSession ??
+            20;
     // The three reads are independent, so run them side by side.
     final (children, classes, monthly) = await (
       _reports.childYearReports(yearId: yearId, classId: _classId),
@@ -114,7 +115,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ?.where((r) => _classId == null || r.classId == _classId)
       .toList();
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   /// Exports the tab on screen with the class and period currently chosen.
   Future<void> _exportCurrent(int tab) async {
@@ -178,7 +180,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
         name = '${AppStrings.classReport} - $scope$period';
       default:
         final month = _monthShown(_monthsOf(data.monthly));
-        final rows = month == null ? <ChildMonthlyReport>[] : _monthRows(data.monthly, month);
+        final rows = month == null
+            ? <ChildMonthlyReport>[]
+            : _monthRows(data.monthly, month);
         bytes = rows.isEmpty ? null : ExcelService.monthlyWorkbook(rows);
         name = '${AppStrings.monthlyReport} - $scope'
             '${month == null ? '' : ' - ${AppDateUtils.formatMonth(month)}'}';
@@ -284,8 +288,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: ClassFilterChips(
                     classes: classes
-                        .map((c) => ClassFilterOption(
-                            id: c.classId, name: c.className))
+                        .map((c) =>
+                            ClassFilterOption(id: c.classId, name: c.className))
                         .toList(),
                     selectedId: _classId,
                     onSelected: (id) {
@@ -391,7 +395,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final held = <String, int>{};
       for (final r in data.monthly) {
         if (r.monthStart.year < now.year ||
-            (r.monthStart.year == now.year && r.monthStart.month <= now.month)) {
+            (r.monthStart.year == now.year &&
+                r.monthStart.month <= now.month)) {
           held[r.childId] = (held[r.childId] ?? 0) + r.sessionsTotal;
         }
       }
@@ -615,8 +620,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: ListTile(
                   onTap: () => Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
-                      builder: (_) =>
-                          ChildProfileScreen(childId: row.childId),
+                      builder: (_) => ChildProfileScreen(childId: row.childId),
                     ),
                   ),
                   leading: _RankBadge(rank: index + 1),

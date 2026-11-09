@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/arabic_sort.dart';
 import '../../core/utils/calendar_grid.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/child.dart';
 import '../../data/models/event.dart';
@@ -70,7 +71,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         events: await _events.listEvents(),
       );
 
+  /// +1 / -1: which way the month grid slides in (RTL: next comes from left).
+  double _slideDir = -1;
+
   void _go(int months) => setState(() {
+        _slideDir = months > 0 ? -1 : 1;
         _month = DateTime(_month.year, _month.month + months);
         // Keep the selection in the visible month.
         _selected = DateTime(_month.year, _month.month, 1);
@@ -180,23 +185,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       _monthHeader(),
                       const SizedBox(height: 6),
                       _weekdayRow(),
-                      for (final week in CalendarGrid.weeks(
-                        _month.year,
-                        _month.month,
-                      ))
-                        Row(
+                      // The month's days slide in from the side it came
+                      // from when the arrows change the month.
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        transitionBuilder: (child, anim) => FadeTransition(
+                          opacity: anim,
+                          child: SlideTransition(
+                            position: Tween(
+                              begin: Offset(0.15 * _slideDir, 0),
+                              end: Offset.zero,
+                            ).animate(anim),
+                            child: child,
+                          ),
+                        ),
+                        child: Column(
+                          key: ValueKey(_month),
                           children: [
-                            for (final day in week)
-                              Expanded(
-                                child: day == null
-                                    ? const SizedBox(height: 46)
-                                    : _dayCell(
-                                        day,
-                                        _itemsOn(day, data, classNames),
-                                      ),
+                            for (final week in CalendarGrid.weeks(
+                              _month.year,
+                              _month.month,
+                            ))
+                              Row(
+                                children: [
+                                  for (final day in week)
+                                    Expanded(
+                                      child: day == null
+                                          ? const SizedBox(height: 46)
+                                          : _dayCell(
+                                              day,
+                                              _itemsOn(day, data, classNames),
+                                            ),
+                                    ),
+                                ],
                               ),
                           ],
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -226,7 +251,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   )
                 else
-                  for (final item in selectedItems) _tile(item),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    child: Column(
+                      key: ValueKey(_selected),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final (i, item) in selectedItems.indexed)
+                          staggered(i, _tile(item)),
+                      ],
+                    ),
+                  ),
               ],
             );
           },

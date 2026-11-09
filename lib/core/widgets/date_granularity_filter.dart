@@ -128,7 +128,8 @@ class DateGranularityFilterState extends State<DateGranularityFilter> {
   Future<void> _pickTo() async {
     final day = await showDatePicker(
       context: context,
-      initialDate: _to ?? _clamp(DateTime.now(), _from ?? _firstDate, _lastDate),
+      initialDate:
+          _to ?? _clamp(DateTime.now(), _from ?? _firstDate, _lastDate),
       firstDate: _from ?? _firstDate,
       lastDate: _lastDate,
     );

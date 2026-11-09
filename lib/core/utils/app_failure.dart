@@ -23,7 +23,8 @@ class AppFailure implements Exception {
     if (error is AuthException) {
       final message = error.message.toLowerCase();
       if (message.contains('invalid login credentials')) {
-        return AppFailure(AppStrings.invalidCredentials, code: error.statusCode);
+        return AppFailure(AppStrings.invalidCredentials,
+            code: error.statusCode);
       }
       if (message.contains('already registered') ||
           message.contains('user already exists')) {

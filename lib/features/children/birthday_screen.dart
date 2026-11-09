@@ -134,7 +134,8 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                     children: [
                       _classChip(null, AppStrings.all, classes),
                       ...classes.map(
-                        (item) => _classChip(item.classId, item.className, classes),
+                        (item) =>
+                            _classChip(item.classId, item.className, classes),
                       ),
                     ],
                   ),
@@ -168,7 +169,8 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                       index: index,
                       child: _BirthdayTile(
                         person: visible[index],
-                        className: visible[index].classIds
+                        className: visible[index]
+                            .classIds
                             .map((id) => _classNameOf(classes, id))
                             .whereType<String>()
                             .join('، '),
@@ -193,7 +195,8 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
     );
   }
 
-  Widget _classChip(String? classId, String label, List<ClassOverview> classes) {
+  Widget _classChip(
+      String? classId, String label, List<ClassOverview> classes) {
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: ChoiceChip(
@@ -244,12 +247,14 @@ class _MonthSelector extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (selected.isNotEmpty && !(selected.length == 1 && selected.first == today.month))
+              if (selected.isNotEmpty &&
+                  !(selected.length == 1 && selected.first == today.month))
                 TextButton(
                   onPressed: () => onChanged({today.month}),
                   style: TextButton.styleFrom(
                     minimumSize: Size.zero,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: const Text(
@@ -374,7 +379,8 @@ class _BirthdayTile extends StatelessWidget {
     final birth = person.birth;
     final today = DateTime.now();
     final isToday = birth.month == today.month && birth.day == today.day;
-    final nextAge = today.year - birth.year +
+    final nextAge = today.year -
+        birth.year +
         (DateTime(today.year, birth.month, birth.day).isBefore(today) ? 1 : 0);
 
     return Card(

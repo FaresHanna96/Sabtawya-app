@@ -22,7 +22,11 @@ class ClassFilterChips extends StatelessWidget {
     required this.classes,
     required this.selectedId,
     required this.onSelected,
+    this.showAll = true,
   });
+
+  /// Off where one class must always be chosen (e.g. attendance history).
+  final bool showAll;
 
   final List<ClassFilterOption> classes;
 
@@ -52,10 +56,11 @@ class ClassFilterChips extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         const gap = 6.0;
-        final columns = years.length + 1; // + "الكل"
+        final columns = years.length + (showAll ? 1 : 0); // + "الكل"
         final cell = (box.maxWidth - gap * (columns - 1)) / columns;
 
-        Widget slot(Widget? child) => SizedBox(width: cell, height: 38, child: child);
+        Widget slot(Widget? child) =>
+            SizedBox(width: cell, height: 38, child: child);
 
         Widget cellFor(ClassFilterOption? c) => slot(
               c == null
@@ -70,16 +75,16 @@ class ClassFilterChips extends StatelessWidget {
         Widget row(bool boys) => Row(
               children: [
                 // "الكل" sits on the first row, an empty slot under it.
-                if (boys)
-                  slot(_Cell(
-                    label: AppStrings.all,
-                    selected: selectedId == null,
-                    onTap: () => onSelected(null),
-                  ))
-                else
-                  slot(null),
-                for (final y in years) ...[
-                  const SizedBox(width: gap),
+                if (showAll)
+                  boys
+                      ? slot(_Cell(
+                          label: AppStrings.all,
+                          selected: selectedId == null,
+                          onTap: () => onSelected(null),
+                        ))
+                      : slot(null),
+                for (final (i, y) in years.indexed) ...[
+                  if (showAll || i > 0) const SizedBox(width: gap),
                   cellFor(find(y, boys)),
                 ],
               ],
@@ -100,11 +105,12 @@ class ClassFilterChips extends StatelessWidget {
         spacing: 8,
         runSpacing: 6,
         children: [
-          _Chip(
-            label: AppStrings.all,
-            selected: selectedId == null,
-            onTap: () => onSelected(null),
-          ),
+          if (showAll)
+            _Chip(
+              label: AppStrings.all,
+              selected: selectedId == null,
+              onTap: () => onSelected(null),
+            ),
           for (final c in classes)
             _Chip(
               label: c.name,

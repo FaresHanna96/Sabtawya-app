@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_history_screen.dart';
 import '../calendar/calendar_screen.dart';
@@ -40,7 +41,7 @@ class MoreScreen extends StatelessWidget {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: [
+          children: staggerAll([
             SectionCard(
               title: AppStrings.reportsTitle,
               icon: Icons.insights_rounded,
@@ -81,7 +82,8 @@ class MoreScreen extends StatelessWidget {
                 title: AppStrings.importTitle,
                 icon: Icons.swap_vert_rounded,
                 accent: AppColors.navyLight,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Column(
                   children: [
                     _Entry(
@@ -187,7 +189,7 @@ class MoreScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+          ]),
         ),
       ),
     );

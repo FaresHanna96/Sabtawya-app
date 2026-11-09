@@ -92,8 +92,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           icon: Icon(_obscureCurrent
                               ? Icons.visibility_off
                               : Icons.visibility),
-                          onPressed: () =>
-                              setState(() => _obscureCurrent = !_obscureCurrent),
+                          onPressed: () => setState(
+                              () => _obscureCurrent = !_obscureCurrent),
                         ),
                       ),
                       validator: (v) => (v == null || v.isEmpty)

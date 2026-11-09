@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
@@ -95,8 +96,8 @@ class _ExportScreenState extends State<ExportScreen> {
       );
 
   Future<void> _exportAttendanceSheet() async {
-    final classId = _classId ??
-        (_classes.isEmpty ? null : _classes.first.classId);
+    final classId =
+        _classId ?? (_classes.isEmpty ? null : _classes.first.classId);
     final year = context.read<SessionController>().currentYear;
     if (classId == null || year == null) {
       Ui.info(context, AppStrings.selectClass);
@@ -146,11 +147,14 @@ class _ExportScreenState extends State<ExportScreen> {
         child: ListView.builder(
           shrinkWrap: true,
           itemCount: lastFirst.length,
-          itemBuilder: (context, index) => ListTile(
-            leading: const Icon(Icons.event_outlined, size: 20),
-            title: Text(AppDateUtils.formatDayDate(lastFirst[index].sessionDate)),
-            onTap: () => Navigator.of(context).pop(lastFirst[index]),
-          ),
+          itemBuilder: (context, index) => staggered(
+              index,
+              ListTile(
+                leading: const Icon(Icons.event_outlined, size: 20),
+                title: Text(
+                    AppDateUtils.formatDayDate(lastFirst[index].sessionDate)),
+                onTap: () => Navigator.of(context).pop(lastFirst[index]),
+              )),
         ),
       ),
     );
@@ -287,7 +291,7 @@ class _ExportScreenState extends State<ExportScreen> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-          children: [
+          children: staggerAll([
             if (_busy) ...[
               const LinearProgressIndicator(minHeight: 2),
               const SizedBox(height: 12),
@@ -364,7 +368,8 @@ class _ExportScreenState extends State<ExportScreen> {
                 title: AppStrings.activitiesNav,
                 icon: Icons.volunteer_activism_rounded,
                 accent: AppColors.coral,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: Column(
                   children: [
                     _ExportTile(
@@ -395,7 +400,7 @@ class _ExportScreenState extends State<ExportScreen> {
                 onTap: _busy ? null : _exportTemplate,
               ),
             ),
-          ],
+          ]),
         ),
       ),
     );

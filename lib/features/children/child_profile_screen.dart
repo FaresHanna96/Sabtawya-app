@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -96,7 +97,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
+  Future<void> _reload() =>
+      _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _edit(Child child) async {
     final changed = await Navigator.of(context).push<bool>(
@@ -172,14 +174,23 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _header(child, data.className),
-              const SizedBox(height: 16),
+              FadeSlideIn(index: 0, child: _header(child, data.className)),
+              const SizedBox(height: 12),
+              // Calling the family is the most common reason to open a
+              // profile, so the numbers sit right under the name.
+              FadeSlideIn(index: 1, child: _contactBar(child)),
+              const SizedBox(height: 12),
               if (data.yearReport != null) ...[
-                _summary(data.yearReport!, data.monthly, data.history),
+                FadeSlideIn(
+                  index: 2,
+                  child: _summary(data.yearReport!, data.monthly, data.history),
+                ),
                 const SizedBox(height: 16),
               ],
               SectionCard(
                 title: AppStrings.personalInfo,
+                collapsible: true,
+                initiallyExpanded: true,
                 icon: Icons.badge_rounded,
                 accent: AppColors.navyLight,
                 child: Column(
@@ -228,6 +239,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.parentsInfo,
+                collapsible: true,
+                initiallyExpanded: true,
                 icon: Icons.family_restroom_rounded,
                 accent: AppColors.coral,
                 child: Column(
@@ -260,6 +273,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.churchInfo,
+                collapsible: true,
+                initiallyExpanded: false,
                 icon: Icons.church_rounded,
                 accent: AppColors.maroon,
                 child: Column(
@@ -281,6 +296,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.schoolInfo,
+                collapsible: true,
+                initiallyExpanded: false,
                 icon: Icons.school_rounded,
                 accent: AppColors.olive,
                 child: Column(
@@ -386,68 +403,106 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
+  /// One tap to call the child, the mother or the father (whichever numbers
+  /// exist). Hidden when there is no number at all.
+  Widget _contactBar(Child child) {
+    final numbers = <(String, String)>[
+      if ((child.mobile ?? '').trim().isNotEmpty)
+        (AppStrings.callChild, child.mobile!.trim()),
+      if ((child.motherMobile ?? '').trim().isNotEmpty)
+        (AppStrings.callMother, child.motherMobile!.trim()),
+      if ((child.fatherMobile ?? '').trim().isNotEmpty)
+        (AppStrings.callFather, child.fatherMobile!.trim()),
+    ];
+    if (numbers.isEmpty) return const SizedBox.shrink();
+    return Row(
+      children: [
+        for (var i = 0; i < numbers.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                foregroundColor: AppColors.success,
+                backgroundColor: AppColors.success.withValues(alpha: 0.12),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: () =>
+                  launchUrl(Uri(scheme: 'tel', path: numbers[i].$2)),
+              icon: const Icon(Icons.call_rounded, size: 18),
+              label: Text(
+                numbers[i].$1,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _header(Child child, String className) {
     final tint = child.gender == Gender.boy ? AppColors.sky : AppColors.coral;
     return FadeSlideIn(
       child: Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: AlignmentDirectional.topStart,
-            end: AlignmentDirectional.bottomEnd,
-            colors: [tint.withValues(alpha: 0.22), Colors.white],
-          ),
-        ),
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
-              child: ChildAvatar(child: child, size: 72),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
+              colors: [tint.withValues(alpha: 0.22), Colors.white],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    child.fullName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      GenderBadge(gender: child.gender, compact: true),
-                      Text(
-                        className,
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                        ),
+          ),
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
+                child: ChildAvatar(child: child, size: 72),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      child.fullName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
-                      if (child.ageLabel != null)
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        GenderBadge(gender: child.gender, compact: true),
                         Text(
-                          child.ageLabel!,
+                          className,
                           style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
                           ),
                         ),
-                    ],
-                  ),
-                ],
+                        if (child.ageLabel != null)
+                          Text(
+                            child.ageLabel!,
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            StatusBadge(isActive: child.isActive),
-          ],
+              StatusBadge(isActive: child.isActive),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -470,8 +525,9 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 (r.monthStart.year == today.year &&
                     r.monthStart.month <= today.month))
             .fold(0, (sum, r) => sum + r.sessionsTotal);
-    final attended =
-        past.isNotEmpty ? past.where((h) => h.isPresent).length : report.sessionsAttended;
+    final attended = past.isNotEmpty
+        ? past.where((h) => h.isPresent).length
+        : report.sessionsAttended;
     final pct = held > 0 ? attended / held * 100 : report.percentage;
 
     return SectionCard(
@@ -499,8 +555,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               Expanded(
                 child: StatTile(
                   label: AppStrings.attendedSessions,
-                  value:
-                      '$attended/${held > 0 ? held : report.sessionsTotal}',
+                  value: '$attended/${held > 0 ? held : report.sessionsTotal}',
                   color: AppColors.navy,
                   icon: Icons.event_available_rounded,
                 ),
@@ -620,7 +675,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   Text(
                     '${row.sessionsAttended}/${row.sessionsTotal}',
                     textDirection: TextDirection.ltr,
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
                   const SizedBox(width: 10),
                   ScoreChip(
@@ -708,8 +764,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           c.withVisits(
             phoneVisitDate:
                 log.isPhone ? next?.visitDate : c.lastPhoneVisitDate,
-            phoneVisitNotes:
-                log.isPhone ? next?.notes : c.lastPhoneVisitNotes,
+            phoneVisitNotes: log.isPhone ? next?.notes : c.lastPhoneVisitNotes,
             homeVisitDate: log.isPhone ? c.lastHomeVisitDate : next?.visitDate,
             homeVisitNotes: log.isPhone ? c.lastHomeVisitNotes : next?.notes,
           ),
@@ -770,8 +825,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       log.notes!,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.muted),
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.muted),
                     ),
                   ),
               ],
@@ -779,8 +834,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           ),
           const SizedBox(width: 6),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
             decoration: BoxDecoration(
               color: (isPhone ? AppColors.navy : AppColors.success)
                   .withValues(alpha: 0.1),
@@ -1006,7 +1060,9 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             child.isActive ? Icons.person_off_outlined : Icons.person_add_alt,
           ),
           label: Text(
-            child.isActive ? AppStrings.deactivateChild : AppStrings.activateChild,
+            child.isActive
+                ? AppStrings.deactivateChild
+                : AppStrings.activateChild,
           ),
         ),
       ],
@@ -1064,10 +1120,10 @@ class _VisitSectionState extends State<_VisitSection> {
     super.initState();
     _phoneDate = widget.child.lastPhoneVisitDate;
     _homeDate = widget.child.lastHomeVisitDate;
-    _phoneNotes = TextEditingController(
-        text: widget.child.lastPhoneVisitNotes ?? '');
-    _homeNotes = TextEditingController(
-        text: widget.child.lastHomeVisitNotes ?? '');
+    _phoneNotes =
+        TextEditingController(text: widget.child.lastPhoneVisitNotes ?? '');
+    _homeNotes =
+        TextEditingController(text: widget.child.lastHomeVisitNotes ?? '');
   }
 
   @override
@@ -1265,7 +1321,8 @@ class _VisitSectionState extends State<_VisitSection> {
 // ---------------------------------------------------------------------------
 
 class _MoveChildSheet extends StatefulWidget {
-  const _MoveChildSheet({required this.classes, required this.currentClassName});
+  const _MoveChildSheet(
+      {required this.classes, required this.currentClassName});
 
   final List<SchoolClass> classes;
   final String currentClassName;
