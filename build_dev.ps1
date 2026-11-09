@@ -14,7 +14,11 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if ($Deploy) {
     Copy-Item "$PSScriptRoot\vercel.json" "$PSScriptRoot\build\web_dev\vercel.json" -Force
-    Push-Location $PSScriptRoot; npx vercel deploy --prod --yes --project sabtawya-dev build/web_dev; Pop-Location
+    Push-Location $PSScriptRoot; npx vercel deploy --prod --yes --project sabtawya-dev build/web_dev
+    # Free plan: 10 GB of deployment storage. Keep only the live deployment
+    # and one backup (only after a successful deploy).
+    if ($LASTEXITCODE -eq 0) { & "$PSScriptRoot\prune_vercel.ps1" -Project sabtawya-dev }
+    Pop-Location
 }
 
 if ($Apk) {
