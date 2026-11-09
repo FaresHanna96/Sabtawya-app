@@ -326,10 +326,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                               (b) => _BalanceRow(
                                 balance: b,
                                 onTap: () => _openPayments(b),
-                                // Only on "لم يدفع", to chase the payment.
-                                phone: _tabController.index == 4
-                                    ? _phones[b.childId]
-                                    : null,
+                                // A call button on every tab (no number, no button).
+                                phone: _phones[b.childId],
                               ),
                             ),
                             const SizedBox(height: 8),
