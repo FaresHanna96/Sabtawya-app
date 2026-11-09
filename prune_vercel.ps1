@@ -44,7 +44,9 @@ $old = @($sorted | Select-Object -Skip $Keep)
 Write-Host ("prune: {0} has {1} deployments, keeping the newest {2}, removing {3}" -f $Project, $sorted.Count, $Keep, $old.Count)
 if ($old.Count -eq 0) { exit 0 }
 
-$urls = $old | ForEach-Object { 'https://' + $_.url }
+# @() keeps it a list: with a single old deployment PowerShell would otherwise
+# hand back one string, and $urls[0..0] would be its first letter.
+$urls = @($old | ForEach-Object { 'https://' + $_.url })
 if ($DryRun) {
     $urls | ForEach-Object { Write-Host "  would remove $_" }
     exit 0
