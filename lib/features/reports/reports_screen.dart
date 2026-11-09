@@ -90,6 +90,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
       if (item.classId == _classId) scope = item.className;
     }
 
+    // " - 2026-10-03 إلى 2026-10-31" when a date range is chosen.
+    String iso(DateTime d) => AppDateUtils.toIsoDate(d);
+    final period = (_filterFrom == null && _filterTo == null)
+        ? ''
+        : ' - ${_filterFrom == null ? '' : iso(_filterFrom!)} '
+            'إلى ${_filterTo == null ? '' : iso(_filterTo!)}';
+
     final List<int>? bytes;
     final String name;
     switch (tab) {
@@ -110,7 +117,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     )
                     .toList(),
               );
-        name = '${AppStrings.overallReport} - $scope';
+        name = '${AppStrings.overallReport} - $scope$period';
       case 1:
         final rows = _classScores(data);
         bytes = rows.isEmpty
@@ -127,7 +134,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     )
                     .toList(),
               );
-        name = '${AppStrings.classReport} - $scope';
+        name = '${AppStrings.classReport} - $scope$period';
       default:
         final month = _monthShown(_monthsOf(data.monthly));
         final rows = month == null ? <ChildMonthlyReport>[] : _monthRows(data.monthly, month);
