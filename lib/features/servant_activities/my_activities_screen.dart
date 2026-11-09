@@ -56,6 +56,9 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
     );
   }
 
+  /// "عرض الكل" under the upcoming Saturdays.
+  bool _showAllUpcoming = false;
+
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
 
@@ -109,52 +112,138 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                 .length;
             final total = held.length;
 
-            return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-              itemCount: data.sessions.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Column(
-                    children: [
-                      ServantSummaryCard(
-                        sundaySchool: data.sundaySchool,
-                        servantMeeting: data.servantMeeting,
-                        mass: data.mass,
-                        confession: data.confession,
-                        preps: data.preps.length,
-                        pendingPreps: data.preps
-                            .where((p) => p.status == 'pending')
-                            .length,
-                        heldSessions:
-                            held.map((s) => s.sessionDate).toSet().length,
-                      ),
-                      const SizedBox(height: 16),
-                      _ProgressHeader(
-                        submitted: submitted,
-                        accepted: accepted,
-                        total: total,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                }
-                final session = data.sessions[index - 1];
-                final prep = data.prepFor(session.id);
-                return Padding(
+            // Next Saturday first (the one to prepare), then the past ones
+            // newest first, then the rest of the year folded to three.
+            final next = data.sessions
+                .where((s) => !s.sessionDate.isBefore(today))
+                .toList()
+              ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
+            final current = next.isEmpty ? null : next.first;
+            final later =
+                next.length > 1 ? next.sublist(1) : <AttendanceSession>[];
+            final past = held
+                .where((s) => current == null || s.id != current.id)
+                .toList()
+              ..sort((a, b) => b.sessionDate.compareTo(a.sessionDate));
+            final laterShown =
+                _showAllUpcoming ? later : later.take(3).toList();
+
+            var n = 0;
+            Widget card(AttendanceSession s, {bool highlight = false}) =>
+                Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: FadeSlideIn(
-                    index: index,
-                    child: _SessionCard(
-                      session: session,
-                      prep: prep,
-                      onTap: () => _openSession(session),
+                  child: staggered(
+                    n++,
+                    _SessionCard(
+                      session: s,
+                      prep: data.prepFor(s.id),
+                      missed: s.sessionDate.isBefore(today) &&
+                          data.prepFor(s.id) == null,
+                      highlight: highlight,
+                      onTap: () => _openSession(s),
                     ),
                   ),
                 );
-              },
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              children: [
+                FadeSlideIn(
+                  child: ServantSummaryCard(
+                    sundaySchool: data.sundaySchool,
+                    servantMeeting: data.servantMeeting,
+                    mass: data.mass,
+                    confession: data.confession,
+                    preps: data.preps.length,
+                    pendingPreps:
+                        data.preps.where((p) => p.status == 'pending').length,
+                    heldSessions: held.map((s) => s.sessionDate).toSet().length,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FadeSlideIn(
+                  index: 1,
+                  child: _ProgressHeader(
+                    submitted: submitted,
+                    accepted: accepted,
+                    total: total,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (current != null) ...[
+                  const _GroupTitle(
+                    icon: Icons.event_rounded,
+                    text: AppStrings.nextSaturdayTitle,
+                  ),
+                  card(current, highlight: true),
+                  const SizedBox(height: 10),
+                ],
+                if (past.isNotEmpty) ...[
+                  _GroupTitle(
+                    icon: Icons.history_rounded,
+                    text: '${AppStrings.pastSaturdays} (${past.length})',
+                  ),
+                  for (final s in past) card(s),
+                  const SizedBox(height: 10),
+                ],
+                if (later.isNotEmpty) ...[
+                  _GroupTitle(
+                    icon: Icons.upcoming_rounded,
+                    text: '${AppStrings.upcomingSaturdays} (${later.length})',
+                  ),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: Column(
+                      children: [for (final s in laterShown) card(s)],
+                    ),
+                  ),
+                  if (later.length > 3)
+                    TextButton(
+                      onPressed: () => setState(
+                        () => _showAllUpcoming = !_showAllUpcoming,
+                      ),
+                      child: Text(
+                        _showAllUpcoming
+                            ? AppStrings.showLess
+                            : AppStrings.showAll,
+                      ),
+                    ),
+                ],
+              ],
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Small heading above each group of Saturdays.
+class _GroupTitle extends StatelessWidget {
+  const _GroupTitle({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, right: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.navy),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -177,7 +266,6 @@ class _ProgressHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = total > 0 ? submitted / total : 0.0;
-    final pct = total > 0 ? '${(submitted / total * 100).round()}%' : '0%';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -215,13 +303,19 @@ class _ProgressHeader extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  '$submitted / $total  ·  $pct',
-                  textDirection: TextDirection.ltr,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                // The percentage counts up when the screen opens.
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progress),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, v, __) => Text(
+                    '$submitted / $total  ·  ${(v * 100).round()}%',
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -230,11 +324,17 @@ class _ProgressHeader extends StatelessWidget {
           const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 7,
-              backgroundColor: Colors.white.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.success),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, __) => LinearProgressIndicator(
+                value: v,
+                minHeight: 7,
+                backgroundColor: Colors.white.withValues(alpha: 0.15),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(AppColors.success),
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -311,22 +411,54 @@ class _SessionCard extends StatelessWidget {
     required this.session,
     required this.prep,
     required this.onTap,
+    this.missed = false,
+    this.highlight = false,
   });
 
   final AttendanceSession session;
   final LessonPrep? prep;
   final VoidCallback onTap;
 
+  /// A Saturday already gone with nothing uploaded.
+  final bool missed;
+
+  /// The next Saturday: the one to prepare now.
+  final bool highlight;
+
   @override
   Widget build(BuildContext context) {
     final hasPrep = prep != null;
     final status = prep?.status ?? '';
-    final color = hasPrep ? _statusColor(status) : AppColors.navy;
-    final icon = hasPrep ? _statusIcon(status) : Icons.upload_outlined;
-    final label = hasPrep ? _statusLabel(status) : AppStrings.submitLessonPrep;
+    final color = hasPrep
+        ? _statusColor(status)
+        : missed
+            ? AppColors.coral
+            : AppColors.navy;
+    final icon = hasPrep
+        ? _statusIcon(status)
+        : missed
+            ? Icons.error_outline_rounded
+            : Icons.upload_outlined;
+    final label = hasPrep
+        ? _statusLabel(status)
+        : missed
+            ? AppStrings.prepMissing
+            : AppStrings.submitLessonPrep;
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: highlight
+          ? Color.alphaBlend(
+              AppColors.gold.withValues(alpha: 0.08),
+              Colors.white,
+            )
+          : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: highlight
+            ? BorderSide(
+                color: AppColors.gold.withValues(alpha: 0.7), width: 1.4)
+            : BorderSide.none,
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
@@ -367,9 +499,21 @@ class _SessionCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: TextStyle(fontSize: 12, color: color),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
                   ),
                 ],
               ),

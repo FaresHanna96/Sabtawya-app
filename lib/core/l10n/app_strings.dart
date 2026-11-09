@@ -419,6 +419,10 @@ class AppStrings {
   static const recordedCount = 'تم تسجيلهم';
   static const presentOf = 'حضر';
   static const showAll = 'عرض الكل';
+  static const nextSaturdayTitle = 'السبت القادم';
+  static const pastSaturdays = 'السبوت السابقة';
+  static const upcomingSaturdays = 'باقي السنة';
+  static const prepMissing = 'لم يُرفع التحضير';
   static const searchServantHint = 'ابحث باسم الخادم';
   static const callChild = 'المخدوم';
   static const callMother = 'الأم';
