@@ -43,11 +43,28 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   }
 
   /// Collected so far, by payment method (`cash` / `tayo`).
-  Map<String, double> _byMethod = const {};
+  Map<String, Map<String, double>> _byChild = const {};
+
+  /// Cash / kitty totals for [ids] (every child when null).
+  Map<String, double> _methodSum([Iterable<String>? ids]) {
+    final sum = <String, double>{'cash': 0, 'tayo': 0};
+    for (final e in _byChild.entries) {
+      if (ids != null && !ids.contains(e.key)) continue;
+      sum['cash'] = sum['cash']! + (e.value['cash'] ?? 0);
+      sum['tayo'] = sum['tayo']! + (e.value['tayo'] ?? 0);
+    }
+    return sum;
+  }
 
   /// Who to ring for each child: his own number, else his mother's, else his
   /// father's. Children with no number at all are left out.
   Map<String, String> _phones = const {};
+
+  /// "كاش 150  •  كيتي 50"
+  String _methodLine(Map<String, double> m) =>
+      '${AppStrings.paymentMethodCash} ${(m['cash'] ?? 0).toStringAsFixed(0)}'
+      '  •  ${AppStrings.paymentMethodTayo} '
+      '${(m['tayo'] ?? 0).toStringAsFixed(0)}';
 
   Future<List<ChildEventBalance>> _load() async {
     final balances = await _repository.balances(widget.event.id);
@@ -67,9 +84,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
       _phones = const {}; // the call button is an extra; never block the list
     }
     try {
-      _byMethod = await _repository.methodTotals(widget.event.id);
+      _byChild = await _repository.methodTotalsByChild(widget.event.id);
     } catch (_) {
-      _byMethod = const {}; // the split is a extra; never block the list
+      _byChild = const {}; // the split is an extra; never block the list
     }
     return balances;
   }
@@ -188,13 +205,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                   AppColors.olive),
                             ),
                           ),
-                          if (_byMethod.isNotEmpty) ...[
+                          if (_byChild.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Text(
-                              '${AppStrings.paymentMethodCash} '
-                              '${(_byMethod['cash'] ?? 0).toStringAsFixed(0)}'
-                              '  •  ${AppStrings.paymentMethodTayo} '
-                              '${(_byMethod['tayo'] ?? 0).toStringAsFixed(0)}',
+                              _methodLine(_methodSum()),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.muted,
@@ -273,8 +287,12 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                           if (_tabController.index > 0)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
-                              // One short line: "محصّل 1000 من 1050 · متبقي 50 ج.م"
-                              child: Text.rich(
+                              // Two short lines: totals, then cash / kitty for
+                              // the children in this tab.
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Text.rich(
                                 TextSpan(
                                   style: const TextStyle(
                                     fontSize: 12,
@@ -308,6 +326,20 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                     const TextSpan(text: ' ج.م'),
                                   ],
                                 ),
+                              ),
+                              if (_byChild.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    _methodLine(_methodSum(
+                                        filtered.map((b) => b.childId))),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                ),
+                                ],
                               ),
                             ),
                           for (final entry in sortedClasses) ...[
