@@ -191,10 +191,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                           if (_byMethod.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Text(
-                              '${AppStrings.paymentMethodCash}: '
-                              '${(_byMethod['cash'] ?? 0).toStringAsFixed(0)} ج.م'
-                              '   •   ${AppStrings.paymentMethodTayo}: '
-                              '${(_byMethod['tayo'] ?? 0).toStringAsFixed(0)} ج.م',
+                              '${AppStrings.paymentMethodCash} '
+                              '${(_byMethod['cash'] ?? 0).toStringAsFixed(0)}'
+                              '  •  ${AppStrings.paymentMethodTayo} '
+                              '${(_byMethod['tayo'] ?? 0).toStringAsFixed(0)}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.muted,
@@ -208,16 +208,18 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 ),
                 const SizedBox(height: 4),
                 // Filter tab bar with live counts
+                // All five fit on screen (no swiping): the count on top, a
+                // short label under it.
                 TabBar(
                   controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
+                  isScrollable: false,
+                  labelPadding: EdgeInsets.zero,
                   tabs: [
-                    Tab(text: '${AppStrings.all} (${balances.length})'),
-                    Tab(text: '${AppStrings.bookedTab} (${booked.length})'),
-                    Tab(text: '${AppStrings.partialPay} (${partial.length})'),
-                    Tab(text: '${AppStrings.notPaidTab} (${notPaid.length})'),
-                    Tab(text: '${AppStrings.paidInFull} (${fullPaid.length})'),
+                    _countTab(balances.length, AppStrings.all),
+                    _countTab(booked.length, AppStrings.bookedTab),
+                    _countTab(partial.length, AppStrings.partialPay),
+                    _countTab(fullPaid.length, AppStrings.paidInFull),
+                    _countTab(notPaid.length, AppStrings.notPaidTab),
                   ],
                 ),
                 // Filtered list - rebuilds on tab change without reloading data
@@ -232,9 +234,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         case 2:
                           filtered = partial;
                         case 3:
-                          filtered = notPaid;
-                        case 4:
                           filtered = fullPaid;
+                        case 4:
+                          filtered = notPaid;
                         default:
                           filtered = balances;
                       }
@@ -271,29 +273,41 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                           if (_tabController.index > 0)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
-                              child: Wrap(
-                                spacing: 16,
-                                children: [
-                                  _MiniStat(
-                                    label: AppStrings.expected,
-                                    value:
-                                        '${filteredExpected.toStringAsFixed(0)} ج.م',
+                              // One short line: "محصّل 1000 من 1050 · متبقي 50 ج.م"
+                              child: Text.rich(
+                                TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 12,
                                     color: AppColors.muted,
                                   ),
-                                  _MiniStat(
-                                    label: AppStrings.collected,
-                                    value:
-                                        '${filteredCollected.toStringAsFixed(0)} ج.م',
-                                    color: AppColors.olive,
-                                  ),
-                                  if (filteredRemaining > 0)
-                                    _MiniStat(
-                                      label: AppStrings.remaining,
-                                      value:
-                                          '${filteredRemaining.toStringAsFixed(0)} ج.م',
-                                      color: AppColors.danger,
+                                  children: [
+                                    const TextSpan(text: '${AppStrings.collected} '),
+                                    TextSpan(
+                                      text: filteredCollected.toStringAsFixed(0),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.olive,
+                                      ),
                                     ),
-                                ],
+                                    TextSpan(
+                                      text:
+                                          ' من ${filteredExpected.toStringAsFixed(0)}',
+                                    ),
+                                    if (filteredRemaining > 0) ...[
+                                      const TextSpan(
+                                          text: '  •  ${AppStrings.remaining} '),
+                                      TextSpan(
+                                        text: filteredRemaining
+                                            .toStringAsFixed(0),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.danger,
+                                        ),
+                                      ),
+                                    ],
+                                    const TextSpan(text: ' ج.م'),
+                                  ],
+                                ),
                               ),
                             ),
                           for (final entry in sortedClasses) ...[
@@ -313,7 +327,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                 balance: b,
                                 onTap: () => _openPayments(b),
                                 // Only on "لم يدفع", to chase the payment.
-                                phone: _tabController.index == 3
+                                phone: _tabController.index == 4
                                     ? _phones[b.childId]
                                     : null,
                               ),
@@ -336,28 +350,26 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
 // ---------------------------------------------------------------------------
 
-class _MiniStat extends StatelessWidget {
-  const _MiniStat(
-      {required this.label, required this.value, required this.color});
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('$label: ',
-            style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-        Text(value,
-            style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-      ],
+/// A tab with the count big on top and a short label under it, so five of
+/// them share the screen width.
+Tab _countTab(int count, String label) => Tab(
+      height: 52,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$count',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11),
+          ),
+        ],
+      ),
     );
-  }
-}
 
 // ---------------------------------------------------------------------------
 
