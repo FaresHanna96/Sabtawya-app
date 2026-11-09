@@ -62,8 +62,9 @@ class FileService {
           ],
           // cross_file ignores the name of an in-memory file off the web.
           fileNameOverrides: <String>[fileName],
-          text: shareText,
-          subject: shareText,
+          // No caption or subject: iPhone WhatsApp failed to send a file that
+          // came with text ("Couldn't send message"); the file name already
+          // says what it is.
         ),
       );
     } catch (e) {

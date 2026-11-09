@@ -36,24 +36,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<_AdminDashboard> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
 
-    final stats = await _reports.adminStats();
+    // The five reads do not depend on each other, so run them side by side
+    // instead of one after another (the dashboard waited for all five in turn).
     if (yearId == null) {
+      final (stats, activity) =
+          await (_reports.adminStats(), _reports.recentActivity()).wait;
       return _AdminDashboard(
         stats: stats,
         classScores: const <ClassYearScore>[],
         lowAttendance: const <ChildYearReport>[],
-        activity: await _reports.recentActivity(),
+        activity: activity,
         monthly: const <ChildMonthlyReport>[],
       );
     }
 
-    final monthly = await _reports.childMonthly(yearId: yearId);
+    final (stats, activity, monthly, scores, low) = await (
+      _reports.adminStats(),
+      _reports.recentActivity(),
+      _reports.childMonthly(yearId: yearId),
+      _reports.classScores(yearId),
+      _reports.lowAttendance(yearId: yearId),
+    ).wait;
 
     return _AdminDashboard(
       stats: stats,
-      classScores: await _reports.classScores(yearId),
-      lowAttendance: await _reports.lowAttendance(yearId: yearId),
-      activity: await _reports.recentActivity(),
+      classScores: scores,
+      lowAttendance: low,
+      activity: activity,
       monthly: monthly,
     );
   }

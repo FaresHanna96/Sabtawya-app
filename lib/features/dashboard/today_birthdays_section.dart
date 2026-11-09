@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_widgets.dart';
 import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';

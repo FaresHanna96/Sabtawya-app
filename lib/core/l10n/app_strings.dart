@@ -210,6 +210,10 @@ class AppStrings {
   static const committedStreakHint = 'مخدومين بيحضروا كل سبت. شجّعهم!';
   static const presentInARow = 'حاضر';
   static const needFollowUp = 'محتاجين متابعة';
+  static const noFollowUpNow = 'لا يوجد مخدومين محتاجين متابعة حالياً';
+  static const noCommittedYet = 'لا يوجد مخدومين ملتزمين بعد';
+  static const deleteVisit = 'حذف هذا الافتقاد؟';
+  static const visitDeleted = 'تم حذف الافتقاد';
   static const absentInARow = 'غايب';
   static const timesInARow = 'مرات ورا بعض';
   static const needFollowUpHint = 'مخدومين غابوا أكتر من مرة ورا بعض. اتصل بيهم أو زورهم.';

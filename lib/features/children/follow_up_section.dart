@@ -21,7 +21,12 @@ class FollowUpSection extends StatelessWidget {
     this.kind = StreakKind.absent,
     this.collapsible = false,
     this.initiallyExpanded = false,
+    this.showWhenEmpty = false,
   });
+
+  /// Show the card with a short "nobody yet" line instead of hiding it, so an
+  /// empty list is not mistaken for a missing feature.
+  final bool showWhenEmpty;
 
   final List<ChildStreak> streaks;
   final StreakKind kind;
@@ -57,11 +62,13 @@ class FollowUpSection extends StatelessWidget {
         final byRun = _run(b).compareTo(_run(a));
         return byRun != 0 ? byRun : a.childName.compareTo(b.childName);
       });
-    if (absent.isEmpty) return const SizedBox.shrink();
+    if (absent.isEmpty && !showWhenEmpty) return const SizedBox.shrink();
 
     final rows = <Widget>[
       Text(
-        _hint,
+        absent.isEmpty
+            ? (_isAbsent ? AppStrings.noFollowUpNow : AppStrings.noCommittedYet)
+            : _hint,
         style: TextStyle(fontSize: 12, color: AppColors.muted),
       ),
       const SizedBox(height: 6),

@@ -164,6 +164,24 @@ class ChildRepository {
     }
   }
 
+  /// Removes one history entry. A servant may only remove entries they wrote
+  /// (admins any); the database silently skips the rest, so an empty result
+  /// is reported instead of pretending it worked.
+  Future<void> deleteVisitLog(String id) async {
+    try {
+      final deleted = await Db.client
+          .from(Db.tChildVisitLogs)
+          .delete()
+          .eq('id', id)
+          .select('id');
+      if (rows(deleted).isEmpty) {
+        throw AppFailure('لا يمكنك حذف هذا الافتقاد (سجّله خادم آخر)');
+      }
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<void> insertVisitLog({
     required String childId,
     required String visitType,

@@ -33,7 +33,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -130,6 +130,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             final progress =
                 totalExpected > 0 ? totalCollected / totalExpected : 0.0;
 
+            final partial = balances
+                .where((b) => b.totalPaid > 0 && b.remaining > 0)
+                .toList();
             final notPaid = balances.where((b) => b.totalPaid == 0).toList();
             final fullPaid = balances.where((b) => b.remaining <= 0).toList();
             // Everyone who has booked the trip: paid in full or started paying.
@@ -212,6 +215,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   tabs: [
                     Tab(text: '${AppStrings.all} (${balances.length})'),
                     Tab(text: '${AppStrings.bookedTab} (${booked.length})'),
+                    Tab(text: '${AppStrings.partialPay} (${partial.length})'),
                     Tab(text: '${AppStrings.notPaidTab} (${notPaid.length})'),
                     Tab(text: '${AppStrings.paidInFull} (${fullPaid.length})'),
                   ],
@@ -226,8 +230,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         case 1:
                           filtered = booked;
                         case 2:
-                          filtered = notPaid;
+                          filtered = partial;
                         case 3:
+                          filtered = notPaid;
+                        case 4:
                           filtered = fullPaid;
                         default:
                           filtered = balances;
@@ -307,7 +313,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                 balance: b,
                                 onTap: () => _openPayments(b),
                                 // Only on "لم يدفع", to chase the payment.
-                                phone: _tabController.index == 2
+                                phone: _tabController.index == 3
                                     ? _phones[b.childId]
                                     : null,
                               ),

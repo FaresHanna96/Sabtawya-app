@@ -34,8 +34,6 @@ class ChildTile extends StatelessWidget {
       if (child.school != null) child.school!,
     ].join(' • ');
 
-    final accentColor = child.isActive ? AppColors.navy : AppColors.muted;
-
     return Card(
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(

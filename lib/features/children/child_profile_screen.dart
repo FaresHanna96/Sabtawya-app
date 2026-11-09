@@ -50,6 +50,11 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   static const _children = ChildRepository();
   static const _attendance = AttendanceRepository();
   static const _reports = ReportRepository();
+
+  /// Delete button on visit-history rows. Off: it needs the delete policy
+  /// (migration 20261109002), which is held back until the owner approves
+  /// deleting data from the app.
+  static const _allowVisitDelete = false;
   static const _classes = ClassRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<_ProfileData>>();
@@ -315,13 +320,17 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               const SizedBox(height: 16),
               if (canEdit) ...[
                 _VisitSection(
-                  key: ValueKey(child.id),
+                  // Re-create when the stored visit changes (saved or a history
+                  // entry deleted), so the fields show the new values.
+                  key: ValueKey('${child.id}|${child.lastPhoneVisitDate}|'
+                      '${child.lastPhoneVisitNotes}|${child.lastHomeVisitDate}|'
+                      '${child.lastHomeVisitNotes}'),
                   child: child,
                   onSaved: _reload,
                 ),
                 const SizedBox(height: 16),
               ],
-              _visitHistoryCard(data.visitLogs),
+              _visitHistoryCard(data, canEdit && _allowVisitDelete),
               const SizedBox(height: 16),
               _lastActivityCard(data.lastActivity),
               if (data.monthly.isNotEmpty) ...[
@@ -672,7 +681,47 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  Widget _visitHistoryCard(List<ChildVisitLog> logs) {
+  /// Deletes one history entry, then points the card's "last visit" back at
+  /// the newest entry that is left (only when the deleted one was the newest
+  /// of its type, so older cards without history are left alone).
+  Future<void> _deleteVisit(ChildVisitLog log, _ProfileData data) async {
+    final yes = await Ui.confirm(
+      context,
+      title: AppStrings.deleteVisit,
+      destructive: true,
+      confirmLabel: AppStrings.delete,
+    );
+    if (!yes || !mounted) return;
+
+    final sameType = data.visitLogs.where((l) => l.visitType == log.visitType);
+    final wasNewest = sameType.isNotEmpty && sameType.first.id == log.id;
+    final remaining = sameType.where((l) => l.id != log.id);
+
+    final ok = await Ui.runGuarded(
+      context,
+      () async {
+        await _children.deleteVisitLog(log.id);
+        if (!wasNewest) return;
+        final next = remaining.isEmpty ? null : remaining.first;
+        final c = data.child;
+        await _children.update(
+          c.withVisits(
+            phoneVisitDate:
+                log.isPhone ? next?.visitDate : c.lastPhoneVisitDate,
+            phoneVisitNotes:
+                log.isPhone ? next?.notes : c.lastPhoneVisitNotes,
+            homeVisitDate: log.isPhone ? c.lastHomeVisitDate : next?.visitDate,
+            homeVisitNotes: log.isPhone ? c.lastHomeVisitNotes : next?.notes,
+          ),
+        );
+      },
+      successMessage: AppStrings.visitDeleted,
+    );
+    if (ok && mounted) await _reload();
+  }
+
+  Widget _visitHistoryCard(_ProfileData data, bool canEdit) {
+    final logs = data.visitLogs;
     return SectionCard(
       title: AppStrings.visitHistory,
       icon: Icons.home_rounded,
@@ -688,12 +737,14 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: logs.map(_visitLogRow).toList(),
+              children: logs
+                  .map((l) => _visitLogRow(l, canEdit ? data : null))
+                  .toList(),
             ),
     );
   }
 
-  Widget _visitLogRow(ChildVisitLog log) {
+  Widget _visitLogRow(ChildVisitLog log, _ProfileData? deletable) {
     final isPhone = log.isPhone;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
@@ -744,6 +795,15 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               ),
             ),
           ),
+          if (deletable != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18),
+              color: AppColors.muted,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 28),
+              tooltip: AppStrings.delete,
+              onPressed: () => _deleteVisit(log, deletable),
+            ),
         ],
       ),
     );
