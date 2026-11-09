@@ -50,33 +50,69 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final yearId = context.read<SessionController>().currentYear?.id;
     if (yearId == null) return _latest = const _ReportsData.empty();
 
-    final ranged = _filterFrom != null || _filterTo != null;
     final maxPerSession =
         context.read<SessionController>().currentYear?.maxPointsPerSession ?? 20;
+    // The three reads are independent, so run them side by side.
+    final (children, classes, monthly) = await (
+      _reports.childYearReports(yearId: yearId, classId: _classId),
+      _reports.classScores(yearId),
+      _reports.childMonthly(yearId: yearId, classId: _classId),
+    ).wait;
     return _latest = _ReportsData(
-      children: await _reports.childYearReports(
-        yearId: yearId,
-        classId: _classId,
-      ),
-      classes: await _reports.classScores(yearId),
-      monthly: await _reports.childMonthly(
-        yearId: yearId,
-        classId: _classId,
-      ),
-      // With a date range the exact Saturdays inside it are read, instead of
-      // whole months (a range such as 5-20 Nov used to match nothing, as the
-      // months are dated the 1st).
-      sessions: ranged
-          ? await _reports.sessionScores(
-              yearId: yearId,
-              classId: _classId,
-              from: _filterFrom,
-              to: _filterTo,
-            )
-          : null,
+      children: children,
+      classes: classes,
+      monthly: monthly,
       maxPerSession: maxPerSession,
     );
   }
+
+  // ---- date range -------------------------------------------------------
+  //
+  // With a range chosen, only the Saturdays inside it are read (every class at
+  // once, then narrowed to the chosen class here), and the list stays on
+  // screen while they load. Changing the class never refetches them.
+
+  /// Saturdays inside the chosen range; null when no range is set.
+  List<SessionScore>? _sessions;
+  bool _rangeLoading = false;
+  int _rangeToken = 0;
+
+  Future<void> _loadRange() async {
+    final from = _filterFrom;
+    final to = _filterTo;
+    final token = ++_rangeToken;
+    if (from == null && to == null) {
+      setState(() {
+        _sessions = null;
+        _rangeLoading = false;
+      });
+      return;
+    }
+    final yearId = context.read<SessionController>().currentYear?.id;
+    if (yearId == null) return;
+    setState(() => _rangeLoading = true);
+    try {
+      final rows = await _reports.sessionScores(
+        yearId: yearId,
+        from: from,
+        to: to,
+      );
+      if (!mounted || token != _rangeToken) return; // a newer choice won
+      setState(() {
+        _sessions = rows;
+        _rangeLoading = false;
+      });
+    } catch (e) {
+      if (!mounted || token != _rangeToken) return;
+      setState(() => _rangeLoading = false);
+      Ui.error(context, e);
+    }
+  }
+
+  /// The loaded Saturdays narrowed to the chosen class.
+  List<SessionScore>? get _rangeRows => _sessions
+      ?.where((r) => _classId == null || r.classId == _classId)
+      .toList();
 
   Future<void> _reload() => _sectionKey.currentState?.reload() ?? Future.value();
 
@@ -84,6 +120,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Future<void> _exportCurrent(int tab) async {
     final data = _latest;
     if (_exporting || data == null) return;
+    if (_rangeLoading) {
+      Ui.info(context, AppStrings.loading);
+      return;
+    }
 
     final session = context.read<SessionController>();
     var scope = AppStrings.all;
@@ -299,18 +339,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       _filterFrom = from;
                                       _filterTo = to;
                                     });
-                                    _reload();
+                                    _loadRange();
                                   },
                                 ),
                               );
                             },
                           ),
                         Expanded(
-                          child: TabBarView(
+                          child: Stack(
                             children: [
-                              _childrenTab(data),
-                              _classesTab(data),
-                              _monthlyTab(data.monthly, allDates),
+                              TabBarView(
+                                children: [
+                                  _childrenTab(data),
+                                  _classesTab(data),
+                                  _monthlyTab(data.monthly, allDates),
+                                ],
+                              ),
+                              // While the Saturdays in the chosen range load:
+                              // the branded loader over the (dimmed) list, so
+                              // it is clear something is happening.
+                              if (_rangeLoading)
+                                Positioned.fill(
+                                  child: ColoredBox(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    child: const Center(child: LoadingCard()),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -331,7 +385,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   List<_ChildScore> _childScores(_ReportsData data) {
     final List<_ChildScore> scores;
 
-    if (data.sessions == null) {
+    if (_sessions == null) {
       // Build sessionsHeld per child from monthly data up to current month.
       final now = DateTime.now();
       final held = <String, int>{};
@@ -415,7 +469,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   List<_ClassScore> _classScores(_ReportsData data) {
     final List<_ClassScore> scores;
 
-    if (data.sessions == null) {
+    if (_sessions == null) {
       // Correct max points to sessions held so far (months up to now).
       final now = DateTime.now();
       final classMaxHeld = <String, int>{};
@@ -599,7 +653,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   /// Children's standings over the Saturdays inside the chosen range.
   List<_ChildScore> _aggregateChildren(_ReportsData data) {
     final byChild = <String, List<SessionScore>>{};
-    for (final r in data.sessions ?? const <SessionScore>[]) {
+    for (final r in _rangeRows ?? const <SessionScore>[]) {
       (byChild[r.childId] ??= []).add(r);
     }
     return byChild.entries.map((e) {
@@ -620,7 +674,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   /// Classes' standings over the Saturdays inside the chosen range.
   List<_ClassScore> _aggregateClasses(_ReportsData data) {
     final byClass = <String, List<SessionScore>>{};
-    for (final r in data.sessions ?? const <SessionScore>[]) {
+    for (final r in _rangeRows ?? const <SessionScore>[]) {
       (byClass[r.classId] ??= []).add(r);
     }
     return byClass.entries.map((e) {
@@ -683,7 +737,6 @@ class _ReportsData {
     required this.children,
     required this.classes,
     required this.monthly,
-    this.sessions,
     this.maxPerSession = 20,
   });
 
@@ -691,15 +744,12 @@ class _ReportsData {
       : children = const <ChildYearReport>[],
         classes = const <ClassYearScore>[],
         monthly = const <ChildMonthlyReport>[],
-        sessions = null,
         maxPerSession = 20;
 
   final List<ChildYearReport> children;
   final List<ClassYearScore> classes;
   final List<ChildMonthlyReport> monthly;
 
-  /// The Saturdays inside the chosen date range; null when no range is set.
-  final List<SessionScore>? sessions;
   final int maxPerSession;
 }
 
