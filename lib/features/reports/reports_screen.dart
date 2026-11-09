@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/report_repository.dart';
@@ -241,19 +242,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
               if (classes.length > 1)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  // All classes visible at once (no sideways swiping).
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        _classChip(null, AppStrings.all),
-                        ...classes.map(
-                          (item) => _classChip(item.classId, item.className),
-                        ),
-                      ],
-                    ),
+                  child: ClassFilterChips(
+                    classes: classes
+                        .map((c) => ClassFilterOption(
+                            id: c.classId, name: c.className))
+                        .toList(),
+                    selectedId: _classId,
+                    onSelected: (id) {
+                      // The period stays: class and period combine.
+                      setState(() => _classId = id);
+                      _reload();
+                    },
                   ),
                 ),
               Expanded(
@@ -324,18 +323,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _classChip(String? classId, String label) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: _classId == classId,
-      onSelected: (_) {
-        // The period stays: class and period combine.
-        setState(() => _classId = classId);
-        _reload();
-      },
     );
   }
 
