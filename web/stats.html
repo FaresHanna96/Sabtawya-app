@@ -105,6 +105,12 @@
   var PLAT = {android: 'أندرويد', ios: 'آيفون', web: 'الموقع', other: 'كمبيوتر'};
   var ORDER = ['android', 'ios', 'web', 'other'];
 
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+    });
+  }
+
   function seg() {
     $('seg').innerHTML = '';
     [[1, 'اليوم'], [7, 'أسبوع'], [30, 'شهر'], [90, '3 شهور']].forEach(function (o) {
