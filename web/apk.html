@@ -16,7 +16,8 @@
   .sub{color:#6b7280;font-size:14px;margin:0 0 18px}
   a.btn{display:block;background:#7a1f2b;color:#fff;text-decoration:none;font-weight:700;
         padding:14px;border-radius:14px;text-align:center}
-  #status{text-align:center;font-size:13px;color:#2e7d32;margin:10px 0 0;min-height:18px}
+  #status{text-align:center;font-size:13px;color:#2e7d32;margin:8px 0 0;min-height:18px}
+  .dlbox{padding:14px 14px 0}
   .sec{border:1px solid #e7e2d9;border-radius:14px;margin-top:14px;overflow:hidden}
   .sec h2{margin:0;padding:12px 14px;font-size:15px;background:#faf7f2;display:flex;align-items:center;gap:8px}
   .sec.me h2{background:#f3e8ea}
@@ -29,34 +30,35 @@
   <div class="head">
     <img src="icons/Icon-192.png" alt="">
     <h1>خدمة 3:6 ابتدائي السبت</h1>
-    <p class="sub">حمّلي التطبيق على موبايلك</p>
+    <p class="sub">حمّل التطبيق على موبايلك</p>
   </div>
-
-  <a class="btn" id="dl" href="https://drive.google.com/uc?export=download&id=1SDmWseZ7u6b-f4OiyzAZs5HDNhbGhQ0o">تحميل التطبيق (أندرويد)</a>
-  <p id="status"></p>
 
   <div class="sec me" id="android">
     <h2>🤖 أندرويد</h2>
+    <div class="dlbox">
+      <a class="btn" id="dl" href="https://drive.usercontent.google.com/download?id=1SDmWseZ7u6b-f4OiyzAZs5HDNhbGhQ0o&export=download&confirm=t">تحميل التطبيق</a>
+      <p id="status"></p>
+    </div>
     <ol>
-      <li>التحميل يبدأ تلقائياً. لو ما بدأش اضغطي «تحميل التطبيق».</li>
-      <li>افتحي الملف <b>sabtawya.apk</b> من إشعار التحميل أو من «الملفات/التنزيلات».</li>
-      <li>لو ظهرت رسالة «التثبيت من مصادر غير معروفة» اضغطي <b>الإعدادات</b> ثم فعّلي <b>السماح من هذا المصدر</b>، وارجعي واضغطي <b>تثبيت</b>.</li>
-      <li>لو ظهرت رسالة Play Protect اضغطي <b>تثبيت على أي حال</b>.</li>
-      <li>افتحي التطبيق وسجّلي الدخول بالإيميل وكلمة المرور.</li>
+      <li>التحميل يبدأ تلقائياً. لو ما بدأش اضغط «تحميل التطبيق».</li>
+      <li>افتح الملف <b>sabtawya.apk</b> من إشعار التحميل أو من «الملفات/التنزيلات».</li>
+      <li>لو ظهرت رسالة «التثبيت من مصادر غير معروفة» اضغط <b>الإعدادات</b> ثم فعّل <b>السماح من هذا المصدر</b>، وارجع واضغط <b>تثبيت</b>.</li>
+      <li>لو ظهرت رسالة Play Protect اضغط <b>تثبيت على أي حال</b>.</li>
+      <li>افتح التطبيق وسجّل الدخول بالإيميل وكلمة المرور.</li>
     </ol>
-    <div class="note">التحديث: حمّلي الملف الجديد وثبّتيه فوق القديم، بياناتك لا تضيع.</div>
+    <div class="note">التحديث: حمّل الملف الجديد وثبّته فوق القديم، بياناتك لا تضيع.</div>
   </div>
 
   <div class="sec" id="iphone">
     <h2>🍎 آيفون (iPhone)</h2>
     <ol>
       <li>الآيفون لا يقبل ملفات APK، فنستخدم الموقع كتطبيق.</li>
-      <li>افتحي <b>sabtawya.vercel.app</b> في <b>Safari</b> (مش Chrome).</li>
-      <li>اضغطي زر المشاركة <b>⬆︎</b> في أسفل الشاشة.</li>
-      <li>اختاري <b>إضافة إلى الشاشة الرئيسية</b> ثم <b>إضافة</b>.</li>
-      <li>افتحي الأيقونة الجديدة من الشاشة الرئيسية وسجّلي الدخول.</li>
+      <li>افتح <b>sabtawya.vercel.app</b> في <b>Safari</b> (مش Chrome).</li>
+      <li>اضغط زر المشاركة <b>⬆︎</b> في أسفل الشاشة.</li>
+      <li>اختر <b>إضافة إلى الشاشة الرئيسية</b> ثم <b>إضافة</b>.</li>
+      <li>افتح الأيقونة الجديدة من الشاشة الرئيسية وسجّل الدخول.</li>
     </ol>
-    <div class="note">لو بعض الأيقونات مش ظاهرة بعد التحديث: احذفي الأيقونة وامسحي بيانات الموقع من إعدادات Safari ثم أضيفيه من جديد.</div>
+    <div class="note">لو بعض الأيقونات مش ظاهرة بعد التحديث: احذف الأيقونة وامسح بيانات الموقع من إعدادات Safari ثم أضفه من جديد.</div>
   </div>
 </div>
 <script>
@@ -85,8 +87,8 @@
   // Put the section for this phone first; iPhone gets no download button.
   var card = document.querySelector('.card');
   if (isIos) {
-    card.insertBefore(document.getElementById('iphone'), dl);
-    dl.style.display = 'none';
+    card.insertBefore(document.getElementById('iphone'), document.getElementById('android'));
+    document.querySelector('.dlbox').style.display = 'none';
   } else if (isAndroid) {
     // Start the download by itself, once.
     document.getElementById('status').textContent = 'جاري تحميل التطبيق…';
