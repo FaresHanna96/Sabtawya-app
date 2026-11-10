@@ -23,6 +23,12 @@
   .sec h2{margin:0;padding:12px 14px;font-size:15px;background:#faf7f2;display:flex;align-items:center;gap:8px}
   .sec.me h2{background:#f3e8ea}
   ol{margin:0;padding:12px 32px 14px 14px;font-size:14px;line-height:1.9;color:#374151}
+  .facts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 4px}
+  .facts div{background:#faf7f2;border-radius:12px;padding:10px 4px;text-align:center;font-size:12px;color:#6b7280}
+  .facts b{display:block;font-size:14px;color:#1d2b4f;margin-bottom:2px}
+  .about p{margin:0;padding:12px 14px 4px;font-size:14px;line-height:1.9;color:#374151}
+  ul.feat{margin:0;padding:6px 32px 14px 14px;font-size:14px;line-height:1.9;color:#374151}
+  a.alt{display:block;margin:12px 14px 14px;text-align:center;font-size:13.5px;font-weight:700;color:#7a1f2b;text-decoration:none;border:1px solid #e3c9ce;border-radius:12px;padding:10px}
   .note{font-size:12.5px;color:#6b7280;padding:0 14px 12px;line-height:1.7}
 </style>
 </head>
@@ -32,6 +38,27 @@
     <img src="icons/Icon-192.png" alt="">
     <h1>خدمة 3:6 ابتدائي السبت</h1>
     <p class="sub">حمّل التطبيق على موبايلك</p>
+  </div>
+
+  <div class="sec about" id="about">
+    <h2>📖 عن التطبيق</h2>
+    <p>تطبيق لخدمة 3:6 ابتدائي السبت: يساعد الخدام على متابعة المخدومين وحضورهم وافتقادهم في مكان واحد، وبيشتغل بالعربي من اليمين لليسار.</p>
+    <ul class="feat">
+      <li><b>الحضور:</b> تسجيل حضور السبت والأحد والقداس والاعتراف، مع النقاط وتاريخ كل مخدوم.</li>
+      <li><b>ملف المخدوم:</b> البيانات الشخصية والأسرة وسجل الافتقاد والملاحظات وزر اتصال سريع.</li>
+      <li><b>الفصول:</b> المخدومين وخدام الفصل وشفيع الفصل وإحصائيات الحضور.</li>
+      <li><b>التقارير:</b> تقارير الحضور والمسابقات بفلاتر التاريخ والفصل، وتصدير Excel.</li>
+      <li><b>الرحلات والفعاليات:</b> الحجز والدفع (كاش أو كيتي) ومتابعة من لم يدفع.</li>
+      <li><b>تحضيراتي:</b> رفع تحضير الدرس لكل سبت ومراجعته.</li>
+      <li><b>التقويم وأعياد الميلاد</b> للمخدومين والخدام.</li>
+      <li><b>يعمل بدون إنترنت:</b> التعديلات تُحفظ وتُرسل تلقائياً عند رجوع الاتصال.</li>
+    </ul>
+    <div class="facts" style="padding:0 14px 14px">
+      <div><b>1.0.0</b>الإصدار</div>
+      <div><b>67 ميغابايت</b>الحجم</div>
+      <div><b>10 نوفمبر 2026</b>آخر تحديث</div>
+    </div>
+    <div class="note">متاح للخدام المسجّلين فقط، ويحتاج حساباً مفعّلاً من أمين الخدمة.</div>
   </div>
 
   <div class="sec me" id="android">
@@ -47,6 +74,7 @@
       <li>لو ظهرت رسالة Play Protect اضغط <b>تثبيت على أي حال</b>.</li>
       <li>افتح التطبيق وسجّل الدخول بالإيميل وكلمة المرور.</li>
     </ol>
+    <a class="alt" id="drive" rel="noreferrer noopener" href="https://drive.google.com/drive/folders/1XZPVHsypMUNJX0R8ZPTkjd2XgoFLAk1C" target="_blank">📁 فتح المجلد على Google Drive (كل النسخ)</a>
     <div class="note">التحديث: حمّل الملف الجديد وثبّته فوق القديم، بياناتك لا تضيع.</div>
   </div>
 
@@ -84,6 +112,7 @@
 
   log('apk_page');
   dl.addEventListener('click', function () { log('apk_download'); });
+  document.getElementById('drive').addEventListener('click', function () { log('apk_drive'); });
 
   // Put the section for this phone first; iPhone gets no download button.
   var card = document.querySelector('.card');
