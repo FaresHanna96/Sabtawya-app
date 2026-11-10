@@ -7,6 +7,7 @@ import 'core/config/app_config.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/offline_http_client.dart';
 import 'core/services/offline_store.dart';
+import 'data/services/access_log.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,5 +34,6 @@ Future<void> main() async {
     ),
   );
 
+  AccessLog.appOpened();
   runApp(const SabtawyaApp());
 }

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تحميل تطبيق سبتاوية</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       font-family:system-ui,"Segoe UI",Tahoma,sans-serif;background:#f6f3ee;color:#1d2b4f}
+  .card{background:#fff;border-radius:20px;padding:32px 24px;max-width:360px;margin:16px;
+        text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+  img{width:84px;height:84px;border-radius:20px}
+  h1{font-size:20px;margin:16px 0 6px}
+  p{color:#6b7280;font-size:14px;line-height:1.7;margin:0 0 20px}
+  a.btn{display:block;background:#7a1f2b;color:#fff;text-decoration:none;font-weight:700;
+        padding:14px;border-radius:14px}
+  small{display:block;margin-top:16px;color:#9aa0aa;font-size:12px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="card">
+  <img src="icons/Icon-192.png" alt="">
+  <h1>خدمة 3:6 ابتدائي السبت</h1>
+  <p>تطبيق أندرويد (APK).<br>على الآيفون افتحي الموقع في Safari ثم «إضافة إلى الشاشة الرئيسية».</p>
+  <a class="btn" id="dl" href="https://drive.google.com/uc?export=download&id=1SDmWseZ7u6b-f4OiyzAZs5HDNhbGhQ0o">تحميل التطبيق</a>
+  <small>بعد التحميل افتح الملف واسمح بالتثبيت من هذا المصدر عند السؤال.</small>
+</div>
+<script>
+  var URL_ = 'https://fxclufgfkvfrhdleyndf.supabase.co/rest/v1/access_events';
+  var KEY = 'sb_publishable_5j2lzDrUoKL3RUlJTIBoag_fU8ClIuT';
+  function log(kind) {
+    try {
+      fetch(URL_, {
+        method: 'POST', keepalive: true,
+        headers: {apikey: KEY, Authorization: 'Bearer ' + KEY,
+                  'Content-Type': 'application/json', Prefer: 'return=minimal'},
+        body: JSON.stringify({kind: kind, platform: /android/i.test(navigator.userAgent) ? 'android' : /iphone|ipad/i.test(navigator.userAgent) ? 'ios' : 'other'})
+      });
+    } catch (e) {}
+  }
+  log('apk_page');
+  document.getElementById('dl').addEventListener('click', function () { log('apk_download'); });
+</script>
+</body>
+</html>
