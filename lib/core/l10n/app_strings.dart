@@ -366,6 +366,9 @@ class AppStrings {
   static const birthdayToday = 'عيد ميلاده اليوم';
   static const calendarTitle = 'التقويم';
   static const calendarNothing = 'لا يوجد شيء في هذا اليوم';
+  static const calendarMonthBirthdays = 'عيد ميلاد';
+  static const calendarMonthEvents = 'فعالية';
+  static const calendarMonthEmpty = 'لا شيء في هذا الشهر';
   static const today = 'اليوم';
   static const previousMonth = 'الشهر السابق';
   static const nextMonth = 'الشهر التالي';
