@@ -5,55 +5,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
-<title>إحصائيات التحميل</title>
+<title>إحصائيات التطبيق</title>
 <style>
+  :root{--maroon:#7a1f2b;--sky:#2b7bb9;--olive:#6b7a22;--navy:#1d2b4f;--muted:#6b7280;--line:#eee9df}
   *{box-sizing:border-box}
   body{margin:0;min-height:100vh;font-family:system-ui,"Segoe UI",Tahoma,sans-serif;
-       background:#f6f3ee;color:#1d2b4f;display:flex;justify-content:center}
-  .wrap{width:100%;max-width:520px;padding:20px 16px 40px}
-  h1{font-size:20px;margin:6px 0 16px;text-align:center}
-  .card{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,.07)}
-  .card h2{font-size:15px;margin:0 0 12px}
-  input{width:100%;padding:12px;margin:6px 0;border:1px solid #d8d2c6;border-radius:12px;font-size:15px}
-  button{background:#7a1f2b;color:#fff;border:0;border-radius:12px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;width:100%;margin-top:8px}
-  .err{color:#b3261e;font-size:13px;margin-top:8px;min-height:16px}
-  .chips{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-  .chip{border:1px solid #d8d2c6;background:#fff;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;width:auto;margin:0;color:#1d2b4f;font-weight:600}
-  .chip.on{background:#7a1f2b;color:#fff;border-color:#7a1f2b}
-  .tot{display:flex;gap:10px;margin-bottom:14px}
-  .t{flex:1;border-radius:16px;padding:14px 6px;text-align:center}
-  .t b{display:block;font-size:28px;margin:4px 0}
-  .t span{font-size:11.5px;color:#6b7280}
-  .t.a{background:#7a1f2b14;color:#7a1f2b}.t.b{background:#2b7bb914;color:#2b7bb9}.t.c{background:#6b7a2214;color:#6b7a22}
-  table{width:100%;border-collapse:collapse;font-size:13.5px}
-  td,th{padding:7px 4px;text-align:right;border-bottom:1px solid #f0ece4}
-  th{color:#6b7280;font-weight:600;font-size:12px}
-  .bar{height:9px;border-radius:5px;background:#7a1f2b;min-width:2px}
-  .barbg{background:#7a1f2b14;border-radius:5px;width:100%}
-  .muted{color:#6b7280;font-size:12px;line-height:1.7}
-  .top{display:flex;justify-content:space-between;align-items:center}
-  .link{background:none;color:#7a1f2b;width:auto;padding:4px 8px;margin:0;font-size:13px}
-  [hidden]{display:none!important}
+       background:#f6f3ee;color:var(--navy);display:flex;justify-content:center}
+  .wrap{width:100%;max-width:480px;padding:18px 14px 40px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  h1{font-size:19px;margin:0}
+  #upd{font-size:11.5px;color:var(--muted)}
+  .seg{display:flex;background:#fff;border-radius:14px;padding:4px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  .seg button{flex:1;border:0;background:none;padding:9px 0;border-radius:11px;font-size:13.5px;font-weight:700;color:var(--muted);cursor:pointer;transition:.2s}
+  .seg button.on{background:var(--maroon);color:#fff}
+  .tot{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .t{border-radius:18px;padding:14px 6px 12px;text-align:center;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.05);border-top:4px solid}
+  .t b{display:block;font-size:32px;line-height:1.2;margin-bottom:2px}
+  .t span{font-size:11.5px;color:var(--muted);line-height:1.5;display:block}
+  .t.a{border-color:var(--maroon)}.t.a b{color:var(--maroon)}
+  .t.b{border-color:var(--sky)}.t.b b{color:var(--sky)}
+  .t.c{border-color:var(--olive)}.t.c b{color:var(--olive)}
+  h2{font-size:14px;margin:18px 4px 8px;color:var(--muted);font-weight:700}
+  .devs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .d{background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  .d .n{font-size:13.5px;font-weight:700}
+  .d .v{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6}
+  .d .v i{font-style:normal;font-weight:700;color:var(--navy)}
+  .days{background:#fff;border-radius:16px;padding:4px 14px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  .r{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .r:last-child{border:0}
+  .r .dt{width:58px;font-size:13px;font-weight:700}
+  .r .dt small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+  .r .bar{flex:1;height:8px;border-radius:5px;background:#7a1f2b14;overflow:hidden}
+  .r .bar div{height:100%;background:var(--maroon);border-radius:5px;transition:width .7s cubic-bezier(.2,.8,.2,1);width:0}
+  .r .nums{font-size:11.5px;color:var(--muted);text-align:right;min-width:130px;line-height:1.6}
+  .r .nums b{color:var(--navy)}
+  .empty{padding:18px;text-align:center;color:var(--muted);font-size:13px}
+  .err{color:#b3261e;text-align:center;font-size:13px;min-height:16px}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.8;margin:16px 4px 0}
+  .skel{opacity:.45}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>إحصائيات التحميل والاستخدام</h1>
+  <header>
+    <h1>إحصائيات التطبيق</h1>
+    <span id="upd"></span>
+  </header>
 
+  <div class="seg" id="seg"></div>
   <div class="err" id="err"></div>
-  <div id="stats" hidden>
-    <div class="top">
-      <div class="chips" id="chips"></div>
-    </div>
-    <div class="tot">
-      <div class="t a"><span>تحميلات التطبيق</span><b id="n_dl">0</b></div>
-      <div class="t b"><span>زيارات صفحة التحميل</span><b id="n_pg">0</b></div>
-      <div class="t c"><span>مرات فتح التطبيق</span><b id="n_op">0</b></div>
-    </div>
-    <div class="card"><h2>حسب الجهاز</h2><table id="dev"></table></div>
-    <div class="card"><h2>حسب اليوم</h2><table id="days"></table></div>
-    <p class="muted">التحميل على أندرويد يُحسب عند فتح صفحة التحميل حتى لو أُلغي الملف. فتح التطبيق يُحسب عند كل تشغيل. الأيام بتوقيت القاهرة.</p>
+
+  <div class="tot skel" id="tot">
+    <div class="t a"><b data-k="apk_download">0</b><span>ضغط تحميل APK</span></div>
+    <div class="t b"><b data-k="apk_page">0</b><span>زيارة صفحة التحميل</span></div>
+    <div class="t c"><b data-k="app_open">0</b><span>فتح التطبيق/الموقع</span></div>
   </div>
+
+  <h2>الأجهزة</h2>
+  <div class="devs" id="devs"></div>
+
+  <h2>كل يوم</h2>
+  <div class="days" id="days"><div class="empty">جاري التحميل…</div></div>
+
+  <p class="note">«ضغط تحميل APK» = ضغط زر تحميل التطبيق (أندرويد). «زيارة صفحة التحميل» = فتح رابط apk.html من أي جهاز. «فتح التطبيق/الموقع» = تشغيل التطبيق أو فتح الموقع نفسه (ليس صفحة التحميل). الأيام بتوقيت القاهرة.</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -63,65 +78,88 @@
     'sb_publishable_5j2lzDrUoKL3RUlJTIBoag_fU8ClIuT',
     {auth: {persistSession: false, autoRefreshToken: false}}
   );
-  var days = 30;
   var $ = function (id) { return document.getElementById(id); };
-  var PLAT = {android: 'أندرويد', ios: 'آيفون', web: 'موقع', other: 'كمبيوتر/غيره'};
+  var days = 30;
+  var PLAT = {android: 'أندرويد', ios: 'آيفون', web: 'الموقع', other: 'كمبيوتر'};
+  var ORDER = ['android', 'ios', 'web', 'other'];
 
-  function chips() {
-    $('chips').innerHTML = '';
-    [7, 30, 90].forEach(function (d) {
+  function seg() {
+    $('seg').innerHTML = '';
+    [[7, 'أسبوع'], [30, 'شهر'], [90, '3 شهور']].forEach(function (o) {
       var b = document.createElement('button');
-      b.className = 'chip' + (d === days ? ' on' : '');
-      b.textContent = 'آخر ' + d + ' يوم';
-      b.onclick = function () { days = d; load(); };
-      $('chips').appendChild(b);
+      b.textContent = o[1];
+      b.className = o[0] === days ? 'on' : '';
+      b.onclick = function () { days = o[0]; load(); };
+      $('seg').appendChild(b);
     });
   }
 
-  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function count(el, to) {
+    var from = parseInt(el.textContent, 10) || 0, t0 = performance.now();
+    (function step(t) {
+      var p = Math.min(1, (t - t0) / 700), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(from + (to - from) * e);
+      if (p < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+
+  function label(k) {
+    var d = new Date(k + 'T00:00:00'), now = new Date();
+    var diff = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - d) / 864e5);
+    var names = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    var main = diff === 0 ? 'اليوم' : diff === 1 ? 'أمس' : names[d.getDay()];
+    return '<div class="dt">' + main + '<small dir="ltr">' + k.slice(8) + '/' + k.slice(5, 7) + '</small></div>';
+  }
+
+  function nums(v) {
+    var a = [];
+    if (v.apk_download) a.push('<b>' + v.apk_download + '</b> ضغط تحميل APK');
+    if (v.apk_page) a.push('<b>' + v.apk_page + '</b> زيارة صفحة التحميل');
+    if (v.app_open) a.push('<b>' + v.app_open + '</b> فتح للتطبيق/الموقع');
+    return a.join('<br>') || '—';
+  }
 
   async function load() {
-    chips();
+    seg();
     var r = await sb.rpc('access_stats', {p_days: days});
-    if (r.error) { show(false); $('err').textContent = 'تعذر تحميل الأرقام'; return; }
-    var rows = r.data || [];
-    var tot = {apk_download: 0, apk_page: 0, app_open: 0};
-    var dev = {};
-    var byDay = {};
+    if (r.error) { $('err').textContent = 'تعذر تحميل الأرقام، حاول مرة أخرى'; return; }
+    $('err').textContent = '';
+    var rows = r.data || [], tot = {}, dev = {}, byDay = {};
+    function blank() { return {apk_download: 0, apk_page: 0, app_open: 0}; }
     rows.forEach(function (x) {
       tot[x.kind] = (tot[x.kind] || 0) + x.n;
-      var d = dev[x.platform] = dev[x.platform] || {apk_download: 0, apk_page: 0, app_open: 0};
-      d[x.kind] += x.n;
-      var y = byDay[x.day] = byDay[x.day] || {apk_download: 0, apk_page: 0, app_open: 0};
-      y[x.kind] += x.n;
+      (dev[x.platform] = dev[x.platform] || blank())[x.kind] += x.n;
+      (byDay[x.day] = byDay[x.day] || blank())[x.kind] += x.n;
     });
-    $('n_dl').textContent = tot.apk_download;
-    $('n_pg').textContent = tot.apk_page;
-    $('n_op').textContent = tot.app_open;
 
-    var h = '<tr><th>الجهاز</th><th>تحميل</th><th>زيارة</th><th>فتح</th></tr>';
-    Object.keys(dev).forEach(function (p) {
-      h += '<tr><td>' + esc(PLAT[p] || p) + '</td><td>' + dev[p].apk_download + '</td><td>' + dev[p].apk_page + '</td><td>' + dev[p].app_open + '</td></tr>';
+    $('tot').classList.remove('skel');
+    document.querySelectorAll('#tot b').forEach(function (b) { count(b, tot[b.dataset.k] || 0); });
+
+    var h = '';
+    ORDER.filter(function (p) { return dev[p]; }).forEach(function (p) {
+      h += '<div class="d"><div class="n">' + PLAT[p] + '</div><div class="v">' + nums(dev[p]) + '</div></div>';
     });
-    if (!Object.keys(dev).length) h += '<tr><td colspan="4" class="muted">لا توجد بيانات</td></tr>';
-    $('dev').innerHTML = h;
+    $('devs').innerHTML = h || '<div class="empty" style="grid-column:1/-1">لا توجد بيانات</div>';
 
-    var keys = Object.keys(byDay).sort().reverse();
-    var max = 1;
-    keys.forEach(function (k) { if (byDay[k].apk_download > max) max = byDay[k].apk_download; });
-    h = '<tr><th>اليوم</th><th style="width:38%">تحميل</th><th>زيارة</th><th>فتح</th></tr>';
+    var keys = Object.keys(byDay).sort().reverse(), max = 1;
+    keys.forEach(function (k) { max = Math.max(max, byDay[k].apk_download, byDay[k].apk_page); });
+    h = '';
     keys.forEach(function (k) {
-      var v = byDay[k], p = k.split('-');
-      h += '<tr><td dir="ltr">' + p[2] + '/' + p[1] + '</td><td><div class="barbg"><div class="bar" style="width:' +
-           Math.round(v.apk_download / max * 100) + '%"></div></div>' + v.apk_download + '</td><td>' + v.apk_page + '</td><td>' + v.app_open + '</td></tr>';
+      var v = byDay[k];
+      h += '<div class="r">' + label(k) + '<div class="bar"><div data-w="' +
+           Math.round(Math.max(v.apk_download, v.apk_page) / max * 100) + '"></div></div><div class="nums">' + nums(v) + '</div></div>';
     });
-    $('days').innerHTML = h;
-    show(true);
+    $('days').innerHTML = h || '<div class="empty">لا توجد بيانات في هذه الفترة</div>';
+    requestAnimationFrame(function () {
+      document.querySelectorAll('.bar div').forEach(function (e) { e.style.width = e.dataset.w + '%'; });
+    });
+
+    var n = new Date();
+    $('upd').textContent = 'آخر تحديث ' + n.getHours() + ':' + String(n.getMinutes()).padStart(2, '0');
   }
 
-  function show(on) { $('stats').hidden = !on; }
-
   load();
+  setInterval(load, 60000);
 </script>
 </body>
 </html>
