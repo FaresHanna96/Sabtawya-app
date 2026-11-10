@@ -44,6 +44,16 @@
   .err{color:#b3261e;text-align:center;font-size:13px;min-height:16px}
   .note{font-size:11.5px;color:var(--muted);line-height:1.8;margin:16px 4px 0}
   .skel{opacity:.45}
+  .who{background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  .who input{width:100%;padding:11px;margin:5px 0;border:1px solid #d8d2c6;border-radius:12px;font-size:15px}
+  .who button{background:var(--maroon);color:#fff;border:0;border-radius:12px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-top:6px}
+  .who button.ghost{background:none;color:var(--maroon);width:auto;padding:4px 8px;margin:0;font-size:12.5px}
+  .who .hint{font-size:12px;color:var(--muted);line-height:1.7;margin:0 0 6px}
+  .p{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .p:last-child{border:0}
+  .p small{display:block;color:var(--muted);font-size:11.5px}
+  .p .tm{color:var(--muted);font-size:12px;text-align:left;white-space:nowrap}
+  .p .ac{background:#6b7a2214;color:var(--olive);border-radius:10px;padding:2px 8px;font-size:11.5px;font-weight:700;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -68,6 +78,18 @@
   <h2>كل يوم</h2>
   <div class="days" id="days"><div class="empty">جاري التحميل…</div></div>
 
+  <h2>من استخدم التطبيق <span style="font-weight:400">(للأدمن فقط)</span></h2>
+  <div class="who" id="who">
+    <div id="whoLogin">
+      <p class="hint">الأسماء تظهر بعد دخول الأدمن. لا يتم حفظ كلمة المرور.</p>
+      <input id="em" type="email" placeholder="الإيميل" autocomplete="username" dir="ltr">
+      <input id="pw" type="password" placeholder="كلمة المرور" autocomplete="current-password" dir="ltr">
+      <button id="go">عرض الأسماء</button>
+      <div class="err" id="whoErr"></div>
+    </div>
+    <div id="whoList" hidden></div>
+  </div>
+
   <p class="note">«ضغط تحميل APK» = ضغط زر تحميل التطبيق (أندرويد). «زيارة صفحة التحميل» = فتح رابط apk.html من أي جهاز. «فتح التطبيق/الموقع» = تشغيل التطبيق أو فتح الموقع نفسه (ليس صفحة التحميل). الأيام بتوقيت القاهرة.</p>
 </div>
 
@@ -85,7 +107,7 @@
 
   function seg() {
     $('seg').innerHTML = '';
-    [[7, 'أسبوع'], [30, 'شهر'], [90, '3 شهور']].forEach(function (o) {
+    [[1, 'اليوم'], [7, 'أسبوع'], [30, 'شهر'], [90, '3 شهور']].forEach(function (o) {
       var b = document.createElement('button');
       b.textContent = o[1];
       b.className = o[0] === days ? 'on' : '';
@@ -155,8 +177,40 @@
     });
 
     var n = new Date();
+    loadWho();
     $('upd').textContent = 'آخر تحديث ' + n.getHours() + ':' + String(n.getMinutes()).padStart(2, '0');
   }
+
+  var isAdmin = false;
+  function hm(t) {
+    var d = new Date(t), now = new Date();
+    var same = d.toDateString() === now.toDateString();
+    return (same ? '' : d.getDate() + '/' + (d.getMonth() + 1) + ' ') + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  async function loadWho() {
+    if (!isAdmin) return;
+    var r = await sb.rpc('admin_active_users', {p_days: days});
+    if (r.error) { $('whoErr').textContent = 'هذا الحساب ليس أدمن'; $('whoList').hidden = true; $('whoLogin').hidden = false; isAdmin = false; return; }
+    var rows = r.data || [];
+    var ROLE = {admin: 'أدمن', servant: 'خادم', general_servant: 'خادم عام'};
+    var h = '<div class="p" style="font-weight:700"><span>' + rows.length + ' مستخدم في هذه الفترة</span><button class="ghost" id="out">خروج</button></div>';
+    rows.forEach(function (x) {
+      h += '<div class="p"><div>' + esc(x.full_name) + '<small>' + (ROLE[x.role] || esc(x.role)) + '</small></div><div>' +
+           (x.actions > 0 ? '<span class="ac">' + x.actions + ' تعديل</span> ' : '') + '<span class="tm">' + hm(x.last_active) + '</span></div></div>';
+    });
+    if (!rows.length) h += '<div class="empty">لا أحد في هذه الفترة</div>';
+    h += '<p class="hint" style="margin-top:8px">«تعديل» = تغييرات سجّلها التطبيق باسم الشخص. الوقت = آخر نشاط.</p>';
+    $('whoList').innerHTML = h; $('whoList').hidden = false; $('whoLogin').hidden = true;
+    $('out').onclick = async function () { await sb.auth.signOut(); isAdmin = false; $('whoList').hidden = true; $('whoLogin').hidden = false; };
+  }
+  $('go').onclick = async function () {
+    $('whoErr').textContent = '';
+    var r = await sb.auth.signInWithPassword({email: $('em').value.trim(), password: $('pw').value});
+    $('pw').value = '';
+    if (r.error) { $('whoErr').textContent = 'الإيميل أو كلمة المرور غير صحيحة'; return; }
+    isAdmin = true; await loadWho();
+  };
+  $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('go').click(); });
 
   load();
   setInterval(load, 60000);
