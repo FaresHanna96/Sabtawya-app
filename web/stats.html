@@ -40,19 +40,10 @@
 <div class="wrap">
   <h1>إحصائيات التحميل والاستخدام</h1>
 
-  <div class="card" id="login">
-    <h2>دخول الأدمن</h2>
-    <input id="email" type="email" placeholder="الإيميل" autocomplete="username" dir="ltr">
-    <input id="pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" dir="ltr">
-    <button id="go">دخول</button>
-    <div class="err" id="err"></div>
-    <p class="muted">الأرقام تظهر للأدمن فقط. لا يتم حفظ كلمة المرور.</p>
-  </div>
-
+  <div class="err" id="err"></div>
   <div id="stats" hidden>
     <div class="top">
       <div class="chips" id="chips"></div>
-      <button class="link" id="out">خروج</button>
     </div>
     <div class="tot">
       <div class="t a"><span>تحميلات التطبيق</span><b id="n_dl">0</b></div>
@@ -92,7 +83,7 @@
   async function load() {
     chips();
     var r = await sb.rpc('access_stats', {p_days: days});
-    if (r.error) { show(false); $('err').textContent = r.error.message; return; }
+    if (r.error) { show(false); $('err').textContent = 'تعذر تحميل الأرقام'; return; }
     var rows = r.data || [];
     var tot = {apk_download: 0, apk_page: 0, app_open: 0};
     var dev = {};
@@ -128,17 +119,9 @@
     show(true);
   }
 
-  function show(on) { $('stats').hidden = !on; $('login').hidden = on; }
+  function show(on) { $('stats').hidden = !on; }
 
-  $('go').onclick = async function () {
-    $('err').textContent = '';
-    var r = await sb.auth.signInWithPassword({email: $('email').value.trim(), password: $('pass').value});
-    $('pass').value = '';
-    if (r.error) { $('err').textContent = 'الإيميل أو كلمة المرور غير صحيحة'; return; }
-    await load();
-  };
-  $('pass').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('go').click(); });
-  $('out').onclick = async function () { await sb.auth.signOut(); show(false); };
+  load();
 </script>
 </body>
 </html>
