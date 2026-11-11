@@ -480,4 +480,4 @@ class _SessionErrorScreen extends StatelessWidget {
 }
 
 /// Version string shown on the settings screen.
-const String appVersionLabel = '${AppConfig.appName} 1.0.0';
+const String appVersionLabel = '${AppConfig.appName} 1.0.1';
