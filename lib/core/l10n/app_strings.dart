@@ -611,6 +611,9 @@ class AppStrings {
   static const paymentAmount = 'المبلغ المدفوع (ج.م)';
   static const paymentNotes = 'ملاحظة (اختياري)';
   static const totalPaid = 'المدفوع';
+  static const exportEvent = 'تصدير إلى Excel';
+  static const paymentStatus = 'الحالة';
+  static const serialNo = 'م';
   static const remaining = 'المتبقي';
   static const paidInFull = 'مسدَّد';
   static const paymentSaved = 'تم حفظ الدفعة';

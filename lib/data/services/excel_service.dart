@@ -5,6 +5,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../models/attendance.dart';
 import '../models/child.dart';
 import '../models/competition.dart';
+import '../models/event.dart';
 import '../models/reports.dart';
 import '../models/servant_activity.dart';
 
@@ -874,6 +875,96 @@ class ExcelService {
           IntCellValue(mark),
         ]);
       }
+    }
+
+    if (book.tables.containsKey('Sheet1')) book.delete('Sheet1');
+    return _encode(book);
+  }
+
+  // ------------------------------------------------------------ event export
+
+  /// A trip's payments, one sheet per tab of the event screen (الكل, حاجزين,
+  /// بدأ الدفع, مسدّد, لم يدفع). Rows are grouped by class then name, and each
+  /// sheet ends with a totals row.
+  static List<int> eventWorkbook({
+    required List<ChildEventBalance> balances,
+    required Map<String, Map<String, double>> methodByChild,
+    required Map<String, String> phones,
+    required String Function(String classId) classNameOf,
+  }) {
+    String status(ChildEventBalance b) => b.totalPaid == 0
+        ? AppStrings.notPaidTab
+        : b.remaining <= 0
+            ? AppStrings.paidInFull
+            : AppStrings.partialPay;
+
+    final sorted = [...balances]..sort((a, b) {
+        final byClass =
+            classNameOf(a.classId).compareTo(classNameOf(b.classId));
+        return byClass != 0 ? byClass : a.childName.compareTo(b.childName);
+      });
+
+    final tabs = <String, bool Function(ChildEventBalance)>{
+      AppStrings.all: (_) => true,
+      AppStrings.bookedTab: (b) => b.totalPaid > 0,
+      AppStrings.partialPay: (b) => b.totalPaid > 0 && b.remaining > 0,
+      AppStrings.paidInFull: (b) => b.totalPaid > 0 && b.remaining <= 0,
+      AppStrings.notPaidTab: (b) => b.totalPaid == 0,
+    };
+
+    final book = Excel.createExcel();
+    book.setDefaultSheet(AppStrings.all);
+    for (final tab in tabs.entries) {
+      final sheet = book[tab.key];
+      sheet.isRTL = true;
+      sheet.appendRow(<CellValue?>[
+        _text(AppStrings.serialNo),
+        _text(AppStrings.childName),
+        _text(AppStrings.classLabel),
+        _text(AppStrings.mobile),
+        _text(AppStrings.eventCost),
+        _text(AppStrings.totalPaid),
+        _text(AppStrings.paymentMethodCash),
+        _text(AppStrings.paymentMethodTayo),
+        _text(AppStrings.remaining),
+        _text(AppStrings.paymentStatus),
+      ]);
+      final rows = sorted.where(tab.value).toList();
+      var cost = 0.0, paid = 0.0, cash = 0.0, tayo = 0.0, left = 0.0;
+      for (var i = 0; i < rows.length; i++) {
+        final b = rows[i];
+        final m = methodByChild[b.childId] ?? const <String, double>{};
+        final remaining = b.remaining < 0 ? 0.0 : b.remaining;
+        cost += b.cost;
+        paid += b.totalPaid;
+        cash += m['cash'] ?? 0;
+        tayo += m['tayo'] ?? 0;
+        left += remaining;
+        sheet.appendRow(<CellValue?>[
+          IntCellValue(i + 1),
+          _text(b.childName),
+          _text(classNameOf(b.classId)),
+          _text(phones[b.childId]),
+          DoubleCellValue(b.cost),
+          DoubleCellValue(b.totalPaid),
+          DoubleCellValue(m['cash'] ?? 0),
+          DoubleCellValue(m['tayo'] ?? 0),
+          DoubleCellValue(remaining),
+          _text(status(b)),
+        ]);
+      }
+      sheet.appendRow(<CellValue?>[
+        null,
+        _text('${AppStrings.total} (${rows.length})'),
+        null,
+        null,
+        DoubleCellValue(cost),
+        DoubleCellValue(paid),
+        DoubleCellValue(cash),
+        DoubleCellValue(tayo),
+        DoubleCellValue(left),
+        null,
+      ]);
     }
 
     if (book.tables.containsKey('Sheet1')) book.delete('Sheet1');

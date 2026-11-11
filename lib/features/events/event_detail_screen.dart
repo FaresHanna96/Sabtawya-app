@@ -13,6 +13,8 @@ import '../../core/widgets/async_section.dart';
 import '../../data/models/event.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/event_repository.dart';
+import '../../data/services/excel_service.dart';
+import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
 
 class EventDetailScreen extends StatefulWidget {
@@ -95,6 +97,38 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
 
+  bool _exporting = false;
+
+  /// Excel file with one sheet per tab (الكل, حاجزين, بدأ الدفع, مسدّد,
+  /// لم يدفع), from fresh numbers.
+  Future<void> _export() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final balances = await _load();
+      if (!mounted) return;
+      final names = {
+        for (final c in context.read<SessionController>().myClasses)
+          c.classId: c.className,
+      };
+      final bytes = ExcelService.eventWorkbook(
+        balances: balances,
+        methodByChild: _byChild,
+        phones: _phones,
+        classNameOf: (id) => names[id] ?? AppStrings.unknown,
+      );
+      await FileService.saveAndShare(
+        fileName: FileService.timestampedName(widget.event.title),
+        bytes: bytes,
+      );
+      if (mounted) Ui.success(context, AppStrings.exportDone);
+    } catch (e) {
+      if (mounted) Ui.error(context, e);
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   void _openPayments(ChildEventBalance balance) {
     showModalBottomSheet<void>(
       context: context,
@@ -112,6 +146,22 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.event.title),
+        actions: [
+          IconButton(
+            tooltip: AppStrings.exportEvent,
+            onPressed: _exporting ? null : _export,
+            icon: _exporting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.ios_share),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(20),
           child: Padding(
