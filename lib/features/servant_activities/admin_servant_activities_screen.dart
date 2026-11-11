@@ -12,6 +12,8 @@ import '../../data/models/profile.dart';
 import '../../data/models/servant_activity.dart';
 import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/repositories/servant_repository.dart';
+import '../../data/services/excel_service.dart';
+import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
 import 'prep_review_sheet.dart';
 import 'servant_activities_report_screen.dart';
@@ -33,6 +35,88 @@ class AdminServantActivitiesScreen extends StatelessWidget {
         builder: (_) => const ServantActivitiesReportScreen(),
       ),
     );
+  }
+
+  /// Asks yearly or this month, then shares the matching Excel report (the
+  /// same files as the export screen).
+  Future<void> _export(BuildContext context) async {
+    final monthly = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                AppStrings.exportEvent,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_today_outlined),
+              title: const Text(AppStrings.exportServantYearly),
+              onTap: () => Navigator.of(sheet).pop(false),
+            ),
+            ListTile(
+              leading: const Icon(Icons.date_range_outlined),
+              title: Text(
+                '${AppStrings.exportServantMonthly} '
+                '(${AppDateUtils.formatMonth(DateTime.now())})',
+              ),
+              onTap: () => Navigator.of(sheet).pop(true),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (monthly == null || !context.mounted) return;
+
+    const repo = ServantActivityRepository();
+    final yearId = context.read<SessionController>().currentYear?.id;
+    final name = monthly
+        ? AppStrings.exportServantMonthly
+        : AppStrings.exportServantYearly;
+    List<int>? bytes;
+    final ok = await Ui.runGuarded(context, () async {
+      if (monthly) {
+        final now = DateTime.now();
+        final data =
+            await repo.servantMonthlyReport(year: now.year, month: now.month);
+        if (data.isNotEmpty) {
+          bytes = ExcelService.servantMonthlyWorkbook(
+            data: data,
+            monthLabel: AppDateUtils.formatMonth(now),
+          );
+        }
+      } else {
+        final summaries = await repo.activitySummaries();
+        final total =
+            yearId == null ? 0 : await repo.sessionCountForYear(yearId);
+        if (summaries.isNotEmpty) {
+          bytes = ExcelService.servantYearlyWorkbook(
+            summaries: summaries,
+            totalSessions: total,
+          );
+        }
+      }
+    });
+    if (!ok || !context.mounted) return;
+    if (bytes == null) {
+      Ui.info(context, AppStrings.noData);
+      return;
+    }
+    try {
+      await FileService.saveAndShare(
+        fileName: FileService.timestampedName(name),
+        bytes: bytes!,
+      );
+      if (context.mounted) Ui.success(context, AppStrings.exportDone);
+    } catch (e) {
+      if (context.mounted) Ui.error(context, e);
+    }
   }
 
   static const _tabBar = TabBar(
@@ -62,6 +146,11 @@ class AdminServantActivitiesScreen extends StatelessWidget {
                 title: const Text(AppStrings.servantActivities),
                 actions: [
                   IconButton(
+                    tooltip: AppStrings.exportEvent,
+                    icon: const Icon(Icons.ios_share),
+                    onPressed: () => _export(context),
+                  ),
+                  IconButton(
                     tooltip: AppStrings.servantActivityReport,
                     icon: const Icon(Icons.insert_chart_outlined),
                     onPressed: () => _openReport(context),
@@ -79,6 +168,12 @@ class AdminServantActivitiesScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       const Expanded(child: _tabBar),
+                      IconButton(
+                        tooltip: AppStrings.exportEvent,
+                        color: Colors.white,
+                        icon: const Icon(Icons.ios_share),
+                        onPressed: () => _export(context),
+                      ),
                       IconButton(
                         tooltip: AppStrings.servantActivityReport,
                         color: Colors.white,
