@@ -95,6 +95,7 @@ class ChildEventBalance {
     required this.cost,
     required this.totalPaid,
     required this.remaining,
+    this.reserved = false,
   });
 
   final String eventId;
@@ -105,6 +106,9 @@ class ChildEventBalance {
   final double totalPaid;
   final double remaining;
 
+  /// Booked a place without paying yet ("حجز بدون دفع").
+  final bool reserved;
+
   factory ChildEventBalance.fromMap(Map<String, dynamic> map) =>
       ChildEventBalance(
         eventId: asText(map['event_id']),
@@ -114,5 +118,6 @@ class ChildEventBalance {
         cost: asDouble(map['cost']),
         totalPaid: asDouble(map['total_paid']),
         remaining: asDouble(map['remaining']),
+        reserved: map['reserved'] == true,
       );
 }

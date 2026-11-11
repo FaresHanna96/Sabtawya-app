@@ -158,6 +158,36 @@ class EventRepository {
     }
   }
 
+  /// Books a place for the child without a payment.
+  Future<void> reserve(String eventId, String childId) async {
+    try {
+      await Db.client.from(Db.tEventReservations).insert({
+        'event_id': eventId,
+        'child_id': childId,
+        'reserved_by': Db.userId,
+      });
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Removes the booking (payments, if any, are kept).
+  Future<void> unreserve(String eventId, String childId) async {
+    try {
+      final deleted = await Db.client
+          .from(Db.tEventReservations)
+          .delete()
+          .eq('event_id', eventId)
+          .eq('child_id', childId)
+          .select('child_id');
+      if (rows(deleted).isEmpty) {
+        throw AppFailure('لا يمكنك إلغاء هذا الحجز (سجّله خادم آخر)');
+      }
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<void> deletePayment(String paymentId) async {
     try {
       await Db.client.from(Db.tEventPayments).delete().eq('id', paymentId);

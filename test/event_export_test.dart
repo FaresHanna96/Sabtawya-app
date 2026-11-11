@@ -4,7 +4,8 @@ import 'package:sabtawya/core/l10n/app_strings.dart';
 import 'package:sabtawya/data/models/event.dart';
 import 'package:sabtawya/data/services/excel_service.dart';
 
-ChildEventBalance _b(String id, String name, String cls, double paid) =>
+ChildEventBalance _b(String id, String name, String cls, double paid,
+        {bool reserved = false}) =>
     ChildEventBalance(
       eventId: 'e',
       childId: id,
@@ -13,6 +14,7 @@ ChildEventBalance _b(String id, String name, String cls, double paid) =>
       cost: 50,
       totalPaid: paid,
       remaining: 50 - paid,
+      reserved: reserved,
     );
 
 void main() {
@@ -99,5 +101,36 @@ void main() {
     expect(double.parse(total[6]), 60);
     expect(double.parse(total[7]), 10);
     expect(double.parse(total[8]), 130);
+  });
+
+  group('reserved without paying', () {
+    final reserved = _b('5', 'جورج', 'k1', 0, reserved: true);
+
+    test('is in حاجزين and لم يدفع, not in بدأ الدفع or مسدّد', () {
+      bool inTab(String t) => ExcelService.eventTabFilter[t]!(reserved);
+      expect(inTab(AppStrings.bookedTab), isTrue);
+      expect(inTab(AppStrings.notPaidTab), isTrue);
+      expect(inTab(AppStrings.partialPay), isFalse);
+      expect(inTab(AppStrings.paidInFull), isFalse);
+    });
+
+    test('counts include it', () {
+      final counts = ExcelService.eventTabCounts(
+          [reserved, _b('6', 'x', 'k1', 0), _b('7', 'y', 'k1', 20)]);
+      expect(counts[AppStrings.bookedTab], 2);
+      expect(counts[AppStrings.notPaidTab], 2);
+    });
+
+    test('its Excel status says reserved, unpaid', () {
+      final book = Excel.decodeBytes(ExcelService.eventWorkbook(
+        balances: [reserved],
+        methodByChild: const {},
+        phones: const {},
+        classNameOf: (_) => 'أ',
+        tabs: const [AppStrings.bookedTab],
+      ));
+      final row = book.tables[AppStrings.bookedTab]!.rows[1];
+      expect('${row[9]?.value}', AppStrings.reservedUnpaidStatus);
+    });
   });
 }

@@ -215,13 +215,14 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             final progress =
                 totalExpected > 0 ? totalCollected / totalExpected : 0.0;
 
-            final partial = balances
-                .where((b) => b.totalPaid > 0 && b.remaining > 0)
-                .toList();
-            final notPaid = balances.where((b) => b.totalPaid == 0).toList();
-            final fullPaid = balances.where((b) => b.remaining <= 0).toList();
-            // Everyone who has booked the trip: paid in full or started paying.
-            final booked = balances.where((b) => b.totalPaid > 0).toList();
+            // Same rules as the counts and the Excel export.
+            List<ChildEventBalance> tab(String name) =>
+                balances.where(ExcelService.eventTabFilter[name]!).toList();
+            final partial = tab(AppStrings.partialPay);
+            final notPaid = tab(AppStrings.notPaidTab);
+            final fullPaid = tab(AppStrings.paidInFull);
+            // Booked the trip: reserved, started paying, or paid in full.
+            final booked = tab(AppStrings.bookedTab);
 
             final session = context.read<SessionController>();
             String getClassName(String id) {
@@ -526,6 +527,7 @@ class _BalanceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPaid = balance.remaining <= 0;
     final isPartial = !isPaid && balance.totalPaid > 0;
+    final reservedOnly = balance.reserved && balance.totalPaid == 0;
 
     final chipColor = isPaid
         ? AppColors.olive
@@ -548,6 +550,25 @@ class _BalanceRow extends StatelessWidget {
                   style: const TextStyle(fontSize: 14),
                 ),
               ),
+              if (reservedOnly) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.sky.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    AppStrings.reservedBadge,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.sky,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               if (isPaid)
                 Container(
                   padding:
@@ -638,6 +659,33 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
   List<EventPayment>? _payments;
   bool _loading = true;
   String? _error;
+
+  /// Booked without paying; flips locally after reserve / cancel.
+  late bool _reserved = widget.balance.reserved;
+
+  Future<void> _toggleReservation() async {
+    if (_reserved) {
+      final yes = await Ui.confirm(
+        context,
+        title: AppStrings.cancelReservation,
+        message: AppStrings.cancelReservationBody,
+        destructive: true,
+      );
+      if (!yes || !mounted) return;
+    }
+    final cancel = _reserved;
+    final ok = await Ui.runGuarded(
+      context,
+      () => cancel
+          ? _repository.unreserve(widget.event.id, widget.balance.childId)
+          : _repository.reserve(widget.event.id, widget.balance.childId),
+      successMessage:
+          cancel ? AppStrings.reservationCancelled : AppStrings.reservedSaved,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _reserved = !cancel);
+    widget.onChanged();
+  }
 
   @override
   void initState() {
@@ -776,6 +824,33 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
             ],
           ),
         ),
+        // Reserve now, pay later: only while nothing is paid yet.
+        if ((_payments ?? const <EventPayment>[]).isEmpty &&
+            balance.totalPaid == 0 &&
+            !_loading)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _toggleReservation,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _reserved ? AppColors.danger : AppColors.sky,
+                ),
+                icon: Icon(
+                  _reserved
+                      ? Icons.event_busy_outlined
+                      : Icons.bookmark_add_outlined,
+                  size: 18,
+                ),
+                label: Text(
+                  _reserved
+                      ? AppStrings.cancelReservation
+                      : AppStrings.reserveWithoutPay,
+                ),
+              ),
+            ),
+          ),
         const Divider(height: 1),
         ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxListHeight),

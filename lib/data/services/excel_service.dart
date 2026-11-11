@@ -895,13 +895,16 @@ class ExcelService {
 
   /// How many children fall under each of [eventTabs].
   static Map<String, int> eventTabCounts(List<ChildEventBalance> balances) => {
-        for (final e in _eventTabFilters.entries)
+        for (final e in eventTabFilter.entries)
           e.key: balances.where(e.value).length,
       };
 
-  static final _eventTabFilters = <String, bool Function(ChildEventBalance)>{
+  /// Which children each tab of the event screen holds. Shared by the screen,
+  /// its counts and the export, so they always agree. A child who reserved
+  /// without paying is both حاجزين and لم يدفع (the full amount is owed).
+  static final eventTabFilter = <String, bool Function(ChildEventBalance)>{
     AppStrings.all: (_) => true,
-    AppStrings.bookedTab: (b) => b.totalPaid > 0,
+    AppStrings.bookedTab: (b) => b.totalPaid > 0 || b.reserved,
     AppStrings.partialPay: (b) => b.totalPaid > 0 && b.remaining > 0,
     AppStrings.paidInFull: (b) => b.totalPaid > 0 && b.remaining <= 0,
     AppStrings.notPaidTab: (b) => b.totalPaid == 0,
@@ -918,7 +921,7 @@ class ExcelService {
     List<String> tabs = const [AppStrings.all],
   }) {
     String status(ChildEventBalance b) => b.totalPaid == 0
-        ? AppStrings.notPaidTab
+        ? (b.reserved ? AppStrings.reservedUnpaidStatus : AppStrings.notPaidTab)
         : b.remaining <= 0
             ? AppStrings.paidInFull
             : AppStrings.partialPay;
@@ -935,7 +938,7 @@ class ExcelService {
     final book = Excel.createExcel();
     book.setDefaultSheet(chosen.first);
     for (final tab
-        in _eventTabFilters.entries.where((e) => chosen.contains(e.key))) {
+        in eventTabFilter.entries.where((e) => chosen.contains(e.key))) {
       final sheet = book[tab.key];
       sheet.isRTL = true;
       sheet.appendRow(<CellValue?>[

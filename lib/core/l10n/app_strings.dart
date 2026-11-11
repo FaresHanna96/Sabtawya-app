@@ -613,6 +613,14 @@ class AppStrings {
   static const totalPaid = 'المدفوع';
   static const exportEvent = 'تصدير إلى Excel';
   static const exportEventHint = 'اختر الحالات المطلوبة في الملف';
+  static const reserveWithoutPay = 'حجز بدون دفع';
+  static const cancelReservation = 'إلغاء الحجز';
+  static const cancelReservationBody =
+      'سيتم إلغاء حجز هذا المخدوم في الرحلة. المدفوعات لا تتأثر.';
+  static const reservedBadge = 'حاجز';
+  static const reservedSaved = 'تم الحجز';
+  static const reservationCancelled = 'تم إلغاء الحجز';
+  static const reservedUnpaidStatus = 'حاجز (لم يدفع)';
   static const paymentStatus = 'الحالة';
   static const serialNo = 'م';
   static const remaining = 'المتبقي';

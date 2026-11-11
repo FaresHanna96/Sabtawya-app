@@ -56,6 +56,7 @@ class Db {
   // Tables – events (فعاليات)
   static const tEvents = 'events';
   static const tEventPayments = 'event_payments';
+  static const tEventReservations = 'event_reservations';
 
   // Views – events
   static const vChildEventBalances = 'v_child_event_balances';
