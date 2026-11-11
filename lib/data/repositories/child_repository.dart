@@ -228,41 +228,10 @@ class ChildRepository {
     try {
       await Db.client
           .from(Db.tChildVisitLogs)
-          .update(<String, dynamic>{'notes': notes})
-          .eq('id', existing);
+          .update(<String, dynamic>{'notes': notes}).eq('id', existing);
     } catch (e) {
       throw AppFailure.from(e);
     }
-  }
-
-  /// Saves a follow-up from the quick sheet: the history entry (see
-  /// [recordVisitLog]) and, when it is not older than the stored one, the
-  /// child's "last visit" date and notes. Returns the child as saved.
-  Future<Child> saveVisit({
-    required Child child,
-    required String visitType,
-    required DateTime visitDate,
-    String? notes,
-  }) async {
-    final isPhone = visitType == 'phone';
-    final stored = isPhone ? child.lastPhoneVisitDate : child.lastHomeVisitDate;
-    var saved = child;
-    if (VisitMerge.isLatest(visitDate, stored)) {
-      saved = child.withVisits(
-        phoneVisitDate: isPhone ? visitDate : child.lastPhoneVisitDate,
-        phoneVisitNotes: isPhone ? notes : child.lastPhoneVisitNotes,
-        homeVisitDate: isPhone ? child.lastHomeVisitDate : visitDate,
-        homeVisitNotes: isPhone ? child.lastHomeVisitNotes : notes,
-      );
-      await update(saved);
-    }
-    await recordVisitLog(
-      childId: child.id,
-      visitType: visitType,
-      visitDate: visitDate,
-      notes: notes,
-    );
-    return saved;
   }
 
   Future<void> insertVisitLog({

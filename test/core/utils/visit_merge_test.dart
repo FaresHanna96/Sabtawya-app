@@ -14,15 +14,6 @@ ChildVisitLog _log(String id, String type, String date, String? by,
       'recorded_by': by,
     });
 
-Child _child({String? phone, String? home}) => Child.fromMap({
-      'id': 'c1',
-      'class_id': 'k1',
-      'full_name': 'مينا',
-      'gender': 'boy',
-      'last_phone_visit_date': phone,
-      'last_home_visit_date': home,
-    });
-
 void main() {
   group('existingEntry', () {
     final logs = [
@@ -57,50 +48,6 @@ void main() {
 
     test('no signed-in user means insert', () {
       expect(find('phone', DateTime(2026, 11, 10), me: null), isNull);
-    });
-  });
-
-  group('isLatest', () {
-    test('no stored visit: becomes latest', () {
-      expect(VisitMerge.isLatest(DateTime(2026, 1, 1), null), isTrue);
-    });
-    test('same day or newer: latest', () {
-      final stored = DateTime(2026, 11, 10);
-      expect(VisitMerge.isLatest(DateTime(2026, 11, 10, 23), stored), isTrue);
-      expect(VisitMerge.isLatest(DateTime(2026, 11, 11), stored), isTrue);
-    });
-    test('back-dated visit does not replace a newer one', () {
-      expect(
-        VisitMerge.isLatest(DateTime(2026, 11, 1), DateTime(2026, 11, 10)),
-        isFalse,
-      );
-    });
-  });
-
-  group('contactedSince', () {
-    final lastPresent = DateTime(2026, 10, 24);
-    test('no visit at all: not contacted', () {
-      expect(VisitMerge.contactedSince(_child(), lastPresent), isFalse);
-    });
-    test('visit before the last attendance: not contacted', () {
-      expect(
-        VisitMerge.contactedSince(_child(phone: '2026-10-20'), lastPresent),
-        isFalse,
-      );
-    });
-    test('phone or home visit after it: contacted', () {
-      expect(
-        VisitMerge.contactedSince(_child(phone: '2026-11-08'), lastPresent),
-        isTrue,
-      );
-      expect(
-        VisitMerge.contactedSince(_child(home: '2026-11-01'), lastPresent),
-        isTrue,
-      );
-    });
-    test('never attended but visited: contacted', () {
-      expect(VisitMerge.contactedSince(_child(phone: '2026-11-08'), null),
-          isTrue);
     });
   });
 }

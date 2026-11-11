@@ -17,7 +17,6 @@ import '../classes/class_detail_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
-import 'follow_up_todo.dart';
 import 'quick_action_grid.dart';
 import 'today_birthdays_section.dart';
 
@@ -168,7 +167,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 16),
             const FadeSlideIn(index: 3, child: TodayBirthdaysSection()),
-            const FadeSlideIn(index: 4, child: FollowUpTodo()),
             FadeSlideIn(
               index: 4,
               child: LessonOfDay(date: upcomingSaturday()),
