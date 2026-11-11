@@ -306,6 +306,14 @@ class AppStrings {
   static const noVisitYet = 'لم يتم بعد';
   static const pickVisitDate = 'اختر تاريخ الافتقاد';
   static const visitsSaved = 'تم حفظ بيانات الافتقاد';
+  static const followUpTodo = 'محتاجين افتقاد';
+  static const followUpTodoHint =
+      'غابوا سبتين أو أكثر ورا بعض. اضغط على الاسم لتسجيل الافتقاد.';
+  static const followUpDone = 'تم الافتقاد';
+  static const followUpAllDone = 'تم افتقاد الجميع 👏';
+  static String followUpShowAll(int n) => 'عرض الكل ($n)';
+  static const followUpShowLess = 'عرض أقل';
+  static String absentTimes(int n) => 'غاب $n مرات ورا بعض';
   static const visitHistory = 'سجل الافتقادات';
   static const noVisitHistory = 'لا يوجد سجل افتقادات بعد';
   static const childBirthdaysTitle = 'أعياد ميلاد المخدومين';

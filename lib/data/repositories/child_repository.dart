@@ -1,4 +1,5 @@
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/visit_merge.dart';
 import '../models/child.dart';
 import '../supabase/db.dart';
 
@@ -180,6 +181,88 @@ class ChildRepository {
     } catch (e) {
       throw AppFailure.from(e);
     }
+  }
+
+  /// Writes one follow-up to the history: the caller's own entry for the same
+  /// child, type and day is updated (a corrected note), otherwise a new entry
+  /// is added. Keeps the history to one row per servant, child, type and day.
+  Future<void> recordVisitLog({
+    required String childId,
+    required String visitType,
+    required DateTime visitDate,
+    String? notes,
+  }) async {
+    final d = visitDate;
+    final iso = '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+    List<ChildVisitLog> mine = const [];
+    try {
+      final data = await Db.client
+          .from(Db.tChildVisitLogs)
+          .select()
+          .eq('child_id', childId)
+          .eq('visit_type', visitType)
+          .eq('visit_date', iso)
+          .eq('recorded_by', Db.userId ?? '');
+      mine = rows(data).map(ChildVisitLog.fromMap).toList();
+    } catch (_) {
+      // Offline with nothing cached: fall back to adding an entry.
+    }
+    final existing = VisitMerge.existingEntry(
+      logs: mine,
+      childId: childId,
+      visitType: visitType,
+      date: visitDate,
+      myId: Db.userId,
+    );
+    if (existing == null) {
+      await insertVisitLog(
+        childId: childId,
+        visitType: visitType,
+        visitDate: visitDate,
+        notes: notes,
+      );
+      return;
+    }
+    try {
+      await Db.client
+          .from(Db.tChildVisitLogs)
+          .update(<String, dynamic>{'notes': notes})
+          .eq('id', existing);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Saves a follow-up from the quick sheet: the history entry (see
+  /// [recordVisitLog]) and, when it is not older than the stored one, the
+  /// child's "last visit" date and notes. Returns the child as saved.
+  Future<Child> saveVisit({
+    required Child child,
+    required String visitType,
+    required DateTime visitDate,
+    String? notes,
+  }) async {
+    final isPhone = visitType == 'phone';
+    final stored = isPhone ? child.lastPhoneVisitDate : child.lastHomeVisitDate;
+    var saved = child;
+    if (VisitMerge.isLatest(visitDate, stored)) {
+      saved = child.withVisits(
+        phoneVisitDate: isPhone ? visitDate : child.lastPhoneVisitDate,
+        phoneVisitNotes: isPhone ? notes : child.lastPhoneVisitNotes,
+        homeVisitDate: isPhone ? child.lastHomeVisitDate : visitDate,
+        homeVisitNotes: isPhone ? child.lastHomeVisitNotes : notes,
+      );
+      await update(saved);
+    }
+    await recordVisitLog(
+      childId: child.id,
+      visitType: visitType,
+      visitDate: visitDate,
+      notes: notes,
+    );
+    return saved;
   }
 
   Future<void> insertVisitLog({

@@ -304,10 +304,14 @@ class ChildVisitLog {
     required this.visitDate,
     this.notes,
     required this.createdAt,
+    this.recordedBy,
   });
 
   final String id;
   final String childId;
+
+  /// The servant who wrote the entry (null when that account was removed).
+  final String? recordedBy;
 
   /// Either 'phone' or 'home'.
   final String visitType;
@@ -324,5 +328,6 @@ class ChildVisitLog {
         visitDate: asDate(map['visit_date']),
         notes: asTextOrNull(map['notes']),
         createdAt: asDate(map['created_at']),
+        recordedBy: asTextOrNull(map['recorded_by']),
       );
 }

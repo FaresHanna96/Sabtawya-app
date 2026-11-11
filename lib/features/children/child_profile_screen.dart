@@ -1176,10 +1176,9 @@ class _VisitSectionState extends State<_VisitSection> {
       context,
       () async {
         await _children.update(updated);
-        // The history only ever grows (no update policy on purpose), so append
-        // an entry whenever the date OR the notes changed. A second call on
-        // the same day, or a corrected note, used to be saved on the card
-        // but never reached the history.
+        // Record a history entry whenever the date OR the notes changed. A
+        // corrected note on the same day updates the servant's own entry for
+        // that day instead of adding a near-identical second one.
         String? clean(String? s) =>
             (s == null || s.trim().isEmpty) ? null : s.trim();
         final phoneChanged = _phoneDate != widget.child.lastPhoneVisitDate ||
@@ -1187,7 +1186,7 @@ class _VisitSectionState extends State<_VisitSection> {
         final homeChanged = _homeDate != widget.child.lastHomeVisitDate ||
             homeNotes != clean(widget.child.lastHomeVisitNotes);
         if (_phoneDate != null && phoneChanged) {
-          await _children.insertVisitLog(
+          await _children.recordVisitLog(
             childId: widget.child.id,
             visitType: 'phone',
             visitDate: _phoneDate!,
@@ -1195,7 +1194,7 @@ class _VisitSectionState extends State<_VisitSection> {
           );
         }
         if (_homeDate != null && homeChanged) {
-          await _children.insertVisitLog(
+          await _children.recordVisitLog(
             childId: widget.child.id,
             visitType: 'home',
             visitDate: _homeDate!,
