@@ -131,9 +131,21 @@
     })(t0);
   }
 
+  // Calendar day in Cairo (YYYY-MM-DD), so "today" resets at Cairo midnight
+  // whatever the visitor's own time zone is.
+  function cairoToday() {
+    return new Date().toLocaleDateString('en-CA', {timeZone: 'Africa/Cairo'});
+  }
+  function dayBack(key, n) {
+    var d = new Date(key + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - n);
+    return d.toISOString().slice(0, 10);
+  }
+
   function label(k) {
-    var d = new Date(k + 'T00:00:00'), now = new Date();
-    var diff = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - d) / 864e5);
+    var today = cairoToday();
+    var d = new Date(k + 'T00:00:00'), now = new Date(today + 'T00:00:00');
+    var diff = Math.round((now - d) / 864e5);
     var names = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     var main = diff === 0 ? 'اليوم' : diff === 1 ? 'أمس' : names[d.getDay()];
     return '<div class="dt">' + main + '<small dir="ltr">' + k.slice(8) + '/' + k.slice(5, 7) + '</small></div>';
@@ -149,10 +161,14 @@
 
   async function load() {
     seg();
-    var r = await sb.rpc('access_stats', {p_days: days});
+    var r = await sb.rpc('access_stats', {p_days: days + 1});
     if (r.error) { $('err').textContent = 'تعذر تحميل الأرقام، حاول مرة أخرى'; return; }
     $('err').textContent = '';
-    var rows = r.data || [], tot = {}, dev = {}, byDay = {};
+    // Whole Cairo days only: "اليوم" is today since midnight, "أسبوع" the
+    // last 7 days including today, and so on.
+    var since = dayBack(cairoToday(), days - 1);
+    var rows = (r.data || []).filter(function (x) { return x.day >= since; });
+    var tot = {}, dev = {}, byDay = {};
     function blank() { return {apk_download: 0, apk_page: 0, app_open: 0}; }
     rows.forEach(function (x) {
       tot[x.kind] = (tot[x.kind] || 0) + x.n;
