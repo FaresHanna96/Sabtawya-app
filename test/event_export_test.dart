@@ -16,35 +16,54 @@ ChildEventBalance _b(String id, String name, String cls, double paid) =>
     );
 
 void main() {
-  final bytes = ExcelService.eventWorkbook(
-    balances: [
-      _b('1', 'مينا', 'k2', 50),
-      _b('2', 'بولا', 'k1', 20),
-      _b('3', 'ايرينى', 'k1', 0),
-      _b('4', 'كيرلس', 'k2', 0),
-    ],
-    methodByChild: {
-      '1': {'cash': 40, 'tayo': 10},
-      '2': {'cash': 20},
-    },
-    phones: {'1': '0100'},
-    classNameOf: (id) => id == 'k1' ? 'أ' : 'ب',
-  );
-  final book = Excel.decodeBytes(bytes);
+  Excel build(String tab, [List<String>? tabs]) =>
+      Excel.decodeBytes(ExcelService.eventWorkbook(
+        balances: [
+          _b('1', 'مينا', 'k2', 50),
+          _b('2', 'بولا', 'k1', 20),
+          _b('3', 'ايرينى', 'k1', 0),
+          _b('4', 'كيرلس', 'k2', 0),
+        ],
+        methodByChild: {
+          '1': {'cash': 40, 'tayo': 10},
+          '2': {'cash': 20},
+        },
+        phones: {'1': '0100'},
+        classNameOf: (id) => id == 'k1' ? 'أ' : 'ب',
+        tabs: tabs ?? [tab],
+      ));
 
   List<List<String>> rows(String sheet) => [
-        for (final r in book.tables[sheet]!.rows)
+        for (final r in build(sheet).tables[sheet]!.rows)
           [for (final c in r) '${c?.value ?? ''}'],
       ];
 
-  test('one sheet per tab, in the screen order', () {
-    expect(book.tables.keys.toList(), [
-      AppStrings.all,
-      AppStrings.bookedTab,
-      AppStrings.partialPay,
-      AppStrings.paidInFull,
-      AppStrings.notPaidTab,
+  test('several chosen statuses give one sheet each, in screen order', () {
+    final book = build('', [AppStrings.notPaidTab, AppStrings.bookedTab]);
+    expect(book.tables.keys.toList(),
+        [AppStrings.bookedTab, AppStrings.notPaidTab]);
+  });
+
+  test('counts per status match the tabs', () {
+    final counts = ExcelService.eventTabCounts([
+      _b('1', 'a', 'k', 50),
+      _b('2', 'b', 'k', 20),
+      _b('3', 'c', 'k', 0),
     ]);
+    expect(counts, {
+      AppStrings.all: 3,
+      AppStrings.bookedTab: 2,
+      AppStrings.partialPay: 1,
+      AppStrings.paidInFull: 1,
+      AppStrings.notPaidTab: 1,
+    });
+  });
+
+  test('the file holds only the chosen tab', () {
+    for (final tab in ExcelService.eventTabs) {
+      expect(build(tab).tables.keys.toList(), [tab]);
+    }
+    expect(ExcelService.eventTabs.length, 5);
   });
 
   test('each sheet holds the children of its tab plus header and totals', () {

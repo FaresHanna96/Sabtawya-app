@@ -612,6 +612,7 @@ class AppStrings {
   static const paymentNotes = 'ملاحظة (اختياري)';
   static const totalPaid = 'المدفوع';
   static const exportEvent = 'تصدير إلى Excel';
+  static const exportEventHint = 'اختر الحالات المطلوبة في الملف';
   static const paymentStatus = 'الحالة';
   static const serialNo = 'م';
   static const remaining = 'المتبقي';

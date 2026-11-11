@@ -99,14 +99,24 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
   bool _exporting = false;
 
-  /// Excel file with one sheet per tab (الكل, حاجزين, بدأ الدفع, مسدّد,
-  /// لم يدفع), from fresh numbers.
+  /// Asks which statuses to include (the tab being viewed is pre-ticked),
+  /// then shares an Excel file with one sheet per chosen status.
   Future<void> _export() async {
     if (_exporting) return;
     setState(() => _exporting = true);
     try {
       final balances = await _load();
       if (!mounted) return;
+      final picked = await showModalBottomSheet<List<String>>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (_) => _ExportStatusSheet(
+          counts: ExcelService.eventTabCounts(balances),
+          initial: ExcelService.eventTabs[_tabController.index],
+        ),
+      );
+      if (picked == null || picked.isEmpty || !mounted) return;
       final names = {
         for (final c in context.read<SessionController>().myClasses)
           c.classId: c.className,
@@ -116,9 +126,16 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         methodByChild: _byChild,
         phones: _phones,
         classNameOf: (id) => names[id] ?? AppStrings.unknown,
+        tabs: picked,
       );
+      // "اسم الرحلة - تاريخ الرحلة - الحالة.xlsx"
+      final name = [
+        widget.event.title,
+        AppDateUtils.toIsoDate(widget.event.eventDate),
+        picked.join(' + '),
+      ].join(' - ').replaceAll(RegExp(r'[\/:*?"<>|]'), '-').trim();
       await FileService.saveAndShare(
-        fileName: FileService.timestampedName(widget.event.title),
+        fileName: '$name.xlsx',
         bytes: bytes,
       );
       if (mounted) Ui.success(context, AppStrings.exportDone);
@@ -993,6 +1010,92 @@ class _MethodChip extends StatelessWidget {
             color: selected ? Colors.white : color,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "Which statuses do you want in the file?" One tick per tab of the event
+/// screen, each with its number of children.
+class _ExportStatusSheet extends StatefulWidget {
+  const _ExportStatusSheet({required this.counts, required this.initial});
+
+  final Map<String, int> counts;
+  final String initial;
+
+  @override
+  State<_ExportStatusSheet> createState() => _ExportStatusSheetState();
+}
+
+class _ExportStatusSheetState extends State<_ExportStatusSheet> {
+  late final _selected = <String>{widget.initial};
+
+  @override
+  Widget build(BuildContext context) {
+    const all = ExcelService.eventTabs;
+    final allSelected = _selected.length == all.length;
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    AppStrings.exportEventHint,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() {
+                    allSelected ? _selected.clear() : _selected.addAll(all);
+                  }),
+                  child: Text(allSelected
+                      ? AppStrings.clearSelection
+                      : AppStrings.selectAll),
+                ),
+              ],
+            ),
+          ),
+          for (final tab in all)
+            CheckboxListTile(
+              dense: true,
+              value: _selected.contains(tab),
+              onChanged: (v) => setState(() {
+                v == true ? _selected.add(tab) : _selected.remove(tab);
+              }),
+              title: Text(
+                tab,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              secondary: Text(
+                '${widget.counts[tab] ?? 0}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _selected.isEmpty
+                    ? null
+                    : () => Navigator.of(context).pop(
+                          all.where(_selected.contains).toList(),
+                        ),
+                icon: const Icon(Icons.ios_share_rounded),
+                label:
+                    Text('${AppStrings.exportSelected} (${_selected.length})'),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -822,7 +822,8 @@ class ExcelService {
       _text(AppStrings.childName),
       _text(AppStrings.classLabel),
       for (final c in ordered)
-        _text('${c.title} (${AppDateUtils.toIsoDate(c.weekDate)}) / ${c.maxMark}'),
+        _text(
+            '${c.title} (${AppDateUtils.toIsoDate(c.weekDate)}) / ${c.maxMark}'),
       _text('${AppStrings.totalMarks} / $totalMax'),
     ]);
     var rank = 0;
@@ -883,14 +884,38 @@ class ExcelService {
 
   // ------------------------------------------------------------ event export
 
-  /// A trip's payments, one sheet per tab of the event screen (الكل, حاجزين,
-  /// بدأ الدفع, مسدّد, لم يدفع). Rows are grouped by class then name, and each
-  /// sheet ends with a totals row.
+  /// The tabs of the event screen, in order.
+  static const eventTabs = <String>[
+    AppStrings.all,
+    AppStrings.bookedTab,
+    AppStrings.partialPay,
+    AppStrings.paidInFull,
+    AppStrings.notPaidTab,
+  ];
+
+  /// How many children fall under each of [eventTabs].
+  static Map<String, int> eventTabCounts(List<ChildEventBalance> balances) => {
+        for (final e in _eventTabFilters.entries)
+          e.key: balances.where(e.value).length,
+      };
+
+  static final _eventTabFilters = <String, bool Function(ChildEventBalance)>{
+    AppStrings.all: (_) => true,
+    AppStrings.bookedTab: (b) => b.totalPaid > 0,
+    AppStrings.partialPay: (b) => b.totalPaid > 0 && b.remaining > 0,
+    AppStrings.paidInFull: (b) => b.totalPaid > 0 && b.remaining <= 0,
+    AppStrings.notPaidTab: (b) => b.totalPaid == 0,
+  };
+
+  /// A trip's payments: one sheet for each chosen status ([tabs], from
+  /// [eventTabs], kept in the screen's order). Each sheet holds only that
+  /// status's children, grouped by class then name, and ends with totals.
   static List<int> eventWorkbook({
     required List<ChildEventBalance> balances,
     required Map<String, Map<String, double>> methodByChild,
     required Map<String, String> phones,
     required String Function(String classId) classNameOf,
+    List<String> tabs = const [AppStrings.all],
   }) {
     String status(ChildEventBalance b) => b.totalPaid == 0
         ? AppStrings.notPaidTab
@@ -904,17 +929,13 @@ class ExcelService {
         return byClass != 0 ? byClass : a.childName.compareTo(b.childName);
       });
 
-    final tabs = <String, bool Function(ChildEventBalance)>{
-      AppStrings.all: (_) => true,
-      AppStrings.bookedTab: (b) => b.totalPaid > 0,
-      AppStrings.partialPay: (b) => b.totalPaid > 0 && b.remaining > 0,
-      AppStrings.paidInFull: (b) => b.totalPaid > 0 && b.remaining <= 0,
-      AppStrings.notPaidTab: (b) => b.totalPaid == 0,
-    };
+    final chosen = eventTabs.where(tabs.contains).toList();
+    if (chosen.isEmpty) chosen.add(AppStrings.all);
 
     final book = Excel.createExcel();
-    book.setDefaultSheet(AppStrings.all);
-    for (final tab in tabs.entries) {
+    book.setDefaultSheet(chosen.first);
+    for (final tab
+        in _eventTabFilters.entries.where((e) => chosen.contains(e.key))) {
       final sheet = book[tab.key];
       sheet.isRTL = true;
       sheet.appendRow(<CellValue?>[
@@ -1082,9 +1103,8 @@ class ExcelService {
       bottomBorder: border,
     );
     CellStyle body(bool banded) => CellStyle(
-          backgroundColorHex: banded
-              ? ExcelColor.fromHexString('#EEF3F8')
-              : ExcelColor.none,
+          backgroundColorHex:
+              banded ? ExcelColor.fromHexString('#EEF3F8') : ExcelColor.none,
           horizontalAlign: HorizontalAlign.Center,
           verticalAlign: VerticalAlign.Center,
           leftBorder: border,
