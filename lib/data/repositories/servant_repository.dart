@@ -19,7 +19,13 @@ class ServantRepository {
       final data = includeInactive
           ? await query.order('full_name')
           : await query.eq('is_active', true).order('full_name');
-      return rows(data).map(Profile.fromMap).toList();
+      // Hidden accounts (test accounts) stay out of every servants list.
+      // Filtered here rather than in the query, so a database without the
+      // is_hidden column (the dev project) still works.
+      return rows(data)
+          .map(Profile.fromMap)
+          .where((p) => !p.isHidden)
+          .toList();
     } catch (e) {
       throw AppFailure.from(e);
     }

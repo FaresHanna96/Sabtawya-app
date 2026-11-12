@@ -37,6 +37,7 @@ class Profile {
     required this.fullName,
     required this.role,
     required this.isActive,
+    this.isHidden = false,
     this.email,
     this.mobile,
     this.gender,
@@ -49,6 +50,9 @@ class Profile {
   final String fullName;
   final AppRole role;
   final bool isActive;
+
+  /// Left out of the servants lists (e.g. a test account); still signs in.
+  final bool isHidden;
   final String? email;
   final String? mobile;
 
@@ -72,6 +76,7 @@ class Profile {
         fullName: asText(map['full_name'], AppStrings.unknown),
         role: AppRole.fromWire(map['role']),
         isActive: asBool(map['is_active'], true),
+        isHidden: asBool(map['is_hidden'], false),
         email: asTextOrNull(map['email']),
         mobile: asTextOrNull(map['mobile']),
         gender: Gender.tryParse(map['gender']),
