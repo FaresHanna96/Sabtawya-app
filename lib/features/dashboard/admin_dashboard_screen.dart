@@ -203,7 +203,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               if (data.lowAttendance.isNotEmpty) ...[
                 FadeSlideIn(
                   index: 8,
-                  child: _lowAttendance(data.lowAttendance, childMaxHeld),
+                  child: _lowAttendance(data.lowAttendance),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -351,10 +351,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   /// Lowest attenders: the first five, the rest behind "عرض الكل".
-  Widget _lowAttendance(
-    List<ChildYearReport> all,
-    Map<String, int> maxHeldOf,
-  ) {
+  Widget _lowAttendance(List<ChildYearReport> all) {
     final shown = _showAllLow ? all : all.take(5).toList();
     return SectionCard(
       title: '${AppStrings.lowAttendanceChildren} (${all.length})',
@@ -412,11 +409,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ],
                         ),
                       ),
+                      // Saturdays at Sunday school out of those held, e.g. 2/7.
                       ScoreChip(
                         score: report.points,
-                        maxScore: maxHeldOf[report.childId] ?? report.maxPoints,
+                        maxScore: report.maxPoints,
                         compact: true,
-                        showMax: false,
                       ),
                     ],
                   ),

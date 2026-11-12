@@ -151,13 +151,18 @@ class ReportRepository {
   }) async {
     try {
       final data = await Db.client
-          .from(Db.vChildYearReport)
+          // Sunday school only (not total points), against the Saturdays
+          // held so far: points = Saturdays the child came, max = held.
+          .from(Db.vChildSundaySchool)
           .select()
           .eq('year_id', yearId)
           .eq('child_is_active', true)
           .lt('percentage', threshold)
-          .order('percentage')
-          .order('child_name')
+          // Lowest first. postgrest's order() is DESCENDING by default, which
+          // listed the children just under the threshold instead of the ones
+          // furthest below it.
+          .order('percentage', ascending: true)
+          .order('child_name', ascending: true)
           .limit(limit);
       return rows(data).map(ChildYearReport.fromMap).toList();
     } catch (e) {

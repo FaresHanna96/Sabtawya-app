@@ -31,6 +31,7 @@ class Db {
   static const vSessionScores = 'v_session_scores';
   static const vClassSessionSummary = 'v_class_session_summary';
   static const vChildYearReport = 'v_child_year_report';
+  static const vChildSundaySchool = 'v_child_sunday_school';
   static const vChildMonthlyReport = 'v_child_monthly_report';
   static const vClassYearScores = 'v_class_year_scores';
   static const vAdminStats = 'v_admin_stats';
