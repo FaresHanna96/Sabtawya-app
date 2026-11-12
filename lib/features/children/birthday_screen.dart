@@ -9,6 +9,8 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/class_filter_chips.dart';
+import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/class_repository.dart';
@@ -16,6 +18,7 @@ import '../../data/repositories/servant_repository.dart';
 import '../../data/services/excel_service.dart';
 import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
+import 'child_avatar.dart';
 import 'child_profile_screen.dart';
 
 /// Lists children whose birthday falls in one or more selected months.
@@ -61,6 +64,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
               classIds: [c.classId],
               childId: c.id,
               mobile: c.mobile,
+              child: c,
             ),
       ];
     }
@@ -210,18 +214,14 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
             ),
             if (!_servants && classes.length > 1)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _classChip(null, AppStrings.all, classes),
-                      ...classes.map(
-                        (item) =>
-                            _classChip(item.classId, item.className, classes),
-                      ),
-                    ],
-                  ),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                child: ClassFilterChips(
+                  classes: classes
+                      .map((c) =>
+                          ClassFilterOption(id: c.classId, name: c.className))
+                      .toList(),
+                  selectedId: _classFilter,
+                  onSelected: (id) => setState(() => _classFilter = id),
                 ),
               ),
             Expanded(
@@ -304,18 +304,6 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _classChip(
-      String? classId, String label, List<ClassOverview> classes) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: _classFilter == classId,
-        onSelected: (_) => setState(() => _classFilter = classId),
       ),
     );
   }
@@ -595,6 +583,7 @@ class _Person {
     this.childId,
     this.role,
     this.mobile,
+    this.child,
   });
 
   final String name;
@@ -607,6 +596,9 @@ class _Person {
   /// Set for a servant (أمين الخدمة / خادم / خادم عام).
   final String? role;
   final String? mobile;
+
+  /// The child record (children tab only), for the photo avatar.
+  final Child? child;
 }
 
 /// The age a person turns on their next birthday (today counts as next).
@@ -667,11 +659,18 @@ class _BirthdayTile extends StatelessWidget {
         child: ListTile(
           onTap: onTap,
           contentPadding: const EdgeInsetsDirectional.only(start: 12, end: 4),
-          leading: _DayBadge(
-            day: birth.day,
-            month: showMonth ? birth.month : null,
-            isToday: isToday,
-          ),
+          leading: person.child == null
+              ? _DayBadge(
+                  day: birth.day,
+                  month: showMonth ? birth.month : null,
+                  isToday: isToday,
+                )
+              : _AvatarWithDay(
+                  child: person.child!,
+                  day: birth.day,
+                  month: showMonth ? birth.month : null,
+                  isToday: isToday,
+                ),
           title: Text(
             person.name,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
@@ -697,16 +696,25 @@ class _BirthdayTile extends StatelessWidget {
               ),
             ],
           ),
-          trailing: hasPhone
-              ? IconButton(
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasPhone)
+                IconButton(
                   tooltip: AppStrings.call,
                   icon: const Icon(Icons.call_rounded, size: 20),
                   color: AppColors.success,
                   onPressed: () => launchUrl(
                     Uri(scheme: 'tel', path: person.mobile!.trim()),
                   ),
-                )
-              : null,
+                ),
+              if (onTap != null)
+                const Padding(
+                  padding: EdgeInsetsDirectional.only(end: 6),
+                  child: Icon(AppIcons.forward, color: AppColors.muted),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -759,6 +767,63 @@ class _DayBadge extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A child's photo (or initials) with the birthday's day on a pill below.
+class _AvatarWithDay extends StatelessWidget {
+  const _AvatarWithDay({
+    required this.child,
+    required this.day,
+    required this.isToday,
+    this.month,
+  });
+
+  final Child child;
+  final int day;
+  final int? month;
+  final bool isToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isToday ? AppColors.warning : AppColors.navy;
+    final label =
+        month == null ? '$day' : '$day ${AppDateUtils.monthName(month!)}';
+    return SizedBox(
+      width: 52,
+      height: 56,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          ChildAvatar(child: child, size: 44),
+          Positioned(
+            bottom: 0,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 26, maxWidth: 52),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: isToday ? AppColors.warning : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withValues(alpha: 0.35)),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: isToday ? Colors.white : color,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
