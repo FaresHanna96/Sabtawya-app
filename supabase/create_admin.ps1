@@ -1,20 +1,24 @@
 # create_admin.ps1
 # Creates an admin account in Supabase.
-# Run from the project root: .\supabase\create_admin.ps1 -ServiceRoleKey <key>
+# Run from the project root: .\supabase\create_admin.ps1 -ServiceRoleKey <key> -Password <new password>
 #
 # The service role key is in your Supabase dashboard:
 #   Project Settings → API → service_role (secret)
 
 param(
     [Parameter(Mandatory=$true)]
-    [string]$ServiceRoleKey
+    [string]$ServiceRoleKey,
+
+    # Passed in, never written here: this file is committed.
+    [Parameter(Mandatory=$true)]
+    [string]$Password
 )
 
 $env_json = Get-Content "$PSScriptRoot\..\env.json" | ConvertFrom-Json
 $url      = $env_json.SUPABASE_URL
 
 $email    = "admin@sabtawya.app"
-$password = "jOZ7yfUCJzsU2Drw"
+$password = $Password
 $fullName = "أمين خدمة"
 
 $headers = @{
@@ -96,4 +100,3 @@ try {
 Write-Host ""
 Write-Host "Done! Admin account ready:" -ForegroundColor Green
 Write-Host "  Email   : $email"
-Write-Host "  Password: $password"

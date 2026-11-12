@@ -4,7 +4,8 @@
 -- ============================================================
 -- Credentials for the new admin account:
 --   Email   : admin@sabtawya.app
---   Password: jOZ7yfUCJzsU2Drw
+--   Password: replace CHANGE_ME below with a new one before running.
+--             Never commit a real password to this file.
 -- (delete this file after the account is confirmed working)
 -- ============================================================
 
@@ -31,7 +32,7 @@ BEGIN
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'admin@sabtawya.app',
-      crypt('jOZ7yfUCJzsU2Drw', gen_salt('bf')),
+      crypt('CHANGE_ME', gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}',
       '{"full_name":"أمين خدمة"}',
