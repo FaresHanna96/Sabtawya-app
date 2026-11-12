@@ -83,8 +83,8 @@ class ReportRepository {
       final all = <ChildMonthlyReport>[];
       for (var from = 0;; from += page) {
         final data = await query
-            .order('month_start')
-            .order('child_id')
+            .order('month_start', ascending: true)
+            .order('child_id', ascending: true)
             .range(from, from + page - 1);
         final batch = rows(data);
         all.addAll(batch.map(ChildMonthlyReport.fromMap));

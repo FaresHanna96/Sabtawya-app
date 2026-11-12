@@ -136,7 +136,9 @@ class AttendanceRepository {
           .select()
           .eq('class_id', classId)
           .eq('year_id', yearId)
-          .order('session_date');
+          // Oldest Saturday first. postgrest's order() is descending unless
+          // told otherwise, which listed (and stepped through) them backwards.
+          .order('session_date', ascending: true);
       return rows(data).map(AttendanceSession.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
@@ -153,7 +155,9 @@ class AttendanceRepository {
           .select()
           .eq('class_id', classId)
           .eq('year_id', yearId)
-          .order('session_date');
+          // Oldest Saturday first. postgrest's order() is descending unless
+          // told otherwise, which listed (and stepped through) them backwards.
+          .order('session_date', ascending: true);
       return rows(data).map(SessionSummary.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
@@ -257,7 +261,8 @@ class AttendanceRepository {
       var query =
           Db.client.from(Db.vSessionScores).select().eq('child_id', childId);
       if (yearId != null) query = query.eq('year_id', yearId);
-      final data = await query.order('session_date');
+      // Oldest Saturday first (postgrest sorts descending by default).
+      final data = await query.order('session_date', ascending: true);
       return rows(data).map(ChildSessionScore.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);

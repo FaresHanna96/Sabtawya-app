@@ -402,7 +402,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
         child: ListView(
           shrinkWrap: true,
           children: [
-            for (final date in _sessionDates.reversed)
+            for (final date in _sessionDates)
               ListTile(
                 leading: const Icon(Icons.event_outlined, size: 20),
                 title: Text(AppDateUtils.formatDayDate(date)),

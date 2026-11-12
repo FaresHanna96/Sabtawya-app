@@ -126,17 +126,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                           );
                     },
                   ).toList()
-                    ..sort((a, b) {
-                      final aUpcoming =
-                          a.sessionDate.isAfter(today) && !a.hasData;
-                      final bUpcoming =
-                          b.sessionDate.isAfter(today) && !b.hasData;
-                      if (aUpcoming != bUpcoming) return aUpcoming ? 1 : -1;
-                      if (aUpcoming) {
-                        return a.sessionDate.compareTo(b.sessionDate);
-                      }
-                      return b.sessionDate.compareTo(a.sessionDate);
-                    });
+                    // Oldest Saturday first, the same order as every other
+                    // list of Saturdays in the app.
+                    ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
 
                   // Dates used as picker options.
                   final allDates = all.map((s) => s.sessionDate).toList()

@@ -113,7 +113,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
             final total = held.length;
 
             // Next Saturday first (the one to prepare), then the past ones
-            // newest first, then the rest of the year folded to three.
+            // oldest first, then the rest of the year folded to three.
             final next = data.sessions
                 .where((s) => !s.sessionDate.isBefore(today))
                 .toList()
@@ -124,7 +124,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
             final past = held
                 .where((s) => current == null || s.id != current.id)
                 .toList()
-              ..sort((a, b) => b.sessionDate.compareTo(a.sessionDate));
+              ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
             final laterShown =
                 _showAllUpcoming ? later : later.take(3).toList();
 
