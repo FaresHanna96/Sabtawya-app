@@ -75,8 +75,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _classes = session.myClasses;
     _year = session.currentYear;
     _isAdmin = session.isAdmin;
+    // An admin opens on "كل الفصول" (null); a servant on their first class.
     _classId = widget.initialClassId ??
-        (_classes.isEmpty ? null : _classes.first.classId);
+        (_classes.isEmpty || (_isAdmin && _classes.length > 1)
+            ? null
+            : _classes.first.classId);
     _date = widget.initialDate;
     _load();
   }

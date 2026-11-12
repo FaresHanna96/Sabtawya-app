@@ -52,9 +52,13 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   @override
   void initState() {
     super.initState();
-    final classes = context.read<SessionController>().myClasses;
+    final session = context.read<SessionController>();
+    final classes = session.myClasses;
+    // An admin opens on "كل الفصول" (null); a servant on their first class.
     _classId = widget.initialClassId ??
-        (classes.isEmpty ? null : classes.first.classId);
+        (classes.isEmpty || (session.isAdmin && classes.length > 1)
+            ? null
+            : classes.first.classId);
   }
 
   /// One class, or every class ("كل الفصول", [_classId] null): then each
