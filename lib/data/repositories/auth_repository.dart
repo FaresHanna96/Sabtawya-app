@@ -2,6 +2,7 @@ import '../../core/services/offline_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_failure.dart';
 import '../models/child.dart';
 import '../models/profile.dart';
@@ -47,6 +48,13 @@ class AuthRepository {
     String? occupation,
   }) async {
     try {
+      // One account per person: refuse a name that is already registered
+      // (compared the way the app sorts names, so ى/ي, ة/ه, أ/ا and extra
+      // spaces do not make it "different").
+      if (await _nameTaken(fullName)) {
+        throw AppFailure(AppStrings.nameAlreadyUsed);
+      }
+
       final response = await Db.client.auth.signUp(
         email: email.trim(),
         password: password,
@@ -71,9 +79,38 @@ class AuthRepository {
                 '${birthDate.day.toString().padLeft(2, '0')}',
         },
       );
+      // With email confirmation on, Supabase does not say an email is taken
+      // (so outsiders cannot probe for accounts): it answers with a stand-in
+      // user that has no sign-in identities. Report it as the taken email it
+      // is, instead of "check your email" for a mail that never comes.
+      if (isExistingAccountReply(response.user)) {
+        throw AppFailure(AppStrings.emailAlreadyUsed);
+      }
       return response.session != null;
+    } on AppFailure {
+      rethrow;
     } catch (e) {
       throw AppFailure.from(e);
+    }
+  }
+
+  /// True for Supabase's stand-in reply to a sign-up with a registered email.
+  @visibleForTesting
+  static bool isExistingAccountReply(User? user) =>
+      user != null && user.identities != null && user.identities!.isEmpty;
+
+  /// Asks the database whether an account already has this name. A database
+  /// without the check (the dev project before its migration) lets it pass.
+  Future<bool> _nameTaken(String fullName) async {
+    try {
+      final taken = await Db.client.rpc<dynamic>(
+        'servant_name_taken',
+        params: <String, dynamic>{'p_name': fullName.trim()},
+      );
+      return taken == true;
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202') return false; // function not there yet
+      rethrow;
     }
   }
 

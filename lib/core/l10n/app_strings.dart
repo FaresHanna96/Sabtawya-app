@@ -78,6 +78,8 @@ class AppStrings {
   static const confirmEmailBody =
       'أرسلنا رسالة تأكيد إلى بريدك الإلكتروني. افتح الرابط ثم سجّل الدخول.';
   static const emailAlreadyUsed = 'هذا البريد الإلكتروني مستخدم بالفعل';
+  static const nameAlreadyUsed =
+      'هذا الاسم مسجل بالفعل. لو عندك حساب سجّل الدخول، أو اكتب اسمك كاملاً بشكل مختلف.';
   static const emailRequired = 'البريد الإلكتروني مطلوب';
   static const emailInvalid = 'صيغة البريد الإلكتروني غير صحيحة';
   static const passwordRequired = 'كلمة المرور مطلوبة';
