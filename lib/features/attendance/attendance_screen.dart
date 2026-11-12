@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/celebration.dart';
+import '../../core/widgets/class_filter_chips.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -410,19 +411,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (_classes.length > 1)
-              DropdownButtonFormField<String>(
-                initialValue: _classId,
-                decoration:
-                    const InputDecoration(labelText: AppStrings.classLabel),
-                items: _classes
-                    .map(
-                      (item) => DropdownMenuItem<String>(
-                        value: item.classId,
-                        child: Text(item.className),
-                      ),
-                    )
+              ClassFilterChips(
+                classes: _classes
+                    .map((c) =>
+                        ClassFilterOption(id: c.classId, name: c.className))
                     .toList(),
-                onChanged: _switchClass,
+                selectedId: _classId,
+                showAll: false,
+                onSelected: _switchClass,
               )
             else
               Text(
