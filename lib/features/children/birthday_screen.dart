@@ -372,7 +372,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: ClassFilterChips(
+          child: ClassFilterGrid(
             classes: classes
                 .map((c) => ClassFilterOption(id: c.classId, name: c.className))
                 .toList(),

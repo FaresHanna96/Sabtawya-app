@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
+import '../theme/app_theme.dart';
 
 /// One class to pick from.
 class ClassFilterOption {
@@ -10,14 +11,126 @@ class ClassFilterOption {
   final String name;
 }
 
+/// The class filter every list screen shows: one compact button that says
+/// which class is chosen ("كل الفصول" / "5 بنات"). Tapping it opens the full
+/// [ClassFilterGrid] in a bottom sheet; picking a class closes the sheet.
+///
+/// The grid used to sit on the screen itself, where its two rows of chips
+/// took a large share of a phone screen above every list.
+class ClassFilterChips extends StatelessWidget {
+  const ClassFilterChips({
+    super.key,
+    required this.classes,
+    required this.selectedId,
+    required this.onSelected,
+    this.showAll = true,
+  });
+
+  final List<ClassFilterOption> classes;
+  final String? selectedId;
+  final ValueChanged<String?> onSelected;
+
+  /// Off where one class must always be chosen (e.g. attendance history).
+  final bool showAll;
+
+  String get _label {
+    for (final c in classes) {
+      if (c.id == selectedId) return c.name;
+    }
+    return showAll ? AppStrings.allClasses : AppStrings.selectClass;
+  }
+
+  Future<void> _open(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: ClassFilterGrid(
+            classes: classes,
+            selectedId: selectedId,
+            showAll: showAll,
+            onSelected: (id) {
+              Navigator.of(sheetContext).pop();
+              if (id != selectedId) onSelected(id);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = selectedId != null;
+    return Semantics(
+      button: true,
+      label: '${AppStrings.classLabel}: $_label',
+      excludeSemantics: true,
+      child: Material(
+        color: chosen
+            ? AppColors.navy.withValues(alpha: 0.10)
+            : AppColors.navy.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _open(context),
+          child: Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.navy.withValues(alpha: chosen ? 0.35 : 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.class_outlined,
+                    size: 18, color: AppColors.navy),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+                if (chosen && showAll)
+                  // One tap back to all classes, without opening the sheet.
+                  InkResponse(
+                    radius: 18,
+                    onTap: () => onSelected(null),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child:
+                          Icon(Icons.close, size: 18, color: AppColors.muted),
+                    ),
+                  ),
+                const Icon(Icons.expand_more, size: 20, color: AppColors.muted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Class filter laid out as a tidy grid instead of a ragged row of chips.
 ///
 /// Names like "5 ولاد" / "5 بنات" go in a grid: one column per year, boys on
 /// the first row and girls on the second, with "الكل" beside them. Every cell
 /// has the same width, so nothing needs swiping and the eye finds a class by
 /// year. When the names do not follow that pattern the chips simply wrap.
-class ClassFilterChips extends StatelessWidget {
-  const ClassFilterChips({
+class ClassFilterGrid extends StatelessWidget {
+  const ClassFilterGrid({
     super.key,
     required this.classes,
     required this.selectedId,
