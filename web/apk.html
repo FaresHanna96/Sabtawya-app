@@ -109,8 +109,17 @@
     } catch (e) {}
   }
 
+  // At most one download per visit: the automatic start on Android and any
+  // taps on the button after it are the same person getting the same file.
+  var downloadLogged = false;
+  function logDownload() {
+    if (downloadLogged) return;
+    downloadLogged = true;
+    log('apk_download');
+  }
+
   log('apk_page');
-  dl.addEventListener('click', function () { log('apk_download'); });
+  dl.addEventListener('click', logDownload);
 
   // Put the section for this phone first; iPhone gets no download button.
   var card = document.querySelector('.card');
@@ -120,7 +129,7 @@
   } else if (isAndroid) {
     // Start the download by itself, once.
     document.getElementById('status').textContent = 'جاري تحميل التطبيق…';
-    log('apk_download');
+    logDownload();
     setTimeout(function () { window.location.href = dl.href; }, 400);
   }
 </script>
