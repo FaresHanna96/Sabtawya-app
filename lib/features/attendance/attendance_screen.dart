@@ -19,7 +19,9 @@ import '../../data/repositories/attendance_repository.dart';
 import '../../state/session_controller.dart';
 import '../children/child_filters.dart';
 
-/// Takes attendance for one class on one Saturday.
+/// Takes attendance for one class on one Saturday, or for every class at
+/// once ("كل الفصول"): one list grouped by class, each class still saved to
+/// its own session.
 ///
 /// The three activities are the only thing this screen writes; the score shown
 /// next to each child is recomputed by the database on save, so what is on
@@ -50,9 +52,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String? _classId;
   DateTime? _date;
 
+  /// One session per Saturday, for the date arrows and the picker. With all
+  /// classes it holds one session of each date that any class has.
   List<AttendanceSession> _sessions = const <AttendanceSession>[];
-  AttendanceSheet? _sheet;
+
+  /// The sheet of each class shown: one, or one per class for "كل الفصول".
+  List<AttendanceSheet> _sheets = const <AttendanceSheet>[];
+
+  /// Every child on screen, class after class, and the sheet each belongs to.
   List<AttendanceEntry> _entries = <AttendanceEntry>[];
+  List<AttendanceSheet> _entrySheet = <AttendanceSheet>[];
   List<AttendanceEntry> _original = <AttendanceEntry>[];
 
   bool _loading = true;
@@ -80,13 +89,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return false;
   }
 
-  bool get _isLocked => _sheet?.session.isLocked ?? false;
-  bool get _canEdit => !_isLocked || _isAdmin;
+  AttendanceSheet? get _sheet => _sheets.isEmpty ? null : _sheets.first;
+
+  /// "كل الفصول": every class at once.
+  bool get _allClasses => _classId == null && _classes.length > 1;
+
+  bool get _isLocked => !_allClasses && (_sheet?.session.isLocked ?? false);
+  bool _canEditSheet(AttendanceSheet sheet) =>
+      !sheet.session.isLocked || _isAdmin;
+  bool get _canEdit => _sheets.any(_canEditSheet);
 
   Future<void> _load() async {
-    final classId = _classId;
     final year = _year;
-    if (classId == null || year == null) {
+    final classIds = _allClasses
+        ? _classes.map((c) => c.classId).toList()
+        : [if (_classId != null) _classId!];
+    if (classIds.isEmpty || year == null) {
       setState(() => _loading = false);
       return;
     }
@@ -97,25 +115,43 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     try {
-      final sessions =
-          await _repository.sessions(classId: classId, yearId: year.id);
-      final target = _resolveDate(sessions);
-      final session = target == null
-          ? null
-          : sessions.firstWhere(
-              (item) => AppDateUtils.isSameDay(item.sessionDate, target),
-            );
+      final perClass = await Future.wait([
+        for (final id in classIds)
+          _repository.sessions(classId: id, yearId: year.id),
+      ]);
 
-      final sheet = session == null
-          ? null
-          : await _repository.sheet(session: session, year: year);
+      // One session per date for the arrows and the picker, oldest first.
+      final byDate = <String, AttendanceSession>{};
+      for (final list in perClass) {
+        for (final s in list) {
+          byDate.putIfAbsent(AppDateUtils.toIsoDate(s.sessionDate), () => s);
+        }
+      }
+      final sessions = byDate.values.toList()
+        ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
+
+      final target = _resolveDate(sessions);
+      // That Saturday's session in each class (in the order of the classes).
+      final onDate = <AttendanceSession>[
+        if (target != null)
+          for (final list in perClass)
+            for (final s in list)
+              if (AppDateUtils.isSameDay(s.sessionDate, target)) s,
+      ];
+      final sheets = await Future.wait([
+        for (final s in onDate) _repository.sheet(session: s, year: year),
+      ]);
 
       if (!mounted) return;
       setState(() {
         _sessions = sessions;
         _date = target;
-        _sheet = sheet;
-        _entries = sheet?.entries ?? <AttendanceEntry>[];
+        _sheets = sheets;
+        _entries = [for (final sh in sheets) ...sh.entries];
+        _entrySheet = [
+          for (final sh in sheets)
+            for (final _ in sh.entries) sh,
+        ];
         _original = _entries.map((entry) => entry.clone()).toList();
         _loading = false;
       });
@@ -154,8 +190,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return past.isNotEmpty ? past.last : sessions.first.sessionDate;
   }
 
+  /// [classId] null is "كل الفصول".
   Future<void> _switchClass(String? classId) async {
-    if (classId == null || classId == _classId) return;
+    if (classId == _classId) return;
     if (!await _confirmDiscard()) return;
     setState(() {
       _classId = classId;
@@ -193,7 +230,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _toggle(AttendanceEntry entry, AttendanceActivity activity) {
-    if (!_canEdit) return;
+    final i = _entries.indexOf(entry);
+    if (i < 0 || !_canEditSheet(_entrySheet[i])) return;
     HapticFeedback.selectionClick();
     setState(() {
       switch (activity) {
@@ -213,7 +251,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (!_canEdit) return;
     HapticFeedback.mediumImpact();
     setState(() {
-      for (final entry in _entries) {
+      for (var i = 0; i < _entries.length; i++) {
+        // A locked class stays as it is (unless the admin).
+        if (!_canEditSheet(_entrySheet[i])) continue;
+        final entry = _entries[i];
         entry.sundaySchool = present;
         entry.vespers = present;
         entry.mass = present;
@@ -223,19 +264,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _save() async {
-    final sheet = _sheet;
-    if (sheet == null || !_canEdit) return;
+    if (_sheets.isEmpty || !_canEdit) return;
 
     // Changed lines, plus any child who has no row yet: saving a Saturday
     // records every child, so an absence is stored as a zero rather than as
-    // missing data.
-    final changed = <AttendanceEntry>[];
+    // missing data. Grouped by class session (one or many).
+    final changedBySession = <String, List<AttendanceEntry>>{};
     for (var i = 0; i < _entries.length; i++) {
+      final sheet = _entrySheet[i];
+      if (!_canEditSheet(sheet)) continue;
       if (!_entries[i].sameMarksAs(_original[i]) || !_entries[i].isRecorded) {
-        changed.add(_entries[i]);
+        (changedBySession[sheet.session.id] ??= []).add(_entries[i]);
       }
     }
-    if (changed.isEmpty) {
+    if (changedBySession.isEmpty) {
       Ui.info(context, AppStrings.saved);
       return;
     }
@@ -244,10 +286,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     setState(() => _saving = true);
     final ok = await Ui.runGuarded(
       context,
-      () => _repository.saveEntries(
-        sessionId: sheet.session.id,
-        entries: changed,
-      ),
+      () async {
+        for (final e in changedBySession.entries) {
+          await _repository.saveEntries(sessionId: e.key, entries: e.value);
+        }
+      },
       successMessage: isOffline
           ? AppStrings.attendanceSavedOffline
           : AppStrings.attendanceSaved,
@@ -321,7 +364,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   List<Widget> _appBarActions() {
-    if (!_isAdmin || _sheet == null) return const <Widget>[];
+    // Locking is per class: not offered while all classes are shown.
+    if (!_isAdmin || _sheet == null || _allClasses) return const <Widget>[];
     return [
       IconButton(
         tooltip: _isLocked ? AppStrings.unlockSession : AppStrings.lockSession,
@@ -383,19 +427,65 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
           )
         else
-          for (var i = 0; i < _entries.length; i++)
+          for (var i = 0; i < _entries.length; i++) ...[
+            if (_allClasses && (i == 0 || _entrySheet[i] != _entrySheet[i - 1]))
+              _classHeader(_entrySheet[i]),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: FadeSlideIn(
-                index: i,
-                child: AttendanceEntryCard(
+              child: staggered(
+                i,
+                AttendanceEntryCard(
                   entry: _entries[i],
-                  enabled: _canEdit,
+                  enabled: _canEditSheet(_entrySheet[i]),
                   onToggle: (activity) => _toggle(_entries[i], activity),
                 ),
               ),
             ),
+          ],
       ],
+    );
+  }
+
+  /// "5 بنات — حضر 8 من 12" above each class when all classes are shown.
+  Widget _classHeader(AttendanceSheet sheet) {
+    final name = _classes
+        .firstWhere((c) => c.classId == sheet.session.classId,
+            orElse: () => _classes.first)
+        .className;
+    final present = sheet.entries.where((e) => e.isPresent).length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: AppColors.navy,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
+          if (sheet.session.isLocked) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.lock_outline, size: 16, color: AppColors.warning),
+          ],
+          const Spacer(),
+          Text(
+            '${AppStrings.presentOf} $present ${AppStrings.ofWord} '
+            '${sheet.entries.length}',
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+        ],
+      ),
     );
   }
 
@@ -417,7 +507,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         ClassFilterOption(id: c.classId, name: c.className))
                     .toList(),
                 selectedId: _classId,
-                showAll: false,
                 onSelected: _switchClass,
               )
             else
@@ -430,7 +519,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _dateNavigator(),
             if (sheet != null) ...[
               const SizedBox(height: 12),
-              _progress(sheet),
+              _progress(),
               if (_canEdit) ...[
                 const SizedBox(height: 12),
                 Row(
@@ -551,10 +640,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   /// "حضر 8 من 13" with a bar, a status badge (not taken / partly / done),
   /// and the points as a smaller line.
-  Widget _progress(AttendanceSheet sheet) {
+  Widget _progress() {
     final total = _entries.length;
-    final present = sheet.presentCount;
-    final recorded = sheet.recordedCount;
+    final present = _entries.where((e) => e.isPresent).length;
+    final recorded = _entries.where((e) => e.isRecorded).length;
+    final maxScore = _sheets.fold<int>(0, (sum, sh) => sum + sh.maxScore);
     final ratio = total == 0 ? 0.0 : present / total;
 
     final (statusText, statusColor) = recorded == 0
@@ -637,7 +727,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
             const Spacer(),
             Text(
-              '${AppStrings.totalPoints}: ${_totalScore()}/${sheet.maxScore}',
+              '${AppStrings.totalPoints}: ${_totalScore()}/$maxScore',
               style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
           ],
@@ -835,7 +925,8 @@ class AttendanceEntryCard extends StatelessWidget {
                           points: entry.pointsSundaySchool,
                           selected: entry.sundaySchool,
                           enabled: enabled,
-                          onTap: () => onToggle(AttendanceActivity.sundaySchool),
+                          onTap: () =>
+                              onToggle(AttendanceActivity.sundaySchool),
                         ),
                         const SizedBox(width: 4),
                         _MarkToggle(

@@ -57,11 +57,20 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         (classes.isEmpty ? null : classes.first.classId);
   }
 
+  /// One class, or every class ("كل الفصول", [_classId] null): then each
+  /// Saturday appears once per class, the class named on the row.
   Future<List<SessionSummary>> _load() async {
-    final yearId = context.read<SessionController>().currentYear?.id;
-    final classId = _classId;
-    if (yearId == null || classId == null) return <SessionSummary>[];
-    return _repository.sessionSummaries(classId: classId, yearId: yearId);
+    final session = context.read<SessionController>();
+    final yearId = session.currentYear?.id;
+    if (yearId == null) return <SessionSummary>[];
+    final classIds = _classId != null
+        ? [_classId!]
+        : session.myClasses.map((c) => c.classId).toList();
+    final lists = await Future.wait([
+      for (final id in classIds)
+        _repository.sessionSummaries(classId: id, yearId: yearId),
+    ]);
+    return [for (final l in lists) ...l];
   }
 
   Future<void> _reload() =>
@@ -203,6 +212,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                             itemBuilder: (context, index) {
                               final tile = _SummaryTile(
                                 summary: visible[index],
+                                className: _classId != null
+                                    ? null
+                                    : _classNameOf(
+                                        classes, visible[index].classId),
                                 maxPerSession: maxPerSession,
                                 onTap: () => _open(visible[index]),
                               );
@@ -223,6 +236,13 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     );
   }
 
+  static String? _classNameOf(List<ClassOverview> classes, String classId) {
+    for (final c in classes) {
+      if (c.classId == classId) return c.className;
+    }
+    return null;
+  }
+
   Widget _controls(List<ClassOverview> classes) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
@@ -234,14 +254,14 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
           // instead of a dropdown.
           if (classes.length > 1)
             ClassFilterChips(
-              showAll: false,
               classes: classes
                   .map((c) =>
                       ClassFilterOption(id: c.classId, name: c.className))
                   .toList(),
               selectedId: _classId,
+              // null is "كل الفصول".
               onSelected: (value) {
-                if (value == null || value == _classId) return;
+                if (value == _classId) return;
                 setState(() => _classId = value);
                 _reload();
               },
@@ -280,9 +300,13 @@ class _SummaryTile extends StatelessWidget {
     required this.summary,
     required this.maxPerSession,
     required this.onTap,
+    this.className,
   });
 
   final SessionSummary summary;
+
+  /// Shown when all classes are listed, so each row says whose Saturday it is.
+  final String? className;
   final int maxPerSession;
   final VoidCallback onTap;
 
@@ -344,6 +368,15 @@ class _SummaryTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (className != null)
+                      Text(
+                        className!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navyLight,
+                        ),
+                      ),
                     Text(
                       AppDateUtils.formatDayDate(summary.sessionDate),
                       style: const TextStyle(
