@@ -8,7 +8,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
-import '../../core/widgets/motion.dart';
+import '../../core/widgets/class_group_header.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/school_class.dart';
@@ -211,25 +211,21 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                         )
                       else
                         Expanded(
-                          child: ListView.separated(
+                          // Several classes: a section per class, its
+                          // Saturdays oldest first inside it.
+                          child: ClassGroupedList<SessionSummary>(
+                            items: visible,
+                            grouped: _severalClasses(classes),
+                            classOf: (s) => s.classId,
+                            classOrder: [for (final c in classes) c.classId],
+                            classNameOf: (id) =>
+                                _classNameOf(classes, id) ?? '',
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-                            itemCount: visible.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              final tile = _SummaryTile(
-                                summary: visible[index],
-                                className: _classIds.length == 1
-                                    ? null
-                                    : _classNameOf(
-                                        classes, visible[index].classId),
-                                maxPerSession: maxPerSession,
-                                onTap: () => _open(visible[index]),
-                              );
-                              return index < 12
-                                  ? FadeSlideIn(index: index, child: tile)
-                                  : tile;
-                            },
+                            itemBuilder: (context, summary, _) => _SummaryTile(
+                              summary: summary,
+                              maxPerSession: maxPerSession,
+                              onTap: () => _open(summary),
+                            ),
                           ),
                         ),
                     ],
@@ -242,6 +238,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       ),
     );
   }
+
+  /// More than one class on screen: "كل الفصول" or several ticked.
+  bool _severalClasses(List<ClassOverview> classes) =>
+      _classIds.length > 1 || (_classIds.isEmpty && classes.length > 1);
 
   static String? _classNameOf(List<ClassOverview> classes, String classId) {
     for (final c in classes) {
@@ -305,13 +305,9 @@ class _SummaryTile extends StatelessWidget {
     required this.summary,
     required this.maxPerSession,
     required this.onTap,
-    this.className,
   });
 
   final SessionSummary summary;
-
-  /// Shown when all classes are listed, so each row says whose Saturday it is.
-  final String? className;
   final int maxPerSession;
   final VoidCallback onTap;
 
@@ -373,15 +369,6 @@ class _SummaryTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (className != null)
-                      Text(
-                        className!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navyLight,
-                        ),
-                      ),
                     Text(
                       AppDateUtils.formatDayDate(summary.sessionDate),
                       style: const TextStyle(

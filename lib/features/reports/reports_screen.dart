@@ -9,6 +9,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
+import '../../core/widgets/class_group_header.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/report_repository.dart';
@@ -418,6 +419,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             (r) => _ChildScore(
               childId: r.childId,
               childName: r.childName,
+              classId: r.classId,
               className: r.className,
               points: r.points,
               maxPoints: r.maxPoints,
@@ -443,43 +445,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
     }
 
-    return ListView.separated(
+    return _rankedList<_ChildScore>(
+      rows: scores,
+      classOf: (r) => r.classId,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      itemCount: scores.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final row = scores[index];
-        return Card(
-          margin: EdgeInsets.zero,
-          child: ListTile(
-            onTap: () => Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(
-                builder: (_) => ChildProfileScreen(childId: row.childId),
-              ),
-            ),
-            leading: _RankBadge(rank: index + 1),
-            title: Text(
-              row.childName,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            subtitle: Text(
-              '${row.className} • '
-              '${row.sessionsAttended}/${row.sessionsTotal} '
-              '${AppStrings.attendedSessions}',
-              style: const TextStyle(fontSize: 12),
-            ),
-            trailing: ScoreChip(
-              score: row.points,
-              maxScore: row.maxPoints,
-              compact: true,
-              showMax: false,
-            ),
-          ),
-        );
-      },
+      tile: (r, rank, showClass) => _scoreTile(
+        childId: r.childId,
+        childName: r.childName,
+        className: showClass ? r.className : null,
+        attended: r.sessionsAttended,
+        total: r.sessionsTotal,
+        points: r.points,
+        maxPoints: r.maxPoints,
+        rank: rank,
+      ),
     );
   }
 
@@ -621,46 +600,97 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
         Expanded(
-          child: ListView.separated(
+          child: _rankedList<ChildMonthlyReport>(
+            rows: visible,
+            classOf: (r) => r.classId,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-            itemCount: visible.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final row = visible[index];
-              return Card(
-                margin: EdgeInsets.zero,
-                child: ListTile(
-                  onTap: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ChildProfileScreen(childId: row.childId),
-                    ),
-                  ),
-                  leading: _RankBadge(rank: index + 1),
-                  title: Text(
-                    row.childName,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${row.className} • '
-                    '${row.sessionsAttended}/${row.sessionsTotal} '
-                    '${AppStrings.attendedSessions}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: ScoreChip(
-                    score: row.points,
-                    maxScore: row.maxPoints,
-                    compact: true,
-                    showMax: false,
-                  ),
-                ),
-              );
-            },
+            tile: (r, rank, showClass) => _scoreTile(
+              childId: r.childId,
+              childName: r.childName,
+              className: showClass ? r.className : null,
+              attended: r.sessionsAttended,
+              total: r.sessionsTotal,
+              points: r.points,
+              maxPoints: r.maxPoints,
+              rank: rank,
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  /// More than one class on screen: "كل الفصول" or several ticked.
+  bool get _severalClasses {
+    final mine = context.read<SessionController>().myClasses;
+    return _classIds.length > 1 || (_classIds.isEmpty && mine.length > 1);
+  }
+
+  /// A ranking, best first. With several classes: a section per class, the
+  /// rank restarting at 1 in each; otherwise one ranking for everyone.
+  Widget _rankedList<T>({
+    required List<T> rows,
+    required String Function(T row) classOf,
+    required Widget Function(T row, int rank, bool showClass) tile,
+    required EdgeInsetsGeometry padding,
+  }) {
+    final classes = context.read<SessionController>().myClasses;
+    final grouped = _severalClasses;
+    return ClassGroupedList<T>(
+      items: rows,
+      grouped: grouped,
+      classOf: classOf,
+      classOrder: [for (final c in classes) c.classId],
+      classNameOf: (id) {
+        for (final c in classes) {
+          if (c.classId == id) return c.className;
+        }
+        return '';
+      },
+      padding: padding,
+      animate: false,
+      // The header names the class, so the row does not repeat it.
+      itemBuilder: (context, row, i) => tile(row, i + 1, !grouped),
+    );
+  }
+
+  Widget _scoreTile({
+    required String childId,
+    required String childName,
+    required String? className,
+    required int attended,
+    required int total,
+    required int points,
+    required int maxPoints,
+    required int rank,
+  }) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        onTap: () => Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => ChildProfileScreen(childId: childId),
+          ),
+        ),
+        leading: _RankBadge(rank: rank),
+        title: Text(
+          childName,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          [
+            if (className != null) className,
+            '$attended/$total ${AppStrings.attendedSessions}',
+          ].join(' • '),
+          style: const TextStyle(fontSize: 12),
+        ),
+        trailing: ScoreChip(
+          score: points,
+          maxScore: maxPoints,
+          compact: true,
+          showMax: false,
+        ),
+      ),
     );
   }
 
@@ -677,6 +707,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return _ChildScore(
         childId: e.key,
         childName: first.childName,
+        classId: first.classId,
         className: first.className,
         points: e.value.fold<int>(0, (a, r) => a + r.score),
         maxPoints: e.value.length * data.maxPerSession,
@@ -716,6 +747,7 @@ class _ChildScore {
   const _ChildScore({
     required this.childId,
     required this.childName,
+    required this.classId,
     required this.className,
     required this.points,
     required this.maxPoints,
@@ -725,6 +757,7 @@ class _ChildScore {
 
   final String childId;
   final String childName;
+  final String classId;
   final String className;
   final int points;
   final int maxPoints;

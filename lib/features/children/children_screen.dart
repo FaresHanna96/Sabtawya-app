@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/widgets/app_widgets.dart';
-import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
+import '../../core/widgets/class_group_header.dart';
 import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
@@ -157,25 +157,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                             ),
                           ],
                         )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-                          itemCount: visible.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final tile = ChildTile(
-                              child: visible[index],
-                              className:
-                                  _classNameOf(classes, visible[index].classId),
-                              onTap: () => _openProfile(visible[index]),
-                            );
-                            // Only the first screenful slides in, so rows
-                            // further down never wait on a delay.
-                            return index < 12
-                                ? FadeSlideIn(index: index, child: tile)
-                                : tile;
-                          },
-                        ),
+                      : _list(visible, classes),
                 ),
               ],
             );
@@ -207,6 +189,31 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
           setState(() => _classFilter = ids);
           _reload();
         },
+      ),
+    );
+  }
+
+  /// More than one class on screen: "كل الفصول" or several ticked.
+  bool _severalClasses(List<ClassOverview> classes) =>
+      _classFilter.length > 1 || (_classFilter.isEmpty && classes.length > 1);
+
+  /// The children, under a header per class when several classes are shown
+  /// (names A-Z inside each, as filtered); one plain list otherwise.
+  Widget _list(List<Child> visible, List<ClassOverview> classes) {
+    final grouped = _severalClasses(classes);
+    return ClassGroupedList<Child>(
+      items: visible,
+      grouped: grouped,
+      classOf: (c) => c.classId,
+      classOrder: [for (final c in classes) c.classId],
+      classNameOf: (id) => _classNameOf(classes, id) ?? '',
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+      spacing: 10,
+      itemBuilder: (context, child, _) => ChildTile(
+        child: child,
+        // The header already names the class.
+        className: grouped ? null : _classNameOf(classes, child.classId),
+        onTap: () => _openProfile(child),
       ),
     );
   }

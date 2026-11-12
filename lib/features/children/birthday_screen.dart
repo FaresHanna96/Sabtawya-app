@@ -10,6 +10,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/class_filter_chips.dart';
+import '../../core/widgets/class_group_header.dart';
 import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
@@ -272,6 +273,30 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                   final todayCount =
                       visible.where((p) => _isToday(p.birth)).length;
 
+                  // Children of several classes: a section per class, by
+                  // date inside it (the month shows on each day badge).
+                  final severalClasses = _classFilter.length > 1 ||
+                      (_classFilter.isEmpty && classes.length > 1);
+                  if (!_servants && severalClasses) {
+                    return ClassGroupedList<_Person>(
+                      items: visible,
+                      grouped: true,
+                      classOf: (p) =>
+                          p.classIds.isEmpty ? '' : p.classIds.first,
+                      classOrder: [for (final c in classes) c.classId],
+                      classNameOf: (id) => _classNameOf(classes, id) ?? '',
+                      leading: _Summary(
+                        count: visible.length,
+                        todayCount: todayCount,
+                      ),
+                      itemBuilder: (context, person, _) => _BirthdayTile(
+                        person: person,
+                        showMonth: grouped,
+                        onTap: () => _openChild(person),
+                      ),
+                    );
+                  }
+
                   return ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                     itemCount: items.length + 1,
@@ -298,13 +323,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                                 .join('، '),
                             onTap: person.childId == null
                                 ? null
-                                : () => Navigator.of(context).push<void>(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => ChildProfileScreen(
-                                          childId: person.childId!,
-                                        ),
-                                      ),
-                                    ),
+                                : () => _openChild(person),
                           ),
                         ),
                       );
@@ -315,6 +334,15 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openChild(_Person person) {
+    if (person.childId == null) return;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ChildProfileScreen(childId: person.childId!),
       ),
     );
   }

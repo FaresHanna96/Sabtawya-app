@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/widgets/celebration.dart';
 import '../../core/widgets/class_filter_chips.dart';
+import '../../core/widgets/class_group_header.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -461,32 +462,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             orElse: () => _classes.first)
         .className;
     final present = sheet.entries.where((e) => e.isPresent).length;
-    return Padding(
+    // The same header as every other list grouped by class, with this
+    // class's lock and present count on the end.
+    return ClassGroupHeader(
+      name: name,
+      count: sheet.entries.length,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-      child: Row(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 4,
-            height: 18,
-            decoration: BoxDecoration(
-              color: AppColors.navy,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            name,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
-            ),
-          ),
           if (sheet.session.isLocked) ...[
-            const SizedBox(width: 6),
             const Icon(Icons.lock_outline, size: 16, color: AppColors.warning),
+            const SizedBox(width: 6),
           ],
-          const Spacer(),
           Text(
             '${AppStrings.presentOf} $present ${AppStrings.ofWord} '
             '${sheet.entries.length}',
