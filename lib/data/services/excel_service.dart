@@ -169,6 +169,28 @@ class ChildScoreRow {
   final int points;
 }
 
+/// One line of the birthdays screen, as listed (already narrowed to the
+/// months and class the user picked).
+class BirthdayRow {
+  const BirthdayRow({
+    required this.name,
+    required this.birthDate,
+    required this.turningAge,
+    this.className,
+    this.role,
+    this.mobile,
+  });
+
+  final String name;
+  final DateTime birthDate;
+  final int turningAge;
+  final String? className;
+
+  /// Servants only: أمين الخدمة / خادم / خادم عام.
+  final String? role;
+  final String? mobile;
+}
+
 /// One class's line on the reports screen.
 class ClassScoreRow {
   const ClassScoreRow({
@@ -765,6 +787,38 @@ class ExcelService {
         DoubleCellValue(
           row.maxPoints > 0 ? row.points / row.maxPoints * 100 : 0,
         ),
+      ]);
+    }
+    return _encode(book);
+  }
+
+  /// The birthdays screen, in the order it lists them (by day of the month).
+  /// [servants] adds the role column the servants tab shows.
+  static List<int> birthdaysWorkbook(
+    List<BirthdayRow> rows, {
+    required bool servants,
+  }) {
+    final (book, sheet) = _book(AppStrings.birthdaysTitle);
+    sheet.appendRow(<CellValue?>[
+      _text(AppStrings.dayOfMonth),
+      _text(AppStrings.month),
+      _text(AppStrings.personName),
+      if (servants) _text(AppStrings.role),
+      _text(AppStrings.classLabel),
+      _text(AppStrings.birthDate),
+      _text(AppStrings.turningAgeColumn),
+      _text(AppStrings.mobile),
+    ]);
+    for (final row in rows) {
+      sheet.appendRow(<CellValue?>[
+        IntCellValue(row.birthDate.day),
+        _text(AppDateUtils.monthName(row.birthDate.month)),
+        _text(row.name),
+        if (servants) _text(row.role),
+        _text(row.className),
+        _text(AppDateUtils.toIsoDate(row.birthDate)),
+        IntCellValue(row.turningAge),
+        _text(row.mobile),
       ]);
     }
     return _encode(book);

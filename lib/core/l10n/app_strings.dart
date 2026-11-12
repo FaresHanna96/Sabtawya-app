@@ -314,6 +314,9 @@ class AppStrings {
   static const servantBirthdays = 'أعياد ميلاد الخدام';
   static const childBirthdaysShort = 'المخدومين';
   static const servantBirthdaysShort = 'الخدام';
+  static const dayOfMonth = 'اليوم';
+  static const personName = 'الاسم';
+  static const turningAgeColumn = 'يكمل (سنة)';
   static const attendanceSummary = 'ملخص الحضور';
   static const monthlyBreakdown = 'التفصيل الشهري';
   static const searchChildHint = 'ابحث بالاسم أو الموبايل أو الكود';

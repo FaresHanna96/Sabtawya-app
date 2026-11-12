@@ -5,12 +5,15 @@ import '../../core/widgets/motion.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../data/repositories/servant_repository.dart';
+import '../../data/services/excel_service.dart';
+import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
 import 'child_profile_screen.dart';
 
@@ -40,6 +43,11 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
 
   String? _classFilter;
 
+  /// Everyone loaded for the current tab, kept so the export writes exactly
+  /// the list on screen (same months, class and order).
+  List<_Person> _all = const [];
+  bool _exporting = false;
+
   Future<List<_Person>> _load() async {
     if (!_servants) {
       final children = await _repository.all(includeInactive: false);
@@ -51,6 +59,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
               birth: c.birthDate!,
               classIds: [c.classId],
               childId: c.id,
+              mobile: c.mobile,
             ),
       ];
     }
@@ -67,8 +76,59 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                 if (a.servantId == p.id) a.classId,
             ],
             role: p.roleLabel,
+            mobile: p.mobile,
           ),
     ];
+  }
+
+  Future<void> _export(List<ClassOverview> classes) async {
+    final visible = _filter(_all);
+    if (_exporting) return;
+    if (visible.isEmpty) {
+      Ui.info(context, AppStrings.noData);
+      return;
+    }
+    final rows = [
+      for (final p in visible)
+        BirthdayRow(
+          name: p.name,
+          birthDate: p.birth,
+          turningAge: turningAge(p.birth, DateTime.now()),
+          role: p.role,
+          mobile: p.mobile,
+          className: p.classIds
+              .map((id) => _classNameOf(classes, id))
+              .whereType<String>()
+              .join('، '),
+        ),
+    ];
+    final months = (_selectedMonths.toList()..sort())
+        .map(AppDateUtils.monthName)
+        .join('، ');
+    String? classPart;
+    if (_classFilter != null) classPart = _classNameOf(classes, _classFilter!);
+    final name = [
+      AppStrings.birthdaysTitle,
+      _servants
+          ? AppStrings.servantBirthdaysShort
+          : AppStrings.childBirthdaysShort,
+      if (classPart != null) classPart,
+      months,
+    ].join(' - ');
+
+    setState(() => _exporting = true);
+    try {
+      await FileService.saveAndShare(
+        fileName: FileService.timestampedName(name),
+        bytes: ExcelService.birthdaysWorkbook(rows, servants: _servants),
+        shareText: name,
+      );
+      if (mounted) Ui.success(context, AppStrings.exportDone);
+    } catch (e) {
+      if (mounted) Ui.error(context, e);
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
   }
 
   List<_Person> _filter(List<_Person> all) {
@@ -93,7 +153,26 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
     final classes = context.watch<SessionController>().myClasses;
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.birthdaysTitle)),
+      appBar: AppBar(
+        title: const Text(AppStrings.birthdaysTitle),
+        actions: [
+          // Exports the list on screen: the tab, months and class chosen.
+          IconButton(
+            tooltip: AppStrings.exportTitle,
+            onPressed: _exporting ? null : () => _export(classes),
+            icon: _exporting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.ios_share),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -146,6 +225,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                 key: _sectionKey,
                 load: _load,
                 builder: (context, all, _) {
+                  _all = all;
                   final visible = _filter(all);
                   if (_selectedMonths.isEmpty) {
                     return const EmptyState(
@@ -350,6 +430,7 @@ class _Person {
     required this.classIds,
     this.childId,
     this.role,
+    this.mobile,
   });
 
   final String name;
@@ -361,6 +442,14 @@ class _Person {
 
   /// Set for a servant (أمين الخدمة / خادم / خادم عام).
   final String? role;
+  final String? mobile;
+}
+
+/// The age a person turns on their next birthday (today counts as next).
+int turningAge(DateTime birth, DateTime today) {
+  final day = DateTime(today.year, today.month, today.day);
+  final thisYear = DateTime(today.year, birth.month, birth.day);
+  return today.year - birth.year + (thisYear.isBefore(day) ? 1 : 0);
 }
 
 class _BirthdayTile extends StatelessWidget {
@@ -379,9 +468,7 @@ class _BirthdayTile extends StatelessWidget {
     final birth = person.birth;
     final today = DateTime.now();
     final isToday = birth.month == today.month && birth.day == today.day;
-    final nextAge = today.year -
-        birth.year +
-        (DateTime(today.year, birth.month, birth.day).isBefore(today) ? 1 : 0);
+    final nextAge = turningAge(birth, today);
 
     return Card(
       margin: EdgeInsets.zero,
