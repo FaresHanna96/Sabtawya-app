@@ -37,7 +37,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<List<SessionSummary>>>();
 
-  String? _classId;
+  /// The classes chosen; empty is "كل الفصول".
+  Set<String> _classIds = <String>{};
 
   /// When on, Saturdays with no records yet are hidden.
   bool _recordedOnly = false;
@@ -54,22 +55,24 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     super.initState();
     final session = context.read<SessionController>();
     final classes = session.myClasses;
-    // An admin opens on "كل الفصول" (null); a servant on their first class.
-    _classId = widget.initialClassId ??
-        (classes.isEmpty || (session.isAdmin && classes.length > 1)
-            ? null
-            : classes.first.classId);
+    // An admin opens on "كل الفصول" (empty); a servant on their first class.
+    _classIds = widget.initialClassId != null
+        ? {widget.initialClassId!}
+        : (classes.isEmpty || (session.isAdmin && classes.length > 1))
+            ? <String>{}
+            : {classes.first.classId};
   }
 
-  /// One class, or every class ("كل الفصول", [_classId] null): then each
+  /// The chosen classes (all when none is ticked): with more than one, each
   /// Saturday appears once per class, the class named on the row.
   Future<List<SessionSummary>> _load() async {
     final session = context.read<SessionController>();
     final yearId = session.currentYear?.id;
     if (yearId == null) return <SessionSummary>[];
-    final classIds = _classId != null
-        ? [_classId!]
-        : session.myClasses.map((c) => c.classId).toList();
+    final classIds = [
+      for (final c in session.myClasses)
+        if (_classIds.isEmpty || _classIds.contains(c.classId)) c.classId,
+    ];
     final lists = await Future.wait([
       for (final id in classIds)
         _repository.sessionSummaries(classId: id, yearId: yearId),
@@ -216,7 +219,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                             itemBuilder: (context, index) {
                               final tile = _SummaryTile(
                                 summary: visible[index],
-                                className: _classId != null
+                                className: _classIds.length == 1
                                     ? null
                                     : _classNameOf(
                                         classes, visible[index].classId),
@@ -262,11 +265,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                   .map((c) =>
                       ClassFilterOption(id: c.classId, name: c.className))
                   .toList(),
-              selectedId: _classId,
-              // null is "كل الفصول".
-              onSelected: (value) {
-                if (value == _classId) return;
-                setState(() => _classId = value);
+              selectedIds: _classIds,
+              onChanged: (ids) {
+                setState(() => _classIds = ids);
                 _reload();
               },
             )

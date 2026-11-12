@@ -45,7 +45,8 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
   /// Selected months (1–12). Empty = no filter (show all).
   Set<int> _selectedMonths = {DateTime.now().month};
 
-  String? _classFilter;
+  /// The classes chosen; empty is all of them.
+  Set<String> _classFilter = <String>{};
 
   /// Everyone loaded for the current tab, kept so the export writes exactly
   /// the list on screen (same months, class and order).
@@ -111,7 +112,9 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
         .map(AppDateUtils.monthName)
         .join('، ');
     String? classPart;
-    if (_classFilter != null) classPart = _classNameOf(classes, _classFilter!);
+    if (_classFilter.isNotEmpty) {
+      classPart = ClassFilterChips.labelFor(_options(classes), _classFilter);
+    }
     final name = [
       AppStrings.birthdaysTitle,
       _servants
@@ -142,7 +145,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
         .where(
           (c) =>
               _selectedMonths.contains(c.birth.month) &&
-              (_classFilter == null || c.classIds.contains(_classFilter)),
+              (_classFilter.isEmpty || c.classIds.any(_classFilter.contains)),
         )
         .toList()
       ..sort((a, b) {
@@ -203,7 +206,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                 selected: {_servants},
                 onSelectionChanged: (value) => setState(() {
                   _servants = value.first;
-                  _classFilter = null;
+                  _classFilter = <String>{};
                   _sectionKey.currentState?.reload();
                 }),
               ),
@@ -222,13 +225,10 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                   if (!_servants && classes.length > 1) ...[
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _FilterButton(
-                        icon: Icons.class_outlined,
-                        label: _classFilter == null
-                            ? AppStrings.allClasses
-                            : (_classNameOf(classes, _classFilter!) ??
-                                AppStrings.allClasses),
-                        onTap: () => _pickClass(classes),
+                      child: ClassFilterChips(
+                        classes: _options(classes),
+                        selectedIds: _classFilter,
+                        onChanged: (ids) => setState(() => _classFilter = ids),
                       ),
                     ),
                   ],
@@ -365,27 +365,10 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
     );
   }
 
-  Future<void> _pickClass(List<ClassOverview> classes) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: ClassFilterGrid(
-            classes: classes
-                .map((c) => ClassFilterOption(id: c.classId, name: c.className))
-                .toList(),
-            selectedId: _classFilter,
-            onSelected: (id) {
-              setState(() => _classFilter = id);
-              Navigator.of(sheetContext).pop();
-            },
-          ),
-        ),
-      ),
-    );
-  }
+  static List<ClassFilterOption> _options(List<ClassOverview> classes) => [
+        for (final c in classes)
+          ClassFilterOption(id: c.classId, name: c.className),
+      ];
 
   static bool _isToday(DateTime birth) {
     final now = DateTime.now();

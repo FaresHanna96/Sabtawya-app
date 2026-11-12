@@ -33,7 +33,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<_ReportsData>>();
 
-  String? _classId;
+  /// The classes chosen; empty is all of them.
+  Set<String> _classIds = <String>{};
+
+  bool _inClasses(String classId) =>
+      _classIds.isEmpty || _classIds.contains(classId);
 
   DateGranularity? _granularity;
   DateTime? _filterFrom;
@@ -54,16 +58,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final maxPerSession =
         context.read<SessionController>().currentYear?.maxPointsPerSession ??
             20;
+    // One class: the database narrows it. Several: narrowed below.
+    final oneClass = _classIds.length == 1 ? _classIds.first : null;
     // The three reads are independent, so run them side by side.
     final (children, classes, monthly) = await (
-      _reports.childYearReports(yearId: yearId, classId: _classId),
+      _reports.childYearReports(yearId: yearId, classId: oneClass),
       _reports.classScores(yearId),
-      _reports.childMonthly(yearId: yearId, classId: _classId),
+      _reports.childMonthly(yearId: yearId, classId: oneClass),
     ).wait;
     return _latest = _ReportsData(
-      children: children,
-      classes: classes,
-      monthly: monthly,
+      children: children.where((r) => _inClasses(r.classId)).toList(),
+      classes: classes.where((r) => _inClasses(r.classId)).toList(),
+      monthly: monthly.where((r) => _inClasses(r.classId)).toList(),
       maxPerSession: maxPerSession,
     );
   }
@@ -112,9 +118,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   /// The loaded Saturdays narrowed to the chosen class.
-  List<SessionScore>? get _rangeRows => _sessions
-      ?.where((r) => _classId == null || r.classId == _classId)
-      .toList();
+  List<SessionScore>? get _rangeRows =>
+      _sessions?.where((r) => _inClasses(r.classId)).toList();
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
@@ -129,10 +134,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
 
     final session = context.read<SessionController>();
-    var scope = AppStrings.all;
-    for (final item in session.myClasses) {
-      if (item.classId == _classId) scope = item.className;
-    }
+    final scope = _classIds.isEmpty
+        ? AppStrings.all
+        : ClassFilterChips.labelFor(
+            [
+              for (final c in session.myClasses)
+                ClassFilterOption(id: c.classId, name: c.className),
+            ],
+            _classIds,
+          );
 
     // " - 2026-10-03 إلى 2026-10-31" when a date range is chosen.
     String iso(DateTime d) => AppDateUtils.toIsoDate(d);
@@ -292,10 +302,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         .map((c) =>
                             ClassFilterOption(id: c.classId, name: c.className))
                         .toList(),
-                    selectedId: _classId,
-                    onSelected: (id) {
+                    selectedIds: _classIds,
+                    onChanged: (ids) {
                       // The period stays: class and period combine.
-                      setState(() => _classId = id);
+                      setState(() => _classIds = ids);
                       _reload();
                     },
                   ),

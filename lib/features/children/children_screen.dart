@@ -36,7 +36,9 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
   final _searchController = TextEditingController();
 
   ChildFilter _filter = const ChildFilter();
-  String? _classFilter;
+
+  /// The classes chosen; empty is all of them.
+  Set<String> _classFilter = <String>{};
 
   @override
   void dispose() {
@@ -46,10 +48,15 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
 
   // Inactive children are fetched whenever the toggle is on; the filter then
   // narrows in memory so chip taps stay instant.
-  Future<List<Child>> _load() => _repository.all(
-        includeInactive: true,
-        classId: _classFilter,
-      );
+  Future<List<Child>> _load() async {
+    final all = await _repository.all(
+      includeInactive: true,
+      // One class: let the database narrow it. Several: narrow here.
+      classId: _classFilter.length == 1 ? _classFilter.first : null,
+    );
+    if (_classFilter.length <= 1) return all;
+    return all.where((c) => _classFilter.contains(c.classId)).toList();
+  }
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
@@ -57,7 +64,9 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
   Future<void> _addChild() async {
     final added = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => ChildFormScreen(initialClassId: _classFilter),
+        builder: (_) => ChildFormScreen(
+            initialClassId:
+                (_classFilter.length == 1 ? _classFilter.first : null)),
       ),
     );
     if (added == true) await _reload();
@@ -66,7 +75,10 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
   Future<void> _importChildren() async {
     final imported = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => ImportChildrenScreen(initialClassId: _classFilter),
+        builder: (_) => ImportChildrenScreen(
+          initialClassId:
+              (_classFilter.length == 1 ? _classFilter.first : null),
+        ),
       ),
     );
     if (imported == true) await _reload();
@@ -190,9 +202,9 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
         classes: classes
             .map((c) => ClassFilterOption(id: c.classId, name: c.className))
             .toList(),
-        selectedId: _classFilter,
-        onSelected: (id) {
-          setState(() => _classFilter = id);
+        selectedIds: _classFilter,
+        onChanged: (ids) {
+          setState(() => _classFilter = ids);
           _reload();
         },
       ),

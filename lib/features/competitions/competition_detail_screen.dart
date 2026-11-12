@@ -50,7 +50,9 @@ class _MarksTabState extends State<_MarksTab> {
   final _controllers = <String, TextEditingController>{};
 
   String _query = '';
-  String? _classId;
+
+  /// The classes chosen; empty is all of them.
+  Set<String> _classIds = <String>{};
 
   @override
   void dispose() {
@@ -154,7 +156,7 @@ class _MarksTabState extends State<_MarksTab> {
         final byClass = <String, List<Map<String, dynamic>>>{};
         for (final row in rows) {
           final classId = row['class_id'] as String? ?? '';
-          if (_classId != null && classId != _classId) continue;
+          if (_classIds.isNotEmpty && !_classIds.contains(classId)) continue;
           if (query.isNotEmpty &&
               !(row['full_name']?.toString() ?? '').contains(query)) {
             continue;
@@ -192,8 +194,8 @@ class _MarksTabState extends State<_MarksTab> {
                     for (final id in allClassIds)
                       ClassFilterOption(id: id, name: className(id)),
                   ],
-                  selectedId: _classId,
-                  onSelected: (id) => setState(() => _classId = id),
+                  selectedIds: _classIds,
+                  onChanged: (ids) => setState(() => _classIds = ids),
                 ),
               ),
             Expanded(

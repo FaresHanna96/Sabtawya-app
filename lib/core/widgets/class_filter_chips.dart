@@ -12,61 +12,62 @@ class ClassFilterOption {
 }
 
 /// The class filter every list screen shows: one compact button that says
-/// which class is chosen ("كل الفصول" / "5 بنات"). Tapping it opens the full
-/// [ClassFilterGrid] in a bottom sheet; picking a class closes the sheet.
+/// which classes are chosen ("كل الفصول", "5 بنات", "5 بنات، 6 بنات",
+/// "3 فصول"). Tapping it opens [ClassFilterGrid] in a bottom sheet, where
+/// several classes can be ticked; "تم" applies them.
 ///
-/// The grid used to sit on the screen itself, where its two rows of chips
-/// took a large share of a phone screen above every list.
+/// [selectedIds] empty means every class. The grid used to sit on the screen
+/// itself, where its two rows of chips took a large share of a phone screen.
 class ClassFilterChips extends StatelessWidget {
   const ClassFilterChips({
     super.key,
     required this.classes,
-    required this.selectedId,
-    required this.onSelected,
-    this.showAll = true,
+    required this.selectedIds,
+    required this.onChanged,
   });
 
   final List<ClassFilterOption> classes;
-  final String? selectedId;
-  final ValueChanged<String?> onSelected;
 
-  /// Off where one class must always be chosen (e.g. attendance history).
-  final bool showAll;
+  /// The chosen classes; empty for all of them.
+  final Set<String> selectedIds;
+  final ValueChanged<Set<String>> onChanged;
 
-  String get _label {
-    for (final c in classes) {
-      if (c.id == selectedId) return c.name;
+  /// What the button says for [selectedIds] out of [classes].
+  static String labelFor(
+      List<ClassFilterOption> classes, Set<String> selectedIds) {
+    final chosen = [
+      for (final c in classes)
+        if (selectedIds.contains(c.id)) c.name,
+    ];
+    if (chosen.isEmpty || chosen.length == classes.length) {
+      return AppStrings.allClasses;
     }
-    return showAll ? AppStrings.allClasses : AppStrings.selectClass;
+    if (chosen.length <= 2) return chosen.join('، ');
+    return AppStrings.classesCount(chosen.length);
   }
 
   Future<void> _open(BuildContext context) async {
-    await showModalBottomSheet<void>(
+    final picked = await showModalBottomSheet<Set<String>>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: ClassFilterGrid(
-            classes: classes,
-            selectedId: selectedId,
-            showAll: showAll,
-            onSelected: (id) {
-              Navigator.of(sheetContext).pop();
-              if (id != selectedId) onSelected(id);
-            },
-          ),
-        ),
-      ),
+      isScrollControlled: true,
+      builder: (_) => _ClassSheet(classes: classes, initial: selectedIds),
     );
+    if (picked == null) return;
+    // Every class ticked is the same as all of them.
+    final next = picked.length == classes.length ? <String>{} : picked;
+    if (next.length != selectedIds.length || !next.containsAll(selectedIds)) {
+      onChanged(next);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final chosen = selectedId != null;
+    final chosen = selectedIds.isNotEmpty;
+    final label = labelFor(classes, selectedIds);
     return Semantics(
       button: true,
-      label: '${AppStrings.classLabel}: $_label',
+      label: '${AppStrings.classLabel}: $label',
       excludeSemantics: true,
       child: Material(
         color: chosen
@@ -92,7 +93,7 @@ class ClassFilterChips extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _label,
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -102,11 +103,11 @@ class ClassFilterChips extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (chosen && showAll)
+                if (chosen)
                   // One tap back to all classes, without opening the sheet.
                   InkResponse(
                     radius: 18,
-                    onTap: () => onSelected(null),
+                    onTap: () => onChanged(<String>{}),
                     child: const Padding(
                       padding: EdgeInsets.all(4),
                       child:
@@ -123,29 +124,89 @@ class ClassFilterChips extends StatelessWidget {
   }
 }
 
+/// The sheet: tick classes, then "تم". "الكل" clears the ticks.
+class _ClassSheet extends StatefulWidget {
+  const _ClassSheet({required this.classes, required this.initial});
+
+  final List<ClassFilterOption> classes;
+  final Set<String> initial;
+
+  @override
+  State<_ClassSheet> createState() => _ClassSheetState();
+}
+
+class _ClassSheetState extends State<_ClassSheet> {
+  late final Set<String> _picked = {...widget.initial};
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                AppStrings.pickClasses,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+            ),
+            ClassFilterGrid(
+              classes: widget.classes,
+              selectedIds: _picked,
+              onToggle: (id) => setState(() {
+                if (id == null) {
+                  _picked.clear();
+                } else if (!_picked.remove(id)) {
+                  _picked.add(id);
+                }
+              }),
+            ),
+            const SizedBox(height: 14),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(_picked),
+              child: Text(
+                _picked.isEmpty
+                    ? AppStrings.done
+                    : '${AppStrings.done} (${ClassFilterChips.labelFor(widget.classes, _picked)})',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Class filter laid out as a tidy grid instead of a ragged row of chips.
 ///
 /// Names like "5 ولاد" / "5 بنات" go in a grid: one column per year, boys on
 /// the first row and girls on the second, with "الكل" beside them. Every cell
 /// has the same width, so nothing needs swiping and the eye finds a class by
 /// year. When the names do not follow that pattern the chips simply wrap.
+///
+/// Several classes can be ticked; [onToggle] gets a class id, or null for
+/// "الكل" (which is ticked while nothing else is).
 class ClassFilterGrid extends StatelessWidget {
   const ClassFilterGrid({
     super.key,
     required this.classes,
-    required this.selectedId,
-    required this.onSelected,
-    this.showAll = true,
+    required this.selectedIds,
+    required this.onToggle,
   });
 
-  /// Off where one class must always be chosen (e.g. attendance history).
-  final bool showAll;
-
   final List<ClassFilterOption> classes;
-
-  /// The chosen class, or null for "all".
-  final String? selectedId;
-  final ValueChanged<String?> onSelected;
+  final Set<String> selectedIds;
+  final ValueChanged<String?> onToggle;
 
   static final _pattern = RegExp(r'^\s*(\d+)\s*(ولاد|بنات)\s*$');
 
@@ -169,7 +230,7 @@ class ClassFilterGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         const gap = 6.0;
-        final columns = years.length + (showAll ? 1 : 0); // + "الكل"
+        final columns = years.length + 1; // + "الكل"
         final cell = (box.maxWidth - gap * (columns - 1)) / columns;
 
         Widget slot(Widget? child) =>
@@ -180,24 +241,23 @@ class ClassFilterGrid extends StatelessWidget {
                   ? null
                   : _Cell(
                       label: c.name,
-                      selected: selectedId == c.id,
-                      onTap: () => onSelected(c.id),
+                      selected: selectedIds.contains(c.id),
+                      onTap: () => onToggle(c.id),
                     ),
             );
 
         Widget row(bool boys) => Row(
               children: [
                 // "الكل" sits on the first row, an empty slot under it.
-                if (showAll)
-                  boys
-                      ? slot(_Cell(
-                          label: AppStrings.all,
-                          selected: selectedId == null,
-                          onTap: () => onSelected(null),
-                        ))
-                      : slot(null),
-                for (final (i, y) in years.indexed) ...[
-                  if (showAll || i > 0) const SizedBox(width: gap),
+                boys
+                    ? slot(_Cell(
+                        label: AppStrings.all,
+                        selected: selectedIds.isEmpty,
+                        onTap: () => onToggle(null),
+                      ))
+                    : slot(null),
+                for (final y in years) ...[
+                  const SizedBox(width: gap),
                   cellFor(find(y, boys)),
                 ],
               ],
@@ -218,42 +278,22 @@ class ClassFilterGrid extends StatelessWidget {
         spacing: 8,
         runSpacing: 6,
         children: [
-          if (showAll)
-            _Chip(
-              label: AppStrings.all,
-              selected: selectedId == null,
-              onTap: () => onSelected(null),
-            ),
+          FilterChip(
+            label: const Text(AppStrings.all),
+            selected: selectedIds.isEmpty,
+            onSelected: (_) => onToggle(null),
+          ),
           for (final c in classes)
-            _Chip(
-              label: c.name,
-              selected: selectedId == c.id,
-              onTap: () => onSelected(c.id),
+            FilterChip(
+              label: Text(c.name),
+              selected: selectedIds.contains(c.id),
+              onSelected: (_) => onToggle(c.id),
             ),
         ],
       );
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-      );
-}
-
-/// A fixed-size grid cell that looks like a chip.
+/// A fixed-size grid cell that looks like a chip, with a tick when chosen.
 class _Cell extends StatelessWidget {
   const _Cell({
     required this.label,
@@ -268,32 +308,47 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: selected
-          ? scheme.primary.withValues(alpha: 0.12)
-          : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-          color: selected
-              ? scheme.primary.withValues(alpha: 0.6)
-              : scheme.outlineVariant,
-          width: selected ? 1.4 : 1,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: selected
+            ? scheme.primary.withValues(alpha: 0.12)
+            : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: selected
+                ? scheme.primary.withValues(alpha: 0.6)
+                : scheme.outlineVariant,
+            width: selected ? 1.4 : 1,
+          ),
         ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Center(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-              color: selected ? scheme.primary : scheme.onSurface,
-            ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (selected) ...[
+                Icon(Icons.check_rounded, size: 14, color: scheme.primary),
+                const SizedBox(width: 2),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    color: selected ? scheme.primary : scheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

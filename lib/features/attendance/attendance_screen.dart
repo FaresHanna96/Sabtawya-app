@@ -49,7 +49,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   AttendanceYear? _year;
   bool _isAdmin = false;
 
-  String? _classId;
+  /// The classes chosen; empty is "كل الفصول".
+  Set<String> _classIds = <String>{};
   DateTime? _date;
 
   /// One session per Saturday, for the date arrows and the picker. With all
@@ -75,11 +76,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _classes = session.myClasses;
     _year = session.currentYear;
     _isAdmin = session.isAdmin;
-    // An admin opens on "كل الفصول" (null); a servant on their first class.
-    _classId = widget.initialClassId ??
-        (_classes.isEmpty || (_isAdmin && _classes.length > 1)
-            ? null
-            : _classes.first.classId);
+    // An admin opens on "كل الفصول" (empty); a servant on their first class.
+    _classIds = widget.initialClassId != null
+        ? {widget.initialClassId!}
+        : (_classes.isEmpty || (_isAdmin && _classes.length > 1))
+            ? <String>{}
+            : {_classes.first.classId};
     _date = widget.initialDate;
     _load();
   }
@@ -94,8 +96,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   AttendanceSheet? get _sheet => _sheets.isEmpty ? null : _sheets.first;
 
-  /// "كل الفصول": every class at once.
-  bool get _allClasses => _classId == null && _classes.length > 1;
+  /// The classes on screen, in the order of the class list.
+  List<String> get _shownClassIds => [
+        for (final c in _classes)
+          if (_classIds.isEmpty || _classIds.contains(c.classId)) c.classId,
+      ];
+
+  /// More than one class on screen ("كل الفصول" or several ticked).
+  bool get _allClasses => _shownClassIds.length > 1;
 
   bool get _isLocked => !_allClasses && (_sheet?.session.isLocked ?? false);
   bool _canEditSheet(AttendanceSheet sheet) =>
@@ -104,9 +112,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _load() async {
     final year = _year;
-    final classIds = _allClasses
-        ? _classes.map((c) => c.classId).toList()
-        : [if (_classId != null) _classId!];
+    final classIds = _shownClassIds;
     if (classIds.isEmpty || year == null) {
       setState(() => _loading = false);
       return;
@@ -193,13 +199,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return past.isNotEmpty ? past.last : sessions.first.sessionDate;
   }
 
-  /// [classId] null is "كل الفصول".
-  Future<void> _switchClass(String? classId) async {
-    if (classId == _classId) return;
+  /// [classIds] empty is "كل الفصول".
+  Future<void> _switchClass(Set<String> classIds) async {
     if (!await _confirmDiscard()) return;
     setState(() {
-      _classId = classId;
-      // The new class has its own sessions; keep the date if it has one.
+      _classIds = classIds;
+      // The new classes have their own sessions; keep the date if it exists.
     });
     await _load();
   }
@@ -509,8 +514,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     .map((c) =>
                         ClassFilterOption(id: c.classId, name: c.className))
                     .toList(),
-                selectedId: _classId,
-                onSelected: _switchClass,
+                selectedIds: _classIds,
+                onChanged: _switchClass,
               )
             else
               Text(
