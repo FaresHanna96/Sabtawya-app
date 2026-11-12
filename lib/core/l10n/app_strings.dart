@@ -318,6 +318,9 @@ class AppStrings {
   static const pickMonths = 'اختر الشهور';
   static const thisMonth = 'هذا الشهر';
   static const wholeYear = 'السنة كلها';
+  static const allClasses = 'كل الفصول';
+  static const done = 'تم';
+  static String monthsCount(int n) => n <= 10 ? '$n شهور' : '$n شهر';
   static const birthdayPassed = 'مرّ هذا العام';
   static const birthdayTomorrow = 'بكرة';
   static const todayShort = 'اليوم';

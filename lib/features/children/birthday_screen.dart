@@ -208,22 +208,33 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                 }),
               ),
             ),
-            _MonthSelector(
-              selected: _selectedMonths,
-              onChanged: (months) => setState(() => _selectedMonths = months),
-            ),
-            if (!_servants && classes.length > 1)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: ClassFilterChips(
-                  classes: classes
-                      .map((c) =>
-                          ClassFilterOption(id: c.classId, name: c.className))
-                      .toList(),
-                  selectedId: _classFilter,
-                  onSelected: (id) => setState(() => _classFilter = id),
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _FilterButton(
+                      icon: Icons.calendar_month_outlined,
+                      label: _monthsLabel(),
+                      onTap: _pickMonths,
+                    ),
+                  ),
+                  if (!_servants && classes.length > 1) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _FilterButton(
+                        icon: Icons.class_outlined,
+                        label: _classFilter == null
+                            ? AppStrings.allClasses
+                            : (_classNameOf(classes, _classFilter!) ??
+                                AppStrings.allClasses),
+                        onTap: () => _pickClass(classes),
+                      ),
+                    ),
+                  ],
+                ],
               ),
+            ),
             Expanded(
               child: AsyncSection<List<_Person>>(
                 key: _sectionKey,
@@ -303,6 +314,74 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// "نوفمبر", "نوفمبر، ديسمبر", "4 شهور" or "السنة كلها".
+  String _monthsLabel() {
+    final months = _selectedMonths.toList()..sort();
+    if (months.isEmpty) return AppStrings.pickMonths;
+    if (months.length == 12) return AppStrings.wholeYear;
+    if (months.length <= 2) {
+      return months.map(AppDateUtils.monthName).join('، ');
+    }
+    return AppStrings.monthsCount(months.length);
+  }
+
+  Future<void> _pickMonths() async {
+    var picked = Set<int>.from(_selectedMonths);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _MonthSelector(
+                  selected: picked,
+                  onChanged: (months) {
+                    setSheet(() => picked = months);
+                    setState(() => _selectedMonths = months);
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    child: const Text(AppStrings.done),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickClass(List<ClassOverview> classes) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: ClassFilterChips(
+            classes: classes
+                .map((c) => ClassFilterOption(id: c.classId, name: c.className))
+                .toList(),
+            selectedId: _classFilter,
+            onSelected: (id) {
+              setState(() => _classFilter = id);
+              Navigator.of(sheetContext).pop();
+            },
+          ),
         ),
       ),
     );
@@ -825,6 +904,58 @@ class _AvatarWithDay extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A compact filter: what is chosen, with a hint it can be changed.
+class _FilterButton extends StatelessWidget {
+  const _FilterButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.navy.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.navy.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.navy),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
+                ),
+              ),
+              const Icon(Icons.expand_more, size: 20, color: AppColors.muted),
+            ],
+          ),
+        ),
       ),
     );
   }
