@@ -864,7 +864,7 @@ class _CallButton extends StatelessWidget {
       color: AppColors.success,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      tooltip: 'اتصال',
+      tooltip: AppStrings.call,
       onPressed: () => launchUrl(Uri(scheme: 'tel', path: number)),
     );
   }
@@ -887,7 +887,7 @@ class StatusBadge extends StatelessWidget {
       child: Text(
         isActive ? AppStrings.active : AppStrings.inactive,
         style:
-            TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
@@ -935,7 +935,7 @@ class StatTile extends StatelessWidget {
                 Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: AppColors.muted,
                   ),
                   overflow: TextOverflow.ellipsis,

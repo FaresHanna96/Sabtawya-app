@@ -294,7 +294,7 @@ class _PrepRow extends StatelessWidget {
             style: TextStyle(fontSize: 12, color: color),
           ),
         ),
-        trailing: const Icon(Icons.chevron_left, color: AppColors.muted),
+        trailing: const Icon(AppIcons.forward, color: AppColors.muted),
       ),
     );
   }

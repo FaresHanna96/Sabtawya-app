@@ -6,6 +6,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../data/repositories/servant_repository.dart';
@@ -121,6 +122,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: SafeArea(
         child: AsyncSection<List<AppNotification>>(
+          loading: const SkeletonList(),
           key: _sectionKey,
           load: _repository.latest,
           builder: (context, items, reload) {

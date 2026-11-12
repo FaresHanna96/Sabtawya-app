@@ -329,14 +329,14 @@ class _ServantBirthdayRow extends StatelessWidget {
       ),
       subtitle: Text(
         '${AppStrings.turningAge} $age ${AppStrings.years}',
-        style: const TextStyle(fontSize: 11),
+        style: const TextStyle(fontSize: 12),
       ),
       trailing: IconButton(
         icon: const Icon(Icons.call, size: 18),
         color: hasPhone ? AppColors.success : AppColors.muted,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        tooltip: hasPhone ? 'اتصال' : 'لا يوجد رقم',
+        tooltip: hasPhone ? AppStrings.call : AppStrings.noPhoneNumber,
         onPressed: hasPhone
             ? () => launchUrl(Uri(scheme: 'tel', path: servant.mobile!))
             : null,
@@ -373,7 +373,7 @@ class _GroupedBirthdays extends StatelessWidget {
           child: Text(
             className,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: AppColors.muted,
               letterSpacing: 0.3,
@@ -453,7 +453,7 @@ class _BirthdayRow extends StatelessWidget {
       ),
       subtitle: Text(
         '${AppStrings.turningAge} $age ${AppStrings.years}',
-        style: const TextStyle(fontSize: 11),
+        style: const TextStyle(fontSize: 12),
       ),
       trailing: hasPhone
           ? IconButton(
@@ -461,7 +461,7 @@ class _BirthdayRow extends StatelessWidget {
               color: AppColors.success,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              tooltip: 'اتصال',
+              tooltip: AppStrings.call,
               onPressed: () =>
                   launchUrl(Uri(scheme: 'tel', path: child.mobile!)),
             )

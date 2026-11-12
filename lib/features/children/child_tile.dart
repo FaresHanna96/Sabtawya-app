@@ -110,7 +110,7 @@ class ChildTile extends StatelessWidget {
                         ),
                       ),
                 trailing: child.isActive
-                    ? const Icon(Icons.chevron_left, color: AppColors.muted)
+                    ? const Icon(AppIcons.forward, color: AppColors.muted)
                     : const StatusBadge(isActive: false),
               ),
             ),

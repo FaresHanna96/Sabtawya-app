@@ -89,6 +89,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         labelText: AppStrings.currentPassword,
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
+                          tooltip: _obscureCurrent
+                              ? AppStrings.showPassword
+                              : AppStrings.hidePassword,
                           icon: Icon(_obscureCurrent
                               ? Icons.visibility_off
                               : Icons.visibility),
@@ -109,6 +112,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         labelText: AppStrings.newPassword,
                         prefixIcon: const Icon(Icons.lock_reset_outlined),
                         suffixIcon: IconButton(
+                          tooltip: _obscureNew
+                              ? AppStrings.showPassword
+                              : AppStrings.hidePassword,
                           icon: Icon(_obscureNew
                               ? Icons.visibility_off
                               : Icons.visibility),
@@ -134,6 +140,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         labelText: AppStrings.confirmNewPassword,
                         prefixIcon: const Icon(Icons.lock_outlined),
                         suffixIcon: IconButton(
+                          tooltip: _obscureConfirm
+                              ? AppStrings.showPassword
+                              : AppStrings.hidePassword,
                           icon: Icon(_obscureConfirm
                               ? Icons.visibility_off
                               : Icons.visibility),

@@ -504,7 +504,7 @@ class _RowCard extends StatelessWidget {
               child: Text(
                 _actionLabel,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: _accent,
                 ),

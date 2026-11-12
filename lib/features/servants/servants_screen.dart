@@ -8,6 +8,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
@@ -126,6 +127,7 @@ class _ServantsScreenState extends State<ServantsScreen> {
       appBar: AppBar(title: const Text(AppStrings.servantsTitle)),
       body: SafeArea(
         child: AsyncSection<_ServantsData>(
+          loading: const SkeletonList(),
           key: _sectionKey,
           load: _load,
           builder: (context, data, reload) {

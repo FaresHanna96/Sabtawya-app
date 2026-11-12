@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/date_granularity_filter.dart';
@@ -93,6 +94,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             _controls(classes),
             Expanded(
               child: AsyncSection<List<SessionSummary>>(
+                loading: const SkeletonList(),
                 key: _sectionKey,
                 load: _load,
                 builder: (context, all, reload) {
@@ -407,7 +409,7 @@ class _SummaryTile extends StatelessWidget {
                   compact: true,
                 )
               else
-                const Icon(Icons.chevron_left, color: AppColors.muted),
+                const Icon(AppIcons.forward, color: AppColors.muted),
             ],
           ),
         ),

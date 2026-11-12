@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
 import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
@@ -103,6 +104,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
           : null,
       body: SafeArea(
         child: AsyncSection<List<Child>>(
+          loading: const SkeletonList(),
           key: _sectionKey,
           load: _load,
           builder: (context, all, reload) {

@@ -34,6 +34,21 @@ class AppColors {
   static const Color muted = Color(0xFF6B7280);
 }
 
+/// Direction-aware arrows.
+///
+/// Flutter mirrors the Material chevrons in a right-to-left layout, so
+/// `Icons.chevron_left` is drawn pointing RIGHT in this app. Use these names
+/// instead of picking a chevron by hand.
+class AppIcons {
+  const AppIcons._();
+
+  /// "Open" / "next": points left in Arabic (where the next screen comes from).
+  static const IconData forward = Icons.chevron_right;
+
+  /// "Previous": points right in Arabic.
+  static const IconData back = Icons.chevron_left;
+}
+
 /// Shared gradients used across the app.
 class AppGradients {
   const AppGradients._();

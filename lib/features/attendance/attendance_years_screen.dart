@@ -123,7 +123,7 @@ class _AttendanceYearsScreenState extends State<AttendanceYearsScreen> {
                           child: const Text(
                             AppStrings.currentYear,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: AppColors.olive,
                             ),

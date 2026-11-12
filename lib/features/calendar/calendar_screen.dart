@@ -366,7 +366,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       children: [
         IconButton(
           tooltip: AppStrings.previousMonth,
-          icon: const Icon(Icons.chevron_right),
+          icon: const Icon(AppIcons.back),
           onPressed: () => _go(-1),
         ),
         Expanded(
@@ -406,7 +406,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         IconButton(
           tooltip: AppStrings.nextMonth,
-          icon: const Icon(Icons.chevron_left),
+          icon: const Icon(AppIcons.forward),
           onPressed: () => _go(1),
         ),
       ],
@@ -587,7 +587,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: [
             CircleAvatar(radius: 4, backgroundColor: c),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 11)),
+            Text(label, style: const TextStyle(fontSize: 12)),
           ],
         );
     return Wrap(
@@ -617,7 +617,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         onTap: item.onTap,
         trailing: item.onTap == null
             ? null
-            : const Icon(Icons.chevron_left, color: AppColors.muted),
+            : const Icon(AppIcons.forward, color: AppColors.muted),
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color, size: 20),

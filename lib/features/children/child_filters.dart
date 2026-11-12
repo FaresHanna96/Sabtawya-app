@@ -121,6 +121,7 @@ class ChildFilterBar extends StatelessWidget {
               suffixIcon: filter.query.isEmpty
                   ? null
                   : IconButton(
+                      tooltip: AppStrings.clearSearch,
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         searchController.clear();

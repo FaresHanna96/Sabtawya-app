@@ -28,8 +28,30 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell>
+    with SingleTickerProviderStateMixin {
   int _index = 0;
+
+  /// Replayed on every tab change: the new tab fades and settles in instead
+  /// of cutting. It starts finished so the first frame is fully visible.
+  late final AnimationController _tabFade = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+    value: 1,
+  );
+
+  void _selectTab(int index) {
+    if (index == _index) return;
+    setState(() => _index = index);
+    final still = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (!still) _tabFade.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _tabFade.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,9 +161,23 @@ class _HomeShellState extends State<HomeShell> {
               decoration:
                   const BoxDecoration(gradient: AppGradients.warmSurface),
               // IndexedStack keeps each tab's state, so it must not be re-keyed.
-              child: IndexedStack(
-                index: _index,
-                children: tabs.map((tab) => tab.child).toList(),
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: _tabFade,
+                  curve: Curves.easeOut,
+                ),
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.985, end: 1).animate(
+                    CurvedAnimation(
+                      parent: _tabFade,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+                  child: IndexedStack(
+                    index: _index,
+                    children: tabs.map((tab) => tab.child).toList(),
+                  ),
+                ),
               ),
             ),
           ),
@@ -149,7 +185,7 @@ class _HomeShellState extends State<HomeShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
+        onDestinationSelected: _selectTab,
         destinations: [
           for (var i = 0; i < tabs.length; i++)
             NavigationDestination(

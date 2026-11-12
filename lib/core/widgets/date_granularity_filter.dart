@@ -297,7 +297,7 @@ class _RangePart extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 12,
                       height: 1,
                       color: hasValue
                           ? AppColors.navy.withValues(alpha: 0.6)

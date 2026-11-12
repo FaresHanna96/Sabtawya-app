@@ -17,6 +17,7 @@ class AsyncSection<T> extends StatefulWidget {
     required this.builder,
     this.enableRefresh = true,
     this.loadingMessage,
+    this.loading,
   });
 
   final Future<T> Function() load;
@@ -24,6 +25,10 @@ class AsyncSection<T> extends StatefulWidget {
       BuildContext context, T data, Future<void> Function() reload) builder;
   final bool enableRefresh;
   final String? loadingMessage;
+
+  /// Shown instead of the logo loader on the first load. List screens pass a
+  /// `SkeletonList` so the rows' shape is on screen before the rows are.
+  final Widget? loading;
 
   @override
   State<AsyncSection<T>> createState() => AsyncSectionState<T>();
@@ -81,7 +86,8 @@ class AsyncSectionState<T> extends State<AsyncSection<T>> {
             child = _content(context, _last as T);
             state = 'content';
           } else {
-            child = LoadingView(message: widget.loadingMessage);
+            child = widget.loading ??
+                LoadingView(message: widget.loadingMessage);
             state = 'loading';
           }
         } else if (snapshot.hasError) {

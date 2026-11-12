@@ -107,104 +107,110 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           }
         }
 
-        return ListView(
+        // Not a lazy ListView: it rebuilt each section as it scrolled back
+        // into view, which replayed its entrance (after a delay) every time.
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: [
-            // Glance first (greeting, the four numbers), then today
-            // (birthdays, the lesson), then what to do and the details.
-            FadeSlideIn(
-              index: 0,
-              child: _greeting(session.displayName, session.currentYear?.name),
-            ),
-            const SizedBox(height: 16),
-            FadeSlideIn(
-              index: 1,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      label: AppStrings.totalChildren,
-                      value: '${stats.childrenCount}',
-                      icon: Icons.groups_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      label: AppStrings.totalClasses,
-                      value: '${stats.classesCount}',
-                      icon: Icons.class_outlined,
-                      color: AppColors.olive,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            FadeSlideIn(
-              index: 2,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      label: AppStrings.totalServants,
-                      value: '${stats.servantsCount}',
-                      icon: Icons.volunteer_activism_outlined,
-                      color: AppColors.navyLight,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      label: AppStrings.totalPoints,
-                      value: '${stats.totalPoints}',
-                      icon: Icons.star_outline,
-                      color: AppColors.gold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const FadeSlideIn(index: 3, child: TodayBirthdaysSection()),
-            FadeSlideIn(
-              index: 4,
-              child: LessonOfDay(date: upcomingSaturday()),
-            ),
-            FadeSlideIn(index: 5, child: _quickActions()),
-            const SizedBox(height: 16),
-            FadeSlideIn(index: 6, child: _overview(stats)),
-            const SizedBox(height: 16),
-            if (data.classScores.isNotEmpty) ...[
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Glance first (greeting, the four numbers), then today
+              // (birthdays, the lesson), then what to do and the details.
               FadeSlideIn(
-                index: 7,
-                child: SectionCard(
-                  title: AppStrings.classPerformance,
-                  icon: Icons.bar_chart_rounded,
-                  accent: AppColors.olive,
-                  child: Column(
-                    children: [
-                      for (final (i, score) in _ranked(
-                        data.classScores,
-                        classMaxHeld,
-                      ).indexed)
-                        _classRow(i, score, classMaxHeld),
-                    ],
-                  ),
+                index: 0,
+                child: _greeting(session.displayName, session.currentYear?.name),
+              ),
+              const SizedBox(height: 16),
+              FadeSlideIn(
+                index: 1,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: StatCard(
+                        label: AppStrings.totalChildren,
+                        value: '${stats.childrenCount}',
+                        icon: Icons.groups_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: StatCard(
+                        label: AppStrings.totalClasses,
+                        value: '${stats.classesCount}',
+                        icon: Icons.class_outlined,
+                        color: AppColors.olive,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              FadeSlideIn(
+                index: 2,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: StatCard(
+                        label: AppStrings.totalServants,
+                        value: '${stats.servantsCount}',
+                        icon: Icons.volunteer_activism_outlined,
+                        color: AppColors.navyLight,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: StatCard(
+                        label: AppStrings.totalPoints,
+                        value: '${stats.totalPoints}',
+                        icon: Icons.star_outline,
+                        color: AppColors.gold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
-            ],
-            if (data.lowAttendance.isNotEmpty) ...[
+              const FadeSlideIn(index: 3, child: TodayBirthdaysSection()),
               FadeSlideIn(
-                index: 8,
-                child: _lowAttendance(data.lowAttendance, childMaxHeld),
+                index: 4,
+                child: LessonOfDay(date: upcomingSaturday()),
               ),
+              FadeSlideIn(index: 5, child: _quickActions()),
               const SizedBox(height: 16),
+              FadeSlideIn(index: 6, child: _overview(stats)),
+              const SizedBox(height: 16),
+              if (data.classScores.isNotEmpty) ...[
+                FadeSlideIn(
+                  index: 7,
+                  child: SectionCard(
+                    title: AppStrings.classPerformance,
+                    icon: Icons.bar_chart_rounded,
+                    accent: AppColors.olive,
+                    child: Column(
+                      children: [
+                        for (final (i, score) in _ranked(
+                          data.classScores,
+                          classMaxHeld,
+                        ).indexed)
+                          _classRow(i, score, classMaxHeld),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (data.lowAttendance.isNotEmpty) ...[
+                FadeSlideIn(
+                  index: 8,
+                  child: _lowAttendance(data.lowAttendance, childMaxHeld),
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (data.activity.isNotEmpty)
+                FadeSlideIn(index: 8, child: _activity(data.activity)),
             ],
-            if (data.activity.isNotEmpty)
-              FadeSlideIn(index: 8, child: _activity(data.activity)),
-          ],
+          ),
         );
       },
     );
@@ -337,7 +343,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_left, size: 18, color: AppColors.muted),
+            const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
           ],
         ),
       ),
@@ -505,7 +511,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Text(
                     _ago(entry.createdAt),
                     style:
-                        const TextStyle(fontSize: 11, color: AppColors.muted),
+                        const TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
                 ],
               ),

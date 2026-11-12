@@ -311,6 +311,7 @@ class _PdfTile extends StatelessWidget {
             const Icon(Icons.picture_as_pdf_outlined, color: AppColors.danger),
         title: Text(name, style: const TextStyle(fontSize: 13)),
         trailing: IconButton(
+          tooltip: AppStrings.delete,
           icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
           onPressed: onRemove,
         ),

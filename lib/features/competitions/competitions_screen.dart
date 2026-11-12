@@ -8,6 +8,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/competition.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/competition_repository.dart';
@@ -292,6 +293,7 @@ class _ListTabState extends State<_ListTab> with AutomaticKeepAliveClientMixin {
     return Stack(
       children: [
         AsyncSection<List<Competition>>(
+          loading: const SkeletonList(),
           key: _sectionKey,
           load: _load,
           builder: (context, competitions, reload) {
@@ -431,7 +433,7 @@ class _ScoresTab extends StatelessWidget {
                         Text(
                           '${score.competitionsCount} ${AppStrings.weeklyCompetition}',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: AppColors.muted,
                           ),
                         ),

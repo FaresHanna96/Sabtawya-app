@@ -533,6 +533,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
           suffixIcon: _birthDate == null
               ? const Icon(Icons.calendar_today_outlined, size: 20)
               : IconButton(
+                  tooltip: AppStrings.clearField,
                   icon: const Icon(Icons.clear, size: 20),
                   onPressed: () => setState(() => _birthDate = null),
                 ),

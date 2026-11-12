@@ -654,4 +654,16 @@ class AppStrings {
   static const currentPasswordRequired = 'كلمة المرور الحالية مطلوبة';
   static const newPasswordRequired = 'كلمة المرور الجديدة مطلوبة';
   static const confirmNewPasswordRequired = 'تأكيد كلمة المرور الجديدة مطلوب';
+  // ---- UI polish: labels, tooltips
+  static const pillChildren = 'مخدومين';
+  static const pillServants = 'خدام';
+  static const reportsAndFollowUp = 'التقارير والمتابعة';
+  static const importExportTitle = 'استيراد وتصدير';
+  static const competitionsAndEvents = 'المسابقات والنشاطات';
+  static const showPassword = 'إظهار كلمة المرور';
+  static const hidePassword = 'إخفاء كلمة المرور';
+  static const clearSearch = 'مسح البحث';
+  static const call = 'اتصال';
+  static const clearField = 'مسح';
+  static const noPhoneNumber = 'لا يوجد رقم';
 }

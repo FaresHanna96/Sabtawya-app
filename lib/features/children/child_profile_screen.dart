@@ -843,7 +843,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             child: Text(
               isPhone ? AppStrings.lastPhoneVisit : AppStrings.lastHomeVisit,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 color: isPhone ? AppColors.navy : AppColors.success,
                 fontWeight: FontWeight.w700,
               ),
@@ -1019,7 +1019,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               color: color,
               fontWeight: FontWeight.w700,
             ),
@@ -1280,6 +1280,7 @@ class _VisitSectionState extends State<_VisitSection> {
               suffixIcon: date == null
                   ? const Icon(Icons.calendar_today_outlined, size: 20)
                   : IconButton(
+                      tooltip: AppStrings.clearField,
                       icon: const Icon(Icons.clear, size: 20),
                       onPressed: () => setState(() {
                         if (isPhone) {

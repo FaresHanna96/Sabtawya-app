@@ -8,6 +8,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/event.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../state/session_controller.dart';
@@ -75,6 +76,7 @@ class _EventsScreenState extends State<EventsScreen> {
         child: Stack(
           children: [
             AsyncSection<List<Event>>(
+              loading: const SkeletonList(),
               key: _sectionKey,
               load: _load,
               builder: (context, events, reload) {

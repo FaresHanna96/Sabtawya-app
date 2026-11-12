@@ -169,7 +169,7 @@ class SettingsScreen extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.person_outline),
                     title: const Text(AppStrings.myData),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: const Icon(AppIcons.forward),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const MyProfileScreen(),
@@ -180,7 +180,7 @@ class SettingsScreen extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.lock_outline),
                     title: const Text(AppStrings.changePassword),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: const Icon(AppIcons.forward),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const ChangePasswordScreen(),

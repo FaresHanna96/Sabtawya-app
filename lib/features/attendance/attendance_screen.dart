@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/celebration.dart';
@@ -10,6 +11,7 @@ import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
@@ -189,17 +191,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  void _toggle(AttendanceEntry entry, _Activity activity) {
+  void _toggle(AttendanceEntry entry, AttendanceActivity activity) {
     if (!_canEdit) return;
+    HapticFeedback.selectionClick();
     setState(() {
       switch (activity) {
-        case _Activity.sundaySchool:
+        case AttendanceActivity.sundaySchool:
           entry.sundaySchool = !entry.sundaySchool;
-        case _Activity.vespers:
+        case AttendanceActivity.vespers:
           entry.vespers = !entry.vespers;
-        case _Activity.mass:
+        case AttendanceActivity.mass:
           entry.mass = !entry.mass;
-        case _Activity.confession:
+        case AttendanceActivity.confession:
           entry.confession = !entry.confession;
       }
     });
@@ -207,6 +210,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   void _markAll(bool present) {
     if (!_canEdit) return;
+    HapticFeedback.mediumImpact();
     setState(() {
       for (final entry in _entries) {
         entry.sundaySchool = present;
@@ -250,6 +254,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      HapticFeedback.mediumImpact();
       if (!isOffline) Celebration.show(context);
       if (isOffline) {
         // Scores are DB-computed; skip reload while offline.
@@ -340,7 +345,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         body: AppStrings.noClassesAssignedBody,
       );
     }
-    if (_loading) return const LoadingView();
+    if (_loading) return const SkeletonList();
     if (_error != null) return ErrorView(message: _error!, onRetry: _load);
 
     final sheet = _sheet;
@@ -382,7 +387,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: FadeSlideIn(
                 index: i,
-                child: _EntryCard(
+                child: AttendanceEntryCard(
                   entry: _entries[i],
                   enabled: _canEdit,
                   onToggle: (activity) => _toggle(_entries[i], activity),
@@ -484,7 +489,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return Row(
       children: [
-        arrow(Icons.chevron_right, canBack, -1),
+        arrow(AppIcons.back, canBack, -1),
         const SizedBox(width: 8),
         Expanded(
           child: Material(
@@ -532,7 +537,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             ? AppStrings.upcomingSaturday
                             : AppDateUtils.sinceLabel(_date!),
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: AppColors.muted,
                         ),
                       ),
@@ -543,7 +548,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        arrow(Icons.chevron_left, canForward, 1),
+        arrow(AppIcons.forward, canForward, 1),
       ],
     );
   }
@@ -572,12 +577,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 style: const TextStyle(fontSize: 13, color: AppColors.muted),
                 children: [
                   const TextSpan(text: '${AppStrings.presentOf} '),
-                  TextSpan(
-                    text: '$present',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.navy,
+                  // The count rolls to its new value as children are marked.
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(end: present.toDouble()),
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, v, __) => Text(
+                        '${v.round()}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                      ),
                     ),
                   ),
                   TextSpan(text: ' ${AppStrings.ofWord} $total'),
@@ -594,7 +609,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               child: Text(
                 statusText,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: statusColor,
                 ),
@@ -605,11 +620,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: ratio,
-            minHeight: 8,
-            backgroundColor: AppColors.navy.withValues(alpha: 0.08),
-            valueColor: const AlwaysStoppedAnimation(AppColors.success),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: ratio),
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, __) => LinearProgressIndicator(
+              value: v,
+              minHeight: 8,
+              backgroundColor: AppColors.navy.withValues(alpha: 0.08),
+              valueColor: const AlwaysStoppedAnimation(AppColors.success),
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -617,12 +637,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           children: [
             Text(
               '${AppStrings.recordedCount}: $recorded/$total',
-              style: const TextStyle(fontSize: 11, color: AppColors.muted),
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
             const Spacer(),
             Text(
               '${AppStrings.totalPoints}: ${_totalScore()}/${sheet.maxScore}',
-              style: const TextStyle(fontSize: 11, color: AppColors.muted),
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
           ],
         ),
@@ -731,11 +751,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 }
 
-enum _Activity { sundaySchool, vespers, mass, confession }
+enum AttendanceActivity { sundaySchool, vespers, mass, confession }
 
 /// One child's line: four toggles and the score they add up to.
-class _EntryCard extends StatelessWidget {
-  const _EntryCard({
+@visibleForTesting
+class AttendanceEntryCard extends StatelessWidget {
+  const AttendanceEntryCard({
     required this.entry,
     required this.enabled,
     required this.onToggle,
@@ -743,7 +764,7 @@ class _EntryCard extends StatelessWidget {
 
   final AttendanceEntry entry;
   final bool enabled;
-  final ValueChanged<_Activity> onToggle;
+  final ValueChanged<AttendanceActivity> onToggle;
 
   Color get _accentColor {
     if (!entry.isRecorded) return AppColors.muted;
@@ -811,35 +832,38 @@ class _EntryCard extends StatelessWidget {
                     Row(
                       children: [
                         _MarkToggle(
+                          // The longest label gets the widest button, so all
+                          // four read in full on a 375px phone.
+                          flex: 13,
                           label: AppStrings.sundaySchoolShort,
                           points: entry.pointsSundaySchool,
                           selected: entry.sundaySchool,
                           enabled: enabled,
-                          onTap: () => onToggle(_Activity.sundaySchool),
+                          onTap: () => onToggle(AttendanceActivity.sundaySchool),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         _MarkToggle(
                           label: AppStrings.vespersShort,
                           points: entry.pointsVespers,
                           selected: entry.vespers,
                           enabled: enabled,
-                          onTap: () => onToggle(_Activity.vespers),
+                          onTap: () => onToggle(AttendanceActivity.vespers),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         _MarkToggle(
                           label: AppStrings.massShort,
                           points: entry.pointsMass,
                           selected: entry.mass,
                           enabled: enabled,
-                          onTap: () => onToggle(_Activity.mass),
+                          onTap: () => onToggle(AttendanceActivity.mass),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         _MarkToggle(
                           label: AppStrings.confessionShort,
                           points: entry.pointsConfession,
                           selected: entry.confession,
                           enabled: enabled,
-                          onTap: () => onToggle(_Activity.confession),
+                          onTap: () => onToggle(AttendanceActivity.confession),
                         ),
                       ],
                     ),
@@ -849,7 +873,7 @@ class _EntryCard extends StatelessWidget {
                         '${AppStrings.lastModifiedBy}: ${entry.updatedByName}'
                         '${entry.updatedAt == null ? '' : ' • ${AppDateUtils.formatDateTime(entry.updatedAt!)}'}',
                         style: const TextStyle(
-                            fontSize: 10, color: AppColors.muted),
+                            fontSize: 12, color: AppColors.muted),
                       ),
                     ],
                   ],
@@ -870,6 +894,7 @@ class _MarkToggle extends StatelessWidget {
     required this.selected,
     required this.enabled,
     required this.onTap,
+    this.flex = 9,
   });
 
   final String label;
@@ -877,6 +902,7 @@ class _MarkToggle extends StatelessWidget {
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;
+  final int flex;
 
   @override
   Widget build(BuildContext context) {
@@ -886,51 +912,60 @@ class _MarkToggle extends StatelessWidget {
         : (enabled ? AppColors.muted : AppColors.muted.withValues(alpha: 0.4));
 
     return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: enabled ? onTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
-          transform: Matrix4.diagonal3Values(
-              selected ? 1.04 : 1, selected ? 1.04 : 1, 1),
-          transformAlignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 6),
-          decoration: BoxDecoration(
-            color: selected
-                ? activeColor.withValues(alpha: 0.12)
-                : Colors.transparent,
-            border: Border.all(
+      flex: flex,
+      child: Semantics(
+        button: true,
+        enabled: enabled,
+        toggled: selected,
+        label: label,
+        excludeSemantics: true,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: enabled ? onTap : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutBack,
+            transform: Matrix4.diagonal3Values(
+                selected ? 1.04 : 1, selected ? 1.04 : 1, 1),
+            transformAlignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+            decoration: BoxDecoration(
               color: selected
-                  ? activeColor.withValues(alpha: 0.45)
-                  : AppColors.muted.withValues(alpha: 0.3),
+                  ? activeColor.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              border: Border.all(
+                color: selected
+                    ? activeColor.withValues(alpha: 0.45)
+                    : AppColors.muted.withValues(alpha: 0.3),
+              ),
+              borderRadius: BorderRadius.circular(20),
             ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                selected
-                    ? Icons.check_circle_rounded
-                    : Icons.radio_button_unchecked,
-                size: 16,
-                color: labelColor,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: labelColor,
+            // The label is never cut: it shrinks a little on very narrow
+            // screens instead of ending in "…". The check only appears once
+            // marked, which leaves the unmarked label the whole button.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selected) ...[
+                    Icon(Icons.check_circle_rounded,
+                        size: 14, color: labelColor),
+                    const SizedBox(width: 3),
+                  ],
+                  Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      fontWeight: FontWeight.w700,
+                      color: labelColor,
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

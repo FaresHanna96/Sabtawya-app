@@ -75,121 +75,127 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
       key: _sectionKey,
       load: _load,
       builder: (context, scores, reload) {
-        return ListView(
+        // Not a lazy ListView: it rebuilt each section as it scrolled back
+        // into view, which replayed its entrance (after a delay) every time.
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: [
-            // Same order as the admin home: glance (greeting, numbers), today
-            // (birthdays, lesson), then shortcuts and the classes.
-            FadeSlideIn(
-              index: 0,
-              child: _WelcomeBanner(
-                name: session.displayName,
-                yearName: session.currentYear?.name,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Same order as the admin home: glance (greeting, numbers), today
+              // (birthdays, lesson), then shortcuts and the classes.
+              FadeSlideIn(
+                index: 0,
+                child: _WelcomeBanner(
+                  name: session.displayName,
+                  yearName: session.currentYear?.name,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            FadeSlideIn(
-              index: 1,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      label: AppStrings.totalChildren,
-                      value: '$totalChildren',
-                      icon: Icons.groups_outlined,
-                      color: AppColors.olive,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      label: AppStrings.myClasses,
-                      value: '${classes.length}',
-                      icon: Icons.menu_book_rounded,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const FadeSlideIn(index: 2, child: TodayBirthdaysSection()),
-            FadeSlideIn(
-              index: 3,
-              child: LessonOfDay(date: upcomingSaturday()),
-            ),
-            FadeSlideIn(
-              index: 4,
-              child: QuickActionGrid(
-                actions: [
-                  QuickAction(
-                    Icons.fact_check_rounded,
-                    AppStrings.attendanceTitle,
-                    AppColors.success,
-                    () => _push(const AttendanceScreen(showAppBar: true)),
-                  ),
-                  QuickAction(
-                    Icons.assignment_rounded,
-                    AppStrings.myActivities,
-                    AppColors.navy,
-                    () => _push(const MyActivitiesScreen(showAppBar: true)),
-                  ),
-                  QuickAction(
-                    Icons.person_add_alt_1_rounded,
-                    AppStrings.addChild,
-                    AppColors.olive,
-                    () => _push(const ChildFormScreen()),
-                  ),
-                  QuickAction(
-                    Icons.emoji_events_rounded,
-                    AppStrings.weeklyCompetition,
-                    AppColors.gold,
-                    () => _push(const CompetitionsScreen()),
-                  ),
-                  QuickAction(
-                    Icons.event_rounded,
-                    AppStrings.events,
-                    AppColors.coral,
-                    () => _push(const EventsScreen()),
-                  ),
-                  QuickAction(
-                    Icons.calendar_month_rounded,
-                    AppStrings.calendarTitle,
-                    AppColors.sky,
-                    () => _push(const CalendarScreen()),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            FadeSlideIn(
-              index: 5,
-              child: SectionCard(
-                title: AppStrings.myClasses,
-                icon: Icons.menu_book_rounded,
-                accent: AppColors.olive,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              const SizedBox(height: 16),
+              FadeSlideIn(
+                index: 1,
+                child: Row(
                   children: [
-                    InfoRow(
-                      label: AppStrings.lastAttendance,
-                      value: currentSession == null
-                          ? AppStrings.noUpcomingSession
-                          : AppDateUtils.formatDayDate(currentSession),
-                      icon: Icons.event_available_outlined,
-                    ),
-                    const Divider(height: 16),
-                    for (final item in classes)
-                      _ClassRow(
-                        overview: item,
-                        score: _scoreOf(scores, item.classId),
-                        onTap: () =>
-                            _push(ClassDetailScreen(classId: item.classId)),
+                    Expanded(
+                      child: StatCard(
+                        label: AppStrings.totalChildren,
+                        value: '$totalChildren',
+                        icon: Icons.groups_outlined,
+                        color: AppColors.olive,
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: StatCard(
+                        label: AppStrings.myClasses,
+                        value: '${classes.length}',
+                        icon: Icons.menu_book_rounded,
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              const FadeSlideIn(index: 2, child: TodayBirthdaysSection()),
+              FadeSlideIn(
+                index: 3,
+                child: LessonOfDay(date: upcomingSaturday()),
+              ),
+              FadeSlideIn(
+                index: 4,
+                child: QuickActionGrid(
+                  actions: [
+                    QuickAction(
+                      Icons.fact_check_rounded,
+                      AppStrings.attendanceTitle,
+                      AppColors.success,
+                      () => _push(const AttendanceScreen(showAppBar: true)),
+                    ),
+                    QuickAction(
+                      Icons.assignment_rounded,
+                      AppStrings.myActivities,
+                      AppColors.navy,
+                      () => _push(const MyActivitiesScreen(showAppBar: true)),
+                    ),
+                    QuickAction(
+                      Icons.person_add_alt_1_rounded,
+                      AppStrings.addChild,
+                      AppColors.olive,
+                      () => _push(const ChildFormScreen()),
+                    ),
+                    QuickAction(
+                      Icons.emoji_events_rounded,
+                      AppStrings.weeklyCompetition,
+                      AppColors.gold,
+                      () => _push(const CompetitionsScreen()),
+                    ),
+                    QuickAction(
+                      Icons.event_rounded,
+                      AppStrings.events,
+                      AppColors.coral,
+                      () => _push(const EventsScreen()),
+                    ),
+                    QuickAction(
+                      Icons.calendar_month_rounded,
+                      AppStrings.calendarTitle,
+                      AppColors.sky,
+                      () => _push(const CalendarScreen()),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              FadeSlideIn(
+                index: 5,
+                child: SectionCard(
+                  title: AppStrings.myClasses,
+                  icon: Icons.menu_book_rounded,
+                  accent: AppColors.olive,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      InfoRow(
+                        label: AppStrings.lastAttendance,
+                        value: currentSession == null
+                            ? AppStrings.noUpcomingSession
+                            : AppDateUtils.formatDayDate(currentSession),
+                        icon: Icons.event_available_outlined,
+                      ),
+                      const Divider(height: 16),
+                      for (final item in classes)
+                        _ClassRow(
+                          overview: item,
+                          score: _scoreOf(scores, item.classId),
+                          onTap: () =>
+                              _push(ClassDetailScreen(classId: item.classId)),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -251,7 +257,7 @@ class _ClassRow extends StatelessWidget {
                   '${overview.activeChildren} ${AppStrings.childrenTitle}',
                   style: const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
-                const Icon(Icons.chevron_left,
+                const Icon(AppIcons.forward,
                     color: AppColors.muted, size: 20),
               ],
             ),

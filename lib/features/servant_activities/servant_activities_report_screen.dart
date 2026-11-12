@@ -281,7 +281,7 @@ class _ServantReportRow extends StatelessWidget {
                     child: Text(
                       '${summary.pendingPreps} ${AppStrings.prepPending}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: AppColors.warning,
                         fontWeight: FontWeight.w600,
                       ),
@@ -347,7 +347,7 @@ class _ServantReportRow extends StatelessWidget {
           Text(
             '$label: $value',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: color,
               fontWeight: FontWeight.w600,
             ),

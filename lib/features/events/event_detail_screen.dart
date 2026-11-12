@@ -502,7 +502,7 @@ Tab _countTab(int count, String label) => Tab(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11),
+            style: const TextStyle(fontSize: 12),
           ),
         ],
       ),
@@ -605,7 +605,7 @@ class _BalanceRow extends StatelessWidget {
                       child: Text(
                         '${AppStrings.remaining}: ${balance.remaining.toStringAsFixed(0)} ج.م',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: chipColor,
                         ),
@@ -621,11 +621,11 @@ class _BalanceRow extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   constraints:
                       const BoxConstraints(minWidth: 36, minHeight: 36),
-                  tooltip: 'اتصال',
+                  tooltip: AppStrings.call,
                   onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone!)),
                 ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_left, size: 18, color: AppColors.muted),
+              const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
             ],
           ),
         ),
@@ -906,7 +906,7 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
                                           ? AppStrings.paymentMethodTayo
                                           : AppStrings.paymentMethodCash,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                         color: p.isTayo
                                             ? AppColors.navy
@@ -923,6 +923,7 @@ class _PaymentHistorySheetState extends State<_PaymentHistorySheet> {
                               ),
                               trailing: canDelete
                                   ? IconButton(
+                                      tooltip: AppStrings.delete,
                                       icon: const Icon(
                                         Icons.delete_outline,
                                         color: AppColors.danger,

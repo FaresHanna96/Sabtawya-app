@@ -418,7 +418,7 @@ class _BirthdayTile extends StatelessWidget {
                     Text(
                       AppStrings.birthdayToday,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.warning,
                       ),

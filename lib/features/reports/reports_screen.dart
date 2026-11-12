@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/reports.dart';
@@ -301,6 +302,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
               Expanded(
                 child: AsyncSection<_ReportsData>(
+                  loading: const SkeletonList(),
                   key: _sectionKey,
                   load: _load,
                   builder: (context, data, reload) {

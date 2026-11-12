@@ -243,6 +243,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         labelText: AppStrings.password,
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
+                          tooltip: _obscure
+                              ? AppStrings.showPassword
+                              : AppStrings.hidePassword,
                           icon: Icon(
                             _obscure ? Icons.visibility_off : Icons.visibility,
                           ),
@@ -329,6 +332,7 @@ class _BirthDateField extends StatelessWidget {
           suffixIcon: value == null
               ? const Icon(Icons.calendar_today_outlined, size: 20)
               : IconButton(
+                  tooltip: AppStrings.clearField,
                   icon: const Icon(Icons.clear, size: 20),
                   onPressed: () => onChanged(null),
                 ),

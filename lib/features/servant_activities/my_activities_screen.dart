@@ -509,7 +509,7 @@ class _SessionCard extends StatelessWidget {
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: color,
                       ),
@@ -529,7 +529,7 @@ class _SessionCard extends StatelessWidget {
               ),
             const Padding(
               padding: EdgeInsets.only(left: 4, right: 12),
-              child: Icon(Icons.chevron_left, size: 18, color: AppColors.muted),
+              child: Icon(AppIcons.forward, size: 18, color: AppColors.muted),
             ),
           ],
         ),

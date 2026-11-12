@@ -43,7 +43,7 @@ class MoreScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: staggerAll([
             SectionCard(
-              title: AppStrings.reportsTitle,
+              title: AppStrings.reportsAndFollowUp,
               icon: Icons.insights_rounded,
               accent: AppColors.sky,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -79,7 +79,7 @@ class MoreScreen extends StatelessWidget {
             if (!isGeneralServant) ...[
               const SizedBox(height: 16),
               SectionCard(
-                title: AppStrings.importTitle,
+                title: AppStrings.importExportTitle,
                 icon: Icons.swap_vert_rounded,
                 accent: AppColors.navyLight,
                 padding:
@@ -103,29 +103,28 @@ class MoreScreen extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 16),
+            // One card for both: a card holding a single row that repeats its
+            // own title only made the page longer.
             SectionCard(
-              title: AppStrings.competitions,
+              title: AppStrings.competitionsAndEvents,
               icon: Icons.emoji_events_rounded,
               accent: AppColors.gold,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: _Entry(
-                icon: Icons.emoji_events_outlined,
-                title: AppStrings.competitions,
-                screen: const CompetitionsScreen(),
-                color: AppColors.gold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SectionCard(
-              title: AppStrings.events,
-              icon: Icons.celebration_rounded,
-              accent: AppColors.olive,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: _Entry(
-                icon: Icons.event_outlined,
-                title: AppStrings.events,
-                screen: const EventsScreen(),
-                color: AppColors.olive,
+              child: Column(
+                children: [
+                  _Entry(
+                    icon: Icons.emoji_events_outlined,
+                    title: AppStrings.competitions,
+                    screen: const CompetitionsScreen(),
+                    color: AppColors.gold,
+                  ),
+                  _Entry(
+                    icon: Icons.event_outlined,
+                    title: AppStrings.events,
+                    screen: const EventsScreen(),
+                    color: AppColors.olive,
+                  ),
+                ],
               ),
             ),
             if (isAdmin) ...[
@@ -225,7 +224,7 @@ class _Entry extends StatelessWidget {
         title,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
-      trailing: const Icon(Icons.chevron_left, color: AppColors.muted),
+      trailing: const Icon(AppIcons.forward, color: AppColors.muted),
       onTap: () => Navigator.of(context).push<void>(
         MaterialPageRoute<void>(builder: (_) => screen),
       ),

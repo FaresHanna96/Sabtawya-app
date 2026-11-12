@@ -607,7 +607,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
               children: [
                 IconButton.filledTonal(
                   onPressed: _selectedIndex > 0 ? _goPrev : null,
-                  icon: const Icon(Icons.chevron_right),
+                  icon: const Icon(AppIcons.back),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -658,7 +658,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
                           _selectedIndex < _sessionDates.length - 1
                       ? _goNext
                       : null,
-                  icon: const Icon(Icons.chevron_left),
+                  icon: const Icon(AppIcons.forward),
                 ),
               ],
             ),
@@ -789,7 +789,7 @@ class _BulkServantRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Icon(Icons.chevron_left,
+                  const Icon(AppIcons.forward,
                       size: 18, color: AppColors.muted),
                 ],
               ),
@@ -889,7 +889,7 @@ class _PrepChip extends StatelessWidget {
             Text(
               'تحضير',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: color,
               ),
@@ -942,7 +942,7 @@ class _Toggle extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color),
             ),
           ],
         ),
@@ -1030,7 +1030,7 @@ class _HeaderStat extends StatelessWidget {
                   fontSize: 22, fontWeight: FontWeight.w800, color: color)),
           Text(label,
               style:
-                  TextStyle(fontSize: 11, color: color.withValues(alpha: 0.7))),
+                  TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7))),
         ],
       ),
     );
@@ -1112,13 +1112,13 @@ class _ServantCard extends StatelessWidget {
                       child: Text(
                         '${summary.pendingPreps} ${AppStrings.prepPending}',
                         style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
                             color: AppColors.warning,
                             fontWeight: FontWeight.w600),
                       ),
                     ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.chevron_left,
+                  const Icon(AppIcons.forward,
                       size: 18, color: AppColors.muted),
                 ],
               ),
@@ -1201,12 +1201,12 @@ class _AttendanceBar extends StatelessWidget {
           children: [
             Icon(icon, size: 13, color: color),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(fontSize: 11, color: color)),
+            Text(label, style: TextStyle(fontSize: 12, color: color)),
             const Spacer(),
             Text(
               '$count  ·  $pctLabel',
               style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                  fontSize: 12, color: color, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -1254,7 +1254,7 @@ class _SmallChip extends StatelessWidget {
           Text(
             '$label: $value',
             style: TextStyle(
-                fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                fontSize: 12, color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),

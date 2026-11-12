@@ -535,7 +535,7 @@ class _Stat extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
           ),
         ],
       ),

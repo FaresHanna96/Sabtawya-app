@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../state/session_controller.dart';
@@ -120,6 +121,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
   Widget _buildList(bool isAdmin, bool isGeneralServant) {
     return AsyncSection<List<ClassOverview>>(
+      loading: const SkeletonList(),
       key: _sectionKey,
       load: _load,
       builder: (context, classes, reload) {
@@ -238,7 +240,7 @@ class _ClassCard extends StatelessWidget {
                       ),
                       if (!overview.isActive)
                         const StatusBadge(isActive: false),
-                      const Icon(Icons.chevron_left, color: AppColors.muted),
+                      const Icon(AppIcons.forward, color: AppColors.muted),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -246,25 +248,25 @@ class _ClassCard extends StatelessWidget {
                     children: [
                       _Pill(
                         icon: Icons.groups_outlined,
-                        label: '${overview.activeChildren}',
-                        tooltip: AppStrings.childrenCount,
+                        value: '${overview.activeChildren}',
+                        label: AppStrings.pillChildren,
                       ),
                       _Pill(
                         icon: Icons.boy,
-                        label: '${overview.boysCount}',
-                        tooltip: AppStrings.boys,
+                        value: '${overview.boysCount}',
+                        label: AppStrings.boys,
                         color: AppColors.navyLight,
                       ),
                       _Pill(
                         icon: Icons.girl,
-                        label: '${overview.girlsCount}',
-                        tooltip: AppStrings.girls,
+                        value: '${overview.girlsCount}',
+                        label: AppStrings.girls,
                         color: AppColors.olive,
                       ),
                       _Pill(
                         icon: Icons.volunteer_activism_outlined,
-                        label: '${overview.servantsCount}',
-                        tooltip: AppStrings.servantsCount,
+                        value: '${overview.servantsCount}',
+                        label: AppStrings.pillServants,
                       ),
                     ],
                   ),
@@ -302,33 +304,47 @@ class _ClassCard extends StatelessWidget {
 class _Pill extends StatelessWidget {
   const _Pill({
     required this.icon,
+    required this.value,
     required this.label,
-    required this.tooltip,
     this.color = AppColors.navy,
   });
 
   final IconData icon;
+  final String value;
+
+  /// Says what the number counts; an icon alone was not enough to tell.
   final String label;
-  final String tooltip;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Tooltip(
-        message: tooltip,
-        child: Row(
+      child: Semantics(
+        label: '$label $value',
+        excludeSemantics: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 4),
+            Row(
+              children: [
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: 4),
+                Text(
+                  value,
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
             Text(
               label,
-              textDirection: TextDirection.ltr,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
           ],
         ),

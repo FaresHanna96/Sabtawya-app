@@ -7,6 +7,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/profile.dart';
 import '../../data/repositories/servant_repository.dart';
 
@@ -55,6 +56,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.pendingRequests)),
       body: AsyncSection<List<PendingServant>>(
+        loading: const SkeletonList(),
         key: _sectionKey,
         load: _repository.pendingSignups,
         builder: (context, requests, reload) {
@@ -121,7 +123,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                           Text(
                             AppDateUtils.formatDateTime(request.requestedAt),
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: AppColors.muted,
                             ),
                           ),

@@ -178,6 +178,9 @@ class _LoginScreenState extends State<LoginScreen>
                                   labelText: AppStrings.password,
                                   prefixIcon: const Icon(Icons.lock_outline),
                                   suffixIcon: IconButton(
+                                    tooltip: _obscure
+                                        ? AppStrings.showPassword
+                                        : AppStrings.hidePassword,
                                     icon: Icon(
                                       _obscure
                                           ? Icons.visibility_off
