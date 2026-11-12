@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/motion.dart';
 import '../../core/l10n/app_strings.dart';
@@ -141,9 +142,12 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
         )
         .toList()
       ..sort((a, b) {
-        final da = a.birth.day;
-        final db = b.birth.day;
-        if (da != db) return da.compareTo(db);
+        if (a.birth.month != b.birth.month) {
+          return a.birth.month.compareTo(b.birth.month);
+        }
+        if (a.birth.day != b.birth.day) {
+          return a.birth.day.compareTo(b.birth.day);
+        }
         return a.name.compareTo(b.name);
       });
   }
@@ -241,30 +245,59 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                       body: AppStrings.birthdaysEmptyBody,
                     );
                   }
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                    itemCount: visible.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) => FadeSlideIn(
-                      index: index,
-                      child: _BirthdayTile(
-                        person: visible[index],
-                        className: visible[index]
-                            .classIds
-                            .map((id) => _classNameOf(classes, id))
-                            .whereType<String>()
-                            .join('، '),
-                        onTap: visible[index].childId == null
-                            ? null
-                            : () => Navigator.of(context).push<void>(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => ChildProfileScreen(
-                                      childId: visible[index].childId!,
+                  // A month header before each month's first birthday, when
+                  // more than one month is shown.
+                  final grouped = _selectedMonths.length > 1;
+                  final items = <Object>[];
+                  for (final p in visible) {
+                    if (grouped &&
+                        (items.isEmpty ||
+                            (items.last as _Person).birth.month !=
+                                p.birth.month)) {
+                      items.add(p.birth.month);
+                    }
+                    items.add(p);
+                  }
+                  final todayCount =
+                      visible.where((p) => _isToday(p.birth)).length;
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                    itemCount: items.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return _Summary(
+                          count: visible.length,
+                          todayCount: todayCount,
+                        );
+                      }
+                      final item = items[index - 1];
+                      if (item is int) return _MonthHeader(month: item);
+                      final person = item as _Person;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: staggered(
+                          index,
+                          _BirthdayTile(
+                            person: person,
+                            showMonth: grouped,
+                            className: person.classIds
+                                .map((id) => _classNameOf(classes, id))
+                                .whereType<String>()
+                                .join('، '),
+                            onTap: person.childId == null
+                                ? null
+                                : () => Navigator.of(context).push<void>(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => ChildProfileScreen(
+                                          childId: person.childId!,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                      ),
-                    ),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -287,6 +320,11 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
     );
   }
 
+  static bool _isToday(DateTime birth) {
+    final now = DateTime.now();
+    return birth.month == now.month && birth.day == now.day;
+  }
+
   static String? _classNameOf(List<ClassOverview> classes, String classId) {
     for (final item in classes) {
       if (item.classId == classId) return item.className;
@@ -297,6 +335,8 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
 
 // --------------------------------------------------------------- month selector
 
+/// All twelve months at once (two rows of six), so the chosen month is never
+/// scrolled out of sight. The current month carries a dot.
 class _MonthSelector extends StatelessWidget {
   const _MonthSelector({
     required this.selected,
@@ -309,111 +349,235 @@ class _MonthSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    final onlyThisMonth = selected.length == 1 && selected.first == today.month;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              const Icon(Icons.cake_outlined, size: 16, color: AppColors.muted),
+              const Icon(Icons.calendar_month_outlined,
+                  size: 16, color: AppColors.muted),
               const SizedBox(width: 6),
-              Text(
-                AppStrings.birthdaysTitle,
-                style: const TextStyle(
+              const Text(
+                AppStrings.pickMonths,
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.muted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const Spacer(),
-              if (selected.isNotEmpty &&
-                  !(selected.length == 1 && selected.first == today.month))
-                TextButton(
-                  onPressed: () => onChanged({today.month}),
-                  style: TextButton.styleFrom(
-                    minimumSize: Size.zero,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'هذا الشهر',
-                    style: TextStyle(fontSize: 12),
-                  ),
+              if (!onlyThisMonth)
+                _LinkButton(
+                  label: AppStrings.thisMonth,
+                  onTap: () => onChanged({today.month}),
                 ),
-              if (selected.length > 1)
-                GestureDetector(
-                  onTap: () => onChanged({}),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      'مسح (${selected.length})',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.navy.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
+              if (selected.length < 12)
+                _LinkButton(
+                  label: AppStrings.wholeYear,
+                  onTap: () => onChanged({for (var m = 1; m <= 12; m++) m}),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(12, (index) {
-                final month = index + 1;
-                final isSelected = selected.contains(month);
-                final isCurrentMonth = month == today.month;
-                return Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: GestureDetector(
-                    onTap: () {
-                      final next = Set<int>.from(selected);
-                      if (isSelected) {
-                        next.remove(month);
-                      } else {
-                        next.add(month);
-                      }
-                      onChanged(next);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
+          const SizedBox(height: 6),
+          for (final row in const [
+            [1, 2, 3, 4, 5, 6],
+            [7, 8, 9, 10, 11, 12],
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  for (var i = 0; i < row.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 5),
+                    Expanded(
+                      child: _MonthChip(
+                        month: row[i],
+                        selected: selected.contains(row[i]),
+                        current: row[i] == today.month,
+                        onTap: () {
+                          final next = Set<int>.from(selected);
+                          if (!next.remove(row[i])) next.add(row[i]);
+                          onChanged(next);
+                        },
                       ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.navy
-                            : isCurrentMonth
-                                ? AppColors.navy.withValues(alpha: 0.12)
-                                : AppColors.navy.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.navy
-                              : isCurrentMonth
-                                  ? AppColors.navy.withValues(alpha: 0.3)
-                                  : AppColors.navy.withValues(alpha: 0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        AppDateUtils.monthName(month),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : AppColors.navy,
-                        ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthChip extends StatelessWidget {
+  const _MonthChip({
+    required this.month,
+    required this.selected,
+    required this.current,
+    required this.onTap,
+  });
+
+  final int month;
+  final bool selected;
+  final bool current;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: AppDateUtils.monthName(month),
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.navy
+                  : AppColors.navy.withValues(alpha: current ? 0.10 : 0.04),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected
+                    ? AppColors.navy
+                    : AppColors.navy.withValues(alpha: current ? 0.35 : 0.10),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Text(
+                      AppDateUtils.monthName(month),
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: selected ? Colors.white : AppColors.navy,
                       ),
                     ),
                   ),
-                );
-              }),
+                ),
+                if (current)
+                  Container(
+                    width: 4,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected ? Colors.white : AppColors.coral,
+                    ),
+                  ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LinkButton extends StatelessWidget {
+  const _LinkButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(0, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 12)),
+    );
+  }
+}
+
+/// "12 عيد ميلاد  🎂 2 اليوم" above the list.
+class _Summary extends StatelessWidget {
+  const _Summary({required this.count, required this.todayCount});
+
+  final int count;
+  final int todayCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+      child: Row(
+        children: [
+          Text(
+            AppStrings.birthdaysCount(count),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+          if (todayCount > 0) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '🎂 $todayCount ${AppStrings.todayShort}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.warning,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthHeader extends StatelessWidget {
+  const _MonthHeader({required this.month});
+
+  final int month;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      child: Row(
+        children: [
+          Text(
+            AppDateUtils.monthName(month),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Expanded(child: Divider()),
         ],
       ),
     );
@@ -457,63 +621,93 @@ class _BirthdayTile extends StatelessWidget {
     required this.person,
     required this.onTap,
     this.className,
+    this.showMonth = false,
   });
 
   final _Person person;
   final String? className;
   final VoidCallback? onTap;
 
+  /// Adds the month under the day when several months are listed.
+  final bool showMonth;
+
   @override
   Widget build(BuildContext context) {
     final birth = person.birth;
-    final today = DateTime.now();
-    final isToday = birth.month == today.month && birth.day == today.day;
-    final nextAge = turningAge(birth, today);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final thisYear = DateTime(now.year, birth.month, birth.day);
+    final daysLeft = thisYear.difference(today).inDays;
+    final isToday = daysLeft == 0;
+    // Already celebrated this year: still listed, but quieter.
+    final passed = daysLeft < 0;
+    final nextAge = turningAge(birth, now);
+    final hasPhone = (person.mobile ?? '').trim().isNotEmpty;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      color: isToday ? AppColors.goldTint : null,
-      child: ListTile(
-        onTap: onTap,
-        leading: _DayBadge(day: birth.day, isToday: isToday),
-        title: Text(
-          person.name,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          [
-            if (person.role != null) person.role!,
-            if (className != null && className!.isNotEmpty) className!,
-            '${AppStrings.turningAge} $nextAge ${AppStrings.years}',
-          ].join(' • '),
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: isToday
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+    final String status;
+    final Color statusColor;
+    if (isToday) {
+      status = '🎂 ${AppStrings.birthdayToday}';
+      statusColor = AppColors.warning;
+    } else if (passed) {
+      status = AppStrings.birthdayPassed;
+      statusColor = AppColors.muted;
+    } else {
+      status = daysLeft == 1
+          ? AppStrings.birthdayTomorrow
+          : AppStrings.birthdayInDays(daysLeft);
+      statusColor = daysLeft <= 7 ? AppColors.coral : AppColors.navyLight;
+    }
+
+    return Opacity(
+      opacity: passed ? 0.6 : 1,
+      child: Card(
+        margin: EdgeInsets.zero,
+        color: isToday ? AppColors.goldTint : null,
+        child: ListTile(
+          onTap: onTap,
+          contentPadding: const EdgeInsetsDirectional.only(start: 12, end: 4),
+          leading: _DayBadge(
+            day: birth.day,
+            month: showMonth ? birth.month : null,
+            isToday: isToday,
+          ),
+          title: Text(
+            person.name,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                [
+                  if (person.role != null) person.role!,
+                  if (className != null && className!.isNotEmpty) className!,
+                  '${AppStrings.turningAge} $nextAge ${AppStrings.years}',
+                ].join(' • '),
+                style: const TextStyle(fontSize: 12),
+              ),
+              Text(
+                status,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+                  color: statusColor,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Pulse(
-                      child: Text('🎂', style: TextStyle(fontSize: 14)),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      AppStrings.birthdayToday,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.warning,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : null,
+              ),
+            ],
+          ),
+          trailing: hasPhone
+              ? IconButton(
+                  tooltip: AppStrings.call,
+                  icon: const Icon(Icons.call_rounded, size: 20),
+                  color: AppColors.success,
+                  onPressed: () => launchUrl(
+                    Uri(scheme: 'tel', path: person.mobile!.trim()),
+                  ),
+                )
+              : null,
+        ),
       ),
     );
   }
@@ -522,16 +716,18 @@ class _BirthdayTile extends StatelessWidget {
 // ----------------------------------------------------------------- day badge
 
 class _DayBadge extends StatelessWidget {
-  const _DayBadge({required this.day, required this.isToday});
+  const _DayBadge({required this.day, required this.isToday, this.month});
 
   final int day;
+  final int? month;
   final bool isToday;
 
   @override
   Widget build(BuildContext context) {
+    final color = isToday ? AppColors.warning : AppColors.navy;
     return Container(
-      width: 40,
-      height: 40,
+      width: 44,
+      height: 44,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: isToday
@@ -539,14 +735,31 @@ class _DayBadge extends StatelessWidget {
             : AppColors.navy.withValues(alpha: 0.08),
         shape: BoxShape.circle,
       ),
-      child: Text(
-        '$day',
-        textDirection: TextDirection.ltr,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-          color: isToday ? AppColors.warning : AppColors.navy,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$day',
+            textDirection: TextDirection.ltr,
+            style: TextStyle(
+              fontSize: month == null ? 15 : 14,
+              height: 1.1,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+          if (month != null)
+            SizedBox(
+              width: 38,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  AppDateUtils.monthName(month!),
+                  style: TextStyle(fontSize: 12, height: 1.1, color: color),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -315,6 +315,21 @@ class AppStrings {
   static const childBirthdaysShort = 'المخدومين';
   static const servantBirthdaysShort = 'الخدام';
   static const dayOfMonth = 'اليوم';
+  static const pickMonths = 'اختر الشهور';
+  static const thisMonth = 'هذا الشهر';
+  static const wholeYear = 'السنة كلها';
+  static const birthdayPassed = 'مرّ هذا العام';
+  static const birthdayTomorrow = 'بكرة';
+  static const todayShort = 'اليوم';
+  static String birthdayInDays(int days) =>
+      days <= 10 ? 'بعد $days أيام' : 'بعد $days يوم';
+  static String birthdaysCount(int n) => n == 1
+      ? 'عيد ميلاد واحد'
+      : n == 2
+          ? 'عيدا ميلاد'
+          : n <= 10
+              ? '$n أعياد ميلاد'
+              : '$n عيد ميلاد';
   static const personName = 'الاسم';
   static const turningAgeColumn = 'يكمل (سنة)';
   static const attendanceSummary = 'ملخص الحضور';
