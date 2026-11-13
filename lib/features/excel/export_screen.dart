@@ -37,6 +37,16 @@ class ExportScreen extends StatefulWidget {
     return sorted.map(AppDateUtils.formatMonth).join('، ');
   }
 
+  /// Every month from [from]'s month to [to]'s month, oldest first.
+  static List<DateTime> monthsBetween(DateTime from, DateTime to) {
+    final last = DateTime(to.year, to.month);
+    var m = DateTime(from.year, from.month);
+    if (m.isAfter(last)) m = last;
+    return [
+      for (; !m.isAfter(last); m = DateTime(m.year, m.month + 1)) m,
+    ];
+  }
+
   /// The months that had a Saturday held, up to [now], oldest first.
   static List<DateTime> monthsWithData(
     List<ChildMonthlyReport> rows,
@@ -441,21 +451,82 @@ class _ExportScreenState extends State<ExportScreen> {
         build: () async => ExcelService.childrenTemplate(),
       );
 
+  /// نشاط الخدام الشهري: pick the month (this one first chosen), from the
+  /// start of the attendance year up to now; it used to be this month only.
   Future<void> _exportServantMonthly() async {
     final now = DateTime.now();
+    final start = context.read<SessionController>().currentYear?.startDate;
+    final months = ExportScreen.monthsBetween(start ?? now, now);
+    final month = await _pickOneMonth(months);
+    if (month == null || !mounted) return;
     await _export(
-      name: AppStrings.exportServantMonthly,
+      name: '${AppStrings.exportServantMonthly} - '
+          '${AppDateUtils.formatMonth(month)}',
       build: () async {
         final data = await _servantActivity.servantMonthlyReport(
-          year: now.year,
-          month: now.month,
+          year: month.year,
+          month: month.month,
         );
         if (data.isEmpty) return null;
         return ExcelService.servantMonthlyWorkbook(
           data: data,
-          monthLabel: AppDateUtils.formatMonth(now),
+          monthLabel: AppDateUtils.formatMonth(month),
         );
       },
+    );
+  }
+
+  Future<DateTime?> _pickOneMonth(List<DateTime> months) {
+    final current = _monthOf(DateTime.now());
+    return showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                AppStrings.pickMonthToExport,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final m in months)
+                    ListTile(
+                      leading: Icon(
+                        Icons.calendar_month_outlined,
+                        size: 20,
+                        color: m == current ? AppColors.navy : AppColors.muted,
+                      ),
+                      title: Text(
+                        AppDateUtils.formatMonth(m),
+                        style: TextStyle(
+                          fontWeight:
+                              m == current ? FontWeight.w800 : FontWeight.w500,
+                        ),
+                      ),
+                      trailing: m == current
+                          ? const Text(
+                              AppStrings.thisMonth,
+                              style: TextStyle(
+                                  fontSize: 12, color: AppColors.navy),
+                            )
+                          : null,
+                      onTap: () => Navigator.of(context).pop(m),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -567,7 +638,7 @@ class _ExportScreenState extends State<ExportScreen> {
                     _ExportTile(
                       icon: Icons.calendar_view_month_outlined,
                       title: AppStrings.exportServantMonthly,
-                      subtitle: AppDateUtils.formatMonth(DateTime.now()),
+                      subtitle: AppStrings.pickMonth,
                       onTap: _busy ? null : _exportServantMonthly,
                     ),
                     _ExportTile(
