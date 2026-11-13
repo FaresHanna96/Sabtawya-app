@@ -52,10 +52,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   static const _attendance = AttendanceRepository();
   static const _reports = ReportRepository();
 
-  /// Delete button on visit-history rows. Off: it needs the delete policy
-  /// (migration 20261109002), which is held back until the owner approves
-  /// deleting data from the app.
-  static const _allowVisitDelete = false;
   static const _classes = ClassRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<_ProfileData>>();
@@ -354,7 +350,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              _visitHistoryCard(data, canEdit && _allowVisitDelete),
+              _visitHistoryCard(data, canEdit),
               const SizedBox(height: 16),
               _lastActivityCard(data.lastActivity),
               if (data.monthly.isNotEmpty) ...[
@@ -848,7 +844,9 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              isPhone ? AppStrings.lastPhoneVisit : AppStrings.lastHomeVisit,
+              // Each row's own type; "آخر" belongs only to the card's last
+              // visit, not to every entry in the history.
+              isPhone ? AppStrings.followUpPhone : AppStrings.followUpHome,
               style: TextStyle(
                 fontSize: 12,
                 color: isPhone ? AppColors.navy : AppColors.success,
