@@ -657,32 +657,45 @@ class ExcelService {
     return _encode(book);
   }
 
+  /// الحضور الشهري: one row per child with the months chosen added
+  /// together (Saturdays came, held, points, attendance %), not a row per
+  /// month. Best attendance first in each class, like the reports.
   static List<int> monthlyWorkbook(List<ChildMonthlyReport> report) {
     final (book, sheet) = _book(AppStrings.monthlyReport);
-    _writeByClass<ChildMonthlyReport>(
+
+    final byChild = <String, List<ChildMonthlyReport>>{};
+    for (final r in report) {
+      (byChild[r.childId] ??= <ChildMonthlyReport>[]).add(r);
+    }
+    final children = [
+      for (final rows in byChild.values) _MonthlyChild(rows),
+    ]..sort((a, b) {
+        final byPct = b.percentage.compareTo(a.percentage);
+        return byPct != 0 ? byPct : a.name.compareTo(b.name);
+      });
+
+    _writeByClass<_MonthlyChild>(
       book,
       sheet,
       header: <CellValue?>[
         _text(AppStrings.classLabel),
         _text(AppStrings.childName),
         _text(AppStrings.gender),
-        _text(AppStrings.month),
         _text(AppStrings.attendedSessions),
         _text(AppStrings.totalSessions),
         _text(AppStrings.totalPoints),
         _text('${AppStrings.averageAttendance} %'),
       ],
-      rows: report,
-      classOf: (r) => r.className,
-      cells: (row, _) => <CellValue?>[
-        _text(row.className),
-        _text(row.childName),
-        _text(row.gender.label),
-        _text(AppDateUtils.formatMonth(row.monthStart)),
-        IntCellValue(row.sessionsAttended),
-        IntCellValue(row.sessionsTotal),
-        IntCellValue(row.points),
-        DoubleCellValue(row.percentage),
+      rows: children,
+      classOf: (c) => c.className,
+      cells: (c, _) => <CellValue?>[
+        _text(c.className),
+        _text(c.name),
+        _text(c.gender.label),
+        IntCellValue(c.attended),
+        IntCellValue(c.held),
+        IntCellValue(c.points),
+        DoubleCellValue(double.parse(c.percentage.toStringAsFixed(1))),
       ],
     );
     return _encode(book);
@@ -1513,4 +1526,25 @@ class ExcelService {
       .replaceAll('&lt;', '<')
       .replaceAll('&gt;', '>')
       .replaceAll('&amp;', '&');
+}
+
+/// One child's chosen months added together, for
+/// [ExcelService.monthlyWorkbook].
+class _MonthlyChild {
+  _MonthlyChild(List<ChildMonthlyReport> rows)
+      : name = rows.first.childName,
+        className = rows.first.className,
+        gender = rows.first.gender,
+        attended = rows.fold(0, (a, r) => a + r.sessionsAttended),
+        held = rows.fold(0, (a, r) => a + r.sessionsTotal),
+        points = rows.fold(0, (a, r) => a + r.points);
+
+  final String name;
+  final String className;
+  final Gender gender;
+  final int attended;
+  final int held;
+  final int points;
+
+  double get percentage => held > 0 ? attended / held * 100 : 0;
 }
