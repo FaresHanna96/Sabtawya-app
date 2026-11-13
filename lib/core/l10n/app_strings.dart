@@ -334,6 +334,8 @@ class AppStrings {
   static const activityByClass = 'الحضور حسب النشاط';
   static const saturdaysHeld = 'السبوت حتى الآن';
   static const weeklyAttendance = 'الحضور كل سبت';
+  static const attendedLastSaturday = 'حضروا آخر سبت';
+  static String attendedOf(int came, int of) => '$came من $of مخدوم';
   static const followUpHow = 'كيف تم افتقاد';
   static const followUpPhone = 'مكالمة تليفون';
   static const followUpHome = 'زيارة منزلية';

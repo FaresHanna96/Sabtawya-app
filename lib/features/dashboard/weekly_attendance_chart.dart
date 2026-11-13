@@ -10,9 +10,13 @@ import '../../data/models/reports.dart';
 /// (children who came out of the active children of the classes recorded),
 /// oldest on the right as Arabic reads, newest on the left.
 class WeeklyAttendanceChart extends StatelessWidget {
-  const WeeklyAttendanceChart({super.key, required this.weeks});
+  const WeeklyAttendanceChart({super.key, required this.weeks, this.top});
 
   final List<WeeklyAttendance> weeks;
+
+  /// Shown above the chart inside the same card (the dashboard puts the
+  /// last Saturday taken here).
+  final Widget? top;
 
   /// The last [count] Saturdays, oldest first.
   static List<WeeklyAttendance> lastWeeks(
@@ -25,10 +29,6 @@ class WeeklyAttendanceChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final shown = lastWeeks(weeks);
     if (shown.length < 2) return const SizedBox.shrink();
-    final spots = [
-      for (var i = 0; i < shown.length; i++)
-        FlSpot(i.toDouble(), shown[i].percentage.clamp(0, 100).toDouble()),
-    ];
     final last = shown.last.percentage.round();
     final before = shown[shown.length - 2].percentage.round();
     final diff = last - before;
@@ -46,95 +46,118 @@ class WeeklyAttendanceChart extends StatelessWidget {
           color: diff >= 0 ? AppColors.success : AppColors.danger,
         ),
       ),
-      child: SizedBox(
-        height: 160,
-        // Charts read left to right: oldest Saturday on the left.
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: LineChart(
-            LineChartData(
-              minY: 0,
-              maxY: 100,
-              gridData: FlGridData(
-                drawVerticalLine: false,
-                horizontalInterval: 25,
-                getDrawingHorizontalLine: (_) => FlLine(
-                  color: AppColors.muted.withValues(alpha: 0.15),
-                  strokeWidth: 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (top != null) ...[top!, const SizedBox(height: 8)],
+          // How many came on the newest Saturday, out of the children of the
+          // classes whose attendance was taken.
+          InfoRow(
+            label: AppStrings.attendedLastSaturday,
+            value:
+                AppStrings.attendedOf(shown.last.present, shown.last.children),
+            icon: Icons.how_to_reg_outlined,
+          ),
+          const SizedBox(height: 12),
+          _chart(shown),
+        ],
+      ),
+    );
+  }
+
+  Widget _chart(List<WeeklyAttendance> shown) {
+    final spots = [
+      for (var i = 0; i < shown.length; i++)
+        FlSpot(i.toDouble(), shown[i].percentage.clamp(0, 100).toDouble()),
+    ];
+    return SizedBox(
+      height: 160,
+      // Charts read left to right: oldest Saturday on the left.
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: LineChart(
+          LineChartData(
+            minY: 0,
+            maxY: 100,
+            gridData: FlGridData(
+              drawVerticalLine: false,
+              horizontalInterval: 25,
+              getDrawingHorizontalLine: (_) => FlLine(
+                color: AppColors.muted.withValues(alpha: 0.15),
+                strokeWidth: 1,
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            titlesData: FlTitlesData(
+              topTitles: const AxisTitles(),
+              rightTitles: const AxisTitles(),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 34,
+                  interval: 50,
+                  getTitlesWidget: (v, _) => Text(
+                    '${v.round()}%',
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.muted),
+                  ),
                 ),
               ),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(),
-                rightTitles: const AxisTitles(),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 34,
-                    interval: 50,
-                    getTitlesWidget: (v, _) => Text(
-                      '${v.round()}%',
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 22,
+                  interval: 1,
+                  getTitlesWidget: (v, _) {
+                    final i = v.round();
+                    if (i < 0 || i >= shown.length) {
+                      return const SizedBox.shrink();
+                    }
+                    // Every other date, so they do not crowd.
+                    if ((shown.length - 1 - i).isOdd) {
+                      return const SizedBox.shrink();
+                    }
+                    final d = shown[i].date;
+                    return Text(
+                      '${d.day}/${d.month}',
                       style:
                           const TextStyle(fontSize: 12, color: AppColors.muted),
-                    ),
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 22,
-                    interval: 1,
-                    getTitlesWidget: (v, _) {
-                      final i = v.round();
-                      if (i < 0 || i >= shown.length) {
-                        return const SizedBox.shrink();
-                      }
-                      // Every other date, so they do not crowd.
-                      if ((shown.length - 1 - i).isOdd) {
-                        return const SizedBox.shrink();
-                      }
-                      final d = shown[i].date;
-                      return Text(
-                        '${d.day}/${d.month}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.muted),
-                      );
-                    },
-                  ),
+                    );
+                  },
                 ),
               ),
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (touched) => [
-                    for (final t in touched)
-                      LineTooltipItem(
-                        '${shown[t.x.round()].present}/'
-                        '${shown[t.x.round()].children}\n'
-                        '${t.y.round()}%',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  preventCurveOverShooting: true,
-                  color: AppColors.sky,
-                  barWidth: 3,
-                  dotData: const FlDotData(show: true),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    color: AppColors.sky.withValues(alpha: 0.12),
-                  ),
-                ),
-              ],
             ),
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (touched) => [
+                  for (final t in touched)
+                    LineTooltipItem(
+                      '${shown[t.x.round()].present}/'
+                      '${shown[t.x.round()].children}\n'
+                      '${t.y.round()}%',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                preventCurveOverShooting: true,
+                color: AppColors.sky,
+                barWidth: 3,
+                dotData: const FlDotData(show: true),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: AppColors.sky.withValues(alpha: 0.12),
+                ),
+              ),
+            ],
           ),
         ),
       ),

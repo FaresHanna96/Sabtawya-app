@@ -166,14 +166,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               FadeSlideIn(index: 5, child: _quickActions()),
               const SizedBox(height: 16),
-              FadeSlideIn(index: 6, child: _overview(stats)),
-              if (data.weeks.length >= 2) ...[
-                const SizedBox(height: 16),
-                FadeSlideIn(
-                  index: 7,
-                  child: WeeklyAttendanceChart(weeks: data.weeks),
-                ),
-              ],
+              // The last Saturday sits in the weekly chart's card; with no
+              // chart yet (under two Saturdays) it keeps a card of its own.
+              FadeSlideIn(
+                index: 6,
+                child: data.weeks.length >= 2
+                    ? WeeklyAttendanceChart(
+                        weeks: data.weeks,
+                        top: _lastSaturday(stats),
+                      )
+                    : SectionCard(child: _lastSaturday(stats)),
+              ),
+              const SizedBox(height: 16),
+              FadeSlideIn(index: 7, child: _childrenSplit(stats)),
               const SizedBox(height: 16),
               if (data.classScores.isNotEmpty) ...[
                 FadeSlideIn(
@@ -211,22 +216,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ------------------------------------------------------------- sections
 
-  /// Last Saturday taken, and boys vs girls as one split bar.
-  Widget _overview(AdminStats stats) {
+  /// The last Saturday taken: at the top of the weekly chart's card.
+  Widget _lastSaturday(AdminStats stats) => InfoRow(
+        label: AppStrings.lastAttendance,
+        value: stats.lastSessionDate == null
+            ? AppStrings.noUpcomingSession
+            : AppDateUtils.formatDayDate(stats.lastSessionDate!),
+        icon: Icons.event_available_outlined,
+      );
+
+  /// All active children, boys vs girls as one split bar. Its own card with
+  /// its own title, so the totals are not read as that Saturday's attendance.
+  Widget _childrenSplit(AdminStats stats) {
     final total = stats.boysCount + stats.girlsCount;
     final boysShare = total == 0 ? 0.5 : stats.boysCount / total;
     return SectionCard(
+      title: '${AppStrings.childrenCount} ($total)',
+      icon: Icons.groups_rounded,
+      accent: AppColors.navy,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          InfoRow(
-            label: AppStrings.lastAttendance,
-            value: stats.lastSessionDate == null
-                ? AppStrings.noUpcomingSession
-                : AppDateUtils.formatDayDate(stats.lastSessionDate!),
-            icon: Icons.event_available_outlined,
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
               const Icon(Icons.boy_rounded, size: 18, color: AppColors.sky),

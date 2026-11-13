@@ -257,8 +257,7 @@ class _ClassRow extends StatelessWidget {
                   '${overview.activeChildren} ${AppStrings.childrenTitle}',
                   style: const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
-                const Icon(AppIcons.forward,
-                    color: AppColors.muted, size: 20),
+                const Icon(AppIcons.forward, color: AppColors.muted, size: 20),
               ],
             ),
             if (score != null) ...[
