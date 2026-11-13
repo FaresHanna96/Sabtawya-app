@@ -341,6 +341,8 @@ class AppStrings {
       : diff > 0
           ? 'أعلى $diff% من السبت اللي قبله'
           : 'أقل ${-diff}% من السبت اللي قبله';
+  static String notRecordedClasses(List<String> names) =>
+      '${names.length == 1 ? 'فصل لم يسجّل' : names.length == 2 ? 'فصلين لم يسجّلوا' : '${names.length} فصول لم يسجّلوا'} الحضور: ${names.join('، ')}';
   static String saturdayDetail(String date, int came, int of, int pct) =>
       'سبت $date: حضر $came من $of ($pct%)';
   static const followUpHow = 'كيف تم افتقاد';

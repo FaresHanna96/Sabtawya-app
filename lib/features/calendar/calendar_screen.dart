@@ -73,7 +73,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _servants.birthdays(),
       _events.listEvents(),
     ).wait;
-    return _CalendarData(children: children, servants: servants, events: events);
+    return _CalendarData(
+        children: children, servants: servants, events: events);
   }
 
   /// +1 / -1: which way the month grid slides in (RTL: next comes from left).
@@ -195,49 +196,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       if (v < -250) _go(-1);
                     },
                     child: Column(
-                    children: [
-                      _monthHeader(),
-                      _monthSummary(data),
-                      const SizedBox(height: 6),
-                      _weekdayRow(),
-                      // The month's days slide in from the side it came
-                      // from when the arrows change the month.
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 260),
-                        transitionBuilder: (child, anim) => FadeTransition(
-                          opacity: anim,
-                          child: SlideTransition(
-                            position: Tween(
-                              begin: Offset(0.15 * _slideDir, 0),
-                              end: Offset.zero,
-                            ).animate(anim),
-                            child: child,
+                      children: [
+                        _monthHeader(),
+                        _monthSummary(data),
+                        const SizedBox(height: 6),
+                        _weekdayRow(),
+                        // The month's days slide in from the side it came
+                        // from when the arrows change the month.
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          transitionBuilder: (child, anim) => FadeTransition(
+                            opacity: anim,
+                            child: SlideTransition(
+                              position: Tween(
+                                begin: Offset(0.15 * _slideDir, 0),
+                                end: Offset.zero,
+                              ).animate(anim),
+                              child: child,
+                            ),
+                          ),
+                          child: Column(
+                            key: ValueKey(_month),
+                            children: [
+                              for (final week in CalendarGrid.weeks(
+                                _month.year,
+                                _month.month,
+                              ))
+                                Row(
+                                  children: [
+                                    for (final day in week)
+                                      Expanded(
+                                        child: day == null
+                                            ? const SizedBox(height: 46)
+                                            : _dayCell(
+                                                day,
+                                                _itemsOn(day, data, classNames),
+                                              ),
+                                      ),
+                                  ],
+                                ),
+                            ],
                           ),
                         ),
-                        child: Column(
-                          key: ValueKey(_month),
-                          children: [
-                            for (final week in CalendarGrid.weeks(
-                              _month.year,
-                              _month.month,
-                            ))
-                              Row(
-                                children: [
-                                  for (final day in week)
-                                    Expanded(
-                                      child: day == null
-                                          ? const SizedBox(height: 46)
-                                          : _dayCell(
-                                              day,
-                                              _itemsOn(day, data, classNames),
-                                            ),
-                                    ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
                     ),
                   ),
                 ),
@@ -440,8 +441,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     }
 
-    Widget stat(int n, String label, Color color) => TweenAnimationBuilder<
-            double>(
+    Widget stat(int n, String label, Color color) =>
+        TweenAnimationBuilder<double>(
           tween: Tween(end: n.toDouble()),
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeOutCubic,

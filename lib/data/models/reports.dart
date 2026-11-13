@@ -430,11 +430,16 @@ class WeeklyAttendance {
     required this.date,
     required this.present,
     required this.children,
+    this.missingClassIds = const [],
   });
 
   final DateTime date;
   final int present;
   final int children;
+
+  /// Classes that did not take attendance that Saturday: left out of
+  /// [children] (not counted as absent), and named on the card.
+  final List<String> missingClassIds;
 
   double get percentage => children > 0 ? present / children * 100 : 0;
 }

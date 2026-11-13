@@ -59,8 +59,9 @@ class ErrorReporter {
       final client = Supabase.instance.client;
       if (client.auth.currentUser == null) return;
       unawaited(client.from('app_errors').insert(<String, dynamic>{
-        'message': error.toString().substring(
-            0, error.toString().length.clamp(0, 500)),
+        'message': error
+            .toString()
+            .substring(0, error.toString().length.clamp(0, 500)),
         'stack': (stack?.toString() ?? '')
             .substring(0, (stack?.toString() ?? '').length.clamp(0, 2000)),
         'platform': 'web',

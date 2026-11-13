@@ -31,7 +31,8 @@ CompetitionMark _mark(String comp, String child, int mark) => CompetitionMark(
     );
 
 void main() {
-  test('cumulative sheet is ordered by total, highest first, with one sheet '
+  test(
+      'cumulative sheet is ordered by total, highest first, with one sheet '
       'per competition', () {
     final bytes = ExcelService.competitionsWorkbook(
       competitions: [

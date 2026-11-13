@@ -22,10 +22,7 @@ class ServantRepository {
       // Hidden accounts (test accounts) stay out of every servants list.
       // Filtered here rather than in the query, so a database without the
       // is_hidden column (the dev project) still works.
-      return rows(data)
-          .map(Profile.fromMap)
-          .where((p) => !p.isHidden)
-          .toList();
+      return rows(data).map(Profile.fromMap).where((p) => !p.isHidden).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -231,13 +228,10 @@ class ServantRepository {
           .from(Db.tServantLessonPrepPhotos)
           .select('storage_path, servant_lesson_preps!inner(servant_id)')
           .eq('servant_lesson_preps.servant_id', servantId);
-      final paths = rows(photos)
-          .map((r) => r['storage_path'].toString())
-          .toList();
+      final paths =
+          rows(photos).map((r) => r['storage_path'].toString()).toList();
       if (paths.isNotEmpty) {
-        await Db.client.storage
-            .from(Db.bucketServantSubmissions)
-            .remove(paths);
+        await Db.client.storage.from(Db.bucketServantSubmissions).remove(paths);
       }
       await Db.client.rpc('admin_delete_servant', params: {
         'p_servant_id': servantId,

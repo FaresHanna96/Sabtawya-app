@@ -201,25 +201,33 @@ class ReportRepository {
           '${today.day.toString().padLeft(2, '0')}';
       final data = await Db.client
           .from(Db.vClassSessionSummary)
-          .select('session_date, present_count, active_children, recorded_count')
+          .select('session_date, class_id, present_count, active_children, '
+              'recorded_count')
           .eq('year_id', yearId)
           .lte('session_date', iso)
           .order('session_date', ascending: true);
       final byDate = <String, List<int>>{};
+      final missing = <String, List<String>>{};
       for (final r in rows(data)) {
-        // A class whose attendance was not taken does not count as absent.
-        if (asInt(r['recorded_count']) == 0) continue;
         final d = asText(r['session_date']);
+        // A class whose attendance was not taken does not count as absent;
+        // it is listed as not recorded instead.
+        if (asInt(r['recorded_count']) == 0) {
+          (missing[d] ??= []).add(asText(r['class_id']));
+          continue;
+        }
         final acc = byDate[d] ??= [0, 0];
         acc[0] += asInt(r['present_count']);
         acc[1] += asInt(r['active_children']);
       }
+      // Saturdays where nobody recorded yet are left out altogether.
       return [
         for (final e in byDate.entries)
           WeeklyAttendance(
             date: DateTime.parse(e.key),
             present: e.value[0],
             children: e.value[1],
+            missingClassIds: missing[e.key] ?? const [],
           ),
       ];
     } catch (e) {

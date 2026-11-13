@@ -96,8 +96,8 @@ class AsyncSectionState<T> extends State<AsyncSection<T>> {
             child = _content(context, _last as T);
             state = 'content';
           } else {
-            child = widget.loading ??
-                LoadingView(message: widget.loadingMessage);
+            child =
+                widget.loading ?? LoadingView(message: widget.loadingMessage);
             state = 'loading';
           }
         } else if (snapshot.hasError) {

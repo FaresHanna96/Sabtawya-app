@@ -174,6 +174,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ? WeeklyAttendanceChart(
                         weeks: data.weeks,
                         top: _lastSaturday(stats),
+                        classNames: {
+                          for (final c
+                              in context.read<SessionController>().myClasses)
+                            c.classId: c.className,
+                        },
                       )
                     : SectionCard(child: _lastSaturday(stats)),
               ),

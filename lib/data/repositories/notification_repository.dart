@@ -24,7 +24,8 @@ class NotificationRepository {
 
   Future<int> unreadCount() async {
     try {
-      final data = await Db.client.from(_table).select('id').isFilter('read_at', null);
+      final data =
+          await Db.client.from(_table).select('id').isFilter('read_at', null);
       return rows(data).length;
     } catch (e) {
       throw AppFailure.from(e);
@@ -45,10 +46,9 @@ class NotificationRepository {
 
   Future<void> markAllRead() async {
     try {
-      await Db.client
-          .from(_table)
-          .update({'read_at': DateTime.now().toUtc().toIso8601String()})
-          .isFilter('read_at', null);
+      await Db.client.from(_table).update({
+        'read_at': DateTime.now().toUtc().toIso8601String()
+      }).isFilter('read_at', null);
     } catch (e) {
       throw AppFailure.from(e);
     }

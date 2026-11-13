@@ -328,8 +328,7 @@ class _PasswordRecoveryScreenState extends State<_PasswordRecoveryScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
@@ -352,8 +351,7 @@ class _PasswordRecoveryScreenState extends State<_PasswordRecoveryScreen> {
                           icon: Icon(_obscure
                               ? Icons.visibility_off
                               : Icons.visibility),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                       validator: (v) {

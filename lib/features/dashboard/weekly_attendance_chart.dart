@@ -10,7 +10,16 @@ import '../../data/models/reports.dart';
 /// Saturday (% on top, date below) coloured by level. Tapping a bar shows
 /// that Saturday's numbers. Oldest on the left, newest on the right.
 class WeeklyAttendanceChart extends StatefulWidget {
-  const WeeklyAttendanceChart({super.key, required this.weeks, this.top});
+  const WeeklyAttendanceChart({
+    super.key,
+    required this.weeks,
+    this.top,
+    this.classNames = const {},
+  });
+
+  /// Class id to name, in the usual class order, for naming the classes
+  /// that did not record a Saturday.
+  final Map<String, String> classNames;
 
   final List<WeeklyAttendance> weeks;
 
@@ -42,6 +51,37 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
 
   static String _date(DateTime d) => '${d.day}/${d.month}';
 
+  /// Names of the classes that did not record, in the usual class order.
+  List<String> _missingNames(WeeklyAttendance w) {
+    if (w.missingClassIds.isEmpty) return const [];
+    return [
+      for (final e in widget.classNames.entries)
+        if (w.missingClassIds.contains(e.key)) e.value,
+    ];
+  }
+
+  Widget _missingLine(List<String> names) => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.warning_amber_rounded,
+                size: 16, color: AppColors.warning),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                AppStrings.notRecordedClasses(names),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.warning,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final shown = WeeklyAttendanceChart.lastWeeks(widget.weeks);
@@ -51,6 +91,8 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
     final diff = pct - shown[shown.length - 2].percentage.round();
     final picked = (_picked ?? shown.length - 1).clamp(0, shown.length - 1);
     final p = shown[picked];
+    final newestMissing = _missingNames(newest);
+    final pickedMissing = _missingNames(p);
     final level = WeeklyAttendanceChart.levelColor(newest.percentage);
     final trend = diff > 0
         ? AppColors.success
@@ -108,6 +150,7 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
               ),
             ],
           ),
+          if (newestMissing.isNotEmpty) _missingLine(newestMissing),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -166,23 +209,29 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
                 color: AppColors.sky.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.touch_app_outlined,
-                      size: 16, color: AppColors.muted),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      AppStrings.saturdayDetail(
-                        _date(p.date),
-                        p.present,
-                        p.children,
-                        p.percentage.round(),
+                  Row(
+                    children: [
+                      const Icon(Icons.touch_app_outlined,
+                          size: 16, color: AppColors.muted),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          AppStrings.saturdayDetail(
+                            _date(p.date),
+                            p.present,
+                            p.children,
+                            p.percentage.round(),
+                          ),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
                       ),
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700),
-                    ),
+                    ],
                   ),
+                  if (pickedMissing.isNotEmpty) _missingLine(pickedMissing),
                 ],
               ),
             ),

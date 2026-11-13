@@ -16,7 +16,8 @@ List<int> _workbook(List<List<String>> rows) {
 void main() {
   group('parseChildren', () {
     test('reads the file produced by the template', () {
-      final result = ExcelService.parseChildren(ExcelService.childrenTemplate());
+      final result =
+          ExcelService.parseChildren(ExcelService.childrenTemplate());
 
       expect(result.isFailure, isFalse);
       final row = result.rows.single;
@@ -134,7 +135,8 @@ void main() {
     );
 
     test('a blank cell keeps the stored value', () {
-      final row = ImportRow(rowNumber: 2, name: 'مينا جورج', school: 'مدرسة جديدة');
+      final row =
+          ImportRow(rowNumber: 2, name: 'مينا جورج', school: 'مدرسة جديدة');
 
       final merged = row.applyTo(existing, 'class-1');
 

@@ -49,12 +49,16 @@ Future<XFile?> pickPdfInBrowser() {
   }
 
   // The JS callbacks must be plain void functions; the reading is async.
-  input.addEventListener('change', ((web.Event _) {
-    unawaited(read());
-  }).toJS);
-  input.addEventListener('cancel', ((web.Event _) {
-    finish(null);
-  }).toJS);
+  input.addEventListener(
+      'change',
+      ((web.Event _) {
+        unawaited(read());
+      }).toJS);
+  input.addEventListener(
+      'cancel',
+      ((web.Event _) {
+        finish(null);
+      }).toJS);
 
   input.click();
   return completer.future;

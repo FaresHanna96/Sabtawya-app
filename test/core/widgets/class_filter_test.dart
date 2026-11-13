@@ -39,8 +39,8 @@ void main() {
 
     test('one or two classes are named, more are counted', () {
       expect(ClassFilterChips.labelFor(_classes, {'g4'}), '4 بنات');
-      expect(ClassFilterChips.labelFor(_classes, {'g3', 'g4'}),
-          '3 بنات، 4 بنات');
+      expect(
+          ClassFilterChips.labelFor(_classes, {'g3', 'g4'}), '3 بنات، 4 بنات');
       expect(ClassFilterChips.labelFor(_classes, {'b3', 'g3', 'g4'}),
           AppStrings.classesCount(3));
     });

@@ -25,8 +25,8 @@ UserIdentity _identity() => UserIdentity(
 void main() {
   group('isExistingAccountReply', () {
     test('a stand-in user with no identities means the email is taken', () {
-      expect(AuthRepository.isExistingAccountReply(_user(identities: [])),
-          isTrue);
+      expect(
+          AuthRepository.isExistingAccountReply(_user(identities: [])), isTrue);
     });
 
     test('a real new user has an email identity', () {

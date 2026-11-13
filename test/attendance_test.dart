@@ -168,7 +168,8 @@ void main() {
     });
 
     test('toIsoDate drops the time', () {
-      expect(AppDateUtils.toIsoDate(DateTime(2026, 1, 5, 23, 59)), '2026-01-05');
+      expect(
+          AppDateUtils.toIsoDate(DateTime(2026, 1, 5, 23, 59)), '2026-01-05');
     });
   });
 }

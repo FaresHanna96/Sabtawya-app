@@ -14,15 +14,19 @@ void main() {
 
   group('newerThanThis', () {
     test('a higher build is an update', () {
-      final u = UpdateService.newerThanThis(
-          {'version': '1.0.3', 'build': 4}, current: 3);
+      final u = UpdateService.newerThanThis({'version': '1.0.3', 'build': 4},
+          current: 3);
       expect(u?.version, '1.0.3');
     });
     test('same or lower build is not', () {
-      expect(UpdateService.newerThanThis({'version': '1.0.2', 'build': 3},
-          current: 3), isNull);
-      expect(UpdateService.newerThanThis({'version': '1.0.1', 'build': 2},
-          current: 3), isNull);
+      expect(
+          UpdateService.newerThanThis({'version': '1.0.2', 'build': 3},
+              current: 3),
+          isNull);
+      expect(
+          UpdateService.newerThanThis({'version': '1.0.1', 'build': 2},
+              current: 3),
+          isNull);
     });
     test("this phone's APK and fingerprint are picked", () {
       final json = {
@@ -42,16 +46,15 @@ void main() {
     });
 
     test('without APK details it falls back to the download page', () {
-      final u = UpdateService.newerThanThis(
-          {'version': '1.0.4', 'build': 9}, current: 3)!;
+      final u = UpdateService.newerThanThis({'version': '1.0.4', 'build': 9},
+          current: 3)!;
       expect(u.canInstallInApp, isFalse);
     });
 
     test('the phone type comes from Platform.version', () {
-      expect(UpdateService.deviceAbi('3.9 (stable) on "android_arm64"'),
-          'arm64');
-      expect(UpdateService.deviceAbi('3.9 (stable) on "android_arm"'),
-          'armv7');
+      expect(
+          UpdateService.deviceAbi('3.9 (stable) on "android_arm64"'), 'arm64');
+      expect(UpdateService.deviceAbi('3.9 (stable) on "android_arm"'), 'armv7');
       expect(UpdateService.deviceAbi('3.9 on "windows_x64"'), 'arm64');
     });
 

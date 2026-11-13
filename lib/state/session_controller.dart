@@ -250,9 +250,11 @@ class SessionController extends ChangeNotifier {
     return _auth.signOut();
   }
 
-  Future<void> sendPasswordReset(String email) => _auth.sendPasswordReset(email);
+  Future<void> sendPasswordReset(String email) =>
+      _auth.sendPasswordReset(email);
 
-  Future<void> updatePassword(String newPassword) => _auth.updatePassword(newPassword);
+  Future<void> updatePassword(String newPassword) =>
+      _auth.updatePassword(newPassword);
 
   void _fail(Object error) {
     _errorMessage = AppFailure.from(error).message;

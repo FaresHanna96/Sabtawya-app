@@ -28,7 +28,12 @@ void main() {
       if (request.method == 'GET') {
         return http.Response(
           jsonEncode([
-            {'id': 'a', 'class_id': 'c1', 'full_name': 'Anna', 'is_active': true},
+            {
+              'id': 'a',
+              'class_id': 'c1',
+              'full_name': 'Anna',
+              'is_active': true
+            },
           ]),
           200,
           headers: {'content-type': 'application/json'},
@@ -45,7 +50,8 @@ void main() {
 
   Future<List<dynamic>> getChildren() async {
     final response = await client.get(
-      Uri.parse('$_base/children?class_id=eq.c1&is_active=eq.true&order=full_name'),
+      Uri.parse(
+          '$_base/children?class_id=eq.c1&is_active=eq.true&order=full_name'),
     );
     return jsonDecode(response.body) as List<dynamic>;
   }
@@ -62,7 +68,8 @@ void main() {
     expect(getChildren, throwsA(isA<http.ClientException>()));
   });
 
-  test('an insert made offline is queued, gets an id and shows up at once', () async {
+  test('an insert made offline is queued, gets an id and shows up at once',
+      () async {
     await getChildren();
     online = false;
 
@@ -135,7 +142,8 @@ void main() {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('https://example.supabase.co/storage/v1/object/photos/a/b.jpg'),
-    )..files.add(http.MultipartFile.fromBytes('file', [1, 2, 3], filename: 'b.jpg'));
+    )..files.add(
+        http.MultipartFile.fromBytes('file', [1, 2, 3], filename: 'b.jpg'));
 
     final streamed = await client.send(request);
     expect(streamed.statusCode, 200);
