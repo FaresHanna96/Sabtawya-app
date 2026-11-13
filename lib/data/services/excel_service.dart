@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:archive/archive.dart';
 import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -534,48 +538,38 @@ class ExcelService {
     required String Function(String classId) classNameOf,
   }) {
     final (book, sheet) = _book(AppStrings.childrenTitle);
-    sheet.appendRow(<CellValue?>[
-      _text(AppStrings.classLabel),
-      ...childColumns.map(_text),
-      _text(AppStrings.age),
-      _text(AppStrings.active),
-    ]);
-
-    // Group by class, sorted by class name.
-    final grouped = <String, List<Child>>{};
-    for (final child in children) {
-      (grouped[child.classId] ??= []).add(child);
-    }
-    final sortedGroups = grouped.entries.toList()
-      ..sort((a, b) => classNameOf(a.key).compareTo(classNameOf(b.key)));
-
-    for (final entry in sortedGroups) {
-      final className = classNameOf(entry.key);
-      // Section header row.
-      sheet.appendRow(<CellValue?>[_text('── $className ──')]);
-      for (final child in entry.value) {
-        sheet.appendRow(<CellValue?>[
-          _text(className),
-          _text(child.fullName),
-          _text(child.gender.label),
-          _text(child.birthDate == null
-              ? ''
-              : AppDateUtils.toIsoDate(child.birthDate!)),
-          _text(child.mobile),
-          _text(child.motherName),
-          _text(child.motherMobile),
-          _text(child.fatherName),
-          _text(child.fatherMobile),
-          _text(child.confessionFather),
-          _text(child.school),
-          _text(child.address),
-          _text(child.code),
-          _text(child.notes),
-          child.ageYears == null ? null : IntCellValue(child.ageYears!),
-          _text(child.isActive ? AppStrings.yes : AppStrings.no),
-        ]);
-      }
-    }
+    _writeByClass<Child>(
+      book,
+      sheet,
+      header: <CellValue?>[
+        _text(AppStrings.classLabel),
+        ...childColumns.map(_text),
+        _text(AppStrings.age),
+        _text(AppStrings.active),
+      ],
+      rows: children,
+      classOf: (c) => classNameOf(c.classId),
+      cells: (child, _) => <CellValue?>[
+        _text(classNameOf(child.classId)),
+        _text(child.fullName),
+        _text(child.gender.label),
+        _text(child.birthDate == null
+            ? ''
+            : AppDateUtils.toIsoDate(child.birthDate!)),
+        _text(child.mobile),
+        _text(child.motherName),
+        _text(child.motherMobile),
+        _text(child.fatherName),
+        _text(child.fatherMobile),
+        _text(child.confessionFather),
+        _text(child.school),
+        _text(child.address),
+        _text(child.code),
+        _text(child.notes),
+        child.ageYears == null ? null : IntCellValue(child.ageYears!),
+        _text(child.isActive ? AppStrings.yes : AppStrings.no),
+      ],
+    );
     return _encode(book);
   }
 
@@ -618,42 +612,32 @@ class ExcelService {
 
   static List<int> monthlyWorkbook(List<ChildMonthlyReport> report) {
     final (book, sheet) = _book(AppStrings.monthlyReport);
-    sheet.appendRow(<CellValue?>[
-      _text(AppStrings.classLabel),
-      _text(AppStrings.childName),
-      _text(AppStrings.gender),
-      _text(AppStrings.month),
-      _text(AppStrings.attendedSessions),
-      _text(AppStrings.totalSessions),
-      _text(AppStrings.totalPoints),
-      _text('${AppStrings.averageAttendance} %'),
-    ]);
-
-    // Group by class, sorted by class name then child name.
-    final grouped = <String, List<ChildMonthlyReport>>{};
-    for (final row in report) {
-      (grouped[row.classId] ??= []).add(row);
-    }
-    final sortedGroups = grouped.entries.toList()
-      ..sort(
-          (a, b) => a.value.first.className.compareTo(b.value.first.className));
-
-    for (final entry in sortedGroups) {
-      final className = entry.value.first.className;
-      sheet.appendRow(<CellValue?>[_text('── $className ──')]);
-      for (final row in entry.value) {
-        sheet.appendRow(<CellValue?>[
-          _text(row.className),
-          _text(row.childName),
-          _text(row.gender.label),
-          _text(AppDateUtils.formatMonth(row.monthStart)),
-          IntCellValue(row.sessionsAttended),
-          IntCellValue(row.sessionsTotal),
-          IntCellValue(row.points),
-          DoubleCellValue(row.percentage),
-        ]);
-      }
-    }
+    _writeByClass<ChildMonthlyReport>(
+      book,
+      sheet,
+      header: <CellValue?>[
+        _text(AppStrings.classLabel),
+        _text(AppStrings.childName),
+        _text(AppStrings.gender),
+        _text(AppStrings.month),
+        _text(AppStrings.attendedSessions),
+        _text(AppStrings.totalSessions),
+        _text(AppStrings.totalPoints),
+        _text('${AppStrings.averageAttendance} %'),
+      ],
+      rows: report,
+      classOf: (r) => r.className,
+      cells: (row, _) => <CellValue?>[
+        _text(row.className),
+        _text(row.childName),
+        _text(row.gender.label),
+        _text(AppDateUtils.formatMonth(row.monthStart)),
+        IntCellValue(row.sessionsAttended),
+        IntCellValue(row.sessionsTotal),
+        IntCellValue(row.points),
+        DoubleCellValue(row.percentage),
+      ],
+    );
     return _encode(book);
   }
 
@@ -662,38 +646,29 @@ class ExcelService {
     Map<String, int>? sessionsHeldByChild,
   }) {
     final (book, sheet) = _book(AppStrings.overallReport);
-    sheet.appendRow(<CellValue?>[
-      _text(AppStrings.rank),
-      _text(AppStrings.classLabel),
-      _text(AppStrings.childName),
-      _text(AppStrings.gender),
-      _text(AppStrings.birthDate),
-      _text(AppStrings.school),
-      _text(AppStrings.attendedSessions),
-      _text(AppStrings.totalSessions),
-      _text(AppStrings.totalPoints),
-      _text('${AppStrings.averageAttendance} %'),
-    ]);
-
-    // Group by class, sorted by class name; rank within each class.
-    final grouped = <String, List<ChildYearReport>>{};
-    for (final row in report) {
-      (grouped[row.classId] ??= []).add(row);
-    }
-    final sortedGroups = grouped.entries.toList()
-      ..sort(
-          (a, b) => a.value.first.className.compareTo(b.value.first.className));
-
-    for (final entry in sortedGroups) {
-      final className = entry.value.first.className;
-      // Children in this class are already sorted by points desc from the repo.
-      sheet.appendRow(<CellValue?>[_text('── $className ──')]);
-      for (var i = 0; i < entry.value.length; i++) {
-        final row = entry.value[i];
+    // Children come sorted by points (best first): rank within each class.
+    _writeByClass<ChildYearReport>(
+      book,
+      sheet,
+      header: <CellValue?>[
+        _text(AppStrings.rank),
+        _text(AppStrings.classLabel),
+        _text(AppStrings.childName),
+        _text(AppStrings.gender),
+        _text(AppStrings.birthDate),
+        _text(AppStrings.school),
+        _text(AppStrings.attendedSessions),
+        _text(AppStrings.totalSessions),
+        _text(AppStrings.totalPoints),
+        _text('${AppStrings.averageAttendance} %'),
+      ],
+      rows: report,
+      classOf: (r) => r.className,
+      cells: (row, i) {
         final held = sessionsHeldByChild?[row.childId] ?? row.sessionsTotal;
         final pct =
             held > 0 ? row.sessionsAttended / held * 100 : row.percentage;
-        sheet.appendRow(<CellValue?>[
+        return <CellValue?>[
           IntCellValue(i + 1),
           _text(row.className),
           _text(row.childName),
@@ -706,9 +681,9 @@ class ExcelService {
           IntCellValue(held),
           IntCellValue(row.points),
           DoubleCellValue(pct),
-        ]);
-      }
-    }
+        ];
+      },
+    );
     return _encode(book);
   }
 
@@ -741,29 +716,31 @@ class ExcelService {
   /// order the screen shows (highest points first), so rank is the position.
   static List<int> childScoresWorkbook(List<ChildScoreRow> rows) {
     final (book, sheet) = _book(AppStrings.overallReport);
-    sheet.appendRow(<CellValue?>[
-      _text(AppStrings.rank),
-      _text(AppStrings.classLabel),
-      _text(AppStrings.childName),
-      _text(AppStrings.attendedSessions),
-      _text(AppStrings.totalSessions),
-      _text(AppStrings.totalPoints),
-      _text('${AppStrings.averageAttendance} %'),
-    ]);
-    for (var i = 0; i < rows.length; i++) {
-      final row = rows[i];
-      sheet.appendRow(<CellValue?>[
+    // [rows] come best first: rank restarts at 1 in each class.
+    _writeByClass<ChildScoreRow>(
+      book,
+      sheet,
+      header: <CellValue?>[
+        _text(AppStrings.rank),
+        _text(AppStrings.classLabel),
+        _text(AppStrings.childName),
+        _text(AppStrings.attendedSessions),
+        _text(AppStrings.totalSessions),
+        _text(AppStrings.totalPoints),
+        _text('${AppStrings.averageAttendance} %'),
+      ],
+      rows: rows,
+      classOf: (r) => r.className,
+      cells: (row, i) => <CellValue?>[
         IntCellValue(i + 1),
         _text(row.className),
         _text(row.childName),
         IntCellValue(row.attended),
         IntCellValue(row.total),
         IntCellValue(row.points),
-        DoubleCellValue(
-          row.total > 0 ? row.attended / row.total * 100 : 0,
-        ),
-      ]);
-    }
+        DoubleCellValue(row.total > 0 ? row.attended / row.total * 100 : 0),
+      ],
+    );
     return _encode(book);
   }
 
@@ -799,27 +776,41 @@ class ExcelService {
     required bool servants,
   }) {
     final (book, sheet) = _book(AppStrings.birthdaysTitle);
-    sheet.appendRow(<CellValue?>[
+    final header = <CellValue?>[
+      _text(AppStrings.classLabel),
       _text(AppStrings.dayOfMonth),
       _text(AppStrings.month),
       _text(AppStrings.personName),
       if (servants) _text(AppStrings.role),
-      _text(AppStrings.classLabel),
       _text(AppStrings.birthDate),
       _text(AppStrings.turningAgeColumn),
       _text(AppStrings.mobile),
-    ]);
-    for (final row in rows) {
-      sheet.appendRow(<CellValue?>[
-        IntCellValue(row.birthDate.day),
-        _text(AppDateUtils.monthName(row.birthDate.month)),
-        _text(row.name),
-        if (servants) _text(row.role),
-        _text(row.className),
-        _text(AppDateUtils.toIsoDate(row.birthDate)),
-        IntCellValue(row.turningAge),
-        _text(row.mobile),
-      ]);
+    ];
+    List<CellValue?> cells(BirthdayRow row, int _) => <CellValue?>[
+          _text(row.className),
+          IntCellValue(row.birthDate.day),
+          _text(AppDateUtils.monthName(row.birthDate.month)),
+          _text(row.name),
+          if (servants) _text(row.role),
+          _text(AppDateUtils.toIsoDate(row.birthDate)),
+          IntCellValue(row.turningAge),
+          _text(row.mobile),
+        ];
+    if (servants) {
+      // A servant can serve several classes: one list, in the screen's order.
+      sheet.appendRow(header);
+      for (final row in rows) {
+        sheet.appendRow(cells(row, 0));
+      }
+    } else {
+      _writeByClass<BirthdayRow>(
+        book,
+        sheet,
+        header: header,
+        rows: rows,
+        classOf: (r) => r.className ?? '',
+        cells: cells,
+      );
     }
     return _encode(book);
   }
@@ -1125,6 +1116,83 @@ class ExcelService {
 
   // ------------------------------------------------------------------ helpers
 
+  /// Writes [rows] grouped by class: the first sheet holds everyone, class
+  /// after class (no separator rows, so its column filters work), and when
+  /// there is more than one class each class also gets a sheet of its own.
+  /// [cells] gets each row and its position inside its class (for a rank
+  /// that restarts per class). Rows keep their order inside a class.
+  static void _writeByClass<T>(
+    Excel book,
+    Sheet main, {
+    required List<CellValue?> header,
+    required List<T> rows,
+    required String Function(T row) classOf,
+    required List<CellValue?> Function(T row, int indexInClass) cells,
+  }) {
+    final groups = <String, List<T>>{};
+    for (final row in rows) {
+      (groups[classOf(row)] ??= <T>[]).add(row);
+    }
+    final names = groups.keys.toList()..sort(compareClassNames);
+
+    main.appendRow(header);
+    for (final name in names) {
+      final group = groups[name]!;
+      for (var i = 0; i < group.length; i++) {
+        main.appendRow(cells(group[i], i));
+      }
+    }
+    if (names.length < 2) return;
+
+    final used = <String>{...book.tables.keys};
+    for (final name in names) {
+      final sheet = book[_sheetName(name, used)];
+      sheet.appendRow(header);
+      final group = groups[name]!;
+      for (var i = 0; i < group.length; i++) {
+        sheet.appendRow(cells(group[i], i));
+      }
+    }
+  }
+
+  static final _classPattern = RegExp(r'^\s*(\d+)\s*(ولاد|بنات)\s*$');
+
+  /// Class names in the app's order: "3 ولاد", "3 بنات", "4 ولاد"...;
+  /// names that do not follow that pattern come after, alphabetically.
+  @visibleForTesting
+  static int compareClassNames(String a, String b) {
+    final ma = _classPattern.firstMatch(a);
+    final mb = _classPattern.firstMatch(b);
+    if (ma != null && mb != null) {
+      final ya = int.parse(ma.group(1)!);
+      final yb = int.parse(mb.group(1)!);
+      if (ya != yb) return ya.compareTo(yb);
+      final boysA = ma.group(2) == 'ولاد';
+      final boysB = mb.group(2) == 'ولاد';
+      if (boysA != boysB) return boysA ? -1 : 1;
+      return 0;
+    }
+    if (ma != null) return -1;
+    if (mb != null) return 1;
+    return a.compareTo(b);
+  }
+
+  /// A valid, unused sheet name: at most 31 characters, none of : \ / ? * [ ].
+  static String _sheetName(String name, Set<String> used) {
+    var base = name.replaceAll(RegExp(r'[:\\/?*\[\]]'), ' ').trim();
+    if (base.isEmpty) base = '-';
+    if (base.length > 31) base = base.substring(0, 31);
+    var candidate = base;
+    for (var n = 2; used.contains(candidate); n++) {
+      final suffix = ' ($n)';
+      candidate = base.length + suffix.length > 31
+          ? base.substring(0, 31 - suffix.length) + suffix
+          : base + suffix;
+    }
+    used.add(candidate);
+    return candidate;
+  }
+
   static (Excel, Sheet) _book(String sheetName) {
     final book = Excel.createExcel();
     final sheet = book[sheetName];
@@ -1142,7 +1210,10 @@ class ExcelService {
   /// Gives every sheet the look of an Excel table: a coloured bold header,
   /// bordered cells, banded rows and sized columns. Every export goes through
   /// [_encode], so none is left plain.
-  static void _formatAsTable(Excel book) {
+  /// Styles each sheet as a table and returns its range per sheet name
+  /// (header row to last row, every column), for the filter buttons.
+  static Map<String, String> _formatAsTable(Excel book) {
+    final ranges = <String, String>{};
     final border = Border(
       borderStyle: BorderStyle.Thin,
       borderColorHex: ExcelColor.fromHexString('#B8C2CC'),
@@ -1170,7 +1241,8 @@ class ExcelService {
           bottomBorder: border,
         );
 
-    for (final sheet in book.tables.values) {
+    for (final entry in book.tables.entries) {
+      final sheet = entry.value;
       final rows = sheet.rows;
       if (rows.isEmpty) continue;
 
@@ -1182,6 +1254,15 @@ class ExcelService {
 
       final columns = rows.fold<int>(0, (m, r) => r.length > m ? r.length : m);
       final widths = List<double>.filled(columns, 10);
+      var lastRow = headerRow;
+      for (var r = rows.length - 1; r > headerRow; r--) {
+        if (rows[r].any(filled)) {
+          lastRow = r;
+          break;
+        }
+      }
+      ranges[entry.key] = '${columnLetter(0)}${headerRow + 1}:'
+          '${columnLetter(columns - 1)}${lastRow + 1}';
 
       for (var r = headerRow; r < rows.length; r++) {
         final cells = rows[r];
@@ -1211,15 +1292,136 @@ class ExcelService {
         sheet.setColumnWidth(c, widths[c].clamp(10, 45).toDouble());
       }
       sheet.setRowHeight(headerRow, 32);
+      // Room for the filter button next to each heading.
+      for (var c = 0; c < columns; c++) {
+        if (widths[c] < 14) sheet.setColumnWidth(c, 14);
+      }
     }
+    return ranges;
   }
 
   static List<int> _encode(Excel book) {
-    _formatAsTable(book);
+    final ranges = _formatAsTable(book);
     final bytes = book.encode();
     if (bytes == null) {
       throw Exception(AppStrings.somethingWentWrong);
     }
-    return bytes;
+    return withFilterButtons(bytes, ranges);
   }
+
+  /// "A", "B", ... "Z", "AA" for a 0-based column.
+  @visibleForTesting
+  static String columnLetter(int index) {
+    var n = index + 1;
+    var out = '';
+    while (n > 0) {
+      final r = (n - 1) % 26;
+      out = String.fromCharCode(65 + r) + out;
+      n = (n - 1) ~/ 26;
+    }
+    return out;
+  }
+
+  /// Adds Excel's filter buttons (AutoFilter) to the header row of each
+  /// sheet in [ranges] (sheet name -> "A1:H40"). The excel package cannot
+  /// write them, so the saved file's XML is patched: an `<autoFilter>` after
+  /// the sheet data, and the hidden _FilterDatabase name Excel expects.
+  /// If anything about the file is unexpected, it is returned unchanged.
+  @visibleForTesting
+  static List<int> withFilterButtons(
+    List<int> xlsx,
+    Map<String, String> ranges,
+  ) {
+    if (ranges.isEmpty) return xlsx;
+    try {
+      final zip = ZipDecoder().decodeBytes(xlsx);
+      String? read(String name) {
+        final f = zip.findFile(name);
+        return f == null ? null : utf8.decode(f.content as List<int>);
+      }
+
+      final workbook = read('xl/workbook.xml');
+      final rels = read('xl/_rels/workbook.xml.rels');
+      if (workbook == null || rels == null) return xlsx;
+
+      final targets = <String, String>{};
+      for (final m in RegExp(r'<Relationship\b[^>]*>').allMatches(rels)) {
+        final tag = m.group(0)!;
+        final id = RegExp(r'Id="([^"]+)"').firstMatch(tag)?.group(1);
+        final target = RegExp(r'Target="([^"]+)"').firstMatch(tag)?.group(1);
+        if (id != null && target != null) {
+          targets[id] =
+              target.startsWith('/') ? target.substring(1) : 'xl/$target';
+        }
+      }
+
+      final names = <String>[];
+      final changed = <String, String>{};
+      final sheetTags =
+          RegExp(r'<sheet\b[^>]*/>').allMatches(workbook).toList();
+      for (var i = 0; i < sheetTags.length; i++) {
+        final tag = sheetTags[i].group(0)!;
+        final name = _xmlUnescape(
+            RegExp(r'name="([^"]*)"').firstMatch(tag)?.group(1) ?? '');
+        final rid = RegExp(r'r:id="([^"]+)"').firstMatch(tag)?.group(1);
+        final ref = ranges[name];
+        final path = rid == null ? null : targets[rid];
+        if (ref == null || path == null) continue;
+        final xml = changed[path] ?? read(path);
+        if (xml == null ||
+            xml.contains('<autoFilter') ||
+            !xml.contains('</sheetData>')) {
+          continue;
+        }
+        changed[path] = xml.replaceFirst(
+            '</sheetData>', '</sheetData><autoFilter ref="$ref"/>');
+        final abs = ref.split(':').map((c) {
+          final m = RegExp(r'^([A-Z]+)(\d+)$').firstMatch(c)!;
+          return '\$${m.group(1)}\$${m.group(2)}';
+        }).join(':');
+        final quoted = "'${name.replaceAll("'", "''")}'";
+        names.add('<definedName name="_xlnm._FilterDatabase" '
+            'localSheetId="$i" hidden="1">'
+            '${_xmlEscape('$quoted!$abs')}</definedName>');
+      }
+      if (changed.isEmpty) return xlsx;
+
+      var newWorkbook = workbook;
+      if (names.isNotEmpty) {
+        newWorkbook = workbook.contains('<definedNames>')
+            ? workbook.replaceFirst(
+                '<definedNames>', '<definedNames>${names.join()}')
+            : workbook.replaceFirst('</sheets>',
+                '</sheets><definedNames>${names.join()}</definedNames>');
+      }
+      changed['xl/workbook.xml'] = newWorkbook;
+
+      final out = Archive();
+      for (final file in zip.files) {
+        final text = changed[file.name];
+        if (text == null) {
+          out.addFile(file);
+        } else {
+          final data = utf8.encode(text);
+          out.addFile(ArchiveFile(file.name, data.length, data));
+        }
+      }
+      return ZipEncoder().encode(out) ?? xlsx;
+    } catch (_) {
+      return xlsx;
+    }
+  }
+
+  static String _xmlEscape(String v) => v
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
+
+  static String _xmlUnescape(String v) => v
+      .replaceAll('&quot;', '"')
+      .replaceAll('&apos;', "'")
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&amp;', '&');
 }

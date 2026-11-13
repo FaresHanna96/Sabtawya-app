@@ -30,21 +30,22 @@ void main() {
     ),
   ];
 
-  test('children: one sheet, rows in the order given, no role column', () {
+  test('children: class first, grouped by class, no role column', () {
     final sheet = _read(ExcelService.birthdaysWorkbook(rows, servants: false));
     expect(sheet.first, [
+      AppStrings.classLabel,
       AppStrings.dayOfMonth,
       AppStrings.month,
       AppStrings.personName,
-      AppStrings.classLabel,
       AppStrings.birthDate,
       AppStrings.turningAgeColumn,
       AppStrings.mobile,
     ]);
     expect(sheet.length, 3);
+    // 3 ولاد comes before 5 بنات, as the app lists classes.
     expect(sheet[1].take(6).toList(),
-        ['1', 'نوفمبر', 'جويس ياسر', '5 بنات', '2015-11-01', '11']);
-    expect(sheet[2][2], 'يؤانس بسام');
+        ['3 ولاد', '11', 'نوفمبر', 'يؤانس بسام', '2016-11-11', '10']);
+    expect(sheet[2][3], 'جويس ياسر');
   });
 
   test('servants: adds the role column after the name', () {
@@ -56,8 +57,8 @@ void main() {
         role: 'خادمة',
       ),
     ], servants: true));
-    expect(sheet.first[3], AppStrings.role);
-    expect(sheet[1][3], 'خادمة');
+    expect(sheet.first[4], AppStrings.role);
+    expect(sheet[1][4], 'خادمة');
   });
 
   group('turningAge', () {
