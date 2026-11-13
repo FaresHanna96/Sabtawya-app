@@ -48,6 +48,9 @@ void main() {
     final xlsx = _birthdays();
     final workbook = _file(xlsx, 'xl/workbook.xml');
     expect(workbook, contains('_xlnm._FilterDatabase'));
+    // Excel refuses a workbook with more than one <definedNames> element.
+    expect(RegExp('<definedNames[ />]').allMatches(workbook), hasLength(1));
+    expect('_xlnm._FilterDatabase'.allMatches(workbook), hasLength(4));
 
     final book = Excel.decodeBytes(xlsx);
     // The whole list plus one sheet per class.

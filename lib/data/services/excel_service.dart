@@ -1386,13 +1386,22 @@ class ExcelService {
       }
       if (changed.isEmpty) return xlsx;
 
+      // Exactly one <definedNames> may exist: the excel package already
+      // writes an empty <definedNames/>, so fill that one (a second block
+      // makes Excel report the file as damaged).
       var newWorkbook = workbook;
       if (names.isNotEmpty) {
-        newWorkbook = workbook.contains('<definedNames>')
-            ? workbook.replaceFirst(
-                '<definedNames>', '<definedNames>${names.join()}')
-            : workbook.replaceFirst('</sheets>',
-                '</sheets><definedNames>${names.join()}</definedNames>');
+        final list = names.join();
+        if (workbook.contains('<definedNames/>')) {
+          newWorkbook = workbook.replaceFirst(
+              '<definedNames/>', '<definedNames>$list</definedNames>');
+        } else if (workbook.contains('<definedNames>')) {
+          newWorkbook =
+              workbook.replaceFirst('<definedNames>', '<definedNames>$list');
+        } else {
+          newWorkbook = workbook.replaceFirst(
+              '</sheets>', '</sheets><definedNames>$list</definedNames>');
+        }
       }
       changed['xl/workbook.xml'] = newWorkbook;
 
