@@ -198,6 +198,10 @@ class AppStrings {
   static const deactivateServant = 'إلغاء التنشيط';
   static const pendingInvites = 'دعوات في انتظار التسجيل';
   static const registeredServants = 'الخدام المسجلون';
+  static const allServants = 'الكل';
+  static const servantsShort = 'خدام';
+  static const adminsShort = 'أمناء';
+  static const moreActions = 'خيارات';
   static const inviteCreated =
       'تم إنشاء الدعوة. يسجّل الخادم بنفس البريد الإلكتروني ليتم تنشيط حسابه تلقائياً.';
   static const inviteHint =
