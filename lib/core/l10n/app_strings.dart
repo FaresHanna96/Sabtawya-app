@@ -323,6 +323,7 @@ class AppStrings {
   static const dayOfMonth = 'اليوم';
   static const pickMonths = 'اختر الشهور';
   static const thisMonth = 'هذا الشهر';
+  static const pickMonthToExport = 'اختر الشهر للتصدير';
   static const wholeYear = 'السنة كلها';
   static const allClasses = 'كل الفصول';
   static const pickClasses = 'اختر فصلاً أو أكثر';

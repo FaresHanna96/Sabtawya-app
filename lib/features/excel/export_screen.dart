@@ -8,6 +8,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../../data/repositories/child_repository.dart';
@@ -26,6 +27,19 @@ class ExportScreen extends StatefulWidget {
 
   @override
   State<ExportScreen> createState() => _ExportScreenState();
+
+  /// The months that had a Saturday held, up to [now], oldest first.
+  static List<DateTime> monthsWithData(
+    List<ChildMonthlyReport> rows,
+    DateTime now,
+  ) =>
+      {
+        for (final r in rows)
+          if (r.sessionsTotal > 0 &&
+              !DateTime(r.monthStart.year, r.monthStart.month).isAfter(now))
+            DateTime(r.monthStart.year, r.monthStart.month),
+      }.toList()
+        ..sort();
 }
 
 class _ExportScreenState extends State<ExportScreen> {
@@ -160,25 +174,98 @@ class _ExportScreenState extends State<ExportScreen> {
     );
   }
 
-  Future<void> _exportMonthly() => _export(
-        name: '${AppStrings.exportMonthlyAttendance} - $_scopeLabel',
-        build: () async {
-          final yearId = _yearId;
-          if (yearId == null) return null;
-          final now = DateTime.now();
-          final all = await _reports.childMonthly(
-            yearId: yearId,
-            classId: _classId,
-          );
-          // Current month only.
-          final report = all
-              .where((r) =>
-                  r.monthStart.year == now.year &&
-                  r.monthStart.month == now.month)
-              .toList();
-          return report.isEmpty ? null : ExcelService.monthlyWorkbook(report);
-        },
-      );
+  /// الحضور الشهري: load the year's months once, let the user pick one month
+  /// (or كل الشهور), then export only that.
+  Future<void> _exportMonthly() async {
+    final yearId = _yearId;
+    if (yearId == null || _busy) return;
+    setState(() => _busy = true);
+    final List<ChildMonthlyReport> all;
+    try {
+      all = await _reports.childMonthly(yearId: yearId, classId: _classId);
+    } catch (e) {
+      if (mounted) Ui.error(context, e);
+      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+
+    final months = ExportScreen.monthsWithData(all, DateTime.now());
+    if (months.isEmpty) {
+      Ui.info(context, AppStrings.noData);
+      return;
+    }
+    final picked = await _pickMonth(months);
+    if (picked == null || !mounted) return;
+    final everyMonth = picked == _allMonths;
+
+    await _export(
+      name: '${AppStrings.exportMonthlyAttendance} - $_scopeLabel - '
+          '${everyMonth ? AppStrings.allMonths : AppDateUtils.formatMonth(picked)}',
+      build: () async {
+        final rows = everyMonth
+            ? all.where((r) => months.contains(_monthOf(r.monthStart))).toList()
+            : all.where((r) => _monthOf(r.monthStart) == picked).toList();
+        return rows.isEmpty ? null : ExcelService.monthlyWorkbook(rows);
+      },
+    );
+  }
+
+  /// Stands for "كل الشهور" in the month sheet.
+  static final _allMonths = DateTime(0);
+
+  static DateTime _monthOf(DateTime d) => DateTime(d.year, d.month);
+
+  Future<DateTime?> _pickMonth(List<DateTime> months) {
+    final current = _monthOf(DateTime.now());
+    return showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                AppStrings.pickMonthToExport,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+            ),
+            for (final m in months)
+              ListTile(
+                leading: Icon(
+                  Icons.calendar_month_outlined,
+                  size: 20,
+                  color: m == current ? AppColors.navy : AppColors.muted,
+                ),
+                title: Text(
+                  AppDateUtils.formatMonth(m),
+                  style: TextStyle(
+                    fontWeight:
+                        m == current ? FontWeight.w800 : FontWeight.w500,
+                  ),
+                ),
+                trailing: m == current
+                    ? const Text(
+                        AppStrings.thisMonth,
+                        style: TextStyle(fontSize: 12, color: AppColors.navy),
+                      )
+                    : null,
+                onTap: () => Navigator.of(context).pop(m),
+              ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.date_range_outlined, size: 20),
+              title: const Text(AppStrings.allMonths),
+              onTap: () => Navigator.of(context).pop(_allMonths),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _exportYearly() => _export(
         name: '${AppStrings.exportYearlyAttendance} - $_scopeLabel',
