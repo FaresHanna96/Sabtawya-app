@@ -226,16 +226,9 @@ class AppStrings {
   static const assignServant = 'تعيين خادم';
   static const committedStreak = 'ملتزمين';
   static const committedStreakHint = 'مخدومين بيحضروا كل سبت. شجّعهم!';
-  static const presentInARow = 'حاضر';
-  static const needFollowUp = 'محتاجين متابعة';
-  static const noFollowUpNow = 'لا يوجد مخدومين محتاجين متابعة حالياً';
   static const noCommittedYet = 'لا يوجد مخدومين ملتزمين بعد';
   static const deleteVisit = 'حذف هذا الافتقاد؟';
   static const visitDeleted = 'تم حذف الافتقاد';
-  static const absentInARow = 'غايب';
-  static const timesInARow = 'مرات ورا بعض';
-  static const needFollowUpHint =
-      'مخدومين غابوا أكتر من مرة ورا بعض. اتصل بيهم أو زورهم.';
   static const myData = 'تعديل بياناتي';
   static const myDataHint =
       'عدّل بياناتك الشخصية: الاسم، الموبايل، تاريخ الميلاد، العنوان وغيرها.';
@@ -347,6 +340,8 @@ class AppStrings {
   static String followUpNote(int n) => 'افتقاد بعد غياب $n سبوت متتالية';
   static String absentInARowShort(String n) => 'غياب $n سبوت';
   static String absentSaturdays(int n) => 'غائب $n سبوت متتالية';
+  static String presentInARowShort(String n) => 'حضور $n سبوت';
+  static String presentSaturdays(int n) => 'حاضر $n سبوت متتالية';
   static const lastPresent = 'آخر حضور';
   static const followedUpOn = 'تم الافتقاد';
   static const notFollowedUp = 'لم يُفتقد بعد';

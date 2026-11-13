@@ -23,7 +23,6 @@ import '../children/child_filters.dart';
 import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../children/child_tile.dart';
-import '../children/follow_up_section.dart';
 import 'class_form_screen.dart';
 import 'patron_avatar.dart';
 
@@ -260,15 +259,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     const SizedBox(height: 12),
                     FadeSlideIn(index: 2, child: _actions()),
                     const SizedBox(height: 12),
-                    FadeSlideIn(
-                      index: 3,
-                      child: FollowUpTiles(
-                        streaks: data.streaks.values.toList(),
-                        onReturn: _reload,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FadeSlideIn(index: 4, child: _servants(data.servants)),
+                    FadeSlideIn(index: 3, child: _servants(data.servants)),
                     const SizedBox(height: 16),
                     Row(
                       children: [
