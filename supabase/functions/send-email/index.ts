@@ -13,7 +13,7 @@ const CORS = {
 };
 
 interface Payload {
-  type: 'invite' | 'accepted' | 'rejected' | 'check_email';
+  type: 'invite' | 'accepted' | 'rejected' | 'check_email' | 'check_domain';
   to?: string;
   name?: string;
   email?: string;
@@ -119,6 +119,28 @@ serve(async (req) => {
   }
 
   const body = (await req.json()) as Payload;
+
+  // Can this email's domain receive mail at all? Looks up its MX records,
+  // so a made-up or misspelled domain is caught before the account is made.
+  // Fails open: a DNS hiccup must never stop a real person signing up.
+  if (body.type === 'check_domain') {
+    const email = (body.email ?? '').trim().toLowerCase();
+    const domain = email.includes('@') ? email.split('@').pop()! : '';
+    let receivesMail = true;
+    if (domain) {
+      try {
+        const mx = await Deno.resolveDns(domain, 'MX');
+        receivesMail = mx.length > 0;
+      } catch (e) {
+        // NotFound: the domain has no mail server (or does not exist).
+        receivesMail = !(e instanceof Deno.errors.NotFound);
+      }
+    }
+    return new Response(JSON.stringify({ receivesMail, domain }), {
+      status: 200,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
+  }
 
   // Email existence check — uses service role to bypass RLS.
   if (body.type === 'check_email') {

@@ -54,6 +54,8 @@ class AuthRepository {
       if (await _nameTaken(fullName)) {
         throw AppFailure(AppStrings.nameAlreadyUsed);
       }
+      // No throwaway inboxes, misspelled or made-up domains.
+      await _checkEmail(email);
 
       final response = await Db.client.auth.signUp(
         email: email.trim(),
@@ -98,6 +100,52 @@ class AuthRepository {
   @visibleForTesting
   static bool isExistingAccountReply(User? user) =>
       user != null && user.identities != null && user.identities!.isEmpty;
+
+  /// Refuses an email the database's rules or the mail-server lookup reject,
+  /// with a message saying why (and the likely intended address for a typo).
+  /// The database also enforces its rules itself at sign-up; this only makes
+  /// the reason visible. Either check missing (dev project) lets it pass.
+  Future<void> _checkEmail(String email) async {
+    final trimmed = email.trim();
+    try {
+      final result = await Db.client.rpc<dynamic>(
+        'check_signup_email',
+        params: <String, dynamic>{'p_email': trimmed},
+      );
+      final verdict = emailVerdict(result);
+      if (verdict != null) throw AppFailure(verdict);
+    } on PostgrestException catch (e) {
+      if (e.code != 'PGRST202') rethrow; // function not there yet
+    }
+
+    try {
+      final resp = await Db.client.functions.invoke(
+        'send-email',
+        body: <String, dynamic>{'type': 'check_domain', 'email': trimmed},
+      );
+      final data = resp.data;
+      if (data is Map && data['receivesMail'] == false) {
+        throw AppFailure(
+            AppStrings.emailDomainNoMail(data['domain'] as String));
+      }
+    } on AppFailure {
+      rethrow;
+    } catch (_) {
+      // The lookup is a courtesy: never block a sign-up because it failed.
+    }
+  }
+
+  /// The message for a refused email, from check_signup_email's answer, or
+  /// null when it is accepted.
+  @visibleForTesting
+  static String? emailVerdict(Object? result) {
+    if (result is! Map || result['ok'] == true) return null;
+    return switch (result['reason']) {
+      'disposable' => AppStrings.emailDisposable,
+      'typo' => AppStrings.emailTypo(result['suggestion'] as String?),
+      _ => AppStrings.invalidEmail,
+    };
+  }
 
   /// Asks the database whether an account already has this name. A database
   /// without the check (the dev project before its migration) lets it pass.

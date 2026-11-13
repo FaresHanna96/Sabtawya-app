@@ -26,6 +26,10 @@ class AppFailure implements Exception {
         return AppFailure(AppStrings.invalidCredentials,
             code: error.statusCode);
       }
+      // The sign-up guard on the server refused the email.
+      if (message.contains('database error saving new user')) {
+        return AppFailure(AppStrings.emailRejected, code: error.statusCode);
+      }
       if (message.contains('already registered') ||
           message.contains('user already exists')) {
         return AppFailure(AppStrings.emailAlreadyUsed, code: error.statusCode);

@@ -78,6 +78,16 @@ class AppStrings {
   static const confirmEmailBody =
       'أرسلنا رسالة تأكيد إلى بريدك الإلكتروني. افتح الرابط ثم سجّل الدخول.';
   static const emailAlreadyUsed = 'هذا البريد الإلكتروني مستخدم بالفعل';
+  static const emailDisposable =
+      'لا يمكن التسجيل ببريد مؤقت. استخدم بريدك الشخصي الذي تستعمله دائماً.';
+  static String emailTypo(String? suggestion) => suggestion == null
+      ? 'يبدو أن البريد مكتوب خطأ. راجعه ثم سجّل.'
+      : 'هل تقصد $suggestion ؟ صحّح البريد ثم سجّل.';
+  static String emailDomainNoMail(String domain) =>
+      'النطاق $domain لا يستقبل رسائل. تأكد من كتابة البريد صحيحاً.';
+  static const emailRejected =
+      'لا يمكن التسجيل بهذا البريد. استخدم بريدك الشخصي الصحيح.';
+  static const invalidEmail = 'البريد الإلكتروني غير صحيح';
   static const nameAlreadyUsed =
       'هذا الاسم مسجل بالفعل. لو عندك حساب سجّل الدخول، أو اكتب اسمك كاملاً بشكل مختلف.';
   static const emailRequired = 'البريد الإلكتروني مطلوب';
