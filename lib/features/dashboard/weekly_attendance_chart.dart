@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_strings.dart';
@@ -6,15 +5,16 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/models/reports.dart';
 
-/// The dashboard's "الحضور كل سبت": attendance % of the last Saturdays
-/// (children who came out of the active children of the classes recorded),
-/// oldest on the right as Arabic reads, newest on the left.
-class WeeklyAttendanceChart extends StatelessWidget {
+/// The dashboard's "الحضور كل سبت": the last Saturday in plain words (who
+/// came, and up or down from the Saturday before), then one labelled bar per
+/// Saturday (% on top, date below) coloured by level. Tapping a bar shows
+/// that Saturday's numbers. Oldest on the left, newest on the right.
+class WeeklyAttendanceChart extends StatefulWidget {
   const WeeklyAttendanceChart({super.key, required this.weeks, this.top});
 
   final List<WeeklyAttendance> weeks;
 
-  /// Shown above the chart inside the same card (the dashboard puts the
+  /// Shown above the numbers inside the same card (the dashboard puts the
   /// last Saturday taken here).
   final Widget? top;
 
@@ -25,140 +25,238 @@ class WeeklyAttendanceChart extends StatelessWidget {
   }) =>
       all.length <= count ? all : all.sublist(all.length - count);
 
+  /// Green from 60%, amber from 40%, red below.
+  static Color levelColor(double pct) => pct >= 60
+      ? AppColors.success
+      : pct >= 40
+          ? AppColors.warning
+          : AppColors.danger;
+
+  @override
+  State<WeeklyAttendanceChart> createState() => _WeeklyAttendanceChartState();
+}
+
+class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
+  /// The bar tapped; null shows the newest Saturday.
+  int? _picked;
+
+  static String _date(DateTime d) => '${d.day}/${d.month}';
+
   @override
   Widget build(BuildContext context) {
-    final shown = lastWeeks(weeks);
+    final shown = WeeklyAttendanceChart.lastWeeks(widget.weeks);
     if (shown.length < 2) return const SizedBox.shrink();
-    final last = shown.last.percentage.round();
-    final before = shown[shown.length - 2].percentage.round();
-    final diff = last - before;
+    final newest = shown.last;
+    final pct = newest.percentage.round();
+    final diff = pct - shown[shown.length - 2].percentage.round();
+    final picked = (_picked ?? shown.length - 1).clamp(0, shown.length - 1);
+    final p = shown[picked];
+    final level = WeeklyAttendanceChart.levelColor(newest.percentage);
+    final trend = diff > 0
+        ? AppColors.success
+        : diff < 0
+            ? AppColors.danger
+            : AppColors.muted;
 
     return SectionCard(
       title: AppStrings.weeklyAttendance,
-      icon: Icons.show_chart_rounded,
+      icon: Icons.bar_chart_rounded,
       accent: AppColors.sky,
-      trailing: Text(
-        '$last%  ${diff == 0 ? '' : (diff > 0 ? '↑' : '↓')}${diff == 0 ? '' : diff.abs()}',
-        textDirection: TextDirection.ltr,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          color: diff >= 0 ? AppColors.success : AppColors.danger,
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (top != null) ...[top!, const SizedBox(height: 8)],
-          // How many came on the newest Saturday, out of the children of the
-          // classes whose attendance was taken.
-          InfoRow(
-            label: AppStrings.attendedLastSaturday,
-            value:
-                AppStrings.attendedOf(shown.last.present, shown.last.children),
-            icon: Icons.how_to_reg_outlined,
-          ),
-          const SizedBox(height: 12),
-          _chart(shown),
-        ],
-      ),
-    );
-  }
-
-  Widget _chart(List<WeeklyAttendance> shown) {
-    final spots = [
-      for (var i = 0; i < shown.length; i++)
-        FlSpot(i.toDouble(), shown[i].percentage.clamp(0, 100).toDouble()),
-    ];
-    return SizedBox(
-      height: 160,
-      // Charts read left to right: oldest Saturday on the left.
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: LineChart(
-          LineChartData(
-            minY: 0,
-            maxY: 100,
-            gridData: FlGridData(
-              drawVerticalLine: false,
-              horizontalInterval: 25,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: AppColors.muted.withValues(alpha: 0.15),
-                strokeWidth: 1,
+          if (widget.top != null) ...[
+            widget.top!,
+            const SizedBox(height: 10),
+          ],
+          // The newest Saturday in big, plain numbers.
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      AppStrings.attendedLastSaturday,
+                      style: TextStyle(fontSize: 12, color: AppColors.muted),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      AppStrings.attendedOf(newest.present, newest.children),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(),
-              rightTitles: const AxisTitles(),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 34,
-                  interval: 50,
-                  getTitlesWidget: (v, _) => Text(
-                    '${v.round()}%',
-                    style:
-                        const TextStyle(fontSize: 12, color: AppColors.muted),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: level.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$pct%',
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: level,
                   ),
                 ),
               ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 22,
-                  interval: 1,
-                  getTitlesWidget: (v, _) {
-                    final i = v.round();
-                    if (i < 0 || i >= shown.length) {
-                      return const SizedBox.shrink();
-                    }
-                    // Every other date, so they do not crowd.
-                    if ((shown.length - 1 - i).isOdd) {
-                      return const SizedBox.shrink();
-                    }
-                    final d = shown[i].date;
-                    return Text(
-                      '${d.day}/${d.month}',
-                      style:
-                          const TextStyle(fontSize: 12, color: AppColors.muted),
-                    );
-                  },
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                diff > 0
+                    ? Icons.trending_up_rounded
+                    : diff < 0
+                        ? Icons.trending_down_rounded
+                        : Icons.trending_flat_rounded,
+                size: 18,
+                color: trend,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  AppStrings.comparedToPrevious(diff),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: trend,
+                  ),
                 ),
               ),
-            ),
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipItems: (touched) => [
-                  for (final t in touched)
-                    LineTooltipItem(
-                      '${shown[t.x.round()].present}/'
-                      '${shown[t.x.round()].children}\n'
-                      '${t.y.round()}%',
-                      const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Bars read left to right: oldest Saturday on the left.
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: SizedBox(
+              height: 150,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (var i = 0; i < shown.length; i++)
+                    Expanded(
+                      child: _Bar(
+                        week: shown[i],
+                        date: _date(shown[i].date),
+                        selected: i == picked,
+                        onTap: () => setState(() => _picked = i),
                       ),
                     ),
                 ],
               ),
             ),
-            lineBarsData: [
-              LineChartBarData(
-                spots: spots,
-                isCurved: true,
-                preventCurveOverShooting: true,
-                color: AppColors.sky,
-                barWidth: 3,
-                dotData: const FlDotData(show: true),
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: AppColors.sky.withValues(alpha: 0.12),
+          ),
+          const SizedBox(height: 10),
+          // The tapped Saturday (the newest until one is tapped).
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Container(
+              key: ValueKey(picked),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.sky.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.touch_app_outlined,
+                      size: 16, color: AppColors.muted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      AppStrings.saturdayDetail(
+                        _date(p.date),
+                        p.present,
+                        p.children,
+                        p.percentage.round(),
+                      ),
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One Saturday: the % above, a bar growing from the bottom, the date below.
+class _Bar extends StatelessWidget {
+  const _Bar({
+    required this.week,
+    required this.date,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final WeeklyAttendance week;
+  final String date;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = week.percentage.clamp(0, 100).toDouble();
+    final color = WeeklyAttendanceChart.levelColor(pct);
+    const maxBar = 96.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FittedBox(
+              child: Text(
+                '${pct.round()}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? color : AppColors.muted,
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: pct / 100),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, __) => Container(
+                height: (maxBar * v).clamp(4, maxBar),
+                decoration: BoxDecoration(
+                  color: selected ? color : color.withValues(alpha: 0.45),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(6)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              child: Text(
+                date,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                  color: selected ? AppColors.navy : AppColors.muted,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

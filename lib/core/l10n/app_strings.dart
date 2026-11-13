@@ -336,6 +336,13 @@ class AppStrings {
   static const weeklyAttendance = 'الحضور كل سبت';
   static const attendedLastSaturday = 'حضروا آخر سبت';
   static String attendedOf(int came, int of) => '$came من $of مخدوم';
+  static String comparedToPrevious(int diff) => diff == 0
+      ? 'زي السبت اللي قبله'
+      : diff > 0
+          ? 'أعلى $diff% من السبت اللي قبله'
+          : 'أقل ${-diff}% من السبت اللي قبله';
+  static String saturdayDetail(String date, int came, int of, int pct) =>
+      'سبت $date: حضر $came من $of ($pct%)';
   static const followUpHow = 'كيف تم افتقاد';
   static const followUpPhone = 'مكالمة تليفون';
   static const followUpHome = 'زيارة منزلية';
