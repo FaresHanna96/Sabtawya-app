@@ -590,6 +590,7 @@ class AppStrings {
   static const rowNumber = 'صف';
   static const export = 'تصدير';
   static const exportTitle = 'تصدير Excel';
+  static const excelReportsTitle = 'تقارير Excel';
   static const exportChildren = 'قائمة المخدومين';
   static const exportAttendanceSheet = 'كشف حضور سبت';
   static const exportMonthlyAttendance = 'الحضور الشهري';
@@ -731,7 +732,7 @@ class AppStrings {
   static const pillChildren = 'مخدومين';
   static const pillServants = 'خدام';
   static const reportsAndFollowUp = 'التقارير والمتابعة';
-  static const importExportTitle = 'استيراد وتصدير';
+  static const importExportTitle = 'ملفات Excel';
   static const competitionsAndEvents = 'المسابقات والنشاطات';
   static const showPassword = 'إظهار كلمة المرور';
   static const hidePassword = 'إخفاء كلمة المرور';

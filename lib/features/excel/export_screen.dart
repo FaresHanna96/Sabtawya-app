@@ -488,7 +488,7 @@ class _ExportScreenState extends State<ExportScreen> {
     final classes = context.watch<SessionController>().myClasses;
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.exportTitle)),
+      appBar: AppBar(title: const Text(AppStrings.excelReportsTitle)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

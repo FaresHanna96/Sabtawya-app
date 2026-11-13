@@ -108,7 +108,7 @@ class MoreScreen extends StatelessWidget {
                     ),
                     _Entry(
                       icon: Icons.ios_share,
-                      title: AppStrings.exportTitle,
+                      title: AppStrings.excelReportsTitle,
                       screen: const ExportScreen(),
                       color: AppColors.navyLight,
                     ),
