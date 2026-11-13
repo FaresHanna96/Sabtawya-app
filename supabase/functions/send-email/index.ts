@@ -19,6 +19,44 @@ interface Payload {
   email?: string;
 }
 
+// Names go into the email's HTML: never let one carry markup or links.
+function escapeHtml(v: string): string {
+  return v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  });
+}
+
+// Sending mail is for an active admin only (invites, accept / reject). The
+// caller's own sign-in token is checked here: the public key alone, or a
+// servant's token, is refused, so nobody can send mail from this account.
+async function callerIsAdmin(req: Request): Promise<boolean> {
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  if (!token) return false;
+  const admin = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+  const { data: userData, error } = await admin.auth.getUser(token);
+  const userId = userData?.user?.id;
+  if (error || !userId) return false;
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role, is_active')
+    .eq('id', userId)
+    .maybeSingle();
+  return profile?.role === 'admin' && profile?.is_active === true;
+}
+
 function buildEmail(
   type: string,
   name: string,
@@ -160,6 +198,18 @@ serve(async (req) => {
     });
   }
 
+  // Everything below sends an email.
+  if (!['invite', 'accepted', 'rejected'].includes(body.type)) {
+    return json({ error: 'unknown type' }, 400);
+  }
+  if (!(await callerIsAdmin(req))) {
+    return json({ error: 'forbidden' }, 403);
+  }
+  const to = (body.to ?? '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(to)) {
+    return json({ error: 'invalid recipient' }, 400);
+  }
+
   if (!GMAIL_USER || !GMAIL_PASS) {
     return new Response(
       JSON.stringify({ error: 'GMAIL_USER or GMAIL_PASS not configured' }),
@@ -168,8 +218,10 @@ serve(async (req) => {
   }
 
   try {
-    const { type, to, name } = body as { type: string; to: string; name: string };
-    const { subject, html } = buildEmail(type, name);
+    const { subject, html } = buildEmail(
+      body.type,
+      escapeHtml((body.name ?? '').slice(0, 120)),
+    );
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
