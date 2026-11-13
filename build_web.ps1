@@ -21,6 +21,18 @@ if ($LASTEXITCODE -eq 0) {
         Copy-Item "$PSScriptRoot\$apk" "build/web/$apk" -Force
     }
 
+    # version.json: what the app compares itself with (update banner) and what
+    # the download page shows, so its facts can never go stale again.
+    $ver = (Select-String -Path "$PSScriptRoot\pubspec.yaml" -Pattern '^version:\s*(\S+)\+(\d+)').Matches[0].Groups
+    $apkFile = Get-Item "$PSScriptRoot\sabtawya.apk"
+    $info = [ordered]@{
+        version = $ver[1].Value
+        build   = [int]$ver[2].Value
+        date    = $apkFile.LastWriteTime.ToString("yyyy-MM-dd")
+        size_mb = [math]::Round($apkFile.Length / 1MB)
+    }
+    $info | ConvertTo-Json | Set-Content -Path build/web/version.json -Encoding ascii
+
     # Copy cache-control config so Vercel serves assets with proper headers
     Copy-Item vercel.json build/web/vercel.json -Force
     npx vercel deploy --prod --project sabtawya build/web

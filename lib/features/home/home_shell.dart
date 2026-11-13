@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/services/sync_service.dart';
+import '../../core/services/update_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../state/session_controller.dart';
@@ -39,6 +41,17 @@ class _HomeShellState extends State<HomeShell>
     duration: const Duration(milliseconds: 220),
     value: 1,
   );
+
+  /// A newer APK on the site (Android), shown as a banner until dismissed.
+  AppUpdate? _update;
+
+  @override
+  void initState() {
+    super.initState();
+    UpdateService.check().then((u) {
+      if (mounted && u != null) setState(() => _update = u);
+    });
+  }
 
   void _selectTab(int index) {
     if (index == _index) return;
@@ -139,6 +152,11 @@ class _HomeShellState extends State<HomeShell>
       // moving between attendance and the roster does not re-query every time.
       body: Column(
         children: [
+          if (_update != null)
+            _UpdateBanner(
+              version: _update!.version,
+              onDismiss: () => setState(() => _update = null),
+            ),
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
@@ -298,4 +316,50 @@ class HomePlaceholder extends StatelessWidget {
         title: AppStrings.noClassesAssigned,
         body: AppStrings.noClassesAssignedBody,
       );
+}
+
+/// "إصدار جديد متاح": opens the download page, or can be closed for now.
+class _UpdateBanner extends StatelessWidget {
+  const _UpdateBanner({required this.version, required this.onDismiss});
+
+  final String version;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.olive,
+      child: InkWell(
+        onTap: () => launchUrl(
+          Uri.parse('https://sabtawya.vercel.app/apk.html'),
+          mode: LaunchMode.externalApplication,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
+          child: Row(
+            children: [
+              const Icon(Icons.system_update_rounded,
+                  size: 18, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppStrings.updateAvailable(version),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: AppStrings.close,
+                icon: const Icon(Icons.close, size: 18, color: Colors.white),
+                onPressed: onDismiss,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

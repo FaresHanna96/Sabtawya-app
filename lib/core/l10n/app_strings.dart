@@ -334,6 +334,8 @@ class AppStrings {
   static const wholeYear = 'السنة كلها';
   static const allClasses = 'كل الفصول';
   static const pickClasses = 'اختر فصلاً أو أكثر';
+  static String updateAvailable(String v) =>
+      'إصدار جديد متاح ($v) — اضغط للتحميل';
   static String classesCount(int n) => n <= 10 ? '$n فصول' : '$n فصل';
   static const done = 'تم';
   static String monthsCount(int n) => n <= 10 ? '$n شهور' : '$n شهر';

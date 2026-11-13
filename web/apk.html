@@ -55,9 +55,9 @@
       <li><b>يعمل بدون إنترنت:</b> التعديلات تُحفظ وتُرسل تلقائياً عند رجوع الاتصال.</li>
     </ul>
     <div class="facts" style="padding:0 14px 14px">
-      <div><b>1.0.1</b>الإصدار</div>
-      <div><b>27 ميغابايت</b>الحجم</div>
-      <div><b>13 نوفمبر 2026</b>آخر تحديث</div>
+      <div><b id="fVer">1.0.2</b>الإصدار</div>
+      <div><b id="fSize">27 ميغابايت</b>الحجم</div>
+      <div><b id="fDate">13 نوفمبر 2026</b>آخر تحديث</div>
     </div>
     <div class="note">متاح للخدام المسجّلين فقط، ويحتاج حساباً مفعّلاً من أمين الخدمة.</div>
   </div>
@@ -119,6 +119,18 @@
     downloadLogged = true;
     log('apk_download');
   }
+
+  // The facts come from version.json, written on every deploy; the text in
+  // the page is only the fallback.
+  var MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  fetch('version.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (v) {
+    if (v.version) document.getElementById('fVer').textContent = v.version;
+    if (v.size_mb) document.getElementById('fSize').textContent = v.size_mb + ' ميغابايت';
+    if (v.date) {
+      var p = v.date.split('-');
+      document.getElementById('fDate').textContent = (+p[2]) + ' ' + MONTHS[+p[1] - 1] + ' ' + p[0];
+    }
+  }).catch(function () {});
 
   log('apk_page');
   dl.addEventListener('click', logDownload);

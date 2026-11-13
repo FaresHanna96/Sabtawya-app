@@ -1,7 +1,7 @@
 name: sabtawya
 description: "Sabtawya — نظام إدارة الحضور والطايو"
 publish_to: "none"
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -30,6 +30,7 @@ dependencies:
   web: ^1.1.2
   cross_file: ^0.3.5+5
   app_badge_plus: ^1.3.5
+  firebase_crashlytics: ^6.0.1
 dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:

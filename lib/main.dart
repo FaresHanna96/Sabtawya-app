@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/config/app_config.dart';
 import 'core/services/connectivity_service.dart';
+import 'core/services/error_reporter.dart';
 import 'core/services/offline_http_client.dart';
 import 'core/services/offline_store.dart';
 import 'data/services/access_log.dart';
@@ -34,6 +35,7 @@ Future<void> main() async {
     ),
   );
 
+  await ErrorReporter.init();
   AccessLog.appOpened();
   runApp(const SabtawyaApp());
 }

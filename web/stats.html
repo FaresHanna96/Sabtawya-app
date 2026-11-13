@@ -403,6 +403,18 @@
     });
     if (!rows.length) h += '<div class="empty">لا أحد في هذه الفترة</div>';
     h += '<p class="hint" style="margin-top:8px">«تعديل» = تغييرات سجّلها التطبيق باسم الشخص. الوقت = آخر نشاط بتوقيت القاهرة.</p>';
+
+    // Errors from the website version (Android ones are in Firebase Crashlytics).
+    var e = await sb.rpc('admin_recent_errors', {p_limit: 20});
+    if (!e.error) {
+      var errs = e.data || [];
+      h += '<div class="p" style="font-weight:700;margin-top:6px"><span>أخطاء الموقع (' + errs.length + ')</span></div>';
+      if (!errs.length) h += '<div class="empty">لا توجد أخطاء مسجلة</div>';
+      errs.forEach(function (x) {
+        h += '<div class="p"><div style="min-width:0"><span style="display:block;overflow-wrap:anywhere">' + esc(x.message) +
+             '</span><small>' + esc(x.who || '—') + ' • ' + esc(x.app_version || '') + '</small></div><span class="tm">' + hm(x.created_at) + '</span></div>';
+      });
+    }
     $('whoList').innerHTML = h; $('whoList').hidden = false; $('whoLogin').hidden = true;
     $('out').onclick = async function () { await sb.auth.signOut(); isAdmin = false; $('whoList').hidden = true; $('whoLogin').hidden = false; };
   }
