@@ -187,6 +187,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         children: r.children,
                         points: r.points,
                         maxPoints: r.maxPoints,
+                        attended: r.attended,
+                        held: r.held,
                       ),
                     )
                     .toList(),
@@ -249,7 +251,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     DateTime month,
   ) =>
       monthly.where((r) => AppDateUtils.isSameDay(r.monthStart, month)).toList()
-        ..sort((a, b) => b.points.compareTo(a.points));
+        ..sort((a, b) =>
+            _byAttendance(a.percentage, a.points, b.percentage, b.points));
 
   @override
   Widget build(BuildContext context) {
@@ -439,7 +442,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           )
           .toList()
-        ..sort((a, b) => b.points.compareTo(a.points));
+        ..sort((a, b) =>
+            _byAttendance(a.percentage, a.points, b.percentage, b.points));
     } else {
       scores = _aggregateChildren(data);
     }
@@ -497,14 +501,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
               children: r.children,
               points: r.points,
               maxPoints: classMaxHeld[r.classId] ?? r.maxPoints,
+              attended: r.sessionsAttended,
+              held: r.sessionsTotal,
             ),
           )
           .toList()
-        ..sort((a, b) {
-          final ap = a.maxPoints > 0 ? a.points / a.maxPoints : 0.0;
-          final bp = b.maxPoints > 0 ? b.points / b.maxPoints : 0.0;
-          return bp.compareTo(ap);
-        });
+        ..sort((a, b) =>
+            _byAttendance(a.percentage, a.points, b.percentage, b.points));
     } else {
       scores = _aggregateClasses(data);
     }
@@ -532,9 +535,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     PercentageBar(
-                      percentage: row.maxPoints > 0
-                          ? row.points / row.maxPoints * 100
-                          : 0,
+                      percentage: row.percentage,
                       label: row.className,
                     ),
                     const SizedBox(height: 10),
@@ -817,7 +818,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         sessionsTotal: e.value.length,
       );
     }).toList()
-      ..sort((a, b) => b.points.compareTo(a.points));
+      ..sort((a, b) =>
+          _byAttendance(a.percentage, a.points, b.percentage, b.points));
   }
 
   /// Classes' standings over the Saturdays inside the chosen range.
@@ -833,13 +835,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         children: e.value.map((r) => r.childId).toSet().length,
         points: e.value.fold<int>(0, (a, r) => a + r.score),
         maxPoints: e.value.length * data.maxPerSession,
+        attended: e.value.where((r) => r.present).length,
+        held: e.value.length,
       );
     }).toList()
-      ..sort((a, b) {
-        final ap = a.maxPoints > 0 ? a.points / a.maxPoints : 0.0;
-        final bp = b.maxPoints > 0 ? b.points / b.maxPoints : 0.0;
-        return bp.compareTo(ap);
-      });
+      ..sort((a, b) =>
+          _byAttendance(a.percentage, a.points, b.percentage, b.points));
   }
 }
 
@@ -865,6 +866,10 @@ class _ChildScore {
   final int maxPoints;
   final int sessionsAttended;
   final int sessionsTotal;
+
+  /// Attendance: Saturdays came over Saturdays held.
+  double get percentage =>
+      sessionsTotal > 0 ? sessionsAttended / sessionsTotal * 100 : 0;
 }
 
 class _ClassScore {
@@ -874,6 +879,8 @@ class _ClassScore {
     required this.children,
     required this.points,
     required this.maxPoints,
+    required this.attended,
+    required this.held,
   });
 
   final String classId;
@@ -881,6 +888,20 @@ class _ClassScore {
   final int children;
   final int points;
   final int maxPoints;
+
+  /// Saturdays came / held, summed over the class's children.
+  final int attended;
+  final int held;
+
+  /// Attendance: Saturdays came over Saturdays held.
+  double get percentage => held > 0 ? attended / held * 100 : 0;
+}
+
+/// Best attendance first, points breaking ties: the order every ranking in
+/// the reports uses, so the rank matches the % shown.
+int _byAttendance(double pa, int a, double pb, int b) {
+  final byPct = pb.compareTo(pa);
+  return byPct != 0 ? byPct : b.compareTo(a);
 }
 
 class _ReportsData {

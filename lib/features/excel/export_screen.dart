@@ -110,6 +110,11 @@ class _ExportScreenState extends State<ExportScreen> {
       );
 
   Future<void> _exportAttendanceSheet() async {
+    // كل الفصول: one file with every class that took attendance that day
+    // (it used to fall back to the first class only).
+    if (_classId == null && _classes.length > 1) {
+      return _exportAllClassesSheet();
+    }
     final classId =
         _classId ?? (_classes.isEmpty ? null : _classes.first.classId);
     final year = context.read<SessionController>().currentYear;
@@ -147,6 +152,69 @@ class _ExportScreenState extends State<ExportScreen> {
         );
       },
     );
+  }
+
+  /// كشف حضور سبت for every class: pick a Saturday, then one workbook
+  /// grouped by class (a main sheet plus one sheet per class). Classes that
+  /// did not take attendance that day are left out and named afterwards.
+  Future<void> _exportAllClassesSheet() async {
+    final year = context.read<SessionController>().currentYear;
+    if (year == null || _busy) return;
+
+    final List<AttendanceSession> sessions;
+    try {
+      sessions = await _attendance.sessionsForClasses(
+        classIds: [for (final c in _classes) c.classId],
+        yearId: year.id,
+      );
+    } catch (e) {
+      if (mounted) Ui.error(context, e);
+      return;
+    }
+    if (!mounted) return;
+    if (sessions.isEmpty) {
+      Ui.info(context, AppStrings.noSessionsTitle);
+      return;
+    }
+
+    // One choice per Saturday, not one per class.
+    final byDate = <DateTime, AttendanceSession>{
+      for (final s in sessions) s.sessionDate: s,
+    };
+    final picked = await _pickSession(byDate.values.toList());
+    if (picked == null || !mounted) return;
+    final date = picked.sessionDate;
+    final sameDay = sessions.where((s) => s.sessionDate == date).toList();
+
+    var skipped = <String>[];
+    await _export(
+      name: '${AppStrings.exportAttendanceSheet} - ${AppStrings.all} - '
+          '${AppDateUtils.toIsoDate(date)}',
+      build: () async {
+        final sheets = await _attendance.sheets(sessions: sameDay, year: year);
+        final taken = [
+          for (final s in sheets)
+            if (s.entries.any((e) => e.isRecorded)) s,
+        ];
+        final takenIds = {for (final s in taken) s.session.classId};
+        skipped = [
+          for (final c in _classes)
+            if (!takenIds.contains(c.classId)) c.className,
+        ];
+        if (taken.isEmpty) return null;
+        return ExcelService.attendanceSheetsWorkbook(
+          sessionDate: date,
+          rows: [
+            for (final s in taken)
+              for (final e in s.entries)
+                (className: _classNameOf(s.session.classId), entry: e),
+          ],
+        );
+      },
+    );
+    if (skipped.isNotEmpty && mounted) {
+      Ui.info(context, AppStrings.notRecordedClasses(skipped));
+    }
   }
 
   Future<AttendanceSession?> _pickSession(
@@ -304,21 +372,8 @@ class _ExportScreenState extends State<ExportScreen> {
           if (yearId == null) return null;
           final scores = await _reports.classScores(yearId);
           if (scores.isEmpty) return null;
-          final monthly = await _reports.childMonthly(yearId: yearId);
-          final now = DateTime.now();
-          final classMaxHeld = <String, int>{};
-          for (final r in monthly) {
-            if (r.monthStart.year < now.year ||
-                (r.monthStart.year == now.year &&
-                    r.monthStart.month <= now.month)) {
-              classMaxHeld[r.classId] =
-                  (classMaxHeld[r.classId] ?? 0) + r.maxPoints;
-            }
-          }
-          return ExcelService.classReportWorkbook(
-            scores,
-            classMaxHeld: classMaxHeld.isEmpty ? null : classMaxHeld,
-          );
+          // The view's % already counts only the Saturdays held so far.
+          return ExcelService.classReportWorkbook(scores);
         },
       );
 

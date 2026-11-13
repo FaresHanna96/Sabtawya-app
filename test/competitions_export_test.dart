@@ -73,10 +73,18 @@ void main() {
     expect(double.parse(children[2][6]!.value.toString()), 25); // 1 / 4
 
     final classes = Excel.decodeBytes(ExcelService.classScoresWorkbook(const [
-      ClassScoreRow(className: 'س', children: 10, points: 80, maxPoints: 100),
+      ClassScoreRow(
+        className: 'س',
+        children: 10,
+        points: 80,
+        maxPoints: 100,
+        attended: 6,
+        held: 10,
+      ),
     ])).tables.values.first.rows;
     expect(classes[1][1]!.value.toString(), 'س');
-    expect(double.parse(classes[1][4]!.value.toString()), 80);
+    // Attendance (6 of 10 Saturdays), not points (80 of 100).
+    expect(double.parse(classes[1][4]!.value.toString()), 60);
   });
 
   test('exports are formatted as a table: styled header and banded body', () {

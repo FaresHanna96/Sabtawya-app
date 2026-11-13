@@ -172,6 +172,8 @@ class ClassYearScore {
     required this.points,
     required this.maxPoints,
     required this.percentage,
+    this.sessionsAttended = 0,
+    this.sessionsTotal = 0,
   });
 
   final String classId;
@@ -180,7 +182,12 @@ class ClassYearScore {
   final int children;
   final int points;
   final int maxPoints;
+
+  /// Attendance: the class's Saturdays came over Saturdays held so far
+  /// (summed over its children).
   final double percentage;
+  final int sessionsAttended;
+  final int sessionsTotal;
 
   factory ClassYearScore.fromMap(Map<String, dynamic> map) => ClassYearScore(
         classId: asText(map['class_id']),
@@ -190,6 +197,8 @@ class ClassYearScore {
         points: asInt(map['points']),
         maxPoints: asInt(map['max_points']),
         percentage: asDouble(map['percentage']),
+        sessionsAttended: asInt(map['sessions_attended']),
+        sessionsTotal: asInt(map['sessions_total']),
       );
 }
 

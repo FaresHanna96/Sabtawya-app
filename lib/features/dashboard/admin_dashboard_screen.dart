@@ -282,19 +282,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  /// Classes best first by the percentage actually shown (points over the
-  /// Saturdays held so far), so the rank badge matches the bar.
-  List<ClassYearScore> _ranked(List<ClassYearScore> scores) {
-    double pct(ClassYearScore s) =>
-        s.maxPoints > 0 ? s.points / s.maxPoints * 100 : s.percentage;
-
-    return [...scores]..sort((a, b) => pct(b).compareTo(pct(a)));
-  }
+  /// Classes best first by attendance (Saturdays came over held so far, the
+  /// % on the bar), points breaking ties, so the rank badge matches the bar.
+  List<ClassYearScore> _ranked(List<ClassYearScore> scores) =>
+      [...scores]..sort((a, b) {
+          final byPct = b.percentage.compareTo(a.percentage);
+          return byPct != 0 ? byPct : b.points.compareTo(a.points);
+        });
 
   /// One class in the ranking: its place, the bar, and an arrow to open it.
   Widget _classRow(int i, ClassYearScore score) {
-    final maxHeld = score.maxPoints;
-    final pct = maxHeld > 0 ? score.points / maxHeld * 100 : score.percentage;
+    final pct = score.percentage;
     final medal = switch (i) {
       0 => AppColors.warning,
       1 => AppColors.navyLight,

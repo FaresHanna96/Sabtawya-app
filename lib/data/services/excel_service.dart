@@ -202,12 +202,18 @@ class ClassScoreRow {
     required this.children,
     required this.points,
     required this.maxPoints,
+    required this.attended,
+    required this.held,
   });
 
   final String className;
   final int children;
   final int points;
   final int maxPoints;
+
+  /// Saturdays came / held, summed over the class's children: the %.
+  final int attended;
+  final int held;
 }
 
 class ExcelService {
@@ -610,6 +616,47 @@ class ExcelService {
     return _encode(book);
   }
 
+  /// كشف حضور سبت for several classes on one Saturday: a main sheet with
+  /// every child (class column) plus one sheet per class.
+  static List<int> attendanceSheetsWorkbook({
+    required DateTime sessionDate,
+    required List<({String className, AttendanceEntry entry})> rows,
+  }) {
+    final (book, sheet) = _book(AppStrings.attendanceTitle);
+    _writeByClass<({String className, AttendanceEntry entry})>(
+      book,
+      sheet,
+      header: <CellValue?>[
+        _text(AppStrings.classLabel),
+        _text(AppStrings.childName),
+        _text(AppStrings.gender),
+        _text(AppStrings.sundaySchoolShort),
+        _text(AppStrings.vespersShort),
+        _text(AppStrings.massShort),
+        _text(AppStrings.confessionShort),
+        _text(AppStrings.total),
+        _text(AppStrings.maxPoints),
+      ],
+      rows: rows,
+      classOf: (r) => r.className,
+      cells: (r, _) {
+        final e = r.entry;
+        return <CellValue?>[
+          _text(r.className),
+          _text(e.child.fullName),
+          _text(e.child.gender.label),
+          IntCellValue(e.sundaySchool ? e.pointsSundaySchool : 0),
+          IntCellValue(e.vespers ? e.pointsVespers : 0),
+          IntCellValue(e.mass ? e.pointsMass : 0),
+          IntCellValue(e.confession ? e.pointsConfession : 0),
+          IntCellValue(e.score),
+          IntCellValue(e.maxScore),
+        ];
+      },
+    );
+    return _encode(book);
+  }
+
   static List<int> monthlyWorkbook(List<ChildMonthlyReport> report) {
     final (book, sheet) = _book(AppStrings.monthlyReport);
     _writeByClass<ChildMonthlyReport>(
@@ -687,10 +734,7 @@ class ExcelService {
     return _encode(book);
   }
 
-  static List<int> classReportWorkbook(
-    List<ClassYearScore> report, {
-    Map<String, int>? classMaxHeld,
-  }) {
+  static List<int> classReportWorkbook(List<ClassYearScore> report) {
     final (book, sheet) = _book(AppStrings.classReport);
     sheet.appendRow(<CellValue?>[
       _text(AppStrings.classLabel),
@@ -699,21 +743,24 @@ class ExcelService {
       _text('${AppStrings.averageAttendance} %'),
     ]);
 
-    for (final row in report) {
-      final maxHeld = classMaxHeld?[row.classId] ?? row.maxPoints;
-      final pct = maxHeld > 0 ? row.points / maxHeld * 100 : row.percentage;
+    // Best attendance first (the view's % is Saturdays came over held).
+    final ranked = [...report]..sort((a, b) {
+        final byPct = b.percentage.compareTo(a.percentage);
+        return byPct != 0 ? byPct : b.points.compareTo(a.points);
+      });
+    for (final row in ranked) {
       sheet.appendRow(<CellValue?>[
         _text(row.className),
         IntCellValue(row.children),
         IntCellValue(row.points),
-        DoubleCellValue(pct),
+        DoubleCellValue(row.percentage),
       ]);
     }
     return _encode(book);
   }
 
   /// The reports screen's children tab, exactly as listed: [rows] keep the
-  /// order the screen shows (highest points first), so rank is the position.
+  /// order the screen shows (best attendance first), so rank is the position.
   static List<int> childScoresWorkbook(List<ChildScoreRow> rows) {
     final (book, sheet) = _book(AppStrings.overallReport);
     // [rows] come best first: rank restarts at 1 in each class.
@@ -761,9 +808,7 @@ class ExcelService {
         _text(row.className),
         IntCellValue(row.children),
         IntCellValue(row.points),
-        DoubleCellValue(
-          row.maxPoints > 0 ? row.points / row.maxPoints * 100 : 0,
-        ),
+        DoubleCellValue(row.held > 0 ? row.attended / row.held * 100 : 0),
       ]);
     }
     return _encode(book);
