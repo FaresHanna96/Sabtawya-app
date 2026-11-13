@@ -175,7 +175,12 @@ class _HomeShellState extends State<HomeShell>
                   ),
                   child: IndexedStack(
                     index: _index,
-                    children: tabs.map((tab) => tab.child).toList(),
+                    // Only the tab on screen ticks: a hidden tab's data waits
+                    // to reload until it is opened (see AsyncSection).
+                    children: [
+                      for (final (i, tab) in tabs.indexed)
+                        TickerMode(enabled: i == _index, child: tab.child),
+                    ],
                   ),
                 ),
               ),

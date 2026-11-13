@@ -73,27 +73,34 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       throw AppFailure('لم يتم العثور على المخدوم');
     }
 
-    final classOverview = await _classes.overviewById(child.classId);
-
-    return _ProfileData(
-      child: child,
-      className: classOverview?.className ?? AppStrings.unknown,
-      yearReport: yearId == null
-          ? null
-          : await _reports.childYear(childId: child.id, yearId: yearId),
-      monthly: yearId == null
-          ? const <ChildMonthlyReport>[]
-          : await _reports.childMonthly(
+    // The six reads below do not depend on each other: run them side by side
+    // instead of one after another (the profile waited for each in turn).
+    final (classOverview, yearReport, monthly, history, lastActivity, logs) =
+        await (
+      _classes.overviewById(child.classId),
+      yearId == null
+          ? Future.value(null)
+          : _reports.childYear(childId: child.id, yearId: yearId),
+      yearId == null
+          ? Future.value(const <ChildMonthlyReport>[])
+          : _reports.childMonthly(
               yearId: yearId,
               childId: child.id,
               onlyActive: false,
             ),
-      history: await _attendance.childHistory(
-        childId: child.id,
-        yearId: yearId,
-      ),
-      lastActivity: await _reports.lastActivity(child.id),
-      visitLogs: await _children.visitLogs(child.id),
+      _attendance.childHistory(childId: child.id, yearId: yearId),
+      _reports.lastActivity(child.id),
+      _children.visitLogs(child.id),
+    ).wait;
+
+    return _ProfileData(
+      child: child,
+      className: classOverview?.className ?? AppStrings.unknown,
+      yearReport: yearReport,
+      monthly: monthly,
+      history: history,
+      lastActivity: lastActivity,
+      visitLogs: logs,
     );
   }
 

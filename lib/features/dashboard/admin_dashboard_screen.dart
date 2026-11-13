@@ -51,14 +51,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         classScores: const <ClassYearScore>[],
         lowAttendance: const <ChildYearReport>[],
         activity: activity,
-        monthly: const <ChildMonthlyReport>[],
       );
     }
 
-    final (stats, activity, monthly, scores, low) = await (
+    // The class scores already count only the Saturdays held so far, so the
+    // monthly table (thousands of rows) is no longer downloaded here.
+    final (stats, activity, scores, low) = await (
       _reports.adminStats(),
       _reports.recentActivity(),
-      _reports.childMonthly(yearId: yearId),
       _reports.classScores(yearId),
       _reports.lowAttendance(yearId: yearId),
     ).wait;
@@ -68,7 +68,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       classScores: scores,
       lowAttendance: low,
       activity: activity,
-      monthly: monthly,
     );
   }
 
@@ -92,21 +91,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       builder: (context, data, reload) {
         final stats = data.stats;
 
-        // Max points held so far per class and per child (sessions up to now).
-        final now = DateTime.now();
-        final classMaxHeld = <String, int>{};
-        final childMaxHeld = <String, int>{};
-        for (final r in data.monthly) {
-          if (r.monthStart.year < now.year ||
-              (r.monthStart.year == now.year &&
-                  r.monthStart.month <= now.month)) {
-            classMaxHeld[r.classId] =
-                (classMaxHeld[r.classId] ?? 0) + r.maxPoints;
-            childMaxHeld[r.childId] =
-                (childMaxHeld[r.childId] ?? 0) + r.maxPoints;
-          }
-        }
-
         // Not a lazy ListView: it rebuilt each section as it scrolled back
         // into view, which replayed its entrance (after a delay) every time.
         return SingleChildScrollView(
@@ -119,7 +103,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               // (birthdays, the lesson), then what to do and the details.
               FadeSlideIn(
                 index: 0,
-                child: _greeting(session.displayName, session.currentYear?.name),
+                child:
+                    _greeting(session.displayName, session.currentYear?.name),
               ),
               const SizedBox(height: 16),
               FadeSlideIn(
@@ -189,11 +174,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     accent: AppColors.olive,
                     child: Column(
                       children: [
-                        for (final (i, score) in _ranked(
-                          data.classScores,
-                          classMaxHeld,
-                        ).indexed)
-                          _classRow(i, score, classMaxHeld),
+                        for (final (i, score)
+                            in _ranked(data.classScores).indexed)
+                          _classRow(i, score),
                       ],
                     ),
                   ),
@@ -288,21 +271,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   /// Classes best first by the percentage actually shown (points over the
   /// Saturdays held so far), so the rank badge matches the bar.
-  List<ClassYearScore> _ranked(
-    List<ClassYearScore> scores,
-    Map<String, int> maxHeldOf,
-  ) {
-    double pct(ClassYearScore s) {
-      final max = maxHeldOf[s.classId] ?? s.maxPoints;
-      return max > 0 ? s.points / max * 100 : s.percentage;
-    }
+  List<ClassYearScore> _ranked(List<ClassYearScore> scores) {
+    double pct(ClassYearScore s) =>
+        s.maxPoints > 0 ? s.points / s.maxPoints * 100 : s.percentage;
 
     return [...scores]..sort((a, b) => pct(b).compareTo(pct(a)));
   }
 
   /// One class in the ranking: its place, the bar, and an arrow to open it.
-  Widget _classRow(int i, ClassYearScore score, Map<String, int> maxHeldOf) {
-    final maxHeld = maxHeldOf[score.classId] ?? score.maxPoints;
+  Widget _classRow(int i, ClassYearScore score) {
+    final maxHeld = score.maxPoints;
     final pct = maxHeld > 0 ? score.points / maxHeld * 100 : score.percentage;
     final medal = switch (i) {
       0 => AppColors.warning,
@@ -588,12 +566,10 @@ class _AdminDashboard {
     required this.classScores,
     required this.lowAttendance,
     required this.activity,
-    required this.monthly,
   });
 
   final AdminStats stats;
   final List<ClassYearScore> classScores;
   final List<ChildYearReport> lowAttendance;
   final List<ActivityLogEntry> activity;
-  final List<ChildMonthlyReport> monthly;
 }

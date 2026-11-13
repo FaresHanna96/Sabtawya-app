@@ -55,13 +55,23 @@ class _ServantsScreenState extends State<ServantsScreen> {
     }).toList();
   }
 
-  Future<_ServantsData> _load() async => _ServantsData(
-        servants: await _repository.servants(),
-        invites: await _repository.pendingInvites(),
-        assignments: await _classes.allAssignments(),
-        details: await _repository.details(),
-        classes: await _classes.list(),
-      );
+  // Five independent reads, side by side.
+  Future<_ServantsData> _load() async {
+    final (servants, invites, assignments, details, classes) = await (
+      _repository.servants(),
+      _repository.pendingInvites(),
+      _classes.allAssignments(),
+      _repository.details(),
+      _classes.list(),
+    ).wait;
+    return _ServantsData(
+      servants: servants,
+      invites: invites,
+      assignments: assignments,
+      details: details,
+      classes: classes,
+    );
+  }
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/l10n/app_strings.dart';
+import '../../core/services/offline_store.dart';
 import '../../core/utils/app_failure.dart';
 import '../supabase/db.dart';
 import 'web_pdf_picker_stub.dart'
@@ -19,10 +20,12 @@ import 'web_pdf_picker_stub.dart'
 class PhotoService {
   const PhotoService._();
 
-  /// Signed URLs last an hour; they are reused for slightly less than that so
-  /// scrolling a long list does not re-sign the same image on every rebuild.
-  static const _urlTtl = Duration(hours: 1);
-  static const _cacheFor = Duration(minutes: 50);
+  /// Signed URLs last a week and are reused for six days, and kept on the
+  /// device across restarts: the same URL every time lets the browser (web)
+  /// and the image cache keep the photo instead of downloading it again on
+  /// every app start. Signing out clears them with the rest of the cache.
+  static const _urlTtl = Duration(days: 7);
+  static const _cacheFor = Duration(days: 6);
 
   static final Map<String, _SignedUrl> _cache = <String, _SignedUrl>{};
 
@@ -127,6 +130,7 @@ class PhotoService {
     if (path == null || path.isEmpty) return;
     try {
       _cache.remove(_key(bucket, path));
+      OfflineStore.removeCached('signed:${_key(bucket, path)}');
       await Db.client.storage.from(bucket).remove(<String>[path]);
     } catch (e) {
       throw AppFailure.from(e);
@@ -144,14 +148,28 @@ class PhotoService {
     if (path == null || path.isEmpty) return null;
 
     final key = _key(bucket, path);
-    final cached = _cache[key];
+    var cached = _cache[key];
+    if (cached == null) {
+      // Kept from an earlier run of the app?
+      final stored = OfflineStore.getCached('signed:$key');
+      final at = DateTime.tryParse('${stored?['at']}');
+      if (stored != null && stored['url'] is String && at != null) {
+        cached = _cache[key] =
+            _SignedUrl(url: stored['url'] as String, createdAt: at);
+      }
+    }
     if (cached != null && cached.isFresh) return cached.url;
 
     try {
       final url = await Db.client.storage
           .from(bucket)
           .createSignedUrl(path, _urlTtl.inSeconds);
-      _cache[key] = _SignedUrl(url: url, createdAt: DateTime.now());
+      final now = DateTime.now();
+      _cache[key] = _SignedUrl(url: url, createdAt: now);
+      await OfflineStore.putCached(
+        'signed:$key',
+        <String, dynamic>{'url': url, 'at': now.toIso8601String()},
+      );
       return url;
     } catch (_) {
       return null;
@@ -162,6 +180,7 @@ class PhotoService {
   static void forget({required String bucket, required String? path}) {
     if (path == null) return;
     _cache.remove(_key(bucket, path));
+    OfflineStore.removeCached('signed:${_key(bucket, path)}');
   }
 
   static String _key(String bucket, String path) => '$bucket/$path';

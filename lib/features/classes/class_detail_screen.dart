@@ -53,16 +53,22 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     super.dispose();
   }
 
+  // Four independent reads, side by side.
   Future<_ClassDetail> _load() async {
-    final overview = await _classes.overviewById(widget.classId);
+    final (overview, servants, children, streaks) = await (
+      _classes.overviewById(widget.classId),
+      _classes.servantsOfClass(widget.classId),
+      _children.byClass(widget.classId, includeInactive: true),
+      _loadStreaks(),
+    ).wait;
     if (overview == null) {
       throw AppFailure(AppStrings.noPermission);
     }
     return _ClassDetail(
       overview: overview,
-      servants: await _classes.servantsOfClass(widget.classId),
-      children: await _children.byClass(widget.classId, includeInactive: true),
-      streaks: await _loadStreaks(),
+      servants: servants,
+      children: children,
+      streaks: streaks,
     );
   }
 

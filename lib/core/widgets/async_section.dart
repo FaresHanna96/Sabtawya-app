@@ -56,9 +56,14 @@ class AsyncSectionState<T> extends State<AsyncSection<T>> {
     await next.then<void>((_) {}, onError: (Object _) {});
   }
 
+  /// Data changed while this section was hidden: reload when it shows again.
+  bool _stale = false;
+
   @override
   Widget build(BuildContext context) {
-    // Reload whenever something anywhere in the app changed data.
+    // Reload whenever something anywhere in the app changed data, but only
+    // while on screen: a hidden home tab or a screen under another one waits
+    // until it is shown (one save no longer reloads every open screen).
     int? version;
     try {
       version = context.watch<SessionController>().dataVersion;
@@ -66,11 +71,16 @@ class AsyncSectionState<T> extends State<AsyncSection<T>> {
       version = null; // no provider above, e.g. in widget tests
     }
     if (_version != null && version != null && version != _version) {
+      _stale = true;
+    }
+    _version = version;
+    final visible = TickerMode.valuesOf(context).enabled;
+    if (_stale && visible) {
+      _stale = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) reload();
       });
     }
-    _version = version;
 
     return FutureBuilder<T>(
       future: _future,

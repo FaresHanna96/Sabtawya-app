@@ -30,11 +30,19 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<_AssignmentsData>>();
 
-  Future<_AssignmentsData> _load() async => _AssignmentsData(
-        classes: await _classes.list(),
-        assignments: await _classes.allAssignments(),
-        servants: await _servants.servants(includeInactive: false),
-      );
+  // Three independent reads, side by side.
+  Future<_AssignmentsData> _load() async {
+    final (classes, assignments, servants) = await (
+      _classes.list(),
+      _classes.allAssignments(),
+      _servants.servants(includeInactive: false),
+    ).wait;
+    return _AssignmentsData(
+      classes: classes,
+      assignments: assignments,
+      servants: servants,
+    );
+  }
 
   Future<void> _reload() async {
     await _sectionKey.currentState?.reload();

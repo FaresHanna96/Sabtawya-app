@@ -101,6 +101,23 @@
           "value": "no-cache"
         }
       ]
+    },
+    {
+      "source": "/sabtawya-armv7.apk",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/vnd.android.package-archive"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"sabtawya-armv7.apk\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
     }
   ]
 }

@@ -66,11 +66,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late DateTime _selected = CalendarGrid.dayOf(DateTime.now());
   final _shown = <_Kind>{..._Kind.values};
 
-  Future<_CalendarData> _load() async => _CalendarData(
-        children: await _children.all(includeInactive: false),
-        servants: await _servants.birthdays(),
-        events: await _events.listEvents(),
-      );
+  // Three independent reads, side by side.
+  Future<_CalendarData> _load() async {
+    final (children, servants, events) = await (
+      _children.all(includeInactive: false),
+      _servants.birthdays(),
+      _events.listEvents(),
+    ).wait;
+    return _CalendarData(children: children, servants: servants, events: events);
+  }
 
   /// +1 / -1: which way the month grid slides in (RTL: next comes from left).
   double _slideDir = -1;

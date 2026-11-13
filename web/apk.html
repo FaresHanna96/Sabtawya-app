@@ -17,6 +17,7 @@
   .sub{color:#6b7280;font-size:14px;margin:0 0 18px}
   a.btn{display:block;background:#7a1f2b;color:#fff;text-decoration:none;font-weight:700;
         padding:14px;border-radius:14px;text-align:center}
+  a.old{display:block;text-align:center;font-size:12.5px;color:#6b7280;margin:8px 0 2px}
   #status{text-align:center;font-size:13px;color:#2e7d32;margin:8px 0 0;min-height:18px}
   .dlbox{padding:14px 14px 0}
   .sec{border:1px solid #e7e2d9;border-radius:14px;margin-top:14px;overflow:hidden}
@@ -66,6 +67,7 @@
     <div class="dlbox">
       <a class="btn" id="dl" rel="noreferrer noopener" referrerpolicy="no-referrer" href="sabtawya.apk" download="sabtawya.apk">تحميل التطبيق</a>
       <p id="status"></p>
+      <a class="old" id="dl32" rel="noreferrer noopener" href="sabtawya-armv7.apk" download="sabtawya-armv7.apk">موبايل قديم؟ لو التثبيت فشل حمّل هذه النسخة</a>
     </div>
     <ol>
       <li>التحميل يبدأ تلقائياً. لو ما بدأش اضغط «تحميل التطبيق».</li>
@@ -120,6 +122,7 @@
 
   log('apk_page');
   dl.addEventListener('click', logDownload);
+  document.getElementById('dl32').addEventListener('click', logDownload);
 
   // Put the section for this phone first; iPhone gets no download button.
   var card = document.querySelector('.card');

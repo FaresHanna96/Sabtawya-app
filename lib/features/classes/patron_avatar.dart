@@ -75,11 +75,17 @@ class _PatronAvatarState extends State<PatronAvatar> {
               builder: (context, snapshot) {
                 final url = snapshot.data;
                 if (url == null) return _placeholder();
+                // Decode at the size shown, not the photo's full size: a
+                // 44px avatar no longer holds a multi-megapixel image.
+                final px =
+                    (widget.size * MediaQuery.devicePixelRatioOf(context))
+                        .round();
                 return Image.network(
                   url,
                   fit: BoxFit.cover,
                   width: widget.size,
                   height: widget.size,
+                  cacheWidth: px,
                   errorBuilder: (_, __, ___) => _placeholder(),
                   loadingBuilder: (context, child, progress) =>
                       progress == null ? child : _placeholder(),

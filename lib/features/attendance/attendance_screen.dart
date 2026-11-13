@@ -125,10 +125,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     try {
-      final perClass = await Future.wait([
+      // One query for every chosen class's Saturdays, split per class here.
+      final all = await _repository.sessionsForClasses(
+        classIds: classIds,
+        yearId: year.id,
+      );
+      final perClass = [
         for (final id in classIds)
-          _repository.sessions(classId: id, yearId: year.id),
-      ]);
+          [
+            for (final s in all)
+              if (s.classId == id) s,
+          ],
+      ];
 
       // One session per date for the arrows and the picker, oldest first.
       final byDate = <String, AttendanceSession>{};
@@ -148,9 +156,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             for (final s in list)
               if (AppDateUtils.isSameDay(s.sessionDate, target)) s,
       ];
-      final sheets = await Future.wait([
-        for (final s in onDate) _repository.sheet(session: s, year: year),
-      ]);
+      // Every class's roster and records in two queries, not two per class.
+      final sheets = await _repository.sheets(sessions: onDate, year: year);
 
       if (!mounted) return;
       setState(() {
@@ -421,37 +428,51 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     // One scroll view for the header and the roster. A nested list under a
     // fixed header left only the first child on screen (the other four sat
     // in a pane that did not receive the page scroll on web).
-    return ListView(
+    //
+    // Built lazily: with "كل الفصول" the roster is ~200 cards, and building
+    // them all up front made the screen slow to open. Rows are: the header,
+    // the locked banner, then per class an optional header and its cards.
+    final rows = <Object>[
+      #header,
+      if (_isLocked) #locked,
+      if (_entries.isEmpty) #empty,
+      for (var i = 0; i < _entries.length; i++) ...[
+        if (_allClasses && (i == 0 || _entrySheet[i] != _entrySheet[i - 1]))
+          _entrySheet[i],
+        i,
+      ],
+    ];
+    return ListView.builder(
       padding: const EdgeInsets.only(bottom: 96),
-      children: [
-        _header(),
-        if (_isLocked) _lockedBanner(),
-        if (_entries.isEmpty)
-          const Padding(
+      itemCount: rows.length,
+      itemBuilder: (context, index) {
+        final row = rows[index];
+        if (row == #header) return _header();
+        if (row == #locked) return _lockedBanner();
+        if (row == #empty) {
+          return const Padding(
             padding: EdgeInsets.only(top: 40),
             child: EmptyState(
               icon: Icons.groups_outlined,
               title: AppStrings.noChildren,
               body: AppStrings.noChildrenBody,
             ),
-          )
-        else
-          for (var i = 0; i < _entries.length; i++) ...[
-            if (_allClasses && (i == 0 || _entrySheet[i] != _entrySheet[i - 1]))
-              _classHeader(_entrySheet[i]),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: staggered(
-                i,
-                AttendanceEntryCard(
-                  entry: _entries[i],
-                  enabled: _canEditSheet(_entrySheet[i]),
-                  onToggle: (activity) => _toggle(_entries[i], activity),
-                ),
-              ),
+          );
+        }
+        if (row is AttendanceSheet) return _classHeader(row);
+        final i = row as int;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: staggered(
+            i,
+            AttendanceEntryCard(
+              entry: _entries[i],
+              enabled: _canEditSheet(_entrySheet[i]),
+              onToggle: (activity) => _toggle(_entries[i], activity),
             ),
-          ],
-      ],
+          ),
+        );
+      },
     );
   }
 

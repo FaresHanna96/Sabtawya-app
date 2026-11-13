@@ -219,6 +219,84 @@ class AttendanceRepository {
     return AttendanceSheet(session: session, year: year, entries: entries);
   }
 
+  /// The Saturdays of several classes in one query (oldest first), for the
+  /// attendance screen's "كل الفصول": one request instead of one per class.
+  Future<List<AttendanceSession>> sessionsForClasses({
+    required List<String> classIds,
+    required String yearId,
+  }) async {
+    if (classIds.isEmpty) return const <AttendanceSession>[];
+    try {
+      final data = await Db.client
+          .from(Db.tAttendanceSessions)
+          .select()
+          .inFilter('class_id', classIds)
+          .eq('year_id', yearId)
+          .order('session_date', ascending: true);
+      return rows(data).map(AttendanceSession.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The sheets of several sessions (one per class) in two queries: every
+  /// roster at once and every record at once, then split per session. The
+  /// screen used to ask twice per class (about 16 requests for 8 classes).
+  /// Sheets come back in the order of [sessions].
+  Future<List<AttendanceSheet>> sheets({
+    required List<AttendanceSession> sessions,
+    required AttendanceYear year,
+  }) async {
+    if (sessions.isEmpty) return const <AttendanceSheet>[];
+    if (sessions.length == 1) {
+      return [await sheet(session: sessions.first, year: year)];
+    }
+    try {
+      final classIds = {for (final s in sessions) s.classId}.toList();
+      final (childRows, recordRows) = await (
+        Db.client
+            .from(Db.tChildren)
+            .select()
+            .inFilter('class_id', classIds)
+            .eq('is_active', true),
+        Db.client
+            .from(Db.vSessionScores)
+            .select()
+            .inFilter('session_id', [for (final s in sessions) s.id]),
+      ).wait;
+
+      final rosterByClass = <String, List<Child>>{};
+      for (final child in rows(childRows).map(Child.fromMap)) {
+        (rosterByClass[child.classId] ??= <Child>[]).add(child);
+      }
+      final recordsBySession = <String, Map<String, AttendanceRecord>>{};
+      for (final r in rows(recordRows).map(AttendanceRecord.fromMap)) {
+        (recordsBySession[r.sessionId] ??= {})[r.childId] = r;
+      }
+
+      return [
+        for (final session in sessions)
+          AttendanceSheet(
+            session: session,
+            year: year,
+            entries: [
+              for (final child
+                  in (rosterByClass[session.classId] ?? <Child>[])
+                    ..sort(
+                        (a, b) => ArabicSort.compare(a.fullName, b.fullName)))
+                AttendanceEntry.from(
+                  child: child,
+                  record: recordsBySession[session.id]?[child.id],
+                  year: year,
+                ),
+            ],
+          ),
+      ];
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<List<AttendanceRecord>> recordsForSession(String sessionId) async {
     try {
       final data = await Db.client

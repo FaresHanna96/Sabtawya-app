@@ -132,6 +132,9 @@ class OfflineStore {
   /// Forgets every cached read (sign-out on a shared device). Queued writes stay.
   static Future<void> clearCache() async => _box(_boxHttp)?.clear();
 
+  static Future<void> removeCached(String key) async =>
+      _box(_boxHttp)?.delete(key);
+
   // ── write queue ────────────────────────────────────────────────────────────
 
   static int pendingCount() => _box(_boxQueue)?.length ?? 0;
