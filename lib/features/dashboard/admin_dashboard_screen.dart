@@ -12,7 +12,6 @@ import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
-import '../children/child_profile_screen.dart';
 import '../classes/class_detail_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
@@ -36,39 +35,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final _sectionKey = GlobalKey<AsyncSectionState<_AdminDashboard>>();
 
   /// "عرض الكل" on the low-attendance list and the activity feed.
-  bool _showAllLow = false;
   bool _showAllActivity = false;
 
   Future<_AdminDashboard> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
 
-    // The five reads do not depend on each other, so run them side by side
-    // instead of one after another (the dashboard waited for all five in turn).
+    // The reads do not depend on each other, so run them side by side
+    // instead of one after another (the dashboard waited for each in turn).
     if (yearId == null) {
       final (stats, activity) =
           await (_reports.adminStats(), _reports.recentActivity()).wait;
       return _AdminDashboard(
         stats: stats,
         classScores: const <ClassYearScore>[],
-        lowAttendance: const <ChildYearReport>[],
         activity: activity,
       );
     }
 
     // The class scores already count only the Saturdays held so far, so the
     // monthly table (thousands of rows) is no longer downloaded here.
-    final (stats, activity, scores, low, weeks) = await (
+    final (stats, activity, scores, weeks) = await (
       _reports.adminStats(),
       _reports.recentActivity(),
       _reports.classScores(yearId),
-      _reports.lowAttendance(yearId: yearId),
       _reports.weeklyAttendance(yearId),
     ).wait;
 
     return _AdminDashboard(
       stats: stats,
       classScores: scores,
-      lowAttendance: low,
       activity: activity,
       weeks: weeks,
     );
@@ -200,13 +195,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (data.lowAttendance.isNotEmpty) ...[
-                FadeSlideIn(
-                  index: 8,
-                  child: _lowAttendance(data.lowAttendance),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -347,88 +335,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(width: 4),
             const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Lowest attenders: the first five, the rest behind "عرض الكل".
-  Widget _lowAttendance(List<ChildYearReport> all) {
-    final shown = _showAllLow ? all : all.take(5).toList();
-    return SectionCard(
-      title: '${AppStrings.lowAttendanceChildren} (${all.length})',
-      icon: Icons.warning_amber_rounded,
-      accent: AppColors.coral,
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        alignment: Alignment.topCenter,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final report in shown)
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _push(ChildProfileScreen(childId: report.childId)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor:
-                            AppColors.coral.withValues(alpha: 0.14),
-                        child: Text(
-                          report.childName.isEmpty
-                              ? '?'
-                              : report.childName.characters.first,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.coral,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              report.childName,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              report.className,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Saturdays at Sunday school out of those held, e.g. 2/7.
-                      ScoreChip(
-                        score: report.points,
-                        maxScore: report.maxPoints,
-                        compact: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (all.length > 5)
-              TextButton(
-                onPressed: () => setState(() => _showAllLow = !_showAllLow),
-                child: Text(
-                  _showAllLow ? AppStrings.showLess : AppStrings.showAll,
-                ),
-              ),
           ],
         ),
       ),
@@ -589,14 +495,12 @@ class _AdminDashboard {
   const _AdminDashboard({
     required this.stats,
     required this.classScores,
-    required this.lowAttendance,
     required this.activity,
     this.weeks = const <WeeklyAttendance>[],
   });
 
   final AdminStats stats;
   final List<ClassYearScore> classScores;
-  final List<ChildYearReport> lowAttendance;
   final List<ActivityLogEntry> activity;
 
   /// Attendance per Saturday, for the weekly chart.

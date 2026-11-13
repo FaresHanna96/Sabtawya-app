@@ -139,7 +139,6 @@ class AppStrings {
   static const showUpcoming = 'السبوت القادمة';
   static const averageAttendance = 'متوسط الحضور';
   static const classPerformance = 'أداء الفصول';
-  static const lowAttendanceChildren = 'حضور منخفض في مدارس الأحد';
   static const recentActivity = 'آخر النشاطات';
   static const noClassesAssigned = 'لم يتم تعيين أي فصل لك بعد';
   static const noClassesAssignedBody =
