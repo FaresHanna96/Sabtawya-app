@@ -24,4 +24,4 @@ foreach ($f in "sabtawya.apk", "sabtawya-armv7.apk") {
     $mb = [math]::Round((Get-Item "$PSScriptRoot\$f").Length / 1MB, 1)
     Write-Host "$f  $mb MB"
 }
-Write-Host "Update the size on web/apk.html (الحجم) if it changed, then run .\build_web.ps1"
+Write-Host "Update the size fact on web/apk.html if it changed, then run .\build_web.ps1"
