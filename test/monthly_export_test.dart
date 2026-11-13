@@ -87,4 +87,20 @@ void main() {
     expect(double.parse(c(1, 6)), 83.3);
     expect([c(2, 1), c(2, 3), c(2, 4)], ['بيشوي', '1', '6']);
   });
+
+  test('servant monthly: every month from the year start to now', () {
+    expect(
+      ExportScreen.monthsBetween(DateTime(2026, 9, 26), DateTime(2026, 11, 14)),
+      [DateTime(2026, 9), DateTime(2026, 10), DateTime(2026, 11)],
+    );
+    expect(
+      ExportScreen.monthsBetween(
+          DateTime(2026, 11, 20), DateTime(2026, 11, 14)),
+      [DateTime(2026, 11)],
+    );
+    expect(
+      ExportScreen.monthsBetween(DateTime(2026, 12, 5), DateTime(2027, 1, 2)),
+      [DateTime(2026, 12), DateTime(2027, 1)],
+    );
+  });
 }
