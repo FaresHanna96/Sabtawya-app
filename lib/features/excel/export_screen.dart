@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/motion.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/reports.dart';
@@ -56,9 +57,23 @@ class _ExportScreenState extends State<ExportScreen> {
   static const _reports = ReportRepository();
   static const _servantActivity = ServantActivityRepository();
 
-  /// Null exports every class the caller can see.
-  String? _classId;
+  /// The classes ticked in the class filter; empty exports every class the
+  /// caller can see (كل الفصول).
+  Set<String> _classIds = <String>{};
   bool _busy = false;
+
+  /// The one class ticked, so a query can filter on the server; null when
+  /// none or several are ticked (those filter after loading, see [_inScope]).
+  String? get _classId => _classIds.length == 1 ? _classIds.first : null;
+
+  bool _inScope(String classId) =>
+      _classIds.isEmpty || _classIds.contains(classId);
+
+  /// The classes an export covers, in the usual class order.
+  List<ClassOverview> get _scopeClasses => [
+        for (final c in _classes)
+          if (_inScope(c.classId)) c
+      ];
 
   List<ClassOverview> get _classes =>
       context.read<SessionController>().myClasses;
@@ -70,8 +85,10 @@ class _ExportScreenState extends State<ExportScreen> {
     return AppStrings.unknown;
   }
 
-  String get _scopeLabel =>
-      _classId == null ? AppStrings.all : _classNameOf(_classId!);
+  /// For file names and the tiles: الكل, or the ticked classes' names.
+  String get _scopeLabel => _classIds.isEmpty
+      ? AppStrings.all
+      : _scopeClasses.map((c) => c.className).join('، ');
 
   /// Runs [build] then shares the workbook it produced.
   Future<void> _export({
@@ -105,10 +122,12 @@ class _ExportScreenState extends State<ExportScreen> {
   Future<void> _exportChildren() => _export(
         name: '${AppStrings.exportChildren} - $_scopeLabel',
         build: () async {
-          final children = await _children.all(
+          final children = (await _children.all(
             includeInactive: true,
             classId: _classId,
-          );
+          ))
+              .where((c) => _inScope(c.classId))
+              .toList();
           if (children.isEmpty) return null;
           return ExcelService.childrenWorkbook(
             children: children,
@@ -118,13 +137,13 @@ class _ExportScreenState extends State<ExportScreen> {
       );
 
   Future<void> _exportAttendanceSheet() async {
-    // كل الفصول: one file with every class that took attendance that day
-    // (it used to fall back to the first class only).
-    if (_classId == null && _classes.length > 1) {
+    // كل الفصول or several ticked: one file with every class that took
+    // attendance that day (it used to fall back to the first class only).
+    if (_classId == null && _scopeClasses.length > 1) {
       return _exportAllClassesSheet();
     }
-    final classId =
-        _classId ?? (_classes.isEmpty ? null : _classes.first.classId);
+    final classId = _classId ??
+        (_scopeClasses.isEmpty ? null : _scopeClasses.first.classId);
     final year = context.read<SessionController>().currentYear;
     if (classId == null || year == null) {
       Ui.info(context, AppStrings.selectClass);
@@ -172,7 +191,7 @@ class _ExportScreenState extends State<ExportScreen> {
     final List<AttendanceSession> sessions;
     try {
       sessions = await _attendance.sessionsForClasses(
-        classIds: [for (final c in _classes) c.classId],
+        classIds: [for (final c in _scopeClasses) c.classId],
         yearId: year.id,
       );
     } catch (e) {
@@ -196,7 +215,7 @@ class _ExportScreenState extends State<ExportScreen> {
 
     var skipped = <String>[];
     await _export(
-      name: '${AppStrings.exportAttendanceSheet} - ${AppStrings.all} - '
+      name: '${AppStrings.exportAttendanceSheet} - $_scopeLabel - '
           '${AppDateUtils.toIsoDate(date)}',
       build: () async {
         final sheets = await _attendance.sheets(sessions: sameDay, year: year);
@@ -206,7 +225,7 @@ class _ExportScreenState extends State<ExportScreen> {
         ];
         final takenIds = {for (final s in taken) s.session.classId};
         skipped = [
-          for (final c in _classes)
+          for (final c in _scopeClasses)
             if (!takenIds.contains(c.classId)) c.className,
         ];
         if (taken.isEmpty) return null;
@@ -258,7 +277,9 @@ class _ExportScreenState extends State<ExportScreen> {
     setState(() => _busy = true);
     final List<ChildMonthlyReport> all;
     try {
-      all = await _reports.childMonthly(yearId: yearId, classId: _classId);
+      all = (await _reports.childMonthly(yearId: yearId, classId: _classId))
+          .where((r) => _inScope(r.classId))
+          .toList();
     } catch (e) {
       if (mounted) Ui.error(context, e);
       return;
@@ -388,37 +409,27 @@ class _ExportScreenState extends State<ExportScreen> {
         build: () async {
           final yearId = _yearId;
           if (yearId == null) return null;
-          final report = await _reports.childYearReports(
+          final report = (await _reports.childYearReports(
             yearId: yearId,
             classId: _classId,
-          );
+          ))
+              .where((r) => _inScope(r.classId))
+              .toList();
           if (report.isEmpty) return null;
-          final monthly = await _reports.childMonthly(
-            yearId: yearId,
-            classId: _classId,
-          );
-          final now = DateTime.now();
-          final held = <String, int>{};
-          for (final r in monthly) {
-            if (r.monthStart.year < now.year ||
-                (r.monthStart.year == now.year &&
-                    r.monthStart.month <= now.month)) {
-              held[r.childId] = (held[r.childId] ?? 0) + r.sessionsTotal;
-            }
-          }
-          return ExcelService.yearlyWorkbook(
-            report,
-            sessionsHeldByChild: held.isEmpty ? null : held,
-          );
+          // The year view already counts only the Saturdays held so far, so
+          // the monthly table is no longer downloaded to work that out.
+          return ExcelService.yearlyWorkbook(report);
         },
       );
 
   Future<void> _exportClassReport() => _export(
-        name: AppStrings.exportClassReport,
+        name: '${AppStrings.exportClassReport} - $_scopeLabel',
         build: () async {
           final yearId = _yearId;
           if (yearId == null) return null;
-          final scores = await _reports.classScores(yearId);
+          final scores = (await _reports.classScores(yearId))
+              .where((s) => _inScope(s.classId))
+              .toList();
           if (scores.isEmpty) return null;
           // The view's % already counts only the Saturdays held so far.
           return ExcelService.classReportWorkbook(scores);
@@ -491,24 +502,15 @@ class _ExportScreenState extends State<ExportScreen> {
                 title: AppStrings.classLabel,
                 icon: Icons.class_rounded,
                 accent: AppColors.olive,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: const Text(AppStrings.all),
-                      selected: _classId == null,
-                      onSelected: (_) => setState(() => _classId = null),
-                    ),
-                    ...classes.map(
-                      (item) => ChoiceChip(
-                        label: Text(item.className),
-                        selected: _classId == item.classId,
-                        onSelected: (_) =>
-                            setState(() => _classId = item.classId),
-                      ),
-                    ),
+                // The same multi-select class filter as the other screens;
+                // every export below follows it.
+                child: ClassFilterChips(
+                  classes: [
+                    for (final c in classes)
+                      ClassFilterOption(id: c.classId, name: c.className),
                   ],
+                  selectedIds: _classIds,
+                  onChanged: (ids) => setState(() => _classIds = ids),
                 ),
               ),
             const SizedBox(height: 16),
@@ -546,7 +548,7 @@ class _ExportScreenState extends State<ExportScreen> {
                   _ExportTile(
                     icon: Icons.insert_chart_outlined,
                     title: AppStrings.exportClassReport,
-                    subtitle: AppStrings.all,
+                    subtitle: _scopeLabel,
                     onTap: _busy ? null : _exportClassReport,
                   ),
                 ],
