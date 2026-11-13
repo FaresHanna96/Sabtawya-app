@@ -21,8 +21,8 @@ class CommittedChildrenScreen extends StatefulWidget {
   /// The run-length choices; the last one means "or more".
   static const thresholds = [3, 4, 5];
 
-  /// Children whose run is at least [min], in [classIds] (empty = all),
-  /// longest run first, then by name.
+  /// Children whose run is exactly [min] (or [min] and more for the last
+  /// threshold), in [classIds] (empty = all), longest run first, then by name.
   static List<ChildStreak> filter(
     List<ChildStreak> streaks, {
     required int min,
@@ -30,7 +30,9 @@ class CommittedChildrenScreen extends StatefulWidget {
   }) =>
       streaks
           .where((s) =>
-              s.presentStreak >= min &&
+              (min >= thresholds.last
+                  ? s.presentStreak >= min
+                  : s.presentStreak == min) &&
               (classIds.isEmpty || classIds.contains(s.classId)))
           .toList()
         ..sort((a, b) {

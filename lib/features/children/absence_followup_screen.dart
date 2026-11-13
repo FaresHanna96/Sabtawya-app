@@ -24,6 +24,10 @@ import 'child_profile_screen.dart';
 class AbsenceFollowUpScreen extends StatefulWidget {
   const AbsenceFollowUpScreen({super.key});
 
+  /// Whether a run of [run] Saturdays belongs to chip [n]: each chip holds
+  /// only its own number, the last one holds that number and more.
+  static bool inChip(int run, int n) => n >= 4 ? run >= 4 : run == n;
+
   @override
   State<AbsenceFollowUpScreen> createState() => _AbsenceFollowUpScreenState();
 }
@@ -34,7 +38,7 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<_Data>>();
 
-  /// The least number of Saturdays in a row: 2, 3 or 4 (4 = "4+").
+  /// The chip shown: exactly 2 or 3 Saturdays in a row, or 4 = "4 or more".
   int _min = 2;
   Set<String> _classIds = <String>{};
 
@@ -125,7 +129,7 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
           builder: (context, data, _) {
             final rows = data.streaks
                 .where((s) =>
-                    s.absentStreak >= _min &&
+                    AbsenceFollowUpScreen.inChip(s.absentStreak, _min) &&
                     (_classIds.isEmpty || _classIds.contains(s.classId)))
                 .toList()
               ..sort((a, b) => b.absentStreak.compareTo(a.absentStreak));
@@ -145,7 +149,8 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
                             label: n == 4 ? '4+' : '$n',
                             count: data.streaks
                                 .where((s) =>
-                                    s.absentStreak >= n &&
+                                    AbsenceFollowUpScreen.inChip(
+                                        s.absentStreak, n) &&
                                     (_classIds.isEmpty ||
                                         _classIds.contains(s.classId)))
                                 .length,
