@@ -128,7 +128,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
     setState(() => _exporting = true);
     try {
       await FileService.saveAndShare(
-        fileName: FileService.timestampedName(name),
+        fileName: FileService.xlsxName(name),
         bytes: ExcelService.birthdaysWorkbook(rows, servants: _servants),
         shareText: name,
       );

@@ -28,6 +28,14 @@ class ExportScreen extends StatefulWidget {
   @override
   State<ExportScreen> createState() => _ExportScreenState();
 
+  /// The months part of the file name: كل الشهور, one month, or the ticked
+  /// months oldest first.
+  static String monthsLabel(Set<DateTime> picked, List<DateTime> all) {
+    if (picked.length == all.length) return AppStrings.allMonths;
+    final sorted = picked.toList()..sort();
+    return sorted.map(AppDateUtils.formatMonth).join('، ');
+  }
+
   /// The months that had a Saturday held, up to [now], oldest first.
   static List<DateTime> monthsWithData(
     List<ChildMonthlyReport> rows,
@@ -80,7 +88,7 @@ class _ExportScreenState extends State<ExportScreen> {
         return;
       }
       await FileService.saveAndShare(
-        fileName: FileService.timestampedName(name),
+        fileName: FileService.xlsxName(name),
         bytes: bytes,
         shareText: name,
       );
@@ -242,8 +250,8 @@ class _ExportScreenState extends State<ExportScreen> {
     );
   }
 
-  /// الحضور الشهري: load the year's months once, let the user pick one month
-  /// (or كل الشهور), then export only that.
+  /// الحضور الشهري: load the year's months once, let the user tick one or
+  /// more months (this month ticked to start), then export those.
   Future<void> _exportMonthly() async {
     final yearId = _yearId;
     if (yearId == null || _busy) return;
@@ -264,73 +272,113 @@ class _ExportScreenState extends State<ExportScreen> {
       Ui.info(context, AppStrings.noData);
       return;
     }
-    final picked = await _pickMonth(months);
-    if (picked == null || !mounted) return;
-    final everyMonth = picked == _allMonths;
+    final picked = await _pickMonths(months);
+    if (picked == null || picked.isEmpty || !mounted) return;
 
     await _export(
       name: '${AppStrings.exportMonthlyAttendance} - $_scopeLabel - '
-          '${everyMonth ? AppStrings.allMonths : AppDateUtils.formatMonth(picked)}',
+          '${ExportScreen.monthsLabel(picked, months)}',
       build: () async {
-        final rows = everyMonth
-            ? all.where((r) => months.contains(_monthOf(r.monthStart))).toList()
-            : all.where((r) => _monthOf(r.monthStart) == picked).toList();
+        final rows =
+            all.where((r) => picked.contains(_monthOf(r.monthStart))).toList();
         return rows.isEmpty ? null : ExcelService.monthlyWorkbook(rows);
       },
     );
   }
 
-  /// Stands for "كل الشهور" in the month sheet.
-  static final _allMonths = DateTime(0);
-
   static DateTime _monthOf(DateTime d) => DateTime(d.year, d.month);
 
-  Future<DateTime?> _pickMonth(List<DateTime> months) {
+  /// Tick the months to export; كل الشهور ticks or clears them all.
+  Future<Set<DateTime>?> _pickMonths(List<DateTime> months) {
     final current = _monthOf(DateTime.now());
-    return showModalBottomSheet<DateTime>(
+    final chosen = <DateTime>{
+      if (months.contains(current)) current else months.last,
+    };
+    return showModalBottomSheet<Set<DateTime>>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                AppStrings.pickMonthToExport,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-              ),
-            ),
-            for (final m in months)
-              ListTile(
-                leading: Icon(
-                  Icons.calendar_month_outlined,
-                  size: 20,
-                  color: m == current ? AppColors.navy : AppColors.muted,
-                ),
-                title: Text(
-                  AppDateUtils.formatMonth(m),
-                  style: TextStyle(
-                    fontWeight:
-                        m == current ? FontWeight.w800 : FontWeight.w500,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheet) {
+          final everyMonth = chosen.length == months.length;
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    AppStrings.pickMonthToExport,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
                   ),
                 ),
-                trailing: m == current
-                    ? const Text(
-                        AppStrings.thisMonth,
-                        style: TextStyle(fontSize: 12, color: AppColors.navy),
-                      )
-                    : null,
-                onTap: () => Navigator.of(context).pop(m),
-              ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.date_range_outlined, size: 20),
-              title: const Text(AppStrings.allMonths),
-              onTap: () => Navigator.of(context).pop(_allMonths),
+                CheckboxListTile(
+                  value: everyMonth,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text(
+                    AppStrings.allMonths,
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  onChanged: (_) => setSheet(() {
+                    if (everyMonth) {
+                      chosen.clear();
+                    } else {
+                      chosen.addAll(months);
+                    }
+                  }),
+                ),
+                const Divider(height: 1),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final m in months)
+                        CheckboxListTile(
+                          value: chosen.contains(m),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text(
+                            AppDateUtils.formatMonth(m),
+                            style: TextStyle(
+                              fontWeight: m == current
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                          secondary: m == current
+                              ? const Text(
+                                  AppStrings.thisMonth,
+                                  style: TextStyle(
+                                      fontSize: 12, color: AppColors.navy),
+                                )
+                              : null,
+                          onChanged: (on) => setSheet(() {
+                            if (on ?? false) {
+                              chosen.add(m);
+                            } else {
+                              chosen.remove(m);
+                            }
+                          }),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.ios_share_rounded, size: 18),
+                    label: Text(chosen.isEmpty
+                        ? AppStrings.pickMonths
+                        : '${AppStrings.export} (${chosen.length})'),
+                    onPressed: chosen.isEmpty
+                        ? null
+                        : () => Navigator.of(context).pop({...chosen}),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

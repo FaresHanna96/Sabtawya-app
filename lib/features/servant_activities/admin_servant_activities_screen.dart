@@ -110,7 +110,7 @@ class AdminServantActivitiesScreen extends StatelessWidget {
     }
     try {
       await FileService.saveAndShare(
-        fileName: FileService.timestampedName(name),
+        fileName: FileService.xlsxName(name),
         bytes: bytes!,
       );
       if (context.mounted) Ui.success(context, AppStrings.exportDone);

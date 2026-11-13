@@ -217,7 +217,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _exporting = true);
     try {
       await FileService.saveAndShare(
-        fileName: FileService.timestampedName(name),
+        fileName: FileService.xlsxName(name),
         bytes: bytes,
         shareText: name,
       );

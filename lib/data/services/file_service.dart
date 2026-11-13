@@ -72,13 +72,11 @@ class FileService {
     }
   }
 
-  /// `اسم-الملف_2026-10-24.xlsx`, safe for every platform.
-  static String timestampedName(String base) {
-    final now = DateTime.now();
-    final stamp = '${now.year}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
+  /// `اسم الملف.xlsx`, safe for every platform. No export date in the name
+  /// (owner's choice): the name says what the file holds, and a Saturday or
+  /// month in it is the data's own date.
+  static String xlsxName(String base) {
     final safe = base.replaceAll(RegExp(r'[\\/:*?"<>|]'), '-').trim();
-    return '$safe-$stamp.xlsx';
+    return '$safe.xlsx';
   }
 }

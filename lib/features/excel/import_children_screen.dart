@@ -61,7 +61,7 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
       context,
       () async {
         await FileService.saveAndShare(
-          fileName: FileService.timestampedName(AppStrings.childrenTitle),
+          fileName: FileService.xlsxName(AppStrings.childrenTitle),
           bytes: ExcelService.childrenTemplate(),
           shareText: AppStrings.downloadTemplate,
         );

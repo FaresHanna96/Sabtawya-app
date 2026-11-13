@@ -69,7 +69,7 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
         classNameOf: (id) => names[id] ?? AppStrings.unknown,
       );
       await FileService.saveAndShare(
-        fileName: FileService.timestampedName(AppStrings.exportCompetitions),
+        fileName: FileService.xlsxName(AppStrings.exportCompetitions),
         bytes: bytes,
         shareText: AppStrings.exportCompetitions,
       );
