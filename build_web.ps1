@@ -25,13 +25,21 @@ if ($LASTEXITCODE -eq 0) {
     # the download page shows, so its facts can never go stale again.
     $ver = (Select-String -Path "$PSScriptRoot\pubspec.yaml" -Pattern '^version:\s*(\S+)\+(\d+)').Matches[0].Groups
     $apkFile = Get-Item "$PSScriptRoot\sabtawya.apk"
+    # Each APK's SHA-256: the app downloads its own APK and refuses to install
+    # a file that does not match (tampered or cut short).
+    $hash64 = (Get-FileHash "$PSScriptRoot\sabtawya.apk" -Algorithm SHA256).Hash.ToLower()
+    $hash32 = (Get-FileHash "$PSScriptRoot\sabtawya-armv7.apk" -Algorithm SHA256).Hash.ToLower()
     $info = [ordered]@{
         version = $ver[1].Value
         build   = [int]$ver[2].Value
         date    = $apkFile.LastWriteTime.ToString("yyyy-MM-dd")
         size_mb = [math]::Round($apkFile.Length / 1MB)
+        apk     = [ordered]@{
+            arm64 = [ordered]@{ url = "https://sabtawya.vercel.app/sabtawya.apk"; sha256 = $hash64 }
+            armv7 = [ordered]@{ url = "https://sabtawya.vercel.app/sabtawya-armv7.apk"; sha256 = $hash32 }
+        }
     }
-    $info | ConvertTo-Json | Set-Content -Path build/web/version.json -Encoding ascii
+    $info | ConvertTo-Json -Depth 4 | Set-Content -Path build/web/version.json -Encoding ascii
 
     # Copy cache-control config so Vercel serves assets with proper headers
     Copy-Item vercel.json build/web/vercel.json -Force

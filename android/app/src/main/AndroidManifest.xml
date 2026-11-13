@@ -1,5 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- In-app update: the app downloads the new APK and asks Android to
+         install it (the user still confirms). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Brought in by ota_update but not needed: the APK is saved in the
+         app's own storage, and only system apps may install silently. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES" tools:node="remove"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Launcher icon badge (unread count) on Samsung, Huawei, Sony, HTC. -->
     <uses-permission android:name="com.sec.android.provider.badge.permission.READ"/>
@@ -48,6 +56,16 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- In-app update: hands the downloaded APK to the installer. -->
+        <provider
+            android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="${applicationId}.ota_update_provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

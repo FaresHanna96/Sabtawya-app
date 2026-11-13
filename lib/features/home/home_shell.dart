@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ota_update/ota_update.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
@@ -154,7 +155,7 @@ class _HomeShellState extends State<HomeShell>
         children: [
           if (_update != null)
             _UpdateBanner(
-              version: _update!.version,
+              update: _update!,
               onDismiss: () => setState(() => _update = null),
             ),
           AnimatedSize(
@@ -318,46 +319,156 @@ class HomePlaceholder extends StatelessWidget {
       );
 }
 
-/// "إصدار جديد متاح": opens the download page, or can be closed for now.
-class _UpdateBanner extends StatelessWidget {
-  const _UpdateBanner({required this.version, required this.onDismiss});
+/// "إصدار جديد متاح": "تحديث الآن" downloads this phone's APK inside the app,
+/// checks its SHA-256, and opens Android's install screen (the user taps
+/// Install once). Anything that goes wrong falls back to the download page.
+class _UpdateBanner extends StatefulWidget {
+  const _UpdateBanner({required this.update, required this.onDismiss});
 
-  final String version;
+  final AppUpdate update;
   final VoidCallback onDismiss;
 
   @override
+  State<_UpdateBanner> createState() => _UpdateBannerState();
+}
+
+class _UpdateBannerState extends State<_UpdateBanner> {
+  static final _page = Uri.parse('https://sabtawya.vercel.app/apk.html');
+
+  /// Null: waiting for a tap. 0-100: downloading. 101: installer opened.
+  int? _progress;
+  String? _problem;
+
+  void _openPage() => launchUrl(_page, mode: LaunchMode.externalApplication);
+
+  void _start() {
+    final u = widget.update;
+    if (!u.canInstallInApp) {
+      _openPage();
+      return;
+    }
+    setState(() {
+      _progress = 0;
+      _problem = null;
+    });
+    try {
+      OtaUpdate()
+          .execute(
+            u.apkUrl!,
+            destinationFilename: 'sabtawya-update.apk',
+            sha256checksum: u.sha256,
+          )
+          .listen(
+            _onEvent,
+            onError: (Object _) => _fail(AppStrings.updateFailed),
+          );
+    } catch (_) {
+      _fail(AppStrings.updateFailed);
+    }
+  }
+
+  void _onEvent(OtaEvent e) {
+    if (!mounted) return;
+    switch (e.status) {
+      case OtaStatus.DOWNLOADING:
+        setState(() => _progress = int.tryParse(e.value ?? '') ?? _progress);
+      case OtaStatus.INSTALLING:
+      case OtaStatus.INSTALLATION_DONE:
+        setState(() => _progress = 101);
+      case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
+        _fail(AppStrings.updateNeedsPermission);
+      case OtaStatus.CHECKSUM_ERROR:
+        _fail(AppStrings.updateBadFile);
+      default:
+        _fail(AppStrings.updateFailed);
+    }
+  }
+
+  void _fail(String message) {
+    if (!mounted) return;
+    setState(() {
+      _progress = null;
+      _problem = message;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final p = _progress;
+    final String text;
+    if (_problem != null) {
+      text = _problem!;
+    } else if (p == null) {
+      text = AppStrings.updateAvailable(widget.update.version);
+    } else if (p > 100) {
+      text = AppStrings.updateInstalling;
+    } else {
+      text = AppStrings.updateDownloading(p);
+    }
+
     return Material(
-      color: AppColors.olive,
-      child: InkWell(
-        onTap: () => launchUrl(
-          Uri.parse('https://sabtawya.vercel.app/apk.html'),
-          mode: LaunchMode.externalApplication,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
-          child: Row(
-            children: [
-              const Icon(Icons.system_update_rounded,
-                  size: 18, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  AppStrings.updateAvailable(version),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+      color: _problem != null ? AppColors.warning : AppColors.olive,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.system_update_rounded,
+                    size: 18, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                if (p == null)
+                  TextButton(
+                    onPressed: _problem != null ? _openPage : _start,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.olive,
+                      backgroundColor: Colors.white,
+                      minimumSize: const Size(0, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: Text(
+                      _problem != null
+                          ? AppStrings.updateOpenPage
+                          : AppStrings.updateNow,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                if (p == null)
+                  IconButton(
+                    tooltip: AppStrings.close,
+                    icon:
+                        const Icon(Icons.close, size: 18, color: Colors.white),
+                    onPressed: widget.onDismiss,
+                  ),
+              ],
+            ),
+            if (p != null && p <= 100)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 4, 12, 2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: p / 100,
+                    minHeight: 5,
                     color: Colors.white,
+                    backgroundColor: Colors.white24,
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: AppStrings.close,
-                icon: const Icon(Icons.close, size: 18, color: Colors.white),
-                onPressed: onDismiss,
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );

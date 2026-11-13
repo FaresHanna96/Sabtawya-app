@@ -334,8 +334,15 @@ class AppStrings {
   static const wholeYear = 'السنة كلها';
   static const allClasses = 'كل الفصول';
   static const pickClasses = 'اختر فصلاً أو أكثر';
-  static String updateAvailable(String v) =>
-      'إصدار جديد متاح ($v) — اضغط للتحميل';
+  static String updateAvailable(String v) => 'إصدار جديد متاح ($v)';
+  static const updateNow = 'تحديث الآن';
+  static String updateDownloading(int p) => 'جاري تحميل التحديث… $p٪';
+  static const updateInstalling = 'اضغط «تثبيت» في الشاشة التي ظهرت';
+  static const updateNeedsPermission =
+      'اسمح للتطبيق بتثبيت التحديثات من الإعدادات، ثم حاول مرة أخرى';
+  static const updateBadFile = 'الملف لم يكتمل تحميله. حاول مرة أخرى';
+  static const updateFailed = 'تعذر التحديث من داخل التطبيق';
+  static const updateOpenPage = 'صفحة التحميل';
   static String classesCount(int n) => n <= 10 ? '$n فصول' : '$n فصل';
   static const done = 'تم';
   static String monthsCount(int n) => n <= 10 ? '$n شهور' : '$n شهر';
