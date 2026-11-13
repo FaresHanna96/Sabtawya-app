@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/widgets/unsaved_changes_guard.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -20,6 +21,9 @@ class CompetitionFormScreen extends StatefulWidget {
 }
 
 class _CompetitionFormScreenState extends State<CompetitionFormScreen> {
+  /// Something was changed and not saved yet: leaving asks first.
+  bool _dirty = false;
+
   static const _repository = CompetitionRepository();
 
   final _formKey = GlobalKey<FormState>();
@@ -51,7 +55,12 @@ class _CompetitionFormScreenState extends State<CompetitionFormScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       helpText: AppStrings.competitionWeekDate,
     );
-    if (picked != null) setState(() => _weekDate = picked);
+    if (picked != null) {
+      setState(() {
+        _dirty = true;
+        _weekDate = picked;
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -88,75 +97,81 @@ class _CompetitionFormScreenState extends State<CompetitionFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEdit
-            ? AppStrings.editCompetition
-            : AppStrings.addCompetition),
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            children: [
-              TextFormField(
-                controller: _title,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.competitionTitle,
-                  prefixIcon: Icon(Icons.emoji_events_outlined),
-                ),
-                validator: (v) => (v?.trim().isEmpty ?? true)
-                    ? AppStrings.competitionTitleRequired
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(12),
-                child: InputDecorator(
+    return UnsavedChangesGuard(
+      dirty: _dirty,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.isEdit
+              ? AppStrings.editCompetition
+              : AppStrings.addCompetition),
+        ),
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            onChanged: () {
+              if (!_dirty) setState(() => _dirty = true);
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
+                TextFormField(
+                  controller: _title,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: AppStrings.competitionWeekDate,
-                    prefixIcon: Icon(Icons.calendar_today_outlined),
-                    suffixIcon: Icon(Icons.edit_calendar_outlined, size: 20),
+                    labelText: AppStrings.competitionTitle,
+                    prefixIcon: Icon(Icons.emoji_events_outlined),
                   ),
-                  child: Text(
-                    AppDateUtils.formatDate(_weekDate),
-                    style: const TextStyle(fontSize: 15),
+                  validator: (v) => (v?.trim().isEmpty ?? true)
+                      ? AppStrings.competitionTitleRequired
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: _pickDate,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: AppStrings.competitionWeekDate,
+                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                      suffixIcon: Icon(Icons.edit_calendar_outlined, size: 20),
+                    ),
+                    child: Text(
+                      AppDateUtils.formatDate(_weekDate),
+                      style: const TextStyle(fontSize: 15),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _maxMark,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: AppStrings.competitionMaxMark,
-                  prefixIcon: Icon(Icons.star_border_outlined),
-                  helperText: '1 – 100',
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _maxMark,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.competitionMaxMark,
+                    prefixIcon: Icon(Icons.star_border_outlined),
+                    helperText: '1 – 100',
+                  ),
+                  validator: (v) {
+                    final n = int.tryParse(v?.trim() ?? '');
+                    if (n == null || n < 1 || n > 100) {
+                      return '${AppStrings.competitionMaxMark}: 1–100';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (v) {
-                  final n = int.tryParse(v?.trim() ?? '');
-                  if (n == null || n < 1 || n > 100) {
-                    return '${AppStrings.competitionMaxMark}: 1–100';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              _MaxMarkPresets(
-                current: int.tryParse(_maxMark.text) ?? 10,
-                onSelect: (v) => setState(() => _maxMark.text = '$v'),
-              ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.check),
-                label: const Text(AppStrings.save),
-              ),
-            ],
+                const SizedBox(height: 24),
+                _MaxMarkPresets(
+                  current: int.tryParse(_maxMark.text) ?? 10,
+                  onSelect: (v) => setState(() => _maxMark.text = '$v'),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _save,
+                  icon: const Icon(Icons.check),
+                  label: const Text(AppStrings.save),
+                ),
+              ],
+            ),
           ),
         ),
       ),

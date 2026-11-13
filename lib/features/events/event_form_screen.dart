@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/widgets/unsaved_changes_guard.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
@@ -19,6 +20,9 @@ class EventFormScreen extends StatefulWidget {
 }
 
 class _EventFormScreenState extends State<EventFormScreen> {
+  /// Something was changed and not saved yet: leaving asks first.
+  bool _dirty = false;
+
   static const _repository = EventRepository();
 
   final _formKey = GlobalKey<FormState>();
@@ -50,7 +54,12 @@ class _EventFormScreenState extends State<EventFormScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
       helpText: AppStrings.eventDateLabel,
     );
-    if (picked != null) setState(() => _eventDate = picked);
+    if (picked != null) {
+      setState(() {
+        _dirty = true;
+        _eventDate = picked;
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -88,80 +97,88 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEdit ? AppStrings.editEvent : AppStrings.addEvent),
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            children: [
-              TextFormField(
-                controller: _title,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.eventTitleLabel,
-                  prefixIcon: Icon(Icons.event_outlined),
-                ),
-                validator: (v) => (v?.trim().isEmpty ?? true)
-                    ? AppStrings.eventTitleRequired
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _description,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.eventDescription,
-                  prefixIcon: Icon(Icons.notes_outlined),
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(12),
-                child: InputDecorator(
+    return UnsavedChangesGuard(
+      dirty: _dirty,
+      child: Scaffold(
+        appBar: AppBar(
+          title:
+              Text(widget.isEdit ? AppStrings.editEvent : AppStrings.addEvent),
+        ),
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            onChanged: () {
+              if (!_dirty) setState(() => _dirty = true);
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
+                TextFormField(
+                  controller: _title,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: AppStrings.eventDateLabel,
-                    prefixIcon: Icon(Icons.calendar_today_outlined),
-                    suffixIcon: Icon(Icons.edit_calendar_outlined, size: 20),
+                    labelText: AppStrings.eventTitleLabel,
+                    prefixIcon: Icon(Icons.event_outlined),
                   ),
-                  child: Text(
-                    AppDateUtils.formatDate(_eventDate),
-                    style: const TextStyle(fontSize: 15),
+                  validator: (v) => (v?.trim().isEmpty ?? true)
+                      ? AppStrings.eventTitleRequired
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _description,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.eventDescription,
+                    prefixIcon: Icon(Icons.notes_outlined),
+                    alignLabelWithHint: true,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _cost,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                ],
-                decoration: const InputDecoration(
-                  labelText: AppStrings.eventCost,
-                  prefixIcon: Icon(Icons.payments_outlined),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: _pickDate,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: AppStrings.eventDateLabel,
+                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                      suffixIcon: Icon(Icons.edit_calendar_outlined, size: 20),
+                    ),
+                    child: Text(
+                      AppDateUtils.formatDate(_eventDate),
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
                 ),
-                validator: (v) {
-                  final n = double.tryParse(v?.trim() ?? '');
-                  if (n == null) return AppStrings.eventCostRequired;
-                  if (n <= 0) return AppStrings.eventCostInvalid;
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.check),
-                label: const Text(AppStrings.save),
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _cost,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.eventCost,
+                    prefixIcon: Icon(Icons.payments_outlined),
+                  ),
+                  validator: (v) {
+                    final n = double.tryParse(v?.trim() ?? '');
+                    if (n == null) return AppStrings.eventCostRequired;
+                    if (n <= 0) return AppStrings.eventCostInvalid;
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: _save,
+                  icon: const Icon(Icons.check),
+                  label: const Text(AppStrings.save),
+                ),
+              ],
+            ),
           ),
         ),
       ),

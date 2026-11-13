@@ -378,6 +378,67 @@ class ChildStreak {
       );
 }
 
+/// A row of `v_child_activity_rates`: how many of the Saturdays held so far
+/// the child came to each activity.
+class ChildActivityRate {
+  const ChildActivityRate({
+    required this.childId,
+    required this.childName,
+    required this.classId,
+    required this.className,
+    required this.held,
+    required this.sundaySchool,
+    required this.vespers,
+    required this.mass,
+    required this.confession,
+  });
+
+  final String childId;
+  final String childName;
+  final String classId;
+  final String className;
+  final int held;
+  final int sundaySchool;
+  final int vespers;
+  final int mass;
+  final int confession;
+
+  /// The four counts in the app's order: Sunday school, vespers, mass,
+  /// confession.
+  List<int> get counts => [sundaySchool, vespers, mass, confession];
+
+  double rate(int count) => held > 0 ? count / held * 100 : 0;
+
+  factory ChildActivityRate.fromMap(Map<String, dynamic> map) =>
+      ChildActivityRate(
+        childId: asText(map['child_id']),
+        childName: asText(map['child_name']),
+        classId: asText(map['class_id']),
+        className: asText(map['class_name']),
+        held: asInt(map['held']),
+        sundaySchool: asInt(map['sunday_school']),
+        vespers: asInt(map['vespers']),
+        mass: asInt(map['mass']),
+        confession: asInt(map['confession']),
+      );
+}
+
+/// Attendance on one Saturday across the classes shown: who came, out of the
+/// active children, for the dashboard's weekly chart.
+class WeeklyAttendance {
+  const WeeklyAttendance({
+    required this.date,
+    required this.present,
+    required this.children,
+  });
+
+  final DateTime date;
+  final int present;
+  final int children;
+
+  double get percentage => children > 0 ? present / children * 100 : 0;
+}
+
 /// One child's score at one Saturday, for reports over an exact date range.
 class SessionScore {
   const SessionScore({

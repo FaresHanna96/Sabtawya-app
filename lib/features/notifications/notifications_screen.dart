@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../attendance/attendance_screen.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -58,6 +59,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'prep_submitted' => (ref == null ? null : await _servantDetail(ref)) ??
           const AdminServantActivitiesScreen(),
       'prep_reviewed' => const MyActivitiesScreen(showAppBar: true),
+      'attendance_missing' when ref != null =>
+        AttendanceScreen(showAppBar: true, initialClassId: ref),
+      // 'event_today' only informs: tapping it marks it read.
       _ => null,
     };
     if (!mounted) return;
@@ -104,6 +108,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'competition_added' => (Icons.emoji_events_outlined, AppColors.gold),
         'class_assigned' => (Icons.class_outlined, AppColors.sky),
         'class_removed' => (Icons.person_remove_outlined, AppColors.coral),
+        'event_today' => (Icons.celebration_rounded, AppColors.gold),
+        'attendance_missing' => (Icons.alarm_rounded, AppColors.coral),
         _ => (Icons.notifications_none_rounded, AppColors.navy),
       };
 

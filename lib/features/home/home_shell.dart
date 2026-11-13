@@ -20,6 +20,7 @@ import '../excel/import_children_screen.dart';
 import '../servant_activities/admin_servant_activities_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
 import '../notifications/notifications_bell.dart';
+import '../search/app_search.dart';
 import 'more_screen.dart';
 
 /// The signed-in shell: five tabs, with the dashboard and the labels adapting
@@ -131,6 +132,17 @@ class _HomeShellState extends State<HomeShell>
             ? AppStrings.appTitle
             : current.label),
         actions: [
+          IconButton(
+            tooltip: AppStrings.search,
+            icon: const Icon(Icons.search),
+            onPressed: () => showSearch<void>(
+              context: context,
+              delegate: AppSearchDelegate(
+                classes: session.myClasses,
+                isAdmin: session.isAdmin,
+              ),
+            ),
+          ),
           const NotificationsBell(),
           if (_index == 2 && isAdmin)
             IconButton(

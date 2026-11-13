@@ -815,6 +815,41 @@ class ExcelService {
     return _encode(book);
   }
 
+  /// The reports' "الأنشطة" tab: each child's Sunday school, vespers, mass
+  /// and confession attendance out of the Saturdays held, grouped by class.
+  static List<int> activityWorkbook(List<ChildActivityRate> rows) {
+    final (book, sheet) = _book(AppStrings.activityReport);
+    String pct(int n, int held) =>
+        held > 0 ? '${(n / held * 100).round()}%' : '-';
+    _writeByClass<ChildActivityRate>(
+      book,
+      sheet,
+      header: <CellValue?>[
+        _text(AppStrings.classLabel),
+        _text(AppStrings.childName),
+        _text(AppStrings.saturdaysHeld),
+        _text(AppStrings.sundaySchoolShort),
+        _text(AppStrings.vespersShort),
+        _text(AppStrings.massShort),
+        _text(AppStrings.confessionShort),
+        _text('${AppStrings.sundaySchoolShort} %'),
+        _text('${AppStrings.vespersShort} %'),
+        _text('${AppStrings.massShort} %'),
+        _text('${AppStrings.confessionShort} %'),
+      ],
+      rows: rows,
+      classOf: (r) => r.className,
+      cells: (r, _) => <CellValue?>[
+        _text(r.className),
+        _text(r.childName),
+        IntCellValue(r.held),
+        for (final c in r.counts) IntCellValue(c),
+        for (final c in r.counts) _text(pct(c, r.held)),
+      ],
+    );
+    return _encode(book);
+  }
+
   // ------------------------------------------------------ competition exports
 
   /// One sheet per competition plus a cumulative sheet over the same set,

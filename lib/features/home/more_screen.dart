@@ -8,6 +8,7 @@ import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_history_screen.dart';
 import '../calendar/calendar_screen.dart';
+import '../children/absence_followup_screen.dart';
 import '../children/birthday_screen.dart';
 import '../attendance/attendance_years_screen.dart';
 import '../excel/export_screen.dart';
@@ -54,6 +55,12 @@ class MoreScreen extends StatelessWidget {
                     title: AppStrings.reportsTitle,
                     screen: const ReportsScreen(),
                     color: AppColors.sky,
+                  ),
+                  _Entry(
+                    icon: Icons.support_agent_rounded,
+                    title: AppStrings.absenceFollowUp,
+                    screen: const AbsenceFollowUpScreen(),
+                    color: AppColors.coral,
                   ),
                   _Entry(
                     icon: Icons.history,

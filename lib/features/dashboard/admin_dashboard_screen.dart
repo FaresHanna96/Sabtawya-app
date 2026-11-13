@@ -18,6 +18,7 @@ import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
 import 'quick_action_grid.dart';
+import 'weekly_attendance_chart.dart';
 import 'today_birthdays_section.dart';
 
 /// The admin landing page: system-wide counters, class standings, the children
@@ -56,11 +57,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     // The class scores already count only the Saturdays held so far, so the
     // monthly table (thousands of rows) is no longer downloaded here.
-    final (stats, activity, scores, low) = await (
+    final (stats, activity, scores, low, weeks) = await (
       _reports.adminStats(),
       _reports.recentActivity(),
       _reports.classScores(yearId),
       _reports.lowAttendance(yearId: yearId),
+      _reports.weeklyAttendance(yearId),
     ).wait;
 
     return _AdminDashboard(
@@ -68,6 +70,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       classScores: scores,
       lowAttendance: low,
       activity: activity,
+      weeks: weeks,
     );
   }
 
@@ -164,6 +167,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               FadeSlideIn(index: 5, child: _quickActions()),
               const SizedBox(height: 16),
               FadeSlideIn(index: 6, child: _overview(stats)),
+              if (data.weeks.length >= 2) ...[
+                const SizedBox(height: 16),
+                FadeSlideIn(
+                  index: 7,
+                  child: WeeklyAttendanceChart(weeks: data.weeks),
+                ),
+              ],
               const SizedBox(height: 16),
               if (data.classScores.isNotEmpty) ...[
                 FadeSlideIn(
@@ -566,10 +576,14 @@ class _AdminDashboard {
     required this.classScores,
     required this.lowAttendance,
     required this.activity,
+    this.weeks = const <WeeklyAttendance>[],
   });
 
   final AdminStats stats;
   final List<ClassYearScore> classScores;
   final List<ChildYearReport> lowAttendance;
   final List<ActivityLogEntry> activity;
+
+  /// Attendance per Saturday, for the weekly chart.
+  final List<WeeklyAttendance> weeks;
 }

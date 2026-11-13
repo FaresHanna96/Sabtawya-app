@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/unsaved_changes_guard.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
@@ -29,6 +30,9 @@ class ClassFormScreen extends StatefulWidget {
 }
 
 class _ClassFormScreenState extends State<ClassFormScreen> {
+  /// Something was changed and not saved yet: leaving asks first.
+  bool _dirty = false;
+
   static const _repository = ClassRepository();
 
   final _formKey = GlobalKey<FormState>();
@@ -205,75 +209,81 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title:
-            Text(widget.isEditing ? AppStrings.editClass : AppStrings.addClass),
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: staggerAll([
-              SectionCard(
-                child: Column(
-                  children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: _name.text.isEmpty ? null : _name.text,
-                      decoration: const InputDecoration(
-                        labelText: AppStrings.className,
-                        prefixIcon: Icon(Icons.class_outlined),
+    return UnsavedChangesGuard(
+      dirty: _dirty,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+              widget.isEditing ? AppStrings.editClass : AppStrings.addClass),
+        ),
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            onChanged: () {
+              if (!_dirty) setState(() => _dirty = true);
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: staggerAll([
+                SectionCard(
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: _name.text.isEmpty ? null : _name.text,
+                        decoration: const InputDecoration(
+                          labelText: AppStrings.className,
+                          prefixIcon: Icon(Icons.class_outlined),
+                        ),
+                        items: [
+                          for (final name in _classNameOptions)
+                            DropdownMenuItem(value: name, child: Text(name)),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _name.text = value ?? ''),
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                                ? AppStrings.classNameRequired
+                                : null,
                       ),
-                      items: [
-                        for (final name in _classNameOptions)
-                          DropdownMenuItem(value: name, child: Text(name)),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _name.text = value ?? ''),
-                      validator: (value) =>
-                          (value == null || value.trim().isEmpty)
-                              ? AppStrings.classNameRequired
-                              : null,
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _description,
-                      decoration: const InputDecoration(
-                        labelText: AppStrings.classDescription,
-                        helperText: AppStrings.optional,
-                        prefixIcon: Icon(Icons.notes_outlined),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _description,
+                        decoration: const InputDecoration(
+                          labelText: AppStrings.classDescription,
+                          helperText: AppStrings.optional,
+                          prefixIcon: Icon(Icons.notes_outlined),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              SectionCard(
-                title: AppStrings.patronSaint,
-                icon: Icons.auto_awesome_rounded,
-                accent: AppColors.gold,
-                child: Column(
-                  children: [
-                    _patronPicker(),
-                    TextFormField(
-                      controller: _patronName,
-                      decoration: const InputDecoration(
-                        labelText: AppStrings.patronName,
-                        helperText: AppStrings.optional,
-                        prefixIcon: Icon(Icons.auto_awesome_outlined),
+                const SizedBox(height: 16),
+                SectionCard(
+                  title: AppStrings.patronSaint,
+                  icon: Icons.auto_awesome_rounded,
+                  accent: AppColors.gold,
+                  child: Column(
+                    children: [
+                      _patronPicker(),
+                      TextFormField(
+                        controller: _patronName,
+                        decoration: const InputDecoration(
+                          labelText: AppStrings.patronName,
+                          helperText: AppStrings.optional,
+                          prefixIcon: Icon(Icons.auto_awesome_outlined),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: _submit,
-                icon: const Icon(Icons.check),
-                label: const Text(AppStrings.save),
-              ),
-            ]),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.check),
+                  label: const Text(AppStrings.save),
+                ),
+              ]),
+            ),
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import '../../core/utils/app_failure.dart';
+import '../models/parsers.dart';
 import '../models/reports.dart';
 import '../supabase/db.dart';
 
@@ -165,6 +166,62 @@ class ReportRepository {
           .order('child_name', ascending: true)
           .limit(limit);
       return rows(data).map(ChildYearReport.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Activity rates (Sunday school, vespers, mass, confession) of the active
+  /// children for a year, against the Saturdays held so far.
+  Future<List<ChildActivityRate>> activityRates({
+    required String yearId,
+    String? classId,
+  }) async {
+    try {
+      var query = Db.client
+          .from(Db.vChildActivityRates)
+          .select()
+          .eq('year_id', yearId)
+          .eq('child_is_active', true);
+      if (classId != null) query = query.eq('class_id', classId);
+      final data = await query.order('child_name', ascending: true);
+      return rows(data).map(ChildActivityRate.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Saturday by Saturday (up to today, oldest first): who came across every
+  /// class the caller can see, out of their active children. One query.
+  Future<List<WeeklyAttendance>> weeklyAttendance(String yearId) async {
+    try {
+      final today = DateTime.now();
+      final iso = '${today.year.toString().padLeft(4, '0')}-'
+          '${today.month.toString().padLeft(2, '0')}-'
+          '${today.day.toString().padLeft(2, '0')}';
+      final data = await Db.client
+          .from(Db.vClassSessionSummary)
+          .select('session_date, present_count, active_children, recorded_count')
+          .eq('year_id', yearId)
+          .lte('session_date', iso)
+          .order('session_date', ascending: true);
+      final byDate = <String, List<int>>{};
+      for (final r in rows(data)) {
+        // A class whose attendance was not taken does not count as absent.
+        if (asInt(r['recorded_count']) == 0) continue;
+        final d = asText(r['session_date']);
+        final acc = byDate[d] ??= [0, 0];
+        acc[0] += asInt(r['present_count']);
+        acc[1] += asInt(r['active_children']);
+      }
+      return [
+        for (final e in byDate.entries)
+          WeeklyAttendance(
+            date: DateTime.parse(e.key),
+            present: e.value[0],
+            children: e.value[1],
+          ),
+      ];
     } catch (e) {
       throw AppFailure.from(e);
     }

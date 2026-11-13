@@ -62,15 +62,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
     // One class: the database narrows it. Several: narrowed below.
     final oneClass = _classIds.length == 1 ? _classIds.first : null;
     // The three reads are independent, so run them side by side.
-    final (children, classes, monthly) = await (
+    final (children, classes, monthly, activity) = await (
       _reports.childYearReports(yearId: yearId, classId: oneClass),
       _reports.classScores(yearId),
       _reports.childMonthly(yearId: yearId, classId: oneClass),
+      _reports.activityRates(yearId: yearId, classId: oneClass),
     ).wait;
     return _latest = _ReportsData(
       children: children.where((r) => _inClasses(r.classId)).toList(),
       classes: classes.where((r) => _inClasses(r.classId)).toList(),
       monthly: monthly.where((r) => _inClasses(r.classId)).toList(),
+      activity: activity.where((r) => _inClasses(r.classId)).toList(),
       maxPerSession: maxPerSession,
     );
   }
@@ -190,6 +192,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     .toList(),
               );
         name = '${AppStrings.classReport} - $scope$period';
+      case 3:
+        bytes = data.activity.isEmpty
+            ? null
+            : ExcelService.activityWorkbook(data.activity);
+        name = '${AppStrings.activityReport} - $scope';
       default:
         final month = _monthShown(_monthsOf(data.monthly));
         final rows = month == null
@@ -251,7 +258,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final year = session.currentYear;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(AppStrings.reportsTitle),
@@ -289,6 +296,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               Tab(text: AppStrings.overallReport),
               Tab(text: AppStrings.classReport),
               Tab(text: AppStrings.monthlyReport),
+              Tab(text: AppStrings.activityReport),
             ],
           ),
         ),
@@ -337,7 +345,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               return AnimatedBuilder(
                                 animation: tabs,
                                 builder: (context, child) => Visibility(
-                                  visible: tabs.index != 2,
+                                  // Period picker: overall and class tabs
+                                  // only (activity counts the whole year).
+                                  visible: tabs.index < 2,
                                   maintainState: true,
                                   child: child!,
                                 ),
@@ -370,6 +380,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   _childrenTab(data),
                                   _classesTab(data),
                                   _monthlyTab(data.monthly, allDates),
+                                  _activityTab(data.activity),
                                 ],
                               ),
                               // While the Saturdays in the chosen range load:
@@ -694,6 +705,97 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  /// الأنشطة: per class, how often its children came to Sunday school,
+  /// vespers, mass and confession (of the Saturdays held so far), then each
+  /// child's four rates, grouped by class.
+  Widget _activityTab(List<ChildActivityRate> rows) {
+    if (rows.isEmpty) {
+      return const EmptyState(
+        icon: Icons.insert_chart_outlined,
+        title: AppStrings.noData,
+      );
+    }
+    final classes = context.read<SessionController>().myClasses;
+    final byClass = <String, List<ChildActivityRate>>{};
+    for (final r in rows) {
+      (byClass[r.classId] ??= []).add(r);
+    }
+    final order = [
+      for (final c in classes)
+        if (byClass.containsKey(c.classId)) c.classId,
+      for (final id in byClass.keys)
+        if (!classes.any((c) => c.classId == id)) id,
+    ];
+
+    // The class's rate for one activity: attendances over (children x held).
+    double classRate(List<ChildActivityRate> kids, int i) {
+      final held = kids.fold<int>(0, (a, k) => a + k.held);
+      final came = kids.fold<int>(0, (a, k) => a + k.counts[i]);
+      return held > 0 ? came / held * 100 : 0;
+    }
+
+    final several = order.length > 1;
+    return ClassGroupedList<ChildActivityRate>(
+      items: rows,
+      grouped: several,
+      classOf: (r) => r.classId,
+      classOrder: order,
+      classNameOf: (id) => byClass[id]!.first.className,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      animate: false,
+      leading: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: SectionCard(
+          title: AppStrings.activityByClass,
+          icon: Icons.bar_chart_rounded,
+          accent: AppColors.olive,
+          child: Column(
+            children: [
+              for (final id in order)
+                _ActivityClassRow(
+                  name: byClass[id]!.first.className,
+                  rates: [
+                    for (var i = 0; i < 4; i++) classRate(byClass[id]!, i)
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+      itemBuilder: (context, r, _) => Card(
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => ChildProfileScreen(childId: r.childId),
+            ),
+          ),
+          title: Text(
+            r.childName,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                for (var i = 0; i < 4; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  Expanded(
+                    child: _RateChip(
+                      label: _activityLabels[i],
+                      count: r.counts[i],
+                      held: r.held,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // -------------------------------------------------------------- aggregation
 
   /// Children's standings over the Saturdays inside the chosen range.
@@ -786,6 +888,7 @@ class _ReportsData {
     required this.children,
     required this.classes,
     required this.monthly,
+    this.activity = const <ChildActivityRate>[],
     this.maxPerSession = 20,
   });
 
@@ -793,11 +896,13 @@ class _ReportsData {
       : children = const <ChildYearReport>[],
         classes = const <ClassYearScore>[],
         monthly = const <ChildMonthlyReport>[],
+        activity = const <ChildActivityRate>[],
         maxPerSession = 20;
 
   final List<ChildYearReport> children;
   final List<ClassYearScore> classes;
   final List<ChildMonthlyReport> monthly;
+  final List<ChildActivityRate> activity;
 
   final int maxPerSession;
 }
@@ -834,6 +939,135 @@ class _RankBadge extends StatelessWidget {
           fontWeight: FontWeight.w800,
           color: _color,
         ),
+      ),
+    );
+  }
+}
+
+const _activityLabels = [
+  AppStrings.sundaySchoolShort,
+  AppStrings.vespersShort,
+  AppStrings.massShort,
+  AppStrings.confessionShort,
+];
+
+const _activityColors = [
+  AppColors.navy,
+  AppColors.sky,
+  AppColors.olive,
+  AppColors.maroon,
+];
+
+/// One class: four thin bars, one per activity, with the percentage.
+class _ActivityClassRow extends StatelessWidget {
+  const _ActivityClassRow({required this.name, required this.rates});
+
+  final String name;
+  final List<double> rates;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            name,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          for (var i = 0; i < 4; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 74,
+                    child: Text(
+                      _activityLabels[i],
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.muted),
+                    ),
+                  ),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (rates[i] / 100).clamp(0.0, 1.0),
+                        minHeight: 7,
+                        color: _activityColors[i],
+                        backgroundColor:
+                            _activityColors[i].withValues(alpha: 0.10),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 48,
+                    child: Text(
+                      '${rates[i].round()}%',
+                      textAlign: TextAlign.end,
+                      textDirection: TextDirection.ltr,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _activityColors[i],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One child's activity: "قداس 3/7".
+class _RateChip extends StatelessWidget {
+  const _RateChip({
+    required this.label,
+    required this.count,
+    required this.held,
+  });
+
+  final String label;
+  final int count;
+  final int held;
+
+  @override
+  Widget build(BuildContext context) {
+    final rate = held > 0 ? count / held : 0.0;
+    final color = rate >= 0.6
+        ? AppColors.success
+        : rate >= 0.3
+            ? AppColors.warning
+            : AppColors.muted;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          FittedBox(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
+          ),
+          Text(
+            '$count/$held',
+            textDirection: TextDirection.ltr,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

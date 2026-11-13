@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/unsaved_changes_guard.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/theme/app_theme.dart';
@@ -36,6 +37,9 @@ class ChildFormScreen extends StatefulWidget {
 }
 
 class _ChildFormScreenState extends State<ChildFormScreen> {
+  /// Something was changed and not saved yet: leaving asks first.
+  bool _dirty = false;
+
   static const _repository = ChildRepository();
   static const _classes = ClassRepository();
 
@@ -113,7 +117,12 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       lastDate: now,
       helpText: AppStrings.pickBirthDate,
     );
-    if (picked != null) setState(() => _birthDate = picked);
+    if (picked != null) {
+      setState(() {
+        _dirty = true;
+        _birthDate = picked;
+      });
+    }
   }
 
   Future<void> _choosePhoto() async {
@@ -268,167 +277,180 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEdit ? AppStrings.editChild : AppStrings.addChild),
-      ),
-      body: AsyncSection<List<SchoolClass>>(
-        load: () => _classes.list(),
-        enableRefresh: false,
-        builder: (context, classes, reload) {
-          if (_classId == null && classes.isNotEmpty) {
-            _classId = classes.first.id;
-          }
-          // An archived class (or one the servant no longer serves) may be
-          // missing from the list; a dropdown whose value has no matching item
-          // throws, so keep the child's current class as an extra entry.
-          final items = <SchoolClass>[...classes];
-          final currentId = _classId;
-          if (currentId != null && !items.any((c) => c.id == currentId)) {
-            if (widget.isEdit) {
-              items.add(SchoolClass(
-                id: currentId,
-                name: AppStrings.classLabel,
-                sortOrder: 0,
-                isActive: false,
-              ));
-            } else {
-              _classId = items.isEmpty ? null : items.first.id;
+    return UnsavedChangesGuard(
+      dirty: _dirty,
+      child: Scaffold(
+        appBar: AppBar(
+          title:
+              Text(widget.isEdit ? AppStrings.editChild : AppStrings.addChild),
+        ),
+        body: AsyncSection<List<SchoolClass>>(
+          load: () => _classes.list(),
+          enableRefresh: false,
+          builder: (context, classes, reload) {
+            if (_classId == null && classes.isNotEmpty) {
+              _classId = classes.first.id;
             }
-          }
-          return Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              children: staggerAll([
-                _photoPicker(),
-                _group(AppStrings.personalInfo, [
-                  DropdownButtonFormField<String>(
-                    initialValue: _classId,
-                    decoration: const InputDecoration(
-                      labelText: AppStrings.classLabel,
-                      prefixIcon: Icon(Icons.class_outlined),
+            // An archived class (or one the servant no longer serves) may be
+            // missing from the list; a dropdown whose value has no matching item
+            // throws, so keep the child's current class as an extra entry.
+            final items = <SchoolClass>[...classes];
+            final currentId = _classId;
+            if (currentId != null && !items.any((c) => c.id == currentId)) {
+              if (widget.isEdit) {
+                items.add(SchoolClass(
+                  id: currentId,
+                  name: AppStrings.classLabel,
+                  sortOrder: 0,
+                  isActive: false,
+                ));
+              } else {
+                _classId = items.isEmpty ? null : items.first.id;
+              }
+            }
+            return Form(
+              key: _formKey,
+              onChanged: () {
+                if (!_dirty) setState(() => _dirty = true);
+              },
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                children: staggerAll([
+                  _photoPicker(),
+                  _group(AppStrings.personalInfo, [
+                    DropdownButtonFormField<String>(
+                      initialValue: _classId,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.classLabel,
+                        prefixIcon: Icon(Icons.class_outlined),
+                      ),
+                      items: items
+                          .map((item) => DropdownMenuItem<String>(
+                                value: item.id,
+                                child: Text(item.name),
+                              ))
+                          .toList(),
+                      onChanged: (value) => setState(() {
+                        _dirty = true;
+                        _classId = value;
+                      }),
+                      validator: (value) =>
+                          value == null ? AppStrings.selectClass : null,
                     ),
-                    items: items
-                        .map((item) => DropdownMenuItem<String>(
-                              value: item.id,
-                              child: Text(item.name),
-                            ))
-                        .toList(),
-                    onChanged: (value) => setState(() => _classId = value),
-                    validator: (value) =>
-                        value == null ? AppStrings.selectClass : null,
-                  ),
-                  _field(
-                    controller: _name,
-                    label: AppStrings.childName,
-                    icon: Icons.person_outline,
-                    validator: (value) {
-                      final v = value?.trim() ?? '';
-                      if (v.isEmpty) return AppStrings.childNameRequired;
-                      if (!RegExp(r'^[؀-ۿ\s]+$').hasMatch(v)) {
-                        return AppStrings.nameArabicOnly;
-                      }
-                      return null;
-                    },
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  _genderPicker(),
-                  _birthDateField(),
-                  _field(
-                    controller: _mobile,
-                    label: AppStrings.childMobile,
-                    icon: Icons.phone_outlined,
-                    isPhone: true,
-                  ),
-                  InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: AppStrings.childCode,
-                      helperText: AppStrings.childCodeHint,
-                      prefixIcon: Icon(Icons.tag),
+                    _field(
+                      controller: _name,
+                      label: AppStrings.childName,
+                      icon: Icons.person_outline,
+                      validator: (value) {
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return AppStrings.childNameRequired;
+                        if (!RegExp(r'^[؀-ۿ\s]+$').hasMatch(v)) {
+                          return AppStrings.nameArabicOnly;
+                        }
+                        return null;
+                      },
+                      textCapitalization: TextCapitalization.words,
                     ),
-                    child: Text(
-                      (widget.child?.code?.isNotEmpty ?? false)
-                          ? widget.child!.code!
-                          : AppStrings.childCodePending,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: (widget.child?.code?.isNotEmpty ?? false)
-                            ? null
-                            : AppColors.muted,
+                    _genderPicker(),
+                    _birthDateField(),
+                    _field(
+                      controller: _mobile,
+                      label: AppStrings.childMobile,
+                      icon: Icons.phone_outlined,
+                      isPhone: true,
+                    ),
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.childCode,
+                        helperText: AppStrings.childCodeHint,
+                        prefixIcon: Icon(Icons.tag),
+                      ),
+                      child: Text(
+                        (widget.child?.code?.isNotEmpty ?? false)
+                            ? widget.child!.code!
+                            : AppStrings.childCodePending,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: (widget.child?.code?.isNotEmpty ?? false)
+                              ? null
+                              : AppColors.muted,
+                        ),
                       ),
                     ),
-                  ),
-                ]),
-                _group(AppStrings.parentsInfo, [
-                  _field(
-                    controller: _motherName,
-                    label: AppStrings.motherName,
-                    icon: Icons.woman_outlined,
-                  ),
-                  _field(
-                    controller: _motherMobile,
-                    label: AppStrings.motherMobile,
-                    icon: Icons.phone_outlined,
-                    isPhone: true,
-                  ),
-                  _field(
-                    controller: _fatherName,
-                    label: AppStrings.fatherName,
-                    icon: Icons.man_outlined,
-                  ),
-                  _field(
-                    controller: _fatherMobile,
-                    label: AppStrings.fatherMobile,
-                    icon: Icons.phone_outlined,
-                    isPhone: true,
-                  ),
-                ]),
-                _group(AppStrings.churchInfo, [
-                  _field(
-                    controller: _confessionFather,
-                    label: AppStrings.confessionFather,
-                    icon: Icons.church_outlined,
-                  ),
-                  if (_gender == Gender.boy)
-                    CheckboxListTile(
-                      value: _isDeacon,
-                      onChanged: (value) =>
-                          setState(() => _isDeacon = value ?? false),
-                      title: const Text(AppStrings.deacon),
-                      secondary: const Icon(Icons.volunteer_activism_outlined),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
+                  ]),
+                  _group(AppStrings.parentsInfo, [
+                    _field(
+                      controller: _motherName,
+                      label: AppStrings.motherName,
+                      icon: Icons.woman_outlined,
                     ),
+                    _field(
+                      controller: _motherMobile,
+                      label: AppStrings.motherMobile,
+                      icon: Icons.phone_outlined,
+                      isPhone: true,
+                    ),
+                    _field(
+                      controller: _fatherName,
+                      label: AppStrings.fatherName,
+                      icon: Icons.man_outlined,
+                    ),
+                    _field(
+                      controller: _fatherMobile,
+                      label: AppStrings.fatherMobile,
+                      icon: Icons.phone_outlined,
+                      isPhone: true,
+                    ),
+                  ]),
+                  _group(AppStrings.churchInfo, [
+                    _field(
+                      controller: _confessionFather,
+                      label: AppStrings.confessionFather,
+                      icon: Icons.church_outlined,
+                    ),
+                    if (_gender == Gender.boy)
+                      CheckboxListTile(
+                        value: _isDeacon,
+                        onChanged: (value) => setState(() {
+                          _dirty = true;
+                          _isDeacon = value ?? false;
+                        }),
+                        title: const Text(AppStrings.deacon),
+                        secondary:
+                            const Icon(Icons.volunteer_activism_outlined),
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                  ]),
+                  _group(AppStrings.schoolInfo, [
+                    _field(
+                      controller: _school,
+                      label: AppStrings.school,
+                      icon: Icons.apartment_outlined,
+                    ),
+                    _field(
+                      controller: _address,
+                      label: AppStrings.address,
+                      icon: Icons.location_on_outlined,
+                    ),
+                    _field(
+                      controller: _notes,
+                      label: AppStrings.notes,
+                      icon: Icons.notes_outlined,
+                      maxLines: 3,
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Icons.check),
+                    label: const Text(AppStrings.save),
+                  ),
                 ]),
-                _group(AppStrings.schoolInfo, [
-                  _field(
-                    controller: _school,
-                    label: AppStrings.school,
-                    icon: Icons.apartment_outlined,
-                  ),
-                  _field(
-                    controller: _address,
-                    label: AppStrings.address,
-                    icon: Icons.location_on_outlined,
-                  ),
-                  _field(
-                    controller: _notes,
-                    label: AppStrings.notes,
-                    icon: Icons.notes_outlined,
-                    maxLines: 3,
-                  ),
-                ]),
-                const SizedBox(height: 8),
-                FilledButton.icon(
-                  onPressed: _save,
-                  icon: const Icon(Icons.check),
-                  label: const Text(AppStrings.save),
-                ),
-              ]),
-            ),
-          );
-        },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -505,8 +527,10 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
             .toList(),
         selected: <Gender>{_gender},
         showSelectedIcon: false,
-        onSelectionChanged: (selection) =>
-            setState(() => _gender = selection.first),
+        onSelectionChanged: (selection) => setState(() {
+          _dirty = true;
+          _gender = selection.first;
+        }),
       ),
     );
   }
@@ -535,7 +559,10 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
               : IconButton(
                   tooltip: AppStrings.clearField,
                   icon: const Icon(Icons.clear, size: 20),
-                  onPressed: () => setState(() => _birthDate = null),
+                  onPressed: () => setState(() {
+                    _dirty = true;
+                    _birthDate = null;
+                  }),
                 ),
           helperText: age,
         ),
