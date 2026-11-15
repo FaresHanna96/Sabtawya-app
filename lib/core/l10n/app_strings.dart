@@ -108,6 +108,9 @@ class AppStrings {
       'تم إنشاء حسابك بنجاح — في انتظار موافقة المسؤول';
   static const logoutAndRetry = 'الخروج والمحاولة بحساب آخر';
   static const confirmLogout = 'هل تريد تسجيل الخروج؟';
+  static String confirmLogoutPending(int n) =>
+      'لديك $n تغيير لم يُرسل بعد. سيبقى محفوظًا على هذا الجهاز ويُرسل عند '
+      'تسجيل دخولك مرة أخرى. هل تريد تسجيل الخروج؟';
 
   // -------------------------------------------------------------- setup gate
   static const setupMissingTitle = 'إعداد غير مكتمل';

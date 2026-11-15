@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
+import '../../core/services/sync_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
@@ -15,10 +16,13 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   Future<void> _logout(BuildContext context) async {
+    final waiting = context.read<SyncService>().pendingCount;
     final confirmed = await Ui.confirm(
       context,
       title: AppStrings.logout,
-      message: AppStrings.confirmLogout,
+      message: waiting > 0
+          ? AppStrings.confirmLogoutPending(waiting)
+          : AppStrings.confirmLogout,
       confirmLabel: AppStrings.logout,
       destructive: true,
     );

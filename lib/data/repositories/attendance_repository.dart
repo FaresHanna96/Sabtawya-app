@@ -309,19 +309,26 @@ class AttendanceRepository {
     }
   }
 
-  /// Writes the three flags for each changed line. The database recomputes the
-  /// score, so a tampered client cannot invent a grade.
-  /// Offline, the write is queued by the HTTP layer and synced on reconnect.
-  Future<void> saveEntries({
-    required String sessionId,
-    required List<AttendanceEntry> entries,
-  }) async {
-    if (entries.isEmpty) return;
+  /// Writes one class's Saturday: only the marks this person changed, plus an
+  /// absent row for each child that still has none (see [AttendanceSavePlan]).
+  /// The database recomputes the score, so a tampered client cannot invent a
+  /// grade. Offline, the writes are queued by the HTTP layer and synced on
+  /// reconnect.
+  Future<void> saveEntries(AttendanceSavePlan plan) async {
+    if (plan.isEmpty) return;
     try {
-      await Db.client.from(Db.tAttendanceRecords).upsert(
-            entries.map((entry) => entry.toUpsertMap(sessionId)).toList(),
-            onConflict: 'session_id,child_id',
-          );
+      for (final group in plan.updates) {
+        await Db.client
+            .from(Db.tAttendanceRecords)
+            .upsert(group, onConflict: 'session_id,child_id');
+      }
+      if (plan.insertIfMissing.isNotEmpty) {
+        await Db.client.from(Db.tAttendanceRecords).upsert(
+              plan.insertIfMissing,
+              onConflict: 'session_id,child_id',
+              ignoreDuplicates: true,
+            );
+      }
     } catch (e) {
       throw AppFailure.from(e);
     }

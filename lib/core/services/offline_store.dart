@@ -18,6 +18,7 @@ class QueuedRequest {
     required this.bodyBase64,
     required this.label,
     required this.createdAt,
+    this.user,
     this.error,
   });
 
@@ -30,6 +31,7 @@ class QueuedRequest {
         label: m['label'] as String? ?? '',
         createdAt: DateTime.tryParse(m['created_at'] as String? ?? '') ??
             DateTime.now(),
+        user: m['user'] as String?,
         error: m['error'] as String?,
       );
 
@@ -42,6 +44,10 @@ class QueuedRequest {
   /// What the write touches (a table or a storage object), for the sync list.
   final String label;
   final DateTime createdAt;
+
+  /// Who made the write (their user id), so it is only ever sent as them.
+  /// Null for writes queued before this was recorded.
+  final String? user;
   final String? error;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
@@ -52,6 +58,7 @@ class QueuedRequest {
         'body': bodyBase64,
         'label': label,
         'created_at': createdAt.toIso8601String(),
+        if (user != null) 'user': user,
         if (error != null) 'error': error,
       };
 
@@ -63,6 +70,7 @@ class QueuedRequest {
         bodyBase64: bodyBase64,
         label: label,
         createdAt: createdAt,
+        user: user,
         error: message,
       );
 }
@@ -137,18 +145,40 @@ class OfflineStore {
 
   // ── write queue ────────────────────────────────────────────────────────────
 
-  static int pendingCount() => _box(_boxQueue)?.length ?? 0;
+  /// How many writes are waiting: all of them, or with [forUser] only that
+  /// person's (and the ones with no recorded owner).
+  static int pendingCount({String? forUser}) => forUser == null
+      ? _box(_boxQueue)?.length ?? 0
+      : pendingWrites(forUser: forUser).length;
+
+  static int _lastId = 0;
+
+  /// A queue id: the time in microseconds, never the same twice and always
+  /// higher than the one before. The clock alone is not enough: on the web it
+  /// moves in milliseconds, so two writes made together got the same id and
+  /// the second replaced the first.
+  static String nextId([DateTime? now]) {
+    final micros = (now ?? DateTime.now()).microsecondsSinceEpoch;
+    _lastId = micros > _lastId ? micros : _lastId + 1;
+    return '$_lastId';
+  }
+
+  static bool _ownedBy(QueuedRequest r, String? user) =>
+      user == null || r.user == null || r.user == user;
 
   static Future<void> enqueue(QueuedRequest request) async {
     await _box(_boxQueue)?.put(request.id, request.toMap());
     pending.value = pendingCount();
   }
 
-  /// Oldest first.
-  static List<QueuedRequest> pendingWrites() {
+  /// Oldest first. With [forUser], only that person's writes.
+  static List<QueuedRequest> pendingWrites({String? forUser}) {
     final box = _box(_boxQueue);
     if (box == null) return const <QueuedRequest>[];
-    return box.values.map((raw) => QueuedRequest.fromMap(raw as Map)).toList()
+    return box.values
+        .map((raw) => QueuedRequest.fromMap(raw as Map))
+        .where((r) => _ownedBy(r, forUser))
+        .toList()
       ..sort((a, b) => a.id.compareTo(b.id));
   }
 
@@ -164,10 +194,13 @@ class OfflineStore {
     await removeWrite(request.id);
   }
 
-  static List<QueuedRequest> failedWrites() {
+  static List<QueuedRequest> failedWrites({String? forUser}) {
     final box = _box(_boxFailed);
     if (box == null) return const <QueuedRequest>[];
-    return box.values.map((raw) => QueuedRequest.fromMap(raw as Map)).toList()
+    return box.values
+        .map((raw) => QueuedRequest.fromMap(raw as Map))
+        .where((r) => _ownedBy(r, forUser))
+        .toList()
       ..sort((a, b) => a.id.compareTo(b.id));
   }
 
@@ -188,6 +221,7 @@ class OfflineStore {
       bodyBase64: request.bodyBase64,
       label: request.label,
       createdAt: request.createdAt,
+      user: request.user,
     ));
   }
 }

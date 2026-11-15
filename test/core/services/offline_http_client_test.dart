@@ -167,4 +167,192 @@ void main() {
     expect(OfflineStore.pendingCount(), 1);
     expect(OfflineStore.failedWrites(), isEmpty);
   });
+
+  // ── queue ids and owners ───────────────────────────────────────────────────
+
+  test('two ids asked for at the same instant differ and stay in order', () {
+    final now = DateTime.now().add(const Duration(days: 1));
+    final first = OfflineStore.nextId(now);
+    final second = OfflineStore.nextId(now);
+
+    expect(second, isNot(first));
+    expect(second.compareTo(first), greaterThan(0));
+  });
+
+  test('writes made together are all kept (none replaces another)', () async {
+    online = false;
+    await Future.wait([
+      for (var i = 0; i < 50; i++)
+        client.post(
+          Uri.parse('$_base/children'),
+          headers: {'content-type': 'application/json'},
+          body: jsonEncode({'class_id': 'c1', 'full_name': 'Child $i'}),
+        ),
+    ]);
+
+    expect(OfflineStore.pendingCount(), 50);
+  });
+
+  String jwtFor(String userId) {
+    String part(Map<String, dynamic> m) =>
+        base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
+    return '${part({'alg': 'HS256'})}.${part({'sub': userId})}.sig';
+  }
+
+  Future<void> offlineInsertAs(String userId, String name) => client.post(
+        Uri.parse('$_base/children'),
+        headers: {
+          'content-type': 'application/json',
+          'Authorization': 'Bearer ${jwtFor(userId)}',
+        },
+        body: jsonEncode({'class_id': 'c1', 'full_name': name}),
+      );
+
+  test('a queued write remembers who made it and is only theirs', () async {
+    online = false;
+    await offlineInsertAs('user-a', 'From A');
+    await offlineInsertAs('user-b', 'From B');
+
+    expect(OfflineStore.pendingCount(), 2);
+    expect(OfflineStore.pendingWrites(forUser: 'user-a').single.user, 'user-a');
+    expect(OfflineStore.pendingCount(forUser: 'user-b'), 1);
+    expect(OfflineStore.pendingCount(forUser: 'user-c'), 0);
+    // The sign-in token itself is never kept on the device.
+    expect(
+      OfflineStore.pendingWrites()
+          .expand((w) => w.headers.keys)
+          .map((k) => k.toLowerCase()),
+      isNot(contains('authorization')),
+    );
+  });
+
+  test('a write queued by an older version (no owner) goes to whoever is in',
+      () async {
+    await OfflineStore.enqueue(QueuedRequest(
+      id: OfflineStore.nextId(),
+      method: 'POST',
+      url: '$_base/children',
+      headers: const {},
+      bodyBase64: '',
+      label: 'children',
+      createdAt: DateTime.now(),
+    ));
+
+    expect(OfflineStore.pendingCount(forUser: 'anyone'), 1);
+  });
+
+  test("another person's waiting write does not hold mine back", () async {
+    online = false;
+    await offlineInsertAs('user-a', 'From A');
+    online = true;
+
+    await offlineInsertAs('user-b', 'From B');
+
+    // B's write went straight to the server; A's still waits for A.
+    expect(sent.where((s) => s.startsWith('POST')), hasLength(1));
+    expect(OfflineStore.pendingWrites().single.user, 'user-a');
+  });
+
+  test('the owner survives being refused and retried', () async {
+    online = false;
+    await offlineInsertAs('user-a', 'From A');
+    final write = OfflineStore.pendingWrites().single;
+
+    await OfflineStore.markFailed(write, '403');
+    expect(OfflineStore.failedWrites(forUser: 'user-a').single.user, 'user-a');
+    expect(OfflineStore.failedWrites(forUser: 'user-b'), isEmpty);
+
+    await OfflineStore.retryFailed(write.id);
+    expect(OfflineStore.pendingWrites(forUser: 'user-a'), hasLength(1));
+  });
+
+  // ── attendance saved offline ───────────────────────────────────────────────
+
+  group('attendance saved offline', () {
+    const scoresUrl = '$_base/v_session_scores?session_id=eq.s1';
+
+    late OfflineHttpClient sheet;
+
+    setUp(() {
+      sheet = OfflineHttpClient(MockClient((request) async {
+        if (!online) throw http.ClientException('Failed to fetch');
+        return http.Response(
+          jsonEncode([
+            {
+              'session_id': 's1',
+              'child_id': 'a',
+              'sunday_school': false,
+              'vespers': true,
+              'mass': false,
+              'confession': false,
+              'score': 5,
+              'max_score': 20,
+            },
+          ]),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }));
+    });
+
+    Future<List<dynamic>> scores() async =>
+        jsonDecode((await sheet.get(Uri.parse(scoresUrl))).body)
+            as List<dynamic>;
+
+    Future<void> upsert(List<Map<String, dynamic>> rows, String prefer) =>
+        sheet.post(
+          Uri.parse(
+              '$_base/attendance_records?on_conflict=session_id%2Cchild_id'),
+          headers: {'content-type': 'application/json', 'Prefer': prefer},
+          body: jsonEncode(rows),
+        );
+
+    test('a changed mark keeps the other marks of that child', () async {
+      await scores();
+      online = false;
+
+      await upsert([
+        {'session_id': 's1', 'child_id': 'a', 'mass': true},
+      ], 'resolution=merge-duplicates');
+
+      final row = (await scores()).single as Map<String, dynamic>;
+      expect(row['mass'], isTrue);
+      expect(row['vespers'], isTrue); // not sent, so not wiped
+      expect(row['sunday_school'], isFalse);
+    });
+
+    test('a new child shows with the unsent marks off', () async {
+      await scores();
+      online = false;
+
+      await upsert([
+        {'session_id': 's1', 'child_id': 'b', 'vespers': true},
+      ], 'resolution=merge-duplicates');
+
+      final row = (await scores()).firstWhere((r) => r['child_id'] == 'b')
+          as Map<String, dynamic>;
+      expect(row['vespers'], isTrue);
+      expect(row['mass'], isFalse);
+      expect(row['sunday_school'], isFalse);
+      expect(row['confession'], isFalse);
+    });
+
+    test('insert-if-missing adds the absent child, never touches a saved one',
+        () async {
+      await scores();
+      online = false;
+
+      await upsert([
+        {'session_id': 's1', 'child_id': 'a'},
+        {'session_id': 's1', 'child_id': 'b'},
+      ], 'resolution=ignore-duplicates');
+
+      final list = await scores();
+      expect(list, hasLength(2));
+      final a = list.firstWhere((r) => r['child_id'] == 'a');
+      expect(a['vespers'], isTrue); // the saved row is as it was
+      final b = list.firstWhere((r) => r['child_id'] == 'b');
+      expect(b['vespers'], isFalse);
+    });
+  });
 }

@@ -190,7 +190,9 @@ serve(async (req) => {
     const { data } = await supabase
       .from('profiles')
       .select('id')
-      .ilike('email', email)
+      // ilike only to ignore case: escape its wildcards, or the "_" in
+      // "first_last@..." matches any character, and two matches read as none.
+      .ilike('email', email.replace(/[\\%_]/g, '\\$&'))
       .maybeSingle();
     return new Response(JSON.stringify({ exists: data !== null }), {
       status: 200,

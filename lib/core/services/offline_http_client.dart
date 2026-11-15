@@ -125,9 +125,10 @@ class OfflineHttpClient extends http.BaseClient {
   ) async {
     final request = await _materialize(original);
 
-    // Keep the order: while earlier writes are waiting, a later one waits too,
-    // otherwise it could run before the row it depends on exists.
-    if (OfflineStore.pendingCount() == 0) {
+    // Keep the order: while this person's earlier writes are waiting, a later
+    // one waits too, otherwise it could run before the row it depends on
+    // exists. Somebody else's waiting writes do not hold this one back.
+    if (OfflineStore.pendingCount(forUser: _userOf(request)) == 0) {
       try {
         final response = await _inner.send(request);
         ConnectivityService.instance.markOnline();
@@ -166,13 +167,14 @@ class OfflineHttpClient extends http.BaseClient {
     final headers = Map<String, String>.from(request.headers)
       ..removeWhere((k, _) => k.toLowerCase() == 'authorization');
     await OfflineStore.enqueue(QueuedRequest(
-      id: '${DateTime.now().microsecondsSinceEpoch}',
+      id: OfflineStore.nextId(),
       method: request.method.toUpperCase(),
       url: request.url.toString(),
       headers: headers,
       bodyBase64: base64Encode(bytes),
       label: label,
       createdAt: DateTime.now(),
+      user: _userOf(request),
     ));
 
     if (!isRest) {
@@ -191,6 +193,9 @@ class OfflineHttpClient extends http.BaseClient {
         url: request.url,
         rows: rows,
         patch: patch,
+        keepExisting:
+            (request.headers['Prefer'] ?? request.headers['prefer'] ?? '')
+                .contains('resolution=ignore-duplicates'),
       );
     } catch (_) {
       // A failed local patch must never lose the queued write.
@@ -247,6 +252,7 @@ class OfflineHttpClient extends http.BaseClient {
     required Uri url,
     required List<Map<String, dynamic>> rows,
     required Map<String, dynamic>? patch,
+    bool keepExisting = false,
   }) async {
     final writeFilters = _filtersOf(url);
 
@@ -311,7 +317,7 @@ class OfflineHttpClient extends http.BaseClient {
           entryTable == 'v_session_scores' &&
           method == 'POST' &&
           body is List) {
-        changed = _patchScores(body, rows, entryFilters);
+        changed = _patchScores(body, rows, entryFilters, keepExisting);
       }
 
       if (changed) {
@@ -322,34 +328,41 @@ class OfflineHttpClient extends http.BaseClient {
   }
 
   /// An attendance upsert changes the marks the sheet reads from the scores
-  /// view, so the sheet reopens with what the servant just saved.
+  /// view, so the sheet reopens with what the servant just saved. A save sends
+  /// only the marks that changed, so only those are copied; with
+  /// [keepExisting] (insert only if missing) a row already there is left alone.
   bool _patchScores(
     List<dynamic> list,
     List<Map<String, dynamic>> written,
     Map<String, String> entryFilters,
+    bool keepExisting,
   ) {
+    const flags = ['sunday_school', 'vespers', 'mass', 'confession'];
     var changed = false;
     for (final w in written) {
-      final record = <String, dynamic>{
-        'session_id': w['session_id'],
-        'child_id': w['child_id'],
-        'sunday_school': w['sunday_school'],
-        'vespers': w['vespers'],
-        'mass': w['mass'],
-        'confession': w['confession'],
-        'updated_at': DateTime.now().toIso8601String(),
-      };
       final at = list.indexWhere((r) =>
           r is Map &&
           r['session_id'] == w['session_id'] &&
           r['child_id'] == w['child_id']);
+      final now = DateTime.now().toIso8601String();
       if (at >= 0) {
+        if (keepExisting) continue;
         list[at] = <String, dynamic>{
           ...Map<String, dynamic>.from(list[at] as Map),
-          ...record
+          for (final f in flags)
+            if (w.containsKey(f)) f: w[f],
+          'updated_at': now,
         };
         changed = true;
-      } else if (_matches(record, entryFilters)) {
+        continue;
+      }
+      final record = <String, dynamic>{
+        'session_id': w['session_id'],
+        'child_id': w['child_id'],
+        for (final f in flags) f: w[f] ?? false,
+        'updated_at': now,
+      };
+      if (_matches(record, entryFilters)) {
         // The score is computed by the database; show the marks without one.
         list.add(<String, dynamic>{...record, 'score': 0, 'max_score': 20});
         changed = true;

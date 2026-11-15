@@ -282,18 +282,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _save() async {
     if (_sheets.isEmpty || !_canEdit) return;
 
-    // Changed lines, plus any child who has no row yet: saving a Saturday
-    // records every child, so an absence is stored as a zero rather than as
-    // missing data. Grouped by class session (one or many).
-    final changedBySession = <String, List<AttendanceEntry>>{};
+    // Per class session: the marks changed here, plus an absent row for any
+    // child who has none yet, so an absence is stored as a zero rather than
+    // as missing data. Built so a co-servant's marks are never undone.
+    final bySession =
+        <String, (List<AttendanceEntry>, List<AttendanceEntry>)>{};
     for (var i = 0; i < _entries.length; i++) {
       final sheet = _entrySheet[i];
       if (!_canEditSheet(sheet)) continue;
-      if (!_entries[i].sameMarksAs(_original[i]) || !_entries[i].isRecorded) {
-        (changedBySession[sheet.session.id] ??= []).add(_entries[i]);
-      }
+      final lists = bySession[sheet.session.id] ??=
+          (<AttendanceEntry>[], <AttendanceEntry>[]);
+      lists.$1.add(_entries[i]);
+      lists.$2.add(_original[i]);
     }
-    if (changedBySession.isEmpty) {
+    final plans = <AttendanceSavePlan>[
+      for (final e in bySession.entries)
+        AttendanceSavePlan.build(
+          sessionId: e.key,
+          entries: e.value.$1,
+          originals: e.value.$2,
+        ),
+    ].where((plan) => !plan.isEmpty).toList();
+    if (plans.isEmpty) {
       Ui.info(context, AppStrings.saved);
       return;
     }
@@ -303,8 +313,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final ok = await Ui.runGuarded(
       context,
       () async {
-        for (final e in changedBySession.entries) {
-          await _repository.saveEntries(sessionId: e.key, entries: e.value);
+        for (final plan in plans) {
+          await _repository.saveEntries(plan);
         }
       },
       successMessage: isOffline

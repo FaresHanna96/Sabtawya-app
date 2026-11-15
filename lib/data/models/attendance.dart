@@ -215,6 +215,67 @@ class AttendanceEntry {
         'mass': mass,
         'confession': confession,
       };
+
+  /// The marks that differ from [original], by column name, with their new
+  /// value. Empty when nothing was touched.
+  Map<String, bool> changedFlags(AttendanceEntry original) => <String, bool>{
+        if (sundaySchool != original.sundaySchool)
+          'sunday_school': sundaySchool,
+        if (vespers != original.vespers) 'vespers': vespers,
+        if (mass != original.mass) 'mass': mass,
+        if (confession != original.confession) 'confession': confession,
+      };
+}
+
+/// What saving one class's Saturday sends, built so that two servants marking
+/// the same class on two phones never undo each other:
+///
+/// * [updates]: a child whose marks this person changed sends only the marks
+///   that changed, so the other marks (maybe set by a co-servant since the
+///   sheet was opened) are left as they are. Rows with the same set of
+///   changed marks travel together, because one request needs equal columns.
+/// * [insertIfMissing]: a child nobody touched and who has no row yet is
+///   stored as absent, but only if still missing: a row a co-servant saved
+///   in the meantime is never replaced.
+class AttendanceSavePlan {
+  const AttendanceSavePlan({
+    required this.updates,
+    required this.insertIfMissing,
+  });
+
+  factory AttendanceSavePlan.build({
+    required String sessionId,
+    required List<AttendanceEntry> entries,
+    required List<AttendanceEntry> originals,
+  }) {
+    final groups = <String, List<Map<String, dynamic>>>{};
+    final missing = <Map<String, dynamic>>[];
+    for (var i = 0; i < entries.length; i++) {
+      final entry = entries[i];
+      final changed = entry.changedFlags(originals[i]);
+      if (changed.isNotEmpty) {
+        (groups[changed.keys.join(',')] ??= []).add(<String, dynamic>{
+          'session_id': sessionId,
+          'child_id': entry.child.id,
+          ...changed,
+        });
+      } else if (!entry.isRecorded) {
+        missing.add(<String, dynamic>{
+          'session_id': sessionId,
+          'child_id': entry.child.id,
+        });
+      }
+    }
+    return AttendanceSavePlan(
+      updates: groups.values.toList(),
+      insertIfMissing: missing,
+    );
+  }
+
+  final List<List<Map<String, dynamic>>> updates;
+  final List<Map<String, dynamic>> insertIfMissing;
+
+  bool get isEmpty => updates.isEmpty && insertIfMissing.isEmpty;
 }
 
 /// Everything the attendance screen needs for one Saturday.

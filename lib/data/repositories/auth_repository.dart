@@ -165,10 +165,12 @@ class AuthRepository {
   Future<void> signOut() async {
     try {
       await Db.client.auth.signOut();
-      // The next person on this device must not see this one's data.
-      await OfflineStore.clearCache();
     } catch (e) {
       throw AppFailure.from(e);
+    } finally {
+      // The next person on this device must not see this one's data, also
+      // when the sign-out could not reach the server (offline).
+      await OfflineStore.clearCache();
     }
   }
 

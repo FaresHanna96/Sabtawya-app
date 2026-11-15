@@ -26,8 +26,26 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
   bool _syncing = false;
 
   bool get syncing => _syncing;
-  int get pendingCount => OfflineStore.pendingCount();
-  int get failedCount => OfflineStore.failedWrites().length;
+
+  /// The signed-in person. Writes are shown, counted and sent only for them:
+  /// one made by somebody else on this device waits for its owner.
+  static String? get currentUserId {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id;
+    } catch (_) {
+      return null; // Supabase not started (setup screen, tests)
+    }
+  }
+
+  int get pendingCount {
+    final me = currentUserId;
+    return me == null ? 0 : OfflineStore.pendingCount(forUser: me);
+  }
+
+  int get failedCount {
+    final me = currentUserId;
+    return me == null ? 0 : OfflineStore.failedWrites(forUser: me).length;
+  }
 
   void _onPendingChanged() {
     notifyListeners();
@@ -49,13 +67,14 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> flush() async {
     if (_syncing) return;
     final token = Supabase.instance.client.auth.currentSession?.accessToken;
-    if (token == null) return;
+    final me = currentUserId;
+    if (token == null || me == null) return;
 
     _syncing = true;
     notifyListeners();
     var sent = 0;
     try {
-      for (final write in OfflineStore.pendingWrites()) {
+      for (final write in OfflineStore.pendingWrites(forUser: me)) {
         final request = http.Request(write.method, Uri.parse(write.url))
           ..headers.addAll(write.headers)
           ..headers['Authorization'] = 'Bearer $token'

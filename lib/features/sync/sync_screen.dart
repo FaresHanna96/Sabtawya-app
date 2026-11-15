@@ -25,8 +25,9 @@ class SyncScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sync = context.watch<SyncService>();
-    final pending = OfflineStore.pendingWrites();
-    final failed = OfflineStore.failedWrites();
+    final me = SyncService.currentUserId ?? '';
+    final pending = OfflineStore.pendingWrites(forUser: me);
+    final failed = OfflineStore.failedWrites(forUser: me);
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.syncTitle)),
