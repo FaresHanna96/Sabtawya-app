@@ -46,24 +46,35 @@ class ChildChangeGroup {
 
   bool get isAttendance => entity == 'attendance_records';
 
-  /// "عدّل: رقم الأم، العنوان", "سجّل الحضور" and so on.
-  String get title {
-    if (isAttendance) return 'سجّل الحضور';
-    if (action == 'insert') return 'أضاف المخدوم';
+  bool get isAdded => !isAttendance && action == 'insert';
+
+  /// Arabic names of what an edit touched, each once, in the order they were
+  /// changed. Empty for attendance, for adding the child, and for old edits.
+  List<String> get labels {
+    if (isAttendance || isAdded) return const <String>[];
     final labels = <String>[];
     for (final f in fields) {
       final l = _fieldLabels[f];
       if (l != null && !labels.contains(l)) labels.add(l);
     }
+    return labels;
+  }
+
+  /// "عدّل: رقم الأم، العنوان", "سجّل الحضور" and so on.
+  String get title {
+    if (isAttendance) return 'سجّل الحضور';
+    if (isAdded) return 'أضاف المخدوم';
+    final labels = this.labels;
     if (labels.isEmpty) return 'عدّل بيانات المخدوم';
     final shown = labels.take(3).join('، ');
     return labels.length > 3 ? 'عدّل: $shown وغيرها' : 'عدّل: $shown';
   }
 
+  /// False for what was done from the database itself, with no person behind.
+  bool get hasActor => actorName != null && actorName!.isNotEmpty;
+
   /// A person's name, or "النظام" for what was done from the database itself.
-  String get by => (actorName == null || actorName!.isEmpty)
-      ? 'النظام'
-      : actorName!;
+  String get by => hasActor ? actorName! : 'النظام';
 }
 
 /// [changes] must be newest first (the database returns them that way).

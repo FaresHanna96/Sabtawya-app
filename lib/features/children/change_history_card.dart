@@ -1,0 +1,234 @@
+import 'package:flutter/material.dart';
+
+import '../../core/l10n/app_strings.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/child_changes.dart';
+import '../../core/widgets/app_widgets.dart';
+import '../../data/models/child.dart';
+
+/// Who added or edited the child and who recorded their attendance, as a
+/// timeline: one heading per day, then who did what and at what time. Same-day
+/// entries by the same person are one line; the latest five show first.
+class ChangeHistoryCard extends StatefulWidget {
+  const ChangeHistoryCard({super.key, required this.changes, this.now});
+
+  /// Newest first, as the database returns them.
+  final List<ChildChange> changes;
+
+  /// Only for tests; the real card reads the clock.
+  final DateTime? now;
+
+  @override
+  State<ChangeHistoryCard> createState() => _ChangeHistoryCardState();
+}
+
+class _ChangeHistoryCardState extends State<ChangeHistoryCard> {
+  static const _initialCount = 5;
+
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = groupChanges(widget.changes);
+    final shown = _showAll ? groups : groups.take(_initialCount).toList();
+
+    final rows = <Widget>[];
+    for (var i = 0; i < shown.length; i++) {
+      final day = shown[i].latest.toLocal();
+      final newDay = i == 0 ||
+          !AppDateUtils.isSameDay(shown[i - 1].latest.toLocal(), day);
+      final endsDay = i == shown.length - 1 ||
+          !AppDateUtils.isSameDay(shown[i + 1].latest.toLocal(), day);
+      if (newDay) rows.add(_dayHeader(day, first: i == 0));
+      rows.add(_ChangeRow(group: shown[i], connect: !endsDay));
+    }
+
+    return SectionCard(
+      title: AppStrings.changeHistory,
+      icon: Icons.history_rounded,
+      accent: AppColors.navy,
+      collapsible: true,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ...rows,
+          if (groups.length > _initialCount)
+            TextButton.icon(
+              onPressed: () => setState(() => _showAll = !_showAll),
+              icon: Icon(
+                _showAll ? Icons.expand_less : Icons.expand_more,
+                size: 18,
+              ),
+              label: Text(_showAll
+                  ? AppStrings.showLess
+                  : AppStrings.showAllCount(groups.length)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// "اليوم", "أمس", or "الجمعة 13 نوفمبر · منذ 3 أيام".
+  Widget _dayHeader(DateTime day, {required bool first}) {
+    final now = widget.now ?? DateTime.now();
+    final recent =
+        AppDateUtils.dateOnly(now).difference(AppDateUtils.dateOnly(day)).inDays <
+            2;
+    return Padding(
+      padding: EdgeInsets.only(top: first ? 0 : 10, bottom: 8),
+      child: Row(
+        children: [
+          Text(
+            AppDateUtils.dayLabel(day, now: now),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
+          if (!recent) ...[
+            const SizedBox(width: 6),
+            Text(
+              '· ${AppDateUtils.sinceLabel(day, now: now)}',
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
+          ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: Divider(
+              height: 1,
+              color: AppColors.muted.withValues(alpha: 0.18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChangeRow extends StatelessWidget {
+  const _ChangeRow({required this.group, required this.connect});
+
+  final ChildChangeGroup group;
+
+  /// Draw the line down to the next entry of the same day.
+  final bool connect;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = group;
+    final (IconData icon, Color color, String what) = g.isAttendance
+        ? (Icons.fact_check_rounded, AppColors.sky, AppStrings.changeAttendance)
+        : g.isAdded
+            ? (
+                Icons.person_add_alt_1_rounded,
+                AppColors.success,
+                AppStrings.changeAdded
+              )
+            : (Icons.edit_rounded, AppColors.navyLight, AppStrings.changeEdited);
+    final labels = g.labels;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 15, color: color),
+              ),
+              if (connect)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.muted.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          g.by,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: g.hasActor ? null : AppColors.muted,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          AppDateUtils.formatTime(g.latest),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    what,
+                    style:
+                        const TextStyle(fontSize: 12.5, color: AppColors.muted),
+                  ),
+                  if (labels.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [for (final l in labels) _chip(l)],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.navyTint,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11.5,
+          color: AppColors.navy,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}

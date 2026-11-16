@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
-import '../../core/utils/child_changes.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
@@ -21,6 +20,7 @@ import '../../data/repositories/report_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
+import 'change_history_card.dart';
 import 'child_avatar.dart';
 import 'child_location_card.dart';
 import 'contact_cards.dart';
@@ -396,7 +396,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 const SizedBox(height: 16),
               ],
               _visitHistoryCard(data, canEdit),
-              if (data.changes.isNotEmpty) _changeHistoryCard(data.changes),
+              if (data.changes.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                ChangeHistoryCard(changes: data.changes),
+              ],
               const SizedBox(height: 16),
               _lastActivityCard(data.lastActivity),
               if (data.monthly.isNotEmpty) ...[
@@ -505,25 +508,14 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                     ),
                     const SizedBox(height: 6),
                     Wrap(
-                      spacing: 6,
+                      spacing: 10,
                       runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         GenderBadge(gender: child.gender, compact: true),
-                        Text(
-                          className,
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
-                        ),
+                        _headerFact(Icons.class_outlined, className),
                         if (child.ageLabel != null)
-                          Text(
-                            child.ageLabel!,
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
+                          _headerFact(Icons.cake_outlined, child.ageLabel!),
                       ],
                     ),
                   ],
@@ -534,6 +526,23 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// A small icon and a few words under the child's name (class, age).
+  Widget _headerFact(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.muted),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ),
+      ],
     );
   }
 
@@ -829,94 +838,50 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  bool _showAllChanges = false;
-
-  /// Who added or edited the child and who recorded their attendance. Same-day
-  /// entries by the same person are one line; the latest five show first.
-  Widget _changeHistoryCard(List<ChildChange> changes) {
-    final groups = groupChanges(changes);
-    final shown = _showAllChanges ? groups : groups.take(5).toList();
-    return SectionCard(
-      title: AppStrings.changeHistory,
-      icon: Icons.history_rounded,
-      accent: AppColors.navy,
-      collapsible: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final g in shown) _changeRow(g),
-          if (groups.length > 5)
-            TextButton(
-              onPressed: () =>
-                  setState(() => _showAllChanges = !_showAllChanges),
-              child: Text(_showAllChanges
-                  ? AppStrings.showLess
-                  : AppStrings.showAllCount(groups.length)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _changeRow(ChildChangeGroup g) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            g.isAttendance ? Icons.fact_check_outlined : Icons.edit_outlined,
-            size: 18,
-            color: AppColors.navy,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(g.title, style: const TextStyle(fontSize: 13)),
-                Text(
-                  AppStrings.visitBy(g.by),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: g.actorName == null ? AppColors.muted : AppColors.navy,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${AppDateUtils.formatDate(g.latest)}\n${AppDateUtils.sinceLabel(g.latest)}',
-            textAlign: TextAlign.end,
-            style: const TextStyle(fontSize: 11, color: AppColors.muted),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _visitLogRow(ChildVisitLog log, _ProfileData? deletable) {
     final isPhone = log.isPhone;
+    final tint = isPhone ? AppColors.navy : AppColors.success;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            isPhone ? Icons.phone_callback_outlined : Icons.home_outlined,
-            size: 18,
-            color: AppColors.navy,
+          // Same tinted round icon as the change history, so the two logs
+          // read as one family.
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPhone ? Icons.phone_callback_rounded : Icons.home_rounded,
+              size: 15,
+              color: tint,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${AppDateUtils.formatDate(log.visitDate)} • ${AppDateUtils.sinceLabel(log.visitDate)}',
-                  style: const TextStyle(fontSize: 13),
+                Text.rich(
+                  TextSpan(
+                    text: AppDateUtils.formatDate(log.visitDate),
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600),
+                    children: [
+                      TextSpan(
+                        text: ' · ${AppDateUtils.sinceLabel(log.visitDate)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 if (log.recorderName != null && log.recorderName!.isNotEmpty)
                   Padding(

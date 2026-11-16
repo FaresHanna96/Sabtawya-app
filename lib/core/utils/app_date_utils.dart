@@ -51,11 +51,28 @@ class AppDateUtils {
   /// `24 أكتوبر 2026 - 08:30 م`
   static String formatDateTime(DateTime date) {
     final local = date.toLocal();
+    return '${formatDate(local)} - ${formatTime(local)}';
+  }
+
+  /// `08:30 م`
+  static String formatTime(DateTime date) {
+    final local = date.toLocal();
     final hour12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');
     final suffix = local.hour < 12 ? 'ص' : 'م';
-    return '${formatDate(local)} - '
-        '${hour12.toString().padLeft(2, '0')}:$minute $suffix';
+    return '${hour12.toString().padLeft(2, '0')}:$minute $suffix';
+  }
+
+  /// A day the way people say it: `اليوم`, `أمس`, otherwise
+  /// `الجمعة 13 نوفمبر` (with the year only when it is not this one).
+  static String dayLabel(DateTime date, {DateTime? now}) {
+    final today = dateOnly(now ?? DateTime.now());
+    final day = dateOnly(date);
+    final days = today.difference(day).inDays;
+    if (days == 0) return 'اليوم';
+    if (days == 1) return 'أمس';
+    final year = day.year == today.year ? '' : ' ${day.year}';
+    return '${weekdayName(day)} ${day.day} ${monthName(day.month)}$year';
   }
 
   /// `2026-10-24`, the wire format for Postgres `date` columns.
