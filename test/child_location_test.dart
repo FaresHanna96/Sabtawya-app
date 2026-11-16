@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sabtawya/core/services/location_service.dart';
 import 'package:sabtawya/core/utils/map_location.dart';
@@ -142,7 +141,9 @@ void main() {
 
     Widget editor({
       MapLocation? value,
-      Future<MapLocation> Function()? fetch,
+      Future<PhoneFix> Function()? fetch,
+      Future<MapLocation?> Function(String)? resolve,
+      Future<String?> Function()? clip,
     }) {
       latest = value;
       calls = 0;
@@ -153,6 +154,9 @@ void main() {
               builder: (context, setState) => LocationEditor(
                 value: latest,
                 fetchCurrent: fetch,
+                resolveLink: resolve,
+                readClipboard: clip,
+                typingPause: const Duration(milliseconds: 100),
                 onChanged: (v) {
                   calls++;
                   setState(() => latest = v);
@@ -164,65 +168,137 @@ void main() {
       );
     }
 
-    testWidgets('a pasted Google Maps link is read as it is typed',
+    Future<void> openTyping(WidgetTester tester) async {
+      await tester.tap(find.text('أو اكتب الرابط أو الإحداثيات'));
+      await tester.pump();
+    }
+
+    Future<void> type(WidgetTester tester, String text) async {
+      await openTyping(tester);
+      await tester.enterText(find.byType(TextField), text);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    testWidgets('a typed Google Maps link is read once the typing pauses',
         (tester) async {
       await tester.pumpWidget(editor());
-      await tester.enterText(find.byType(TextField),
-          'https://www.google.com/maps/@30.05611,31.34167,17z');
-      await tester.pump();
+      await type(tester, 'https://www.google.com/maps/@30.05611,31.34167,17z');
 
       expect(latest, _home);
       expect(find.text('30.05611, 31.34167'), findsOneWidget);
     });
 
-    testWidgets('plain coordinates work too', (tester) async {
+    testWidgets('half-typed coordinates are not taken while typing goes on',
+        (tester) async {
       await tester.pumpWidget(editor());
-      await tester.enterText(find.byType(TextField), '30.05611, 31.34167');
-      await tester.pump();
+      await openTyping(tester);
+      await tester.enterText(find.byType(TextField), '30.05611, 31.3');
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(calls, 0);
 
+      await tester.enterText(find.byType(TextField), '30.05611, 31.34167');
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(calls, 1);
       expect(latest, _home);
     });
 
     testWidgets('something else says what to paste, and changes nothing',
         (tester) async {
       await tester.pumpWidget(editor());
-      await tester.enterText(find.byType(TextField), 'بيت مينا');
-      await tester.pump();
+      await type(tester, 'بيت مينا');
 
       expect(latest, isNull);
       expect(calls, 0);
       expect(find.textContaining('مش قادرين نقرا الموقع'), findsOneWidget);
     });
 
-    testWidgets('a shortened link explains why it cannot be read',
+    testWidgets('a shortened link from the clipboard is opened for you',
         (tester) async {
-      await tester.pumpWidget(editor());
-      await tester.enterText(
-          find.byType(TextField), 'https://maps.app.goo.gl/abc123');
-      await tester.pump();
+      String? asked;
+      await tester.pumpWidget(editor(
+        clip: () async => 'https://maps.app.goo.gl/abc123',
+        resolve: (text) async {
+          asked = text;
+          return _home;
+        },
+      ));
+      await tester.tap(find.text('لصق رابط من الحافظة'));
+      await tester.pumpAndSettle();
+
+      expect(asked, 'https://maps.app.goo.gl/abc123');
+      expect(latest, _home);
+    });
+
+    testWidgets('a shortened link that cannot be opened says so',
+        (tester) async {
+      await tester.pumpWidget(editor(
+        clip: () async => 'https://maps.app.goo.gl/abc123',
+        resolve: (_) async => null,
+      ));
+      await tester.tap(find.text('لصق رابط من الحافظة'));
+      await tester.pumpAndSettle();
 
       expect(latest, isNull);
       expect(find.textContaining('الرابط المختصر'), findsOneWidget);
     });
 
-    testWidgets('clearing the text clears the message', (tester) async {
+    testWidgets('an empty clipboard says what to copy', (tester) async {
+      await tester.pumpWidget(editor(clip: () async => '  '));
+      await tester.tap(find.text('لصق رابط من الحافظة'));
+      await tester.pumpAndSettle();
+
+      expect(latest, isNull);
+      expect(find.textContaining('مفيش حاجة منسوخة'), findsOneWidget);
+    });
+
+    testWidgets('a pasted place is read straight away', (tester) async {
+      await tester.pumpWidget(editor(clip: () async => '30.05611, 31.34167'));
+      await tester.tap(find.text('لصق رابط من الحافظة'));
+      await tester.pumpAndSettle();
+
+      expect(latest, _home);
+    });
+
+    testWidgets('clearing the typed text clears the message', (tester) async {
       await tester.pumpWidget(editor());
-      await tester.enterText(find.byType(TextField), 'xx');
-      await tester.pump();
+      await type(tester, 'xx');
       expect(find.textContaining('مش قادرين'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), '');
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.textContaining('مش قادرين'), findsNothing);
     });
 
     testWidgets('the current location button fills it in', (tester) async {
-      await tester.pumpWidget(editor(fetch: () async => _home));
+      await tester
+          .pumpWidget(editor(fetch: () async => const PhoneFix(_home, 8)));
       await tester.tap(find.text('استخدم موقعي الحالي'));
       await tester.pumpAndSettle();
 
       expect(latest, _home);
       expect(find.text('30.05611, 31.34167'), findsOneWidget);
+      expect(find.textContaining('دقة الموقع ضعيفة'), findsNothing);
+    });
+
+    testWidgets('a weak GPS fix is kept but warned about', (tester) async {
+      await tester
+          .pumpWidget(editor(fetch: () async => const PhoneFix(_home, 420)));
+      await tester.tap(find.text('استخدم موقعي الحالي'));
+      await tester.pumpAndSettle();
+
+      expect(latest, _home);
+      expect(find.textContaining('دقة الموقع ضعيفة (حوالي 420 متر)'),
+          findsOneWidget);
+    });
+
+    testWidgets('a place outside Egypt is kept but warned about',
+        (tester) async {
+      await tester.pumpWidget(editor(clip: () async => '40.7128, -74.006'));
+      await tester.tap(find.text('لصق رابط من الحافظة'));
+      await tester.pumpAndSettle();
+
+      expect(latest, const MapLocation(40.7128, -74.006));
+      expect(find.textContaining('خارج مصر'), findsOneWidget);
     });
 
     testWidgets('a refused or failed location says why', (tester) async {
@@ -251,23 +327,6 @@ void main() {
 
       expect(latest, isNull);
       expect(find.text('30.05611, 31.34167'), findsNothing);
-    });
-
-    testWidgets('paste from the clipboard reads what is there', (tester) async {
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        (call) async => call.method == 'Clipboard.getData'
-            ? <String, dynamic>{'text': '30.05611, 31.34167'}
-            : null,
-      );
-      addTearDown(() => tester.binding.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, null));
-
-      await tester.pumpWidget(editor());
-      await tester.tap(find.byIcon(Icons.content_paste_rounded));
-      await tester.pumpAndSettle();
-
-      expect(latest, _home);
     });
   });
 

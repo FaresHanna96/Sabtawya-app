@@ -25,6 +25,7 @@ import 'child_location_card.dart';
 import 'contact_cards.dart';
 import 'child_filters.dart';
 import 'child_form_screen.dart';
+import 'location_sheet.dart';
 
 /// Which attendance rows the history section shows.
 enum _PresenceFilter {
@@ -111,6 +112,15 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     if (changed == true) await _reload();
   }
 
+  Future<void> _setLocation(Child child) async {
+    final saved = await showLocationSheet(
+      context,
+      childId: child.id,
+      current: child.location,
+    );
+    if (saved && mounted) await _reload();
+  }
+
   Future<void> _toggleActive(Child child) async {
     if (child.isActive) {
       final confirmed = await Ui.confirm(
@@ -190,7 +200,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 child: ChildLocationCard(
                   location: child.location,
                   address: child.address,
-                  onSet: canEdit ? () => _edit(child) : null,
+                  onSet: canEdit ? () => _setLocation(child) : null,
                 ),
               ),
               if (child.location != null || canEdit) const SizedBox(height: 12),

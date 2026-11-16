@@ -203,6 +203,8 @@ class AppStrings {
   static const childrenCount = 'عدد المخدومين';
   static const servantsCount = 'عدد الخدام';
   static const assignedServants = 'الخدام المعينون';
+  static const servantIsMe = 'أنت';
+  static const servantInactive = 'غير مفعّل';
   static const classDetails = 'تفاصيل الفصل';
   static const selectClass = 'اختر الفصل';
   static const noClasses = 'لا توجد فصول';
@@ -791,8 +793,24 @@ class AppStrings {
       'مش قادرين نقرا الموقع من النص ده. ألصق رابط من خرائط جوجل أو الإحداثيات '
       '(مثال: 30.0561, 31.3416).';
   static const locationShortLink =
-      'الرابط المختصر مش بيتقرأ. افتحه في خرائط جوجل وانسخ الرابط الكامل أو '
-      'الإحداثيات.';
+      'مش قادرين نفتح الرابط المختصر دلوقتي. جرّب تاني بعد شوية، أو انسخ الرابط '
+      'الكامل أو الإحداثيات من خرائط جوجل.';
+  static const locationReadingLink = 'جارٍ قراءة الرابط...';
+  static const locationClipboardEmpty =
+      'مفيش حاجة منسوخة. افتح خرائط جوجل وانسخ رابط المكان الأول.';
+  static const locationPasteButton = 'لصق رابط من الحافظة';
+  static const locationOpenMaps = 'افتح خرائط جوجل';
+  static const locationTypeInstead = 'أو اكتب الرابط أو الإحداثيات';
+  static const locationHowTo =
+      'في خرائط جوجل: اضغط مطولاً على بيت المخدوم ← شارك ← نسخ، وارجع هنا '
+      'واضغط «لصق».';
+  static const locationEdit = 'تعديل الموقع';
+  static const locationSave = 'حفظ الموقع';
+  static const locationSaved = 'تم حفظ الموقع';
+  static String locationWeakFix(int meters) =>
+      'دقة الموقع ضعيفة (حوالي $meters متر). الأفضل تقف بره المبنى وتجرّب تاني.';
+  static const locationOutsideEgypt =
+      'الموقع ده خارج مصر. اتأكد إنه الرابط الصح.';
   static const locationServiceOff =
       'خدمة الموقع مقفولة في التليفون. افتحها وجرّب تاني.';
   static const locationDenied = 'مفيش إذن للوصول لموقعك. وافق عليه وجرّب تاني.';

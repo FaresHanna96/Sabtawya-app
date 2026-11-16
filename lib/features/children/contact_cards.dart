@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/whatsapp.dart';
+import '../../core/widgets/round_action_button.dart';
 import '../../core/widgets/whatsapp_icon.dart';
 
 /// One person to reach: who they are to the child (الأم، الأب، المخدوم) and
@@ -125,7 +126,7 @@ class _ContactRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           if (chat != null) ...[
-            _RoundAction(
+            RoundActionButton(
               tooltip: AppStrings.whatsappTo(person.label),
               color: WhatsAppIcon.green,
               onTap: () => launchUrl(
@@ -142,7 +143,7 @@ class _ContactRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
           ],
-          _RoundAction(
+          RoundActionButton(
             tooltip: '${AppStrings.call}: ${person.label}',
             color: AppColors.success,
             onTap: () =>
@@ -151,47 +152,6 @@ class _ContactRow extends StatelessWidget {
                 size: 24, color: AppColors.success),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A round 48 px button with a tinted fill: big enough for a thumb.
-class _RoundAction extends StatelessWidget {
-  const _RoundAction({
-    required this.tooltip,
-    required this.color,
-    required this.onTap,
-    required this.child,
-  });
-
-  static const double size = 48;
-
-  final String tooltip;
-  final Color color;
-  final VoidCallback onTap;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Semantics(
-        button: true,
-        label: tooltip,
-        child: Material(
-          color: color.withValues(alpha: 0.14),
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: Center(child: child),
-            ),
-          ),
-        ),
       ),
     );
   }

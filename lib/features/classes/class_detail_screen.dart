@@ -24,6 +24,7 @@ import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../children/child_tile.dart';
 import 'class_form_screen.dart';
+import 'class_servants_card.dart';
 import 'patron_avatar.dart';
 
 /// Everything about one class: its counters, its servants, and its children
@@ -439,33 +440,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     );
   }
 
-  Widget _servants(List<ClassServant> servants) {
-    return SectionCard(
-      title: AppStrings.assignedServants,
-      icon: Icons.volunteer_activism_rounded,
-      accent: AppColors.olive,
-      child: servants.isEmpty
-          ? const Text(
-              AppStrings.noServants,
-              style: TextStyle(fontSize: 13, color: AppColors.muted),
-            )
-          : Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: servants
-                  .map(
-                    (servant) => Chip(
-                      avatar: const Icon(Icons.person_outline, size: 16),
-                      label: Text(servant.servantName),
-                      backgroundColor: servant.servantIsActive
-                          ? null
-                          : AppColors.muted.withValues(alpha: 0.12),
-                    ),
-                  )
-                  .toList(),
-            ),
-    );
-  }
+  Widget _servants(List<ClassServant> servants) => ClassServantsCard(
+        servants: servants,
+        currentUserId: context.read<SessionController>().profile?.id,
+      );
 }
 
 enum _ClassAction { edit, archive, delete }

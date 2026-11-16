@@ -106,6 +106,22 @@ class ChildRepository {
     }
   }
 
+  /// Saves (or clears, with null) where the child lives, nothing else.
+  Future<void> setLocation({
+    required String childId,
+    required double? latitude,
+    required double? longitude,
+  }) async {
+    try {
+      await Db.client.from(Db.tChildren).update(<String, dynamic>{
+        'latitude': latitude,
+        'longitude': longitude,
+      }).eq('id', childId);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Points the child at a photo in storage, or clears it with null.
   ///
   /// Kept out of [Child.toWriteMap] so an ordinary edit or an Excel import

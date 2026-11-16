@@ -26,13 +26,21 @@ class LocationFailure implements Exception {
   String toString() => message;
 }
 
+/// Where the phone is, and how sure it is (metres; null when unknown).
+class PhoneFix {
+  const PhoneFix(this.place, [this.accuracy]);
+
+  final MapLocation place;
+  final double? accuracy;
+}
+
 /// Where the phone (or the browser) is right now, once, asking for permission
 /// the first time. Used to save a child's home while standing at their door.
 class LocationService {
   const LocationService._();
 
   /// The current position, or a [LocationFailure] saying what is wrong.
-  static Future<MapLocation> current() async {
+  static Future<PhoneFix> current() async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         throw const LocationFailure(LocationProblem.serviceOff);
@@ -56,7 +64,10 @@ class LocationService {
       if (!MapLocation.isValid(position.latitude, position.longitude)) {
         throw const LocationFailure(LocationProblem.failed);
       }
-      return MapLocation(position.latitude, position.longitude);
+      return PhoneFix(
+        MapLocation(position.latitude, position.longitude),
+        position.accuracy,
+      );
     } on LocationFailure {
       rethrow;
     } on TimeoutException {

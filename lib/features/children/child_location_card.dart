@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/map_location.dart';
+import '../../core/widgets/round_action_button.dart';
 
 /// The child's home on the map, on their page: the address (or the
 /// coordinates) with a button to see it on the map and one for directions.
@@ -64,13 +65,26 @@ class ChildLocationCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  AppStrings.locationTitle,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      AppStrings.locationTitle,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    if (onSet != null)
+                      IconButton(
+                        tooltip: AppStrings.locationEdit,
+                        visualDensity: VisualDensity.compact,
+                        iconSize: 18,
+                        color: AppColors.muted,
+                        onPressed: onSet,
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -87,20 +101,22 @@ class ChildLocationCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _MapAction(
+          RoundActionButton(
             tooltip: AppStrings.locationOpen,
-            icon: Icons.map_rounded,
             color: AppColors.navy,
             onTap: () =>
                 launchUrl(place.viewUri, mode: LaunchMode.externalApplication),
+            child:
+                const Icon(Icons.map_rounded, color: AppColors.navy, size: 24),
           ),
           const SizedBox(width: 10),
-          _MapAction(
+          RoundActionButton(
             tooltip: AppStrings.locationDirections,
-            icon: Icons.directions_rounded,
             color: AppColors.success,
             onTap: () => launchUrl(place.directionsUri,
                 mode: LaunchMode.externalApplication),
+            child: const Icon(Icons.directions_rounded,
+                color: AppColors.success, size: 24),
           ),
         ],
       ),
@@ -146,45 +162,6 @@ class _AddPrompt extends StatelessWidget {
               ),
               Icon(AppIcons.forward, color: AppColors.coral),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A round 48 px button with a tinted fill, as on the contact card.
-class _MapAction extends StatelessWidget {
-  const _MapAction({
-    required this.tooltip,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Semantics(
-        button: true,
-        label: tooltip,
-        child: Material(
-          color: color.withValues(alpha: 0.12),
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: Icon(icon, color: color, size: 24),
-            ),
           ),
         ),
       ),

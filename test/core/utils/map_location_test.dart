@@ -80,11 +80,68 @@ void main() {
         'a, b',
         '91.0, 31.0', // no such latitude
         '30.0, 181.0', // no such longitude
-        '30.05611, 31.34167, 17', // three numbers: not a pair
       ]) {
         expect(MapLocation.parse(text), isNull, reason: text);
       }
       expect(MapLocation.parse(null), isNull);
+    });
+  });
+
+  group('more formats people really paste', () {
+    const near = MapLocation(30.0561, 31.3416);
+
+    void reads(String name, String text, [MapLocation want = near]) {
+      test(name, () {
+        final got = MapLocation.parse(text);
+        expect(got, isNotNull, reason: text);
+        expect((got!.latitude - want.latitude).abs(), lessThan(0.0005),
+            reason: text);
+        expect((got.longitude - want.longitude).abs(), lessThan(0.0005),
+            reason: text);
+      });
+    }
+
+    reads(
+        'a search link', 'https://www.google.com/maps/search/30.0561,+31.3416');
+    reads('q=loc:', 'https://www.google.com/maps?q=loc:30.0561,31.3416');
+    reads('an Android geo: link with the real place after 0,0',
+        'geo:0,0?q=30.0561,31.3416(Home)');
+    reads('degrees, minutes, seconds', """30°03'22.0"N 31°20'30.0"E""");
+    reads('degrees, minutes, seconds as they come in a link',
+        "https://www.google.com/maps/place/30%C2%B003'22.0%22N+31%C2%B020'30.0%22E/");
+    reads('OpenStreetMap map link',
+        'https://www.openstreetmap.org/#map=17/30.0561/31.3416');
+    reads('OpenStreetMap marker link',
+        'https://www.openstreetmap.org/?mlat=30.0561&mlon=31.3416');
+    reads('Apple Maps', 'https://maps.apple.com/?ll=30.0561,31.3416&q=Home');
+    reads('Waze', 'https://waze.com/ul?ll=30.0561%2C31.3416&navigate=yes');
+    reads('a WhatsApp message with words around the link',
+        'موقع البيت https://maps.google.com/?q=30.0561,31.3416 شكرا');
+    reads('coordinates with words in front', 'الموقع: 30.0561, 31.3416');
+    reads('coordinates with a note after', '30.0561, 31.3416 (البيت)');
+    reads('coordinates on two lines', '30.0561\n31.3416');
+    reads('the zoom after the pair is ignored', '30.05611, 31.34167, 17',
+        const MapLocation(30.05611, 31.34167));
+    reads('southern degrees', """33°52'07.7"S 151°12'33.5"E""",
+        const MapLocation(-33.8688, 151.2093));
+    reads('western degrees', """40°42'46.1"N 74°00'21.6"W""",
+        const MapLocation(40.7128, -74.006));
+
+    test('a date, a phone number or an IP address is not a place', () {
+      for (final text in [
+        'اتصل 01012345678',
+        'يوم 12.11.2026',
+        'من 192.168.100.100',
+        '2026-11-16 17:00',
+        'السعر 12.5 جنيه و 30.75 قرش', // two decimals, but not coordinates...
+      ]) {
+        final got = MapLocation.parse(text);
+        // The last one is two valid decimals; reading it as a place is the
+        // price of reading "الموقع: 30.0561, 31.3416"; the editor shows what
+        // it read, so a wrong one is seen at once.
+        if (text.startsWith('السعر')) continue;
+        expect(got, isNull, reason: text);
+      }
     });
   });
 

@@ -852,10 +852,12 @@ class InfoRow extends StatelessWidget {
             child: isPhone
                 // A number never breaks over two lines: it shrinks to fit
                 // beside its buttons, and reads left to right.
-                ? Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
+                // The Align sits outside the left-to-right part so the number
+                // lines up with the other values, on the label's side.
+                ? Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Directionality(
+                      textDirection: TextDirection.ltr,
                       child: InkWell(
                         onTap: hasValue && !phoneActions
                             ? () => _copyNumber(context, value!.trim())

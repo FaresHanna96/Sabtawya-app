@@ -1,46 +1,84 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/map_link_resolver.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/map_location.dart';
 
-/// Sets a child's home on the map, in the child's form: paste a Google Maps
-/// link or the coordinates (read as they are typed), or take the phone's
-/// current position (standing at the door on a home visit). It shows what was
-/// understood, and lets the place be looked at on the map or cleared.
+/// Sets a child's home on the map. Two big buttons do the common things: use
+/// where the phone is now (standing at the door on a home visit), or paste a
+/// Google Maps link from the clipboard (shortened links are opened for you).
+/// Typing a link or coordinates is there too, read once the typing pauses. It
+/// shows what was understood, warns when the place looks wrong, and lets the
+/// place be looked at on the map or cleared.
 class LocationEditor extends StatefulWidget {
   const LocationEditor({
     super.key,
     required this.value,
     required this.onChanged,
     this.fetchCurrent,
+    this.resolveLink,
+    this.readClipboard,
+    this.typingPause = const Duration(milliseconds: 700),
   });
 
   final MapLocation? value;
   final ValueChanged<MapLocation?> onChanged;
 
   /// Where the phone is. Defaults to the real one; tests give their own.
-  final Future<MapLocation> Function()? fetchCurrent;
+  final Future<PhoneFix> Function()? fetchCurrent;
+
+  /// Opens a shortened link. Defaults to the server function.
+  final Future<MapLocation?> Function(String text)? resolveLink;
+
+  /// What is on the clipboard. Defaults to the real one.
+  final Future<String?> Function()? readClipboard;
+
+  /// How long typing must pause before it is read.
+  final Duration typingPause;
 
   @override
   State<LocationEditor> createState() => _LocationEditorState();
 }
 
 class _LocationEditorState extends State<LocationEditor> {
-  final _paste = TextEditingController();
+  final _typed = TextEditingController();
+  Timer? _pause;
   String? _problem;
+  String? _warning;
   bool _busy = false;
+  bool _reading = false;
+  bool _typing = false;
 
   @override
   void dispose() {
-    _paste.dispose();
+    _pause?.cancel();
+    _typed.dispose();
     super.dispose();
   }
 
-  void _read(String text) {
+  /// Takes [place] as the answer, with a warning when it looks off.
+  void _accept(MapLocation place, {double? accuracy}) {
+    String? warning;
+    if (accuracy != null && accuracy > 150) {
+      warning = AppStrings.locationWeakFix(accuracy.round());
+    } else if (!place.isInEgypt) {
+      warning = AppStrings.locationOutsideEgypt;
+    }
+    setState(() {
+      _problem = null;
+      _warning = warning;
+    });
+    widget.onChanged(place);
+  }
+
+  /// Reads [text]: a link or coordinates, or a shortened link opened first.
+  Future<void> _read(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
       setState(() => _problem = null);
@@ -48,23 +86,51 @@ class _LocationEditorState extends State<LocationEditor> {
     }
     final place = MapLocation.parse(trimmed);
     if (place != null) {
-      setState(() => _problem = null);
-      widget.onChanged(place);
+      _accept(place);
       return;
     }
-    setState(() {
-      _problem = MapLocation.isShortLink(trimmed)
-          ? AppStrings.locationShortLink
-          : AppStrings.locationNotRecognised;
-    });
+    if (MapLocation.isShortLink(trimmed)) {
+      setState(() {
+        _reading = true;
+        _problem = null;
+      });
+      final opened =
+          await (widget.resolveLink ?? MapLinkResolver.resolve)(trimmed);
+      if (!mounted) return;
+      setState(() => _reading = false);
+      if (opened != null) {
+        _accept(opened);
+      } else {
+        setState(() => _problem = AppStrings.locationShortLink);
+      }
+      return;
+    }
+    setState(() => _problem = AppStrings.locationNotRecognised);
+  }
+
+  void _onTyped(String text) {
+    _pause?.cancel();
+    setState(() => _problem = null);
+    // Wait for the typing to pause: "30.0" on the way to "30.0561" is not a
+    // place yet.
+    _pause = Timer(widget.typingPause, () => _read(text));
   }
 
   Future<void> _fromClipboard() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text ?? '';
-    if (text.trim().isEmpty) return;
-    _paste.text = text.trim();
-    _read(text);
+    String? text;
+    try {
+      text = widget.readClipboard != null
+          ? await widget.readClipboard!()
+          : (await Clipboard.getData(Clipboard.kTextPlain))?.text;
+    } catch (_) {}
+    if (!mounted) return;
+    if (text == null || text.trim().isEmpty) {
+      setState(() => _problem = AppStrings.locationClipboardEmpty);
+      return;
+    }
+    _pause?.cancel();
+    _typed.text = text.trim();
+    await _read(text);
   }
 
   Future<void> _useCurrent() async {
@@ -73,10 +139,10 @@ class _LocationEditorState extends State<LocationEditor> {
       _problem = null;
     });
     try {
-      final place = await (widget.fetchCurrent ?? LocationService.current)();
+      final fix = await (widget.fetchCurrent ?? LocationService.current)();
       if (!mounted) return;
-      _paste.clear();
-      widget.onChanged(place);
+      _typed.clear();
+      _accept(fix.place, accuracy: fix.accuracy);
     } on LocationFailure catch (e) {
       if (mounted) setState(() => _problem = e.message);
     } catch (_) {
@@ -87,14 +153,19 @@ class _LocationEditorState extends State<LocationEditor> {
   }
 
   void _clear() {
-    _paste.clear();
-    setState(() => _problem = null);
+    _pause?.cancel();
+    _typed.clear();
+    setState(() {
+      _problem = null;
+      _warning = null;
+    });
     widget.onChanged(null);
   }
 
   @override
   Widget build(BuildContext context) {
     final place = widget.value;
+    final working = _busy || _reading;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -141,11 +212,14 @@ class _LocationEditorState extends State<LocationEditor> {
                   Expanded(
                     child: Directionality(
                       textDirection: TextDirection.ltr,
-                      child: Text(
-                        place.label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.success,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          place.label,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.success,
+                          ),
                         ),
                       ),
                     ),
@@ -158,29 +232,13 @@ class _LocationEditorState extends State<LocationEditor> {
                 ],
               ),
             ),
+            if (_warning != null) _Note(_warning!, AppColors.warning),
           ],
-          const SizedBox(height: 10),
-          TextField(
-            controller: _paste,
-            onChanged: _read,
-            keyboardType: TextInputType.url,
-            textDirection: TextDirection.ltr,
-            decoration: InputDecoration(
-              labelText: AppStrings.locationPasteLabel,
-              hintText: 'https://maps.google.com/…  /  30.0561, 31.3416',
-              errorText: _problem,
-              errorMaxLines: 3,
-              prefixIcon: const Icon(Icons.link_rounded),
-              suffixIcon: IconButton(
-                tooltip: AppStrings.locationPasteFromClipboard,
-                icon: const Icon(Icons.content_paste_rounded),
-                onPressed: _fromClipboard,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          FilledButton.tonalIcon(
-            onPressed: _busy ? null : _useCurrent,
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: working ? null : _useCurrent,
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
             icon: _busy
                 ? const SizedBox(
                     width: 18,
@@ -194,8 +252,71 @@ class _LocationEditorState extends State<LocationEditor> {
                   : AppStrings.locationUseCurrent,
             ),
           ),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            onPressed: working ? null : _fromClipboard,
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            icon: _reading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.content_paste_rounded),
+            label: Text(
+              _reading
+                  ? AppStrings.locationReadingLink
+                  : AppStrings.locationPasteButton,
+            ),
+          ),
+          if (place == null && !_typing)
+            const _Note(AppStrings.locationHowTo, AppColors.muted),
+          if (_problem != null) _Note(_problem!, AppColors.danger),
+          const SizedBox(height: 4),
+          if (!_typing && _typed.text.isEmpty)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                onPressed: () => setState(() => _typing = true),
+                child: const Text(AppStrings.locationTypeInstead),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: TextField(
+                controller: _typed,
+                onChanged: _onTyped,
+                onSubmitted: _read,
+                autofocus: _typing && _typed.text.isEmpty,
+                keyboardType: TextInputType.text,
+                textDirection: TextDirection.ltr,
+                decoration: const InputDecoration(
+                  labelText: AppStrings.locationPasteLabel,
+                  hintText: 'https://maps.app.goo.gl/…  /  30.0561, 31.3416',
+                  prefixIcon: Icon(Icons.link_rounded),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
+}
+
+class _Note extends StatelessWidget {
+  const _Note(this.text, this.color);
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          text,
+          style: TextStyle(fontSize: 12.5, color: color, height: 1.4),
+        ),
+      );
 }

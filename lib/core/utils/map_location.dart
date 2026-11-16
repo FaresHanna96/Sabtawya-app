@@ -9,6 +9,13 @@ class MapLocation {
   static bool isValid(double lat, double lng) =>
       lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 
+  /// Roughly inside Egypt; a place outside is probably a wrong paste.
+  bool get isInEgypt =>
+      latitude >= 21.5 &&
+      latitude <= 32.0 &&
+      longitude >= 24.5 &&
+      longitude <= 37.0;
+
   /// Google Maps showing the place.
   Uri get viewUri => Uri.https('www.google.com', '/maps/search/', {
         'api': '1',
@@ -25,10 +32,12 @@ class MapLocation {
   String get label =>
       '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
 
-  /// What a person pastes from Google Maps: a place link, a "share" link with
-  /// the coordinates in it, a `geo:` link, or just the two numbers. Null when
-  /// no coordinates can be found in it (a shortened `maps.app.goo.gl` link
-  /// hides them: see [isShortLink]).
+  /// What a person pastes: a Google Maps place or share link, a link from
+  /// WhatsApp's location message, Apple Maps, Waze or OpenStreetMap, a `geo:`
+  /// link, degrees-minutes-seconds (30°03'22"N 31°20'30"E), or just the two
+  /// numbers, with words around them or not. Null when no coordinates can be
+  /// found in it (a shortened `maps.app.goo.gl` link hides them: see
+  /// [isShortLink]).
   static MapLocation? parse(String? input) {
     if (input == null) return null;
     final text = _latin(input.trim());
@@ -40,8 +49,18 @@ class MapLocation {
       RegExp('!3d$n!4d$n'),
       // .../@30.05,31.34,17z (where the map is centred)
       RegExp('@$n,$n'),
-      // ?q=30.05,31.34   &ll=...   &query=...   &destination=...   &center=...
-      RegExp('[?&](?:q|ll|query|destination|center|daddr)=$n(?:,|%2C|\\+)$n'),
+      // ?q=30.05,31.34   ?q=loc:30.05,31.34   &ll=...   &query=...
+      // &destination=...   &center=...   &daddr=...
+      RegExp(
+        '[?&](?:q|ll|sll|query|destination|center|daddr)='
+        '(?:loc(?::|%3A))?$n(?:,|%2C|\\+)$n',
+        caseSensitive: false,
+      ),
+      // OpenStreetMap: ?mlat=30.05&mlon=31.34   #map=17/30.05/31.34
+      RegExp('[?&]mlat=$n&(?:amp;)?mlon=$n'),
+      RegExp('#map=\\d+/$n/$n'),
+      // .../maps/search/30.05,+31.34
+      RegExp('/(?:search|place|dir)/$n,(?:\\+|%20|\\s)*$n'),
       // geo:30.05,31.34
       RegExp('^geo:$n,$n'),
       // 30.05, 31.34   30.05 31.34   30.05،31.34
@@ -56,7 +75,41 @@ class MapLocation {
         return MapLocation(lat, lng);
       }
     }
+
+    final dms = _parseDms(text);
+    if (dms != null) return dms;
+
+    // Two decimal numbers among other words ("الموقع: 30.0561, 31.3416").
+    // Decimals only, so a date or a phone number is never taken for a place.
+    final loose =
+        RegExp(r'(-?\d{1,3}\.\d{3,})\s*[,،;\s]\s*(-?\d{1,3}\.\d{3,})');
+    for (final m in loose.allMatches(text)) {
+      final lat = double.tryParse(m.group(1)!);
+      final lng = double.tryParse(m.group(2)!);
+      if (lat != null && lng != null && isValid(lat, lng)) {
+        return MapLocation(lat, lng);
+      }
+    }
     return null;
+  }
+
+  /// 30°03'22.0"N 31°20'30.0"E, also as it comes in a link (%C2%B0, %22, +).
+  static MapLocation? _parseDms(String raw) {
+    var text = raw;
+    try {
+      text = Uri.decodeComponent(raw.replaceAll('+', ' '));
+    } catch (_) {}
+    final m = RegExp(
+      r'''(\d{1,3})\s*[°º]\s*(\d{1,2})\s*['′’]\s*(\d{1,2}(?:\.\d+)?)\s*(?:"|″|”|'')?\s*([NSns])[\s,،;]*(\d{1,3})\s*[°º]\s*(\d{1,2})\s*['′’]\s*(\d{1,2}(?:\.\d+)?)\s*(?:"|″|”|'')?\s*([EWew])''',
+    ).firstMatch(text);
+    if (m == null) return null;
+    double degrees(String d, String min, String sec) =>
+        double.parse(d) + double.parse(min) / 60 + double.parse(sec) / 3600;
+    final lat = degrees(m.group(1)!, m.group(2)!, m.group(3)!) *
+        (m.group(4)!.toUpperCase() == 'S' ? -1 : 1);
+    final lng = degrees(m.group(5)!, m.group(6)!, m.group(7)!) *
+        (m.group(8)!.toUpperCase() == 'W' ? -1 : 1);
+    return isValid(lat, lng) ? MapLocation(lat, lng) : null;
   }
 
   /// A shortened Google Maps link: it cannot be read without opening it, so
