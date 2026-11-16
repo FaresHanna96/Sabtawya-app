@@ -12,6 +12,7 @@ import '../children/absence_followup_screen.dart';
 import '../children/birthday_screen.dart';
 import '../children/missing_info_screen.dart';
 import '../children/committed_children_screen.dart';
+import '../children/contacts_export_screen.dart';
 import '../activity_log/activity_log_screen.dart';
 import '../attendance/attendance_years_screen.dart';
 import '../excel/export_screen.dart';
@@ -208,6 +209,12 @@ class MoreScreen extends StatelessWidget {
                       screen: const ServantDirectoryScreen(),
                       color: AppColors.olive,
                     ),
+                  _Entry(
+                    icon: Icons.contacts_rounded,
+                    title: AppStrings.contactsExportTitle,
+                    screen: const ContactsExportScreen(),
+                    color: AppColors.coral,
+                  ),
                   _Entry(
                     icon: Icons.menu_book_outlined,
                     title: AppStrings.lessonSchedule,

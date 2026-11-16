@@ -9,6 +9,7 @@ import '../../core/services/sync_service.dart';
 import '../../core/services/update_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
 import '../children/children_screen.dart';
@@ -52,6 +53,8 @@ class _HomeShellState extends State<HomeShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkUpdate();
+    // Keeps the "caller name" list current (a no-op while the feature is off).
+    CallerIdService.refresh();
   }
 
   void _checkUpdate() {

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -65,6 +66,30 @@ class FileService {
           // No caption or subject: iPhone WhatsApp failed to send a file that
           // came with text ("Couldn't send message"); the file name already
           // says what it is.
+        ),
+      );
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Hands a contacts file (`.vcf`) to the share sheet; the phone then offers
+  /// to add every card in it to its contacts.
+  static Future<void> saveAndShareVCard({
+    required String fileName,
+    required String text,
+  }) async {
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: <XFile>[
+            XFile.fromData(
+              Uint8List.fromList(utf8.encode(text)),
+              name: fileName,
+              mimeType: 'text/vcard',
+            ),
+          ],
+          fileNameOverrides: <String>[fileName],
         ),
       );
     } catch (e) {

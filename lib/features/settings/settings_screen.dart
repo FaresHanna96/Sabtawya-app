@@ -11,6 +11,7 @@ import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import '../auth/change_password_screen.dart';
 import '../profile/my_profile_screen.dart';
+import 'caller_id_tile.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -126,6 +127,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            const CallerIdTile(),
             SectionCard(
               title: AppStrings.about,
               icon: Icons.info_rounded,

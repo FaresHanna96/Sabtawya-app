@@ -12,6 +12,11 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
     <uses-permission android:name="android.permission.INSTALL_PACKAGES" tools:node="remove"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Caller name: when the servant switches it on, a call from a saved
+         family shows who it is. READ_CALL_LOG is what Android requires to
+         hand an app the caller's number (9 and later). -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.READ_CALL_LOG"/>
     <!-- Launcher icon badge (unread count) on Samsung, Huawei, Sony, HTC. -->
     <uses-permission android:name="com.sec.android.provider.badge.permission.READ"/>
     <uses-permission android:name="com.sec.android.provider.badge.permission.WRITE"/>
@@ -64,6 +69,13 @@
         <meta-data
             android:name="firebase_messaging_installation_id_enabled"
             android:value="true" />
+        <receiver
+            android:name=".CallReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE"/>
+            </intent-filter>
+        </receiver>
         <!-- In-app update: hands the downloaded APK to the installer. -->
         <provider
             android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"

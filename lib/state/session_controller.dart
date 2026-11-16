@@ -14,6 +14,7 @@ import '../data/models/school_class.dart';
 import '../data/repositories/attendance_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/class_repository.dart';
+import '../data/services/caller_id_service.dart';
 
 enum SessionStatus {
   /// Resolving the stored session and loading the profile.
@@ -247,6 +248,8 @@ class SessionController extends ChangeNotifier {
 
   Future<void> signOut() {
     setAppBadge(0); // the next person to sign in must not see this count
+    // ...nor be told who the previous servant's families are.
+    CallerIdService.disable();
     return _auth.signOut();
   }
 

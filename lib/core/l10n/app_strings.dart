@@ -564,6 +564,31 @@ class AppStrings {
   static const searchServantHint = 'ابحث باسم الخادم';
   static const servantDirectory = 'الخدام';
   static const noServantMobile = 'لا يوجد رقم';
+  static const callerIdTitle = 'اسم المتصل';
+  static const callerIdSwitch = 'إظهار اسم المتصل من المخدومين';
+  static const callerIdBody =
+      'لما حد من أهالي مخدومينك يتصل بيك، يظهر اسمه وفصله حتى لو رقمه مش '
+      'محفوظ عندك. الأرقام بتتحفظ على موبايلك بس وتتمسح لما تقفل الخاصية '
+      'أو تسجل خروج. في بعض الموبايلات لازم تسمح للتطبيق يشتغل في الخلفية، '
+      'وعلى الآيفون فعّل «سبتاوية» من الإعدادات > الهاتف > حظر المكالمات '
+      'والتعرّف على المتصل.';
+  static const callerIdDenied =
+      'لم يتم السماح. فعّل الإذن من إعدادات التطبيق ثم حاول مرة أخرى';
+  static const contactsExportTitle = 'جهات اتصال المخدومين';
+  static const contactsExportBody =
+      'حمّل ملفاً بأرقام الأمهات والآباء والمخدومين، وافتحه على موبايلك '
+      'ليحفظها في جهات الاتصال. بعدها يظهر اسم المتصل (مثل «أم مينا جورج – '
+      'فصل 5 بنات») حتى لو الرقم لم يكن محفوظاً عندك.';
+  static const contactsExportWho = 'مين يتحفظ؟';
+  static const contactsMothers = 'الأمهات';
+  static const contactsFathers = 'الآباء';
+  static const contactsChildren = 'المخدومين';
+  static String contactsCount(int n) => '$n جهة اتصال';
+  static const contactsNone = 'لا توجد أرقام لحفظها';
+  static const contactsDownload = 'تحميل ملف جهات الاتصال';
+  static const contactsFileName = 'جهات اتصال المخدومين';
+  static const contactsPrivacy =
+      'ستُحفظ هذه الأرقام في جهات اتصال موبايلك. استخدمها لخدمتك فقط.';
   static const callChild = 'المخدوم';
   static const callMother = 'الأم';
   static const callFather = 'الأب';
