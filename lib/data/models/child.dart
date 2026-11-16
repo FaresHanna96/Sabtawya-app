@@ -372,9 +372,13 @@ class ChildChange {
     required this.action,
     required this.entity,
     this.actorName,
+    this.changed = const <String>[],
   });
 
   final DateTime createdAt;
+
+  /// Column names an edit touched (only entries made since 1.0.31 have them).
+  final List<String> changed;
 
   /// 'insert' or 'update'.
   final String action;
@@ -390,5 +394,8 @@ class ChildChange {
         action: asText(map['action']),
         entity: asText(map['entity']),
         actorName: asTextOrNull(map['actor_name']),
+        changed: map['changed'] is List
+            ? (map['changed'] as List).map((e) => '$e').toList()
+            : const <String>[],
       );
 }

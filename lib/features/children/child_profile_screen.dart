@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/child_changes.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
@@ -828,9 +829,13 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  /// Who added or edited the child and who recorded their attendance. Only
-  /// shown when there is something; the list is capped by the database.
+  bool _showAllChanges = false;
+
+  /// Who added or edited the child and who recorded their attendance. Same-day
+  /// entries by the same person are one line; the latest five show first.
   Widget _changeHistoryCard(List<ChildChange> changes) {
+    final groups = groupChanges(changes);
+    final shown = _showAllChanges ? groups : groups.take(5).toList();
     return SectionCard(
       title: AppStrings.changeHistory,
       icon: Icons.history_rounded,
@@ -838,24 +843,29 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       collapsible: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [for (final c in changes) _changeRow(c)],
+        children: [
+          for (final g in shown) _changeRow(g),
+          if (groups.length > 5)
+            TextButton(
+              onPressed: () =>
+                  setState(() => _showAllChanges = !_showAllChanges),
+              child: Text(_showAllChanges
+                  ? AppStrings.showLess
+                  : AppStrings.showAllCount(groups.length)),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _changeRow(ChildChange c) {
-    final what = c.isAttendance
-        ? AppStrings.changeAttendance
-        : (c.action == 'insert'
-            ? AppStrings.changeAdded
-            : AppStrings.changeEdited);
+  Widget _changeRow(ChildChangeGroup g) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            c.isAttendance ? Icons.fact_check_outlined : Icons.edit_outlined,
+            g.isAttendance ? Icons.fact_check_outlined : Icons.edit_outlined,
             size: 18,
             color: AppColors.navy,
           ),
@@ -864,21 +874,23 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(what, style: const TextStyle(fontSize: 13)),
-                if (c.actorName != null && c.actorName!.isNotEmpty)
-                  Text(
-                    AppStrings.visitBy(c.actorName!),
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.navy,
-                        fontWeight: FontWeight.w600),
+                Text(g.title, style: const TextStyle(fontSize: 13)),
+                Text(
+                  AppStrings.visitBy(g.by),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: g.actorName == null ? AppColors.muted : AppColors.navy,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Text(
-            '${AppDateUtils.formatDate(c.createdAt)} • ${AppDateUtils.sinceLabel(c.createdAt)}',
-            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            '${AppDateUtils.formatDate(g.latest)}\n${AppDateUtils.sinceLabel(g.latest)}',
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontSize: 11, color: AppColors.muted),
           ),
         ],
       ),

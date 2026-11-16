@@ -415,6 +415,7 @@ class AppStrings {
   static const updateNow = 'تحديث الآن';
   static String visitBy(String name) => 'بواسطة $name';
   static const changeHistory = 'سجل التغييرات';
+  static String showAllCount(int n) => 'عرض الكل ($n)';
   static const noChangeHistory = 'لا توجد تغييرات مسجلة';
   static const changeAdded = 'إضافة المخدوم';
   static const changeEdited = 'تعديل بيانات المخدوم';

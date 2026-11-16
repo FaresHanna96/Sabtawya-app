@@ -525,6 +525,18 @@ class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
   @override
   AppUpdate get update => widget.update;
 
+  /// Nobody has to find a button or a web page: the download starts by itself
+  /// and Android then asks only for the usual "install" tap.
+  @override
+  void initState() {
+    super.initState();
+    if (widget.update.canInstallInApp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _start();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = _progress;

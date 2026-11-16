@@ -1,5 +1,8 @@
 # Build and deploy sabtawya web app
 # Run from project root: .\build_web.ps1
+# -Force: every phone below this build must update before it can be used.
+param([switch]$Force)
+
 
 $url = "https://fxclufgfkvfrhdleyndf.supabase.co"
 $key = "sb_publishable_5j2lzDrUoKL3RUlJTIBoag_fU8ClIuT"

@@ -3,5 +3,5 @@
 ///
 /// Must match `version:` in pubspec.yaml (`kAppVersion+kAppBuild`); a test
 /// checks it. Raise both for every release that ships an APK.
-const String kAppVersion = '1.0.30';
-const int kAppBuild = 31;
+const String kAppVersion = '1.0.31';
+const int kAppBuild = 32;
