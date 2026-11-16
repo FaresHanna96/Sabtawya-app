@@ -291,6 +291,39 @@ class ReportRepository {
     }
   }
 
+  /// One page of the activity log, newest first, narrowed by who did it, the
+  /// kind of record, the child it is about and the start of the period.
+  Future<List<ActivityLogEntry>> activityPage({
+    int offset = 0,
+    int limit = 50,
+    String? actorId,
+    String? entity,
+    String? childId,
+    DateTime? from,
+  }) async {
+    try {
+      var query = Db.client.from(Db.tActivityLog).select();
+      if (actorId != null) query = query.eq('actor_id', actorId);
+      if (entity != null) query = query.eq('entity', entity);
+      // A child's own entries carry its id as the row; attendance entries
+      // (from the day the log started naming children) carry it in the details.
+      if (childId != null) {
+        query =
+            query.or('entity_id.eq.$childId,details->>child_id.eq.$childId');
+      }
+      if (from != null) {
+        query = query.gte('created_at', from.toUtc().toIso8601String());
+      }
+      final data = await query
+          .order('created_at', ascending: false)
+          .order('id', ascending: false)
+          .range(offset, offset + limit - 1);
+      return rows(data).map(ActivityLogEntry.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<List<ActivityLogEntry>> recentActivity({int limit = 15}) async {
     try {
       final data = await Db.client

@@ -1,5 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/celebration.dart';
@@ -17,6 +21,8 @@ import '../../core/widgets/skeleton.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/servant_repository.dart';
+import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import '../children/child_filters.dart';
 
@@ -70,6 +76,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _saving = false;
   String? _error;
 
+  // ── live updates ──────────────────────────────────────────────────────────
+  RealtimeChannel? _channel;
+
+  /// The Saturdays the open channel listens to.
+  Set<String> _watching = const <String>{};
+
+  /// Who saved, by id, for the line that says who changed a mark.
+  Map<String, String> _servantNames = const <String, String>{};
+
+  /// Children whose line was just changed by somebody else (highlighted for a
+  /// moment).
+  final Set<String> _flashed = <String>{};
+  Timer? _flashTimer;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +105,144 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             : {_classes.first.classId};
     _date = widget.initialDate;
     _load();
+  }
+
+  @override
+  void dispose() {
+    _flashTimer?.cancel();
+    final channel = _channel;
+    if (channel != null) Db.client.removeChannel(channel);
+    super.dispose();
+  }
+
+  // ── live updates ──────────────────────────────────────────────────────────
+
+  /// Listens to the Saturdays on screen, so a co-servant's save shows up here
+  /// at once. Resubscribes only when the Saturdays on screen change.
+  void _watch() {
+    final ids = {for (final sheet in _sheets) sheet.session.id};
+    if (setEquals(ids, _watching) && _channel != null) return;
+    final old = _channel;
+    if (old != null) Db.client.removeChannel(old);
+    _channel = null;
+    _watching = ids;
+    if (ids.isEmpty) return;
+
+    var seenFirst = false;
+    _channel = Db.client
+        .channel('attendance-${DateTime.now().microsecondsSinceEpoch}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'attendance_records',
+          filter: PostgresChangeFilter(
+            type: ids.length == 1
+                ? PostgresChangeFilterType.eq
+                : PostgresChangeFilterType.inFilter,
+            column: 'session_id',
+            value: ids.length == 1 ? ids.first : ids.toList(),
+          ),
+          callback: _onRemote,
+        )
+        .subscribe((status, [error]) {
+      if (status != RealtimeSubscribeStatus.subscribed) return;
+      // Connected again after a drop: whatever was saved meanwhile is fetched.
+      if (seenFirst) unawaited(_catchUp());
+      seenFirst = true;
+    });
+    unawaited(_loadServantNames());
+  }
+
+  Future<void> _loadServantNames() async {
+    try {
+      final people = await const ServantRepository().servants();
+      if (!mounted) return;
+      _servantNames = {for (final p in people) p.id: p.fullName};
+    } catch (_) {
+      // Without names the line just does not say who.
+    }
+  }
+
+  void _onRemote(PostgresChangePayload payload) {
+    if (!mounted || payload.eventType == PostgresChangeEvent.delete) return;
+    final r = payload.newRecord;
+    final by = r['updated_by'] as String?;
+    _mergeRemote(
+      sessionId: '${r['session_id']}',
+      childId: '${r['child_id']}',
+      sundaySchool: r['sunday_school'] == true,
+      vespers: r['vespers'] == true,
+      mass: r['mass'] == true,
+      confession: r['confession'] == true,
+      updatedAt: DateTime.tryParse('${r['updated_at']}')?.toLocal(),
+      updatedByName: by == null ? null : _servantNames[by],
+      mine: by != null && by == Db.userId,
+    );
+  }
+
+  /// Fetches what the Saturdays on screen hold now and merges it, after the
+  /// live connection was lost for a while.
+  Future<void> _catchUp() async {
+    try {
+      for (final sheet in List.of(_sheets)) {
+        final records = await _repository.recordsForSession(sheet.session.id);
+        if (!mounted) return;
+        for (final r in records) {
+          _mergeRemote(
+            sessionId: sheet.session.id,
+            childId: r.childId,
+            sundaySchool: r.sundaySchool,
+            vespers: r.vespers,
+            mass: r.mass,
+            confession: r.confession,
+            updatedAt: r.updatedAt,
+            updatedByName: r.updatedByName,
+            mine: false,
+          );
+        }
+      }
+    } catch (_) {
+      // Still offline or refused: the next reconnect tries again.
+    }
+  }
+
+  void _mergeRemote({
+    required String sessionId,
+    required String childId,
+    required bool sundaySchool,
+    required bool vespers,
+    required bool mass,
+    required bool confession,
+    required DateTime? updatedAt,
+    required String? updatedByName,
+    required bool mine,
+  }) {
+    final i = [
+      for (var k = 0; k < _entries.length; k++)
+        if (_entrySheet[k].session.id == sessionId &&
+            _entries[k].child.id == childId)
+          k,
+    ];
+    if (i.isEmpty || i.first >= _original.length) return;
+    final at = i.first;
+    final changed = _entries[at].mergeRemote(
+      _original[at],
+      sundaySchool: sundaySchool,
+      vespers: vespers,
+      mass: mass,
+      confession: confession,
+      updatedAt: updatedAt,
+      updatedByName: updatedByName,
+    );
+    if (!changed) return;
+    setState(() {
+      if (!mine) _flashed.add(childId);
+    });
+    if (mine) return;
+    _flashTimer?.cancel();
+    _flashTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(_flashed.clear);
+    });
   }
 
   bool get _hasChanges {
@@ -172,6 +330,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _original = _entries.map((entry) => entry.clone()).toList();
         _loading = false;
       });
+      _watch();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -477,6 +636,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             i,
             AttendanceEntryCard(
               entry: _entries[i],
+              highlight: _flashed.contains(_entries[i].child.id),
               enabled: _canEditSheet(_entrySheet[i]),
               onToggle: (activity) => _toggle(_entries[i], activity),
             ),
@@ -873,10 +1033,14 @@ class AttendanceEntryCard extends StatelessWidget {
     required this.entry,
     required this.enabled,
     required this.onToggle,
+    this.highlight = false,
   });
 
   final AttendanceEntry entry;
   final bool enabled;
+
+  /// Somebody else just changed this line.
+  final bool highlight;
   final ValueChanged<AttendanceActivity> onToggle;
 
   Color get _accentColor {
@@ -893,6 +1057,7 @@ class AttendanceEntryCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
+      color: highlight ? AppColors.skyTint : null,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,

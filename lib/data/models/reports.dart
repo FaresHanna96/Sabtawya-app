@@ -315,6 +315,7 @@ class ActivityLogEntry {
     required this.entity,
     required this.createdAt,
     this.actorName,
+    this.entityId,
     this.details = const <String, dynamic>{},
   });
 
@@ -323,6 +324,9 @@ class ActivityLogEntry {
   final String entity;
   final DateTime createdAt;
   final String? actorName;
+
+  /// The id of the row it is about (a child's id for a `children` entry).
+  final String? entityId;
   final Map<String, dynamic> details;
 
   factory ActivityLogEntry.fromMap(Map<String, dynamic> map) =>
@@ -332,11 +336,12 @@ class ActivityLogEntry {
         entity: asText(map['entity']),
         createdAt: asDate(map['created_at']),
         actorName: asTextOrNull(map['actor_name']),
+        entityId: asTextOrNull(map['entity_id']),
         details: (map['details'] as Map?)?.cast<String, dynamic>() ??
             const <String, dynamic>{},
       );
 
-  /// Arabic phrasing for the admin dashboard activity feed.
+  /// Arabic phrasing for the activity feeds: who did what, to whom.
   String get description {
     final who = actorName ?? 'مستخدم';
     final verb = switch (action) {
@@ -345,13 +350,44 @@ class ActivityLogEntry {
       'delete' => 'حذف',
       _ => 'غيّر',
     };
+    String named(String? name) =>
+        (name == null || name.trim().isEmpty) ? '' : ' ${name.trim()}';
     final what = switch (entity) {
-      'children' => 'بيانات المخدوم ${details['name'] ?? ''}'.trim(),
-      'attendance_records' => 'سجل حضور',
-      'class_servants' => 'تعيين خادم',
+      'children' => 'بيانات المخدوم${named(details['name'] as String?)}',
+      // Entries from before the child was recorded say only "attendance".
+      'attendance_records' => details['child_name'] == null
+          ? 'سجل حضور'
+          : 'حضور${named(details['child_name'] as String?)}',
+      'class_servants' => details['servant_name'] == null
+          ? 'تعيين خادم'
+          : 'تعيين الخادم${named(details['servant_name'] as String?)}',
       _ => entity,
     };
     return '$who $verb $what';
+  }
+
+  /// A second line for the full log: the marks of an attendance entry.
+  String? get extra {
+    if (entity != 'attendance_records') return null;
+    final marks = <String>[
+      if (details['sunday_school'] == true) 'مدارس الأحد',
+      if (details['vespers'] == true) 'عشية',
+      if (details['mass'] == true) 'قداس',
+      if (details['confession'] == true) 'اعتراف',
+    ];
+    if (!details.containsKey('sunday_school')) {
+      return details['score'] == null ? null : 'الدرجة ${details['score']}';
+    }
+    final score = details['score'];
+    final text = marks.isEmpty ? 'غائب' : marks.join('، ');
+    return score == null ? text : '$text • الدرجة $score';
+  }
+
+  /// The child this entry is about, when it names one.
+  String? get childId {
+    final fromDetails = details['child_id'];
+    if (fromDetails != null) return '$fromDetails';
+    return entity == 'children' ? entityId : null;
   }
 }
 

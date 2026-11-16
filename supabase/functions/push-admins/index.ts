@@ -64,6 +64,36 @@ async function accessToken(): Promise<string> {
   return json.access_token as string;
 }
 
+// An installation ID is 22 characters of base64url; a registration token is
+// far longer. FCM takes them in different fields.
+const isInstallationId = (t: string) => /^[A-Za-z0-9_-]{22}$/.test(t);
+
+async function sendOne(
+  url: string,
+  bearer: string,
+  target: Record<string, string>,
+  title: string,
+  body: string,
+  badge?: number,
+): Promise<Response> {
+  return await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${bearer}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: {
+        ...target,
+        notification: { title, body },
+        // The unread count, which the service worker shows on the app icon.
+        ...(badge === undefined ? {} : { data: { badge: String(badge) } }),
+        webpush: { fcm_options: { link: '/' } },
+      },
+    }),
+  });
+}
+
 async function sendPush(
   tokens: { token: string }[],
   title: string,
@@ -75,22 +105,24 @@ async function sendPush(
     `https://fcm.googleapis.com/v1/projects/${SERVICE_ACCOUNT.project_id}/messages:send`;
   let sent = 0;
   for (const { token } of tokens) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${bearer}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: {
-          token,
-          notification: { title, body },
-          // The unread count, which the service worker shows on the app icon.
-          ...(badge === undefined ? {} : { data: { badge: String(badge) } }),
-          webpush: { fcm_options: { link: '/' } },
-        },
-      }),
-    });
+    let res: Response;
+    if (isInstallationId(token)) {
+      res = await sendOne(url, bearer, { fid: token }, title, body, badge);
+      // Should the `fid` field be refused, the transition still accepts an
+      // installation ID in `token`.
+      if (res.status === 400) {
+        res = await sendOne(url, bearer, { token }, title, body, badge);
+      }
+      // A 400 here may be the message, not the device: only a 404 (not
+      // registered any more) removes an installation ID.
+      if (res.ok) {
+        sent++;
+      } else if (res.status === 404) {
+        await supabase.from('device_tokens').delete().eq('token', token);
+      }
+      continue;
+    }
+    res = await sendOne(url, bearer, { token }, title, body, badge);
     if (res.ok) {
       sent++;
     } else if (res.status === 404 || res.status === 400) {

@@ -83,7 +83,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         (ref == null ? null : await _eventDetail(ref)) ?? const EventsScreen(),
       'competition_added' => const CompetitionsScreen(),
       'child_added' when ref != null => ChildProfileScreen(childId: ref),
-      'class_assigned' when ref != null => ClassDetailScreen(classId: ref),
+      // 'class_activity': somebody of this class did something in it.
+      'class_assigned' ||
+      'class_activity' when ref != null =>
+        ClassDetailScreen(classId: ref),
       // That class's sheet for the Saturday the entry names.
       'attendance_taken' when ref != null => AttendanceScreen(
           showAppBar: true,
@@ -171,6 +174,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'event_added' => (Icons.celebration_outlined, AppColors.olive),
         'competition_added' => (Icons.emoji_events_outlined, AppColors.gold),
         'class_assigned' => (Icons.class_outlined, AppColors.sky),
+        'class_activity' => (Icons.edit_note_rounded, AppColors.sky),
         'class_removed' => (Icons.person_remove_outlined, AppColors.coral),
         'event_today' => (Icons.celebration_rounded, AppColors.gold),
         'attendance_missing' => (Icons.alarm_rounded, AppColors.coral),

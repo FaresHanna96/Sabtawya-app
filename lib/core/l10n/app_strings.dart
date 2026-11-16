@@ -20,9 +20,7 @@ class AppStrings {
   static const search = 'بحث';
   static const noResults = 'لا توجد نتائج';
   static const promoteClassesTitle = 'ترقية الفصول للسنة الجديدة';
-  static const promoteClassesBody =
-      'ينتقل كل فصل بخدامه ومخدوميه وشفيعه: 5 إلى 6، و4 إلى 5، و3 إلى 4، '
-      'ويُؤرشف فصل 6 بمخدوميه، وتُضاف فصول 3 ولاد و3 بنات جديدة.';
+  static const promoteClassesConfirm = 'رقّي الفصول';
   static const retry = 'إعادة المحاولة';
   static const confirm = 'تأكيد';
   static const close = 'إغلاق';
@@ -143,6 +141,26 @@ class AppStrings {
   static const averageAttendance = 'متوسط الحضور';
   static const classPerformance = 'أداء الفصول';
   static const recentActivity = 'آخر النشاطات';
+  static const activityLogTitle = 'سجل النشاط';
+  static const logFilters = 'تصفية';
+  static const logClear = 'مسح التصفية';
+  static const logByServant = 'الخادم';
+  static const logAnyServant = 'كل الخدام';
+  static const logByChild = 'المخدوم';
+  static const logAnyChild = 'كل المخدومين';
+  static const logSearchChild = 'ابحث باسم المخدوم';
+  static const logEntityAll = 'الكل';
+  static const logEntityAttendance = 'الحضور';
+  static const logEntityChildren = 'المخدومين';
+  static const logEntityAssignments = 'تعيين الخدام';
+  static const logEntityAccounts = 'الحسابات';
+  static const logPeriodAll = 'كل الأوقات';
+  static const logPeriodToday = 'اليوم';
+  static const logPeriodWeek = 'آخر 7 أيام';
+  static const logPeriodMonth = 'آخر 30 يوم';
+  static const logEmpty = 'لا توجد نشاطات بهذه التصفية';
+  static const logLoadMore = 'عرض المزيد';
+  static const loadFailed = 'تعذّر التحميل';
   static const noClassesAssigned = 'لم يتم تعيين أي فصل لك بعد';
   static const noClassesAssignedBody =
       'برجاء التواصل مع المسؤول لتعيينك على فصل.';
@@ -742,6 +760,7 @@ class AppStrings {
   static const hidePassword = 'إخفاء كلمة المرور';
   static const clearSearch = 'مسح البحث';
   static const call = 'اتصال';
+  static const whatsapp = 'رسالة واتساب';
   static const clearField = 'مسح';
   static const noPhoneNumber = 'لا يوجد رقم';
 }

@@ -97,3 +97,77 @@ class ClassOverview {
         patronPhotoPath: asTextOrNull(map['patron_photo_path']),
       );
 }
+
+/// What the new-year promotion does (or did): the answer of `promote_grades`.
+class PromotionPlan {
+  const PromotionPlan({
+    required this.moves,
+    required this.archived,
+    required this.created,
+  });
+
+  /// Classes that go up a grade: from, to, and how many children go with them.
+  final List<PromotionMove> moves;
+
+  /// The last grade: archived with its children.
+  final List<PromotionMove> archived;
+
+  /// The fresh classes added for the youngest grade.
+  final List<String> created;
+
+  factory PromotionPlan.fromMap(Map<String, dynamic> map) {
+    List<PromotionMove> moves(Object? raw) => raw is List
+        ? [
+            for (final m in raw)
+              if (m is Map) PromotionMove.fromMap(m.cast<String, dynamic>()),
+          ]
+        : const <PromotionMove>[];
+    final created = map['created'];
+    return PromotionPlan(
+      moves: moves(map['moves']),
+      archived: moves(map['archived']),
+      created: created is List ? [for (final c in created) '$c'] : const [],
+    );
+  }
+
+  /// The plan in words, for the confirmation before anything is changed.
+  String describe() {
+    final lines = <String>[];
+    if (moves.isNotEmpty) {
+      lines.add('ينتقلون بخدامهم ومخدوميهم:');
+      for (final m in moves) {
+        lines.add('• ${m.from} ← ${m.to} (${m.children} مخدوم)');
+      }
+    }
+    if (archived.isNotEmpty) {
+      if (lines.isNotEmpty) lines.add('');
+      lines.add('يُؤرشفون مع مخدوميهم:');
+      for (final a in archived) {
+        lines.add('• ${a.from} (${a.children} مخدوم)');
+      }
+    }
+    if (created.isNotEmpty) {
+      if (lines.isNotEmpty) lines.add('');
+      lines.add('تُضاف فصول جديدة: ${created.join('، ')}');
+    }
+    return lines.join('\n');
+  }
+}
+
+class PromotionMove {
+  const PromotionMove({
+    required this.from,
+    required this.to,
+    required this.children,
+  });
+
+  final String from;
+  final String to;
+  final int children;
+
+  factory PromotionMove.fromMap(Map<String, dynamic> map) => PromotionMove(
+        from: asText(map['from'] ?? map['name']),
+        to: asText(map['to']),
+        children: asInt(map['children']),
+      );
+}

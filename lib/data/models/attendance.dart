@@ -149,9 +149,9 @@ class AttendanceEntry {
 
   /// True when a row already existed in the database for this child, which is
   /// what distinguishes "marked absent" from "not taken yet".
-  final bool isRecorded;
-  final DateTime? updatedAt;
-  final String? updatedByName;
+  bool isRecorded;
+  DateTime? updatedAt;
+  String? updatedByName;
 
   int get score =>
       (sundaySchool ? pointsSundaySchool : 0) +
@@ -198,6 +198,52 @@ class AttendanceEntry {
         updatedAt: updatedAt,
         updatedByName: updatedByName,
       );
+
+  /// Takes marks somebody else saved (arriving live, or found on a catch-up)
+  /// without undoing what this person has done on screen since the sheet was
+  /// opened. A mark this person has not touched takes the saved value; one they
+  /// have touched keeps theirs. Either way [original] (what the server holds)
+  /// moves to the saved value, so a later save sends only what really differs.
+  ///
+  /// Returns true when something on screen changed.
+  bool mergeRemote(
+    AttendanceEntry original, {
+    required bool sundaySchool,
+    required bool vespers,
+    required bool mass,
+    required bool confession,
+    DateTime? updatedAt,
+    String? updatedByName,
+  }) {
+    var changed = !isRecorded;
+    if (this.sundaySchool == original.sundaySchool) {
+      changed |= this.sundaySchool != sundaySchool;
+      this.sundaySchool = sundaySchool;
+    }
+    if (this.vespers == original.vespers) {
+      changed |= this.vespers != vespers;
+      this.vespers = vespers;
+    }
+    if (this.mass == original.mass) {
+      changed |= this.mass != mass;
+      this.mass = mass;
+    }
+    if (this.confession == original.confession) {
+      changed |= this.confession != confession;
+      this.confession = confession;
+    }
+    original
+      ..sundaySchool = sundaySchool
+      ..vespers = vespers
+      ..mass = mass
+      ..confession = confession;
+    for (final e in [this, original]) {
+      e.isRecorded = true;
+      e.updatedAt = updatedAt ?? e.updatedAt;
+      e.updatedByName = updatedByName ?? e.updatedByName;
+    }
+    return changed;
+  }
 
   bool sameMarksAs(AttendanceEntry other) =>
       sundaySchool == other.sundaySchool &&

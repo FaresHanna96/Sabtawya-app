@@ -10,6 +10,7 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../state/session_controller.dart';
@@ -314,17 +315,28 @@ class _YearFormScreenState extends State<_YearFormScreen> {
   /// A new year is when classes grow a grade; ask before renaming anything.
   Future<void> _offerPromotion() async {
     if (!Ui.requireOnline(context)) return;
+    const classes = ClassRepository();
+    final suffix = _name.text.trim();
+
+    // Look first: what would move, and how many children go with each class.
+    PromotionPlan? plan;
+    final looked = await Ui.runGuarded(
+      context,
+      () async => plan = await classes.previewPromotion(archiveSuffix: suffix),
+    );
+    if (!looked || plan == null || !mounted) return;
+
     final confirmed = await Ui.confirm(
       context,
       title: AppStrings.promoteClassesTitle,
-      message: AppStrings.promoteClassesBody,
+      message: plan!.describe(),
+      confirmLabel: AppStrings.promoteClassesConfirm,
     );
     if (!confirmed || !mounted) return;
     final session = context.read<SessionController>();
     final ok = await Ui.runGuarded(
       context,
-      () => const ClassRepository()
-          .promoteGrades(archiveSuffix: _name.text.trim()),
+      () => classes.promoteGrades(archiveSuffix: suffix),
       successMessage: AppStrings.saved,
     );
     if (ok) await session.refreshClasses();

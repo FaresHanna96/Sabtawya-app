@@ -433,6 +433,454 @@ void main() {
     });
   });
 
+  group('the activity log', () {
+    dev('only an admin reads it, and an attendance save names the child',
+        () async {
+      final servant = await _login('servant');
+      final admin = await _login('admin');
+
+      final session = await _call(
+          'GET',
+          '/rest/v1/attendance_sessions?select=id,class_id&is_locked=eq.false'
+              '&order=session_date.desc&limit=1',
+          token: servant.token);
+      final sid = session.rows.single['id'] as String;
+      final kid = await _call(
+          'GET',
+          '/rest/v1/children?select=id,full_name&class_id=eq.${session.rows.single['class_id']}'
+              '&is_active=eq.true&order=full_name&limit=1',
+          token: servant.token);
+      final childId = kid.rows.single['id'] as String;
+      final childName = kid.rows.single['full_name'] as String;
+
+      Future<void> wipe() => _call('DELETE',
+          '/rest/v1/attendance_records?session_id=eq.$sid&child_id=eq.$childId',
+          token: admin.token);
+
+      await wipe();
+      try {
+        final save = await _call('POST',
+            '/rest/v1/attendance_records?on_conflict=session_id%2Cchild_id',
+            token: servant.token,
+            body: [
+              {
+                'session_id': sid,
+                'child_id': childId,
+                'mass': true,
+                'vespers': true,
+              }
+            ],
+            prefer: 'resolution=merge-duplicates');
+        expect(save.ok, isTrue);
+
+        // A servant sees nothing of it.
+        final asServant = await _call('GET', '/rest/v1/activity_log?select=id',
+            token: servant.token);
+        expect(asServant.rows, isEmpty);
+
+        // The admin finds it by the child, the way the app asks.
+        final or = Uri.encodeQueryComponent(
+            '(entity_id.eq.$childId,details->>child_id.eq.$childId)');
+        final found = await _call(
+            'GET',
+            '/rest/v1/activity_log?select=*&or=$or'
+                '&order=created_at.desc,id.desc&limit=5',
+            token: admin.token);
+        expect(found.ok, isTrue, reason: '${found.body}');
+        final entry = found.rows.first as Map<String, dynamic>;
+        final details = entry['details'] as Map<String, dynamic>;
+        expect(entry['entity'], 'attendance_records');
+        expect(entry['actor_id'], servant.id);
+        expect(details['child_id'], childId);
+        expect(details['child_name'], childName);
+        expect(details['mass'], isTrue);
+        expect(details['vespers'], isTrue);
+        expect(details['sunday_school'], isFalse);
+
+        // ... by who did it and by the kind of record.
+        final byActor = await _call(
+            'GET',
+            '/rest/v1/activity_log?select=id&actor_id=eq.${servant.id}'
+                '&entity=eq.attendance_records&limit=1',
+            token: admin.token);
+        expect(byActor.rows, hasLength(1));
+      } finally {
+        await wipe();
+      }
+    });
+  });
+
+  group('the new-year promotion', () {
+    Future<_Reply> promote(_Who who, String suffix, {bool dry = false}) =>
+        _call('POST', '/rest/v1/rpc/promote_grades',
+            token: who.token,
+            body: {'p_archive_suffix': suffix, 'p_dry_run': dry});
+
+    Future<List<Map<String, dynamic>>> classes(_Who admin) async {
+      final r = await _call('GET',
+          '/rest/v1/classes?select=id,name,sort_order,is_active&order=name',
+          token: admin.token);
+      return [for (final c in r.rows) c as Map<String, dynamic>];
+    }
+
+    dev('only an admin can promote, and a year name is required', () async {
+      final servant = await _login('servant');
+      final admin = await _login('admin');
+      expect((await promote(servant, 'x', dry: true)).ok, isFalse);
+      expect((await promote(admin, '   ', dry: true)).ok, isFalse);
+      expect((await promote(admin, 'x', dry: true)).ok, isTrue);
+    });
+
+    dev('the preview changes nothing; the real run moves every class in one go and cannot be repeated',
+        () async {
+      final admin = await _login('admin');
+      final before = await classes(admin);
+      final names = {for (final c in before) c['name'] as String: c['id']};
+      // The promotion expects the real class names; dev has them.
+      for (final n in [
+        '3 ولاد',
+        '3 بنات',
+        '4 ولاد',
+        '5 ولاد',
+        '6 ولاد',
+        '6 بنات'
+      ]) {
+        expect(names.containsKey(n), isTrue, reason: 'dev has no class $n');
+      }
+      final kids = await _call('GET', '/rest/v1/children?select=id,is_active',
+          token: admin.token);
+      final wasActive = {
+        for (final k in kids.rows)
+          if (k['is_active'] == true) k['id'] as String
+      };
+      final suffix = 'اختبار-${DateTime.now().microsecondsSinceEpoch}';
+
+      try {
+        // The preview.
+        final preview = await promote(admin, suffix, dry: true);
+        expect(preview.ok, isTrue, reason: '${preview.body}');
+        final plan = preview.body as Map<String, dynamic>;
+        expect(plan['dryRun'], isTrue);
+        expect((plan['moves'] as List).length, 6);
+        expect((plan['archived'] as List).length, 2);
+        expect(plan['created'], ['3 ولاد', '3 بنات']);
+        expect(await classes(admin), before,
+            reason: 'the preview changed something');
+
+        // The real run.
+        final run = await promote(admin, suffix);
+        expect(run.ok, isTrue, reason: '${run.body}');
+        final after = await classes(admin);
+        final byId = {for (final c in after) c['id'] as String: c};
+        expect(byId[names['5 ولاد']]!['name'], '6 ولاد');
+        expect(byId[names['4 ولاد']]!['name'], '5 ولاد');
+        expect(byId[names['3 ولاد']]!['name'], '4 ولاد');
+        expect(byId[names['6 ولاد']]!['name'], '6 ولاد $suffix');
+        expect(byId[names['6 ولاد']]!['is_active'], isFalse);
+        expect(after.length, before.length + 2);
+        expect(after.where((c) => ['3 ولاد', '3 بنات'].contains(c['name'])),
+            hasLength(2));
+
+        // The graduating class leaves the lists with its children.
+        final graduated = await _call(
+            'GET',
+            '/rest/v1/children?select=id&class_id=eq.${names['6 ولاد']}'
+                '&is_active=eq.true',
+            token: admin.token);
+        expect(graduated.rows, isEmpty);
+
+        // A second run for the same year is refused, and changes nothing.
+        final again = await promote(admin, suffix);
+        expect(again.ok, isFalse);
+        expect(await classes(admin), after);
+      } finally {
+        // Put dev back as it was: first free every name, then restore.
+        final now = await classes(admin);
+        final original = {for (final c in before) c['id']};
+        for (final c in now) {
+          if (!original.contains(c['id'])) {
+            await _call('DELETE', '/rest/v1/classes?id=eq.${c['id']}',
+                token: admin.token);
+          } else {
+            await _call('PATCH', '/rest/v1/classes?id=eq.${c['id']}',
+                token: admin.token, body: {'name': 'tmp-${c['id']}'});
+          }
+        }
+        for (final c in before) {
+          await _call('PATCH', '/rest/v1/classes?id=eq.${c['id']}',
+              token: admin.token,
+              body: {
+                'name': c['name'],
+                'sort_order': c['sort_order'],
+                'is_active': c['is_active'],
+              });
+        }
+        if (wasActive.isNotEmpty) {
+          await _call(
+              'PATCH', '/rest/v1/children?id=in.(${wasActive.join(',')})',
+              token: admin.token, body: {'is_active': true});
+        }
+        expect(await classes(admin), before, reason: 'dev was not put back');
+      }
+    });
+  });
+
+  group('telling the other servants of a class', () {
+    late _Who servant;
+    late _Who admin;
+    late _Who general; // stands in for a second servant of the class
+    late String classId;
+    late String servantName;
+    final madeChildren = <String>[];
+
+    Future<List<Map<String, dynamic>>> inbox(_Who who) async {
+      final r = await _call(
+          'GET',
+          '/rest/v1/notifications?select=kind,title,body,ref_id'
+              '&created_at=gte.$started&order=created_at.desc',
+          token: who.token);
+      return [for (final n in r.rows) n as Map<String, dynamic>];
+    }
+
+    Future<void> clearInbox(_Who who) =>
+        _call('DELETE', '/rest/v1/notifications?created_at=gte.$started',
+            token: who.token);
+
+    setUp(() async {
+      if (skip != null) return;
+      servant = await _login('servant');
+      admin = await _login('admin');
+      general = await _login('general');
+      final mine = await _call('GET',
+          '/rest/v1/class_servants?select=class_id&servant_id=eq.${servant.id}',
+          token: admin.token);
+      classId = mine.rows.single['class_id'] as String;
+      final name = await _call(
+          'GET', '/rest/v1/profiles?select=full_name&id=eq.${servant.id}',
+          token: admin.token);
+      servantName = name.rows.single['full_name'] as String;
+      final a = await _call('POST', '/rest/v1/class_servants',
+          token: admin.token,
+          body: {'class_id': classId, 'servant_id': general.id});
+      expect(a.ok, isTrue,
+          reason: 'could not assign a second servant: ${a.body}');
+      await clearInbox(general);
+      await clearInbox(servant);
+    });
+
+    tearDown(() async {
+      if (skip != null) return;
+      for (final id in madeChildren) {
+        await _call('DELETE', '/rest/v1/children?id=eq.$id',
+            token: admin.token);
+      }
+      madeChildren.clear();
+      await _call(
+          'DELETE',
+          '/rest/v1/class_servants?class_id=eq.$classId'
+              '&servant_id=eq.${general.id}',
+          token: admin.token);
+      await clearInbox(general);
+      await clearInbox(servant);
+    });
+
+    dev('attendance taken: the others hear once, the one who took it does not',
+        () async {
+      final s = await _call(
+          'GET',
+          '/rest/v1/attendance_sessions?select=id,session_date'
+              '&class_id=eq.$classId&is_locked=eq.false'
+              '&order=session_date.desc&limit=1',
+          token: servant.token);
+      final sid = s.rows.single['id'] as String;
+      final kid = await _call(
+          'GET',
+          '/rest/v1/children?select=id&class_id=eq.$classId'
+              '&is_active=eq.true&limit=2',
+          token: servant.token);
+      final kids = [for (final k in kid.rows) k['id'] as String];
+      Future<void> save(String mark) => _call('POST',
+          '/rest/v1/attendance_records?on_conflict=session_id%2Cchild_id',
+          token: servant.token,
+          body: [
+            for (final k in kids) {'session_id': sid, 'child_id': k, mark: true}
+          ],
+          prefer: 'resolution=merge-duplicates');
+      try {
+        await save('mass');
+        await save('vespers'); // a second save soon after
+        final got = (await inbox(general))
+            .where((n) => n['kind'] == 'attendance_taken')
+            .toList();
+        expect(got, hasLength(1));
+        expect(got.single['body'], contains(servantName));
+        expect(got.single['body'], contains(s.rows.single['session_date']));
+        expect(got.single['ref_id'], classId);
+        expect(
+            (await inbox(servant))
+                .where((n) => n['kind'] == 'attendance_taken'),
+            isEmpty);
+      } finally {
+        await _call(
+            'DELETE',
+            '/rest/v1/attendance_records?session_id=eq.$sid'
+                '&child_id=in.(${kids.join(',')})',
+            token: admin.token);
+      }
+    });
+
+    dev('a child added, edited, stopped, visited and the class changed',
+        () async {
+      // Added.
+      final add = await _call('POST', '/rest/v1/children',
+          token: servant.token,
+          body: {
+            'class_id': classId,
+            'full_name': 'اختبار إشعار',
+            'gender': 'boy',
+          },
+          prefer: 'return=representation');
+      expect(add.ok, isTrue, reason: '${add.body}');
+      final childId = add.rows.single['id'] as String;
+      madeChildren.add(childId);
+      var got = await inbox(general);
+      expect(
+          got.where((n) =>
+              n['kind'] == 'child_added' &&
+              n['ref_id'] == childId &&
+              (n['body'] as String).contains(servantName)),
+          hasLength(1));
+
+      // Edited: told once, however many times it is saved.
+      await _call('PATCH', '/rest/v1/children?id=eq.$childId',
+          token: servant.token, body: {'mobile': '01099990001'});
+      await _call('PATCH', '/rest/v1/children?id=eq.$childId',
+          token: servant.token, body: {'mobile': '01099990002'});
+      got = await inbox(general);
+      expect(got.where((n) => (n['body'] as String).contains('عدّل بيانات')),
+          hasLength(1));
+      expect(got.firstWhere((n) => n['kind'] == 'class_activity')['ref_id'],
+          classId);
+
+      // Stopped.
+      await _call('PATCH', '/rest/v1/children?id=eq.$childId',
+          token: servant.token, body: {'is_active': false});
+      got = await inbox(general);
+      expect(got.where((n) => (n['body'] as String).contains('أوقف')),
+          hasLength(1));
+
+      // A visit written down.
+      await _call('POST', '/rest/v1/child_visit_logs',
+          token: servant.token,
+          body: {
+            'child_id': childId,
+            'visit_type': 'phone',
+            'visit_date': '2026-11-01',
+            'recorded_by': servant.id,
+          });
+      got = await inbox(general);
+      expect(
+          got.where(
+              (n) => (n['body'] as String).contains('سجّل افتقاد (اتصال)')),
+          hasLength(1));
+
+      // The class's own details.
+      final cls = await _call(
+          'GET', '/rest/v1/classes?select=patron_name&id=eq.$classId',
+          token: admin.token);
+      final patron = cls.rows.single['patron_name'];
+      try {
+        await _call('PATCH', '/rest/v1/classes?id=eq.$classId',
+            token: servant.token, body: {'patron_name': 'اسم اختبار'});
+        got = await inbox(general);
+        expect(
+            got.where(
+                (n) => (n['body'] as String).contains('عدّل بيانات الفصل')),
+            hasLength(1));
+      } finally {
+        await _call('PATCH', '/rest/v1/classes?id=eq.$classId',
+            token: admin.token, body: {'patron_name': patron});
+      }
+
+      // Nothing of it went to the one who did it.
+      expect(
+          (await inbox(servant)).where((n) =>
+              n['kind'] == 'class_activity' || n['kind'] == 'child_added'),
+          isEmpty);
+      final countBefore = (await inbox(general)).length;
+
+      // An admin who does not serve the class tells nobody.
+      await _call('PATCH', '/rest/v1/children?id=eq.$childId',
+          token: admin.token, body: {'notes': 'ملاحظة من الأدمن'});
+      expect((await inbox(general)).length, countBefore);
+    });
+  });
+
+  group('push registration', () {
+    Future<List<dynamic>> mine(_Who who, List<String> tokens) async {
+      final r = await _call('GET',
+          '/rest/v1/device_tokens?select=token,user_id&token=in.(${tokens.join(',')})',
+          token: who.token);
+      return r.rows;
+    }
+
+    Future<void> forget(_Who who, List<String> tokens) =>
+        _call('DELETE', '/rest/v1/device_tokens?token=in.(${tokens.join(',')})',
+            token: who.token);
+
+    dev('a new installation id drops the old token of the same user, only theirs',
+        () async {
+      final servant = await _login('servant');
+      final admin = await _login('admin');
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final legacy = 'legacy-token-$stamp';
+      final others = 'other-user-token-$stamp';
+      final fid = 'F${stamp.toString().padLeft(21, '0').substring(0, 21)}';
+      final all = [legacy, others, fid];
+
+      Future<_Reply> register(_Who who, String token, {String? replaces}) =>
+          _call('POST', '/rest/v1/rpc/register_device_token',
+              token: who.token,
+              body: {
+                'p_token': token,
+                'p_platform': 'android',
+                if (replaces != null) 'p_replaces': replaces,
+              });
+
+      try {
+        expect((await register(servant, legacy)).ok, isTrue);
+        expect((await register(admin, others)).ok, isTrue);
+
+        // The servant's phone moves to an installation id and names its token,
+        // and also names somebody else's token by mistake or on purpose.
+        expect((await register(servant, fid, replaces: legacy)).ok, isTrue);
+        expect((await register(servant, fid, replaces: others)).ok, isTrue);
+
+        expect((await mine(servant, [legacy])).map((r) => r['token']), isEmpty);
+        expect((await mine(servant, [fid])).single['user_id'], servant.id);
+        expect((await mine(admin, [others])).single['user_id'], admin.id);
+      } finally {
+        await forget(servant, all);
+        await forget(admin, all);
+      }
+    });
+
+    dev('registering without a token to replace still works (older app)',
+        () async {
+      final servant = await _login('servant');
+      final token = 'plain-token-${DateTime.now().microsecondsSinceEpoch}';
+      try {
+        final r = await _call('POST', '/rest/v1/rpc/register_device_token',
+            token: servant.token,
+            body: {'p_token': token, 'p_platform': 'web'});
+        expect(r.ok, isTrue, reason: '${r.body}');
+        expect(await mine(servant, [token]), hasLength(1));
+      } finally {
+        await forget(servant, [token]);
+      }
+    });
+  });
+
   group('visit history', () {
     dev('a visit entry can be deleted by whoever wrote it, not by another servant',
         () async {

@@ -6,6 +6,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
+import '../../core/utils/whatsapp.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/class_filter_chips.dart';
@@ -325,6 +326,7 @@ class _AbsenceTile extends StatelessWidget {
             ? AppColors.coral
             : AppColors.warning;
     final phone = _phone;
+    final whatsapp = WhatsApp.numberFor(child);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -394,6 +396,24 @@ class _AbsenceTile extends StatelessWidget {
                   icon: const Icon(Icons.call_rounded, size: 20),
                   color: AppColors.success,
                   onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
+                ),
+              if (whatsapp != null)
+                IconButton(
+                  tooltip: AppStrings.whatsapp,
+                  icon: const Icon(Icons.chat_rounded, size: 20),
+                  color: const Color(0xFF1FA855),
+                  onPressed: () => launchUrl(
+                    WhatsApp.link(
+                      whatsapp,
+                      WhatsApp.absenceMessage(
+                        childName: streak.childName,
+                        servantName:
+                            context.read<SessionController>().displayName,
+                        absent: streak.absentStreak,
+                      ),
+                    ),
+                    mode: LaunchMode.externalApplication,
+                  ),
                 ),
               IconButton(
                 tooltip: AppStrings.markFollowedUp,
