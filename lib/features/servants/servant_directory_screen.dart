@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
@@ -12,6 +13,7 @@ import '../../core/widgets/whatsapp_icon.dart';
 import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../data/repositories/servant_repository.dart';
+import '../../state/session_controller.dart';
 
 /// Every servant's name, classes and two ways to reach them: call and
 /// WhatsApp. Open to every servant; nothing else about the servant is shown.
@@ -46,6 +48,7 @@ class _ServantDirectoryScreenState extends State<ServantDirectoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final me = context.read<SessionController>().displayName;
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.servantDirectory)),
       body: SafeArea(
@@ -86,7 +89,7 @@ class _ServantDirectoryScreenState extends State<ServantDirectoryScreen> {
                   for (final s in visible)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: ServantContactCard(servant: s),
+                      child: ServantContactCard(servant: s, senderName: me),
                     ),
               ],
             );
@@ -98,9 +101,16 @@ class _ServantDirectoryScreenState extends State<ServantDirectoryScreen> {
 }
 
 class ServantContactCard extends StatelessWidget {
-  const ServantContactCard({super.key, required this.servant});
+  const ServantContactCard({
+    super.key,
+    required this.servant,
+    this.senderName = '',
+  });
 
   final ServantContact servant;
+
+  /// Who is writing; named in the WhatsApp check-in message.
+  final String senderName;
 
   @override
   Widget build(BuildContext context) {
@@ -178,8 +188,15 @@ class ServantContactCard extends StatelessWidget {
                 IconButton(
                   tooltip: AppStrings.whatsapp,
                   icon: const WhatsAppIcon(size: 22),
+                  // Opens with a ready check-in message (افتقاد الخدام).
                   onPressed: () => launchUrl(
-                    WhatsApp.link(whatsapp),
+                    WhatsApp.link(
+                      whatsapp,
+                      WhatsApp.servantCheckInMessage(
+                        name: servant.fullName,
+                        senderName: senderName,
+                      ),
+                    ),
                     mode: LaunchMode.externalApplication,
                   ),
                 ),

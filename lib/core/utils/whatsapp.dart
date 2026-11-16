@@ -116,6 +116,20 @@ class WhatsApp {
         '${childName.trim()} ومحتاجين: $what. ممكن تبعتوهم لنا؟ شكرًا.';
   }
 
+  /// A check-in on a fellow servant ("افتقاد الخدام"): asks how they are and
+  /// whether they need anything. Works for a man or a woman.
+  static String servantCheckInMessage({
+    required String name,
+    required String senderName,
+  }) {
+    final who = senderName.trim().isEmpty ? 'من الخدمة' : senderName.trim();
+    final first = name.trim().split(RegExp(r'\s+')).first;
+    return 'سلام ونعمة يا $first، معاك $who من خدمة السبت. '
+        'وحشتنا ونفسنا نطمّن عليك وعلى أحوالك. '
+        'لو محتاج أي حاجة أو فيه حاجة نقدر نساعدك فيها قولنا. '
+        'ربنا يبارك حياتك وخدمتك.';
+  }
+
   /// The ready message for a child who has been absent [absent] Saturdays.
   static String absenceMessage({
     required String childName,

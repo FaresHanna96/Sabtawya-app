@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sabtawya/core/l10n/app_strings.dart';
+import 'package:sabtawya/core/utils/whatsapp.dart';
 import 'package:sabtawya/core/widgets/whatsapp_icon.dart';
 import 'package:sabtawya/data/models/profile.dart';
 import 'package:sabtawya/features/servants/servant_directory_screen.dart';
@@ -13,6 +14,22 @@ Widget host(ServantContact s) => MaterialApp(
     );
 
 void main() {
+  test('check-in message names the servant and who is writing', () {
+    final m = WhatsApp.servantCheckInMessage(
+        name: 'مريم جورج حنا', senderName: 'فارس صبحي');
+    expect(m, startsWith('سلام ونعمة يا مريم،'));
+    expect(m, contains('معاك فارس صبحي من خدمة السبت'));
+    expect(m, contains('نطمّن عليك'));
+    // No sender name: still reads naturally.
+    expect(
+        WhatsApp.servantCheckInMessage(name: 'مينا', senderName: ' '),
+        contains('معاك من الخدمة'));
+    // It travels in the wa.me link, escaped.
+    final link = WhatsApp.link('201012345678', m);
+    expect(link.host, 'wa.me');
+    expect(link.queryParameters['text'], m);
+  });
+
   test('reads a directory row: role, gender, classes and mobile only', () {
     final s = ServantContact.fromMap({
       'id': 'a',
