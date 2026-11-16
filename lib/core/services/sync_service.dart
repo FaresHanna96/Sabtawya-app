@@ -11,12 +11,42 @@ import 'offline_store.dart';
 
 /// Replays the writes made offline, in order, whenever the connection allows.
 class SyncService extends ChangeNotifier with WidgetsBindingObserver {
-  SyncService() {
+  /// The defaults are the live ones. Tests pass their own [client], [userId]
+  /// and [accessToken], and [autoStart] false so nothing runs by itself.
+  SyncService({
+    http.Client? client,
+    String? Function()? userId,
+    String? Function()? accessToken,
+    bool autoStart = true,
+  })  : _client = client ?? OfflineHttpClient.raw,
+        _userId = userId ?? _liveUserId,
+        _accessToken = accessToken ?? _liveAccessToken {
+    if (!autoStart) return;
     WidgetsBinding.instance.addObserver(this);
     ConnectivityService.instance.addListener(_trigger);
     OfflineStore.pending.addListener(_onPendingChanged);
     _timer = Timer.periodic(const Duration(seconds: 30), (_) => _trigger());
     _trigger();
+  }
+
+  final http.Client _client;
+  final String? Function() _userId;
+  final String? Function() _accessToken;
+
+  static String? _liveUserId() {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id;
+    } catch (_) {
+      return null; // Supabase not started (setup screen, tests)
+    }
+  }
+
+  static String? _liveAccessToken() {
+    try {
+      return Supabase.instance.client.auth.currentSession?.accessToken;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Called after at least one write reached the server, so screens reload.
@@ -29,21 +59,15 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// The signed-in person. Writes are shown, counted and sent only for them:
   /// one made by somebody else on this device waits for its owner.
-  static String? get currentUserId {
-    try {
-      return Supabase.instance.client.auth.currentUser?.id;
-    } catch (_) {
-      return null; // Supabase not started (setup screen, tests)
-    }
-  }
+  static String? get currentUserId => _liveUserId();
 
   int get pendingCount {
-    final me = currentUserId;
+    final me = _userId();
     return me == null ? 0 : OfflineStore.pendingCount(forUser: me);
   }
 
   int get failedCount {
-    final me = currentUserId;
+    final me = _userId();
     return me == null ? 0 : OfflineStore.failedWrites(forUser: me).length;
   }
 
@@ -66,8 +90,8 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// (the rest wait); a write the server refuses is set aside, not dropped.
   Future<void> flush() async {
     if (_syncing) return;
-    final token = Supabase.instance.client.auth.currentSession?.accessToken;
-    final me = currentUserId;
+    final token = _accessToken();
+    final me = _userId();
     if (token == null || me == null) return;
 
     _syncing = true;
@@ -80,7 +104,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
           ..headers['Authorization'] = 'Bearer $token'
           ..bodyBytes = base64Decode(write.bodyBase64);
         try {
-          final response = await OfflineHttpClient.raw.send(request);
+          final response = await _client.send(request);
           final body = await response.stream.bytesToString();
           final code = response.statusCode;
           if (code >= 200 && code < 300) {

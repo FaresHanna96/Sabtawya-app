@@ -136,10 +136,9 @@ class ChildImportService {
         .map((row) => row.applyTo(row.existing!, plan.classId))
         .toList();
 
-    await _children.insertMany(inserts);
-    await _children.updateMany(updates);
+    final done = await _children.importMany(inserts: inserts, updates: updates);
 
-    return ImportResult(inserted: inserts.length, updated: updates.length);
+    return ImportResult(inserted: done.inserted, updated: done.updated);
   }
 
   static String _normaliseName(String value) =>

@@ -1,9 +1,21 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-const _boxHttp = 'http_cache_v1';
-const _boxQueue = 'write_queue_v2';
-const _boxFailed = 'write_failed_v2';
+// The boxes as the first versions kept them: plain files. Still used on the
+// web (no keystore there) and when the keystore cannot be reached.
+const _legacyHttp = 'http_cache_v1';
+const _legacyQueue = 'write_queue_v2';
+const _legacyFailed = 'write_failed_v2';
+
+// The same boxes encrypted with a key held in the Android keystore.
+const _secureHttp = 'http_cache_v1e';
+const _secureQueue = 'write_queue_v2e';
+const _secureFailed = 'write_failed_v2e';
+
+const _keyName = 'sabtawya_local_data_key';
 
 /// A write that could not reach the server and waits for the connection.
 ///
@@ -83,32 +95,93 @@ class OfflineStore {
   /// How many writes are waiting, so the UI can show and react to it.
   static final ValueNotifier<int> pending = ValueNotifier<int>(0);
 
-  static Future<void> init() async {
+  static String _boxHttp = _legacyHttp;
+  static String _boxQueue = _legacyQueue;
+  static String _boxFailed = _legacyFailed;
+
+  /// True when the boxes on disk are encrypted.
+  static bool get isEncrypted => _boxHttp == _secureHttp;
+
+  /// The key lives in the Android keystore (through flutter_secure_storage),
+  /// made on first use. Null when there is no keystore (the web) or it cannot
+  /// be reached: the app then keeps working with the plain boxes.
+  static Future<HiveCipher?> _keystoreCipher() async {
+    if (kIsWeb) return null;
+    try {
+      const storage = FlutterSecureStorage();
+      final stored = await storage.read(key: _keyName);
+      if (stored != null) return HiveAesCipher(base64Url.decode(stored));
+      final key = Hive.generateSecureKey();
+      await storage.write(key: _keyName, value: base64Url.encode(key));
+      return HiveAesCipher(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// [cipherProvider] is for tests; the app uses the keystore.
+  static Future<void> init({
+    Future<HiveCipher?> Function()? cipherProvider,
+  }) async {
     // The first version queued attendance only; its boxes are gone.
     for (final old in const ['attendance_cache', 'write_queue']) {
       try {
         await Hive.deleteBoxFromDisk(old);
       } catch (_) {}
     }
+    final cipher = await (cipherProvider ?? _keystoreCipher)();
+    _boxHttp = cipher == null ? _legacyHttp : _secureHttp;
+    _boxQueue = cipher == null ? _legacyQueue : _secureQueue;
+    _boxFailed = cipher == null ? _legacyFailed : _secureFailed;
     try {
-      await _openAll();
+      await _openAll(cipher);
     } catch (_) {
-      for (final name in const [_boxHttp, _boxQueue, _boxFailed]) {
+      // Unreadable (or the key was lost): start the boxes again.
+      for (final name in [_boxHttp, _boxQueue, _boxFailed]) {
         try {
           await Hive.deleteBoxFromDisk(name);
         } catch (_) {}
       }
       try {
-        await _openAll();
+        await _openAll(cipher);
       } catch (_) {}
     }
+    if (cipher != null) await _moveLegacyIntoEncrypted();
     pending.value = pendingCount();
   }
 
-  static Future<void> _openAll() async {
-    await Hive.openBox<dynamic>(_boxHttp);
-    await Hive.openBox<dynamic>(_boxQueue);
-    await Hive.openBox<dynamic>(_boxFailed);
+  static Future<void> _openAll(HiveCipher? cipher) async {
+    await Hive.openBox<dynamic>(_boxHttp, encryptionCipher: cipher);
+    await Hive.openBox<dynamic>(_boxQueue, encryptionCipher: cipher);
+    await Hive.openBox<dynamic>(_boxFailed, encryptionCipher: cipher);
+  }
+
+  /// The first run with encryption: the writes still waiting (and the ones the
+  /// server refused) move over, then every plain file is deleted. The kept
+  /// reads are not moved; they are fetched again.
+  static Future<void> _moveLegacyIntoEncrypted() async {
+    for (final (from, to) in [
+      (_legacyQueue, _boxQueue),
+      (_legacyFailed, _boxFailed),
+    ]) {
+      try {
+        if (!await Hive.boxExists(from)) continue;
+        final old = await Hive.openBox<dynamic>(from);
+        final target = Hive.box<dynamic>(to);
+        for (final key in old.keys) {
+          await target.put(key, old.get(key));
+        }
+        await old.close();
+        await Hive.deleteBoxFromDisk(from);
+      } catch (_) {
+        // Left in place; tried again at the next start.
+      }
+    }
+    try {
+      if (await Hive.boxExists(_legacyHttp)) {
+        await Hive.deleteBoxFromDisk(_legacyHttp);
+      }
+    } catch (_) {}
   }
 
   static Box<dynamic>? _box(String name) =>

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/visit_merge.dart';
 import '../models/child.dart';
@@ -132,22 +134,57 @@ class ChildRepository {
     }
   }
 
-  Future<void> insertMany(List<Child> children) async {
-    if (children.isEmpty) return;
-    try {
-      await Db.client
-          .from(Db.tChildren)
-          .insert(children.map((child) => child.toWriteMap()).toList());
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
+  /// The columns an Excel sheet carries, for the `import_children` function.
+  /// Left out on purpose: the code (issued by the database), is_active, the
+  /// deacon flag, the visit dates and the photo, so an import never blanks them.
+  @visibleForTesting
+  static Map<String, dynamic> importRow(Child child, {bool withId = false}) {
+    final map = child.toWriteMap();
+    return <String, dynamic>{
+      if (withId) 'id': child.id,
+      for (final key in _importColumns) key: map[key],
+    };
   }
 
-  Future<void> updateMany(List<Child> children) async {
-    // Each row carries its own id, so they are applied one by one rather than
-    // through a single upsert that could silently insert a duplicate.
-    for (final child in children) {
-      await update(child);
+  static const _importColumns = <String>[
+    'class_id',
+    'full_name',
+    'gender',
+    'birth_date',
+    'mobile',
+    'mother_name',
+    'mother_mobile',
+    'father_name',
+    'father_mobile',
+    'confession_father',
+    'school',
+    'address',
+    'notes',
+  ];
+
+  /// Adds [inserts] and changes [updates] in one transaction: all of it is
+  /// saved, or (when anything fails) none of it. Needs a connection; it is
+  /// never queued for later.
+  Future<({int inserted, int updated})> importMany({
+    required List<Child> inserts,
+    required List<Child> updates,
+  }) async {
+    if (inserts.isEmpty && updates.isEmpty) return (inserted: 0, updated: 0);
+    try {
+      final result = await Db.client.rpc<dynamic>(
+        'import_children',
+        params: <String, dynamic>{
+          'p_inserts': [for (final c in inserts) importRow(c)],
+          'p_updates': [for (final c in updates) importRow(c, withId: true)],
+        },
+      );
+      final map = result is Map ? result : const <String, dynamic>{};
+      return (
+        inserted: (map['inserted'] as num?)?.toInt() ?? 0,
+        updated: (map['updated'] as num?)?.toInt() ?? 0,
+      );
+    } catch (e) {
+      throw AppFailure.from(e);
     }
   }
 
