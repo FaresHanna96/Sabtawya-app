@@ -28,6 +28,17 @@ class ServantRepository {
     }
   }
 
+  /// Every active servant's name, role, classes and mobile, for any signed-in
+  /// servant (the profiles table itself only shows co-servants).
+  Future<List<ServantContact>> directory() async {
+    try {
+      final data = await Db.client.rpc('servant_directory');
+      return rows(data).map(ServantContact.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<List<ServantInvite>> pendingInvites() async {
     try {
       final data = await Db.client

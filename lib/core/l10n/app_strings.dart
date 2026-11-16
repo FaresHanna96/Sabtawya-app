@@ -562,6 +562,8 @@ class AppStrings {
   static const upcomingSaturdays = 'باقي السنة';
   static const prepMissing = 'لم يُرفع التحضير';
   static const searchServantHint = 'ابحث باسم الخادم';
+  static const servantDirectory = 'الخدام';
+  static const noServantMobile = 'لا يوجد رقم';
   static const callChild = 'المخدوم';
   static const callMother = 'الأم';
   static const callFather = 'الأب';

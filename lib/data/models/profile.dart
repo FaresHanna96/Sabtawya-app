@@ -86,6 +86,39 @@ class Profile {
       );
 }
 
+/// A row of `servant_directory()`: just enough to call or message a servant.
+class ServantContact {
+  const ServantContact({
+    required this.id,
+    required this.fullName,
+    required this.role,
+    required this.classNames,
+    this.mobile,
+    this.gender,
+  });
+
+  final String id;
+  final String fullName;
+  final AppRole role;
+  final List<String> classNames;
+  final String? mobile;
+  final Gender? gender;
+
+  String get roleLabel => role.labelFor(gender);
+
+  factory ServantContact.fromMap(Map<String, dynamic> map) => ServantContact(
+        id: asText(map['id']),
+        fullName: asText(map['full_name'], AppStrings.unknown),
+        role: AppRole.fromWire(map['role']),
+        classNames: (map['class_names'] as List<dynamic>? ?? const <dynamic>[])
+            .map(asText)
+            .where((n) => n.isNotEmpty)
+            .toList(),
+        mobile: asTextOrNull(map['mobile']),
+        gender: Gender.tryParse(map['gender']),
+      );
+}
+
 /// A row of `v_pending_servants`: a sign-up waiting for the admin's decision.
 class PendingServant {
   const PendingServant({

@@ -18,6 +18,7 @@ import '../excel/export_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../reports/reports_screen.dart';
 import '../servants/servant_assignments_screen.dart';
+import '../servants/servant_directory_screen.dart';
 import '../servants/servants_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
@@ -195,6 +196,12 @@ class MoreScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: Column(
                 children: [
+                  _Entry(
+                    icon: Icons.contact_phone_rounded,
+                    title: AppStrings.servantDirectory,
+                    screen: const ServantDirectoryScreen(),
+                    color: AppColors.olive,
+                  ),
                   _Entry(
                     icon: Icons.menu_book_outlined,
                     title: AppStrings.lessonSchedule,
