@@ -26,6 +26,8 @@ import 'contact_cards.dart';
 import 'child_filters.dart';
 import 'child_form_screen.dart';
 import 'location_sheet.dart';
+import 'missing_info.dart';
+import 'missing_info_banner.dart';
 
 /// Which attendance rows the history section shows.
 enum _PresenceFilter {
@@ -194,6 +196,19 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               // profile, so the numbers sit right under the name.
               FadeSlideIn(index: 1, child: _contactBar(child)),
               const SizedBox(height: 12),
+              // What the record is missing, and a way to ask the family.
+              if (canEdit && MissingInfo.of(child).isNotEmpty) ...[
+                FadeSlideIn(
+                  index: 1,
+                  child: MissingInfoBanner(
+                    child: child,
+                    servantName: session.displayName,
+                    canEdit: canEdit,
+                    onEdit: () => _edit(child),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               // Where the child lives: open it on the map, or get directions.
               FadeSlideIn(
                 index: 1,

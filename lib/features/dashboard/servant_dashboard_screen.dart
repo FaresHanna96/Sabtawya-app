@@ -19,6 +19,7 @@ import '../events/events_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
+import 'missing_info_section.dart';
 import 'quick_action_grid.dart';
 import 'today_birthdays_section.dart';
 import 'weekly_attendance_chart.dart';
@@ -137,6 +138,7 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
               ),
               const SizedBox(height: 16),
               const FadeSlideIn(index: 2, child: TodayBirthdaysSection()),
+              const FadeSlideIn(index: 2, child: MissingInfoSection()),
               FadeSlideIn(
                 index: 3,
                 child: LessonOfDay(date: upcomingSaturday()),

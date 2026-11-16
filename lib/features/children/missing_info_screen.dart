@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -14,6 +13,8 @@ import '../../core/widgets/whatsapp_icon.dart';
 import '../../data/models/child.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../state/session_controller.dart';
+import 'asked_log.dart';
+import 'ask_family.dart';
 import 'child_form_screen.dart';
 import 'child_profile_screen.dart';
 import 'missing_info.dart';
@@ -32,6 +33,9 @@ class _MissingInfoScreenState extends State<MissingInfoScreen> {
   static const _repository = ChildRepository();
 
   List<Child> _children = const <Child>[];
+
+  /// When each family was asked, on this phone.
+  Map<String, DateTime> _asked = const <String, DateTime>{};
   bool _loading = true;
   String? _error;
 
@@ -51,10 +55,12 @@ class _MissingInfoScreenState extends State<MissingInfoScreen> {
       _error = null;
     });
     try {
-      final children = await _repository.all();
+      final (children, asked) =
+          await (_repository.all(), AskedLog.instance.all()).wait;
       if (!mounted) return;
       setState(() {
         _children = children;
+        _asked = asked;
         _loading = false;
       });
     } catch (e) {
@@ -184,6 +190,8 @@ class _MissingInfoScreenState extends State<MissingInfoScreen> {
             child: MissingInfoTile(
               child: child,
               servantName: servantName,
+              askedAt: _asked[child.id],
+              onAsked: _load,
               onTap: () => _open(child),
             ),
           ),
@@ -406,11 +414,19 @@ class MissingInfoTile extends StatelessWidget {
     required this.child,
     required this.servantName,
     required this.onTap,
+    this.askedAt,
+    this.onAsked,
   });
 
   final Child child;
   final String servantName;
   final VoidCallback onTap;
+
+  /// When this family was last asked (on this phone); null when never.
+  final DateTime? askedAt;
+
+  /// Called after WhatsApp was opened, so the list can show it.
+  final VoidCallback? onAsked;
 
   @override
   Widget build(BuildContext context) {
@@ -447,6 +463,27 @@ class MissingInfoTile extends StatelessWidget {
                           ),
                       ],
                     ),
+                    if (askedAt != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.done_all_rounded,
+                              size: 14, color: AppColors.success),
+                          const SizedBox(width: 4),
+                          Text(
+                            AppStrings.askedAlready(
+                              AskedLog.daysAgo(askedAt, DateTime.now())!,
+                            ),
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -454,17 +491,14 @@ class MissingInfoTile extends StatelessWidget {
                 IconButton(
                   tooltip: AppStrings.missingAskFamily,
                   icon: const WhatsAppIcon(size: 24),
-                  onPressed: () => launchUrl(
-                    WhatsApp.link(
-                      number,
-                      WhatsApp.missingInfoMessage(
-                        childName: child.fullName,
-                        servantName: servantName,
-                        missing: [for (final f in missing) f.label],
-                      ),
-                    ),
-                    mode: LaunchMode.externalApplication,
-                  ),
+                  onPressed: () async {
+                    final opened = await askFamilyOnWhatsApp(
+                      context,
+                      child,
+                      servantName: servantName,
+                    );
+                    if (opened) onAsked?.call();
+                  },
                 ),
               const Icon(AppIcons.forward, color: AppColors.muted),
             ],

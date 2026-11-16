@@ -175,6 +175,20 @@ class AppStrings {
           : '$n مخدوم ناقص';
   static String missingDoneOf(int done, int total) => 'اكتمل $done من $total';
   static const missingAskFamily = 'اطلب البيانات من الأسرة على واتساب';
+  static String askedAlready(int days) => days <= 0
+      ? 'اتطلب النهارده'
+      : days == 1
+          ? 'اتطلب امبارح'
+          : days == 2
+              ? 'اتطلب من يومين'
+              : 'اتطلب من $days أيام';
+  static const askAgainQuestion = 'تبعت للأسرة تاني؟';
+  static const askAgain = 'ابعت تاني';
+  static String missingOnChild(String fields) => 'ناقص: $fields';
+  static const missingEditChild = 'كمّل البيانات';
+  static String missingHomeCount(int n) =>
+      n == 1 ? 'مخدوم واحد بياناته ناقصة' : '$n مخدوم بياناتهم ناقصة';
+  static const missingHomeOpen = 'عرض القائمة';
   static const noClassesAssigned = 'لم يتم تعيين أي فصل لك بعد';
   static const noClassesAssignedBody =
       'برجاء التواصل مع المسؤول لتعيينك على فصل.';

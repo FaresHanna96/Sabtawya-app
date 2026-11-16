@@ -13,6 +13,7 @@ import '../../data/repositories/notification_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../data/models/event.dart';
 import '../../data/repositories/event_repository.dart';
+import '../children/absence_followup_screen.dart';
 import '../children/birthday_screen.dart';
 import '../children/missing_info_screen.dart';
 import '../children/child_profile_screen.dart';
@@ -80,6 +81,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'birthdays' => const BirthdayScreen(),
       // The Saturday 5 PM reminder: the children whose record has gaps.
       'missing_info' => const MissingInfoScreen(),
+      // The Sunday 5 PM reminder: children absent two Saturdays or more.
+      'absence_followup' => const AbsenceFollowUpScreen(),
       'event_added' => const EventsScreen(),
       // The event itself when it can still be found, else the list.
       'event_today' =>
@@ -179,6 +182,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'class_assigned' => (Icons.class_outlined, AppColors.sky),
         'class_activity' => (Icons.edit_note_rounded, AppColors.sky),
         'missing_info' => (Icons.rule_rounded, AppColors.gold),
+        'absence_followup' => (
+            Icons.volunteer_activism_rounded,
+            AppColors.coral
+          ),
         'class_removed' => (Icons.person_remove_outlined, AppColors.coral),
         'event_today' => (Icons.celebration_rounded, AppColors.gold),
         'attendance_missing' => (Icons.alarm_rounded, AppColors.coral),
