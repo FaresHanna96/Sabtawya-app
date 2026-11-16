@@ -72,19 +72,75 @@ String _escape(String v) => v
     .replaceAll(',', r'\,')
     .replaceAll(RegExp(r'\r?\n'), r'\n');
 
-/// A vCard 3.0 file (UTF-8) with one card per entry. Phones offer to add
-/// every card in it as a contact.
-String buildVCards(List<ContactEntry> entries) {
+/// One child's contact: the child's name and class, with the father's, the
+/// mother's and the child's own numbers, each under its own label.
+class ContactCard {
+  const ContactCard(this.name, this.phones);
+
+  final String name;
+
+  /// (label, number): "الأب", "الأم", "المخدوم".
+  final List<({String label, String number})> phones;
+}
+
+/// One contact per active child ("مينا جورج – فصل 5 بنات") holding the numbers
+/// chosen, father first, then mother, then the child. A child with none of
+/// the chosen numbers has no contact; a number the child repeats is kept once.
+List<ContactCard> contactCardsFor(
+  List<Child> children,
+  Map<String, String> classNames, {
+  bool child = true,
+  bool mother = true,
+  bool father = true,
+}) {
+  final cards = <ContactCard>[];
+  for (final c in children) {
+    if (!c.isActive) continue;
+    final phones = <({String label, String number})>[];
+    final seen = <String>{};
+    void add(String label, String? raw) {
+      final number = dialNumber(raw);
+      if (number == null || !seen.add(numberKey(number))) return;
+      phones.add((label: label, number: number));
+    }
+
+    if (father) add('الأب', c.fatherMobile);
+    if (mother) add('الأم', c.motherMobile);
+    if (child) add('المخدوم', c.mobile);
+    if (phones.isEmpty) continue;
+
+    final cls = classNames[c.classId];
+    cards.add(ContactCard(
+      '${c.fullName.trim()}${cls == null ? '' : ' – $cls'}',
+      phones,
+    ));
+  }
+  return cards;
+}
+
+/// A vCard 3.0 file (UTF-8) with one card per contact, each number carrying
+/// its own label (الأب / الأم / المخدوم). Phones offer to add every card in it
+/// as a contact.
+String buildVCards(List<ContactCard> cards) {
+  const eol = '\r\n';
   final out = StringBuffer();
-  for (final e in entries) {
-    final name = _escape(e.label);
+  for (final card in cards) {
+    final name = _escape(card.name);
     out
-      ..write('BEGIN:VCARD\r\n')
-      ..write('VERSION:3.0\r\n')
-      ..write('FN;CHARSET=UTF-8:$name\r\n')
-      ..write('N;CHARSET=UTF-8:$name;;;;\r\n')
-      ..write('TEL;TYPE=CELL:${e.number}\r\n')
-      ..write('END:VCARD\r\n');
+      ..write('BEGIN:VCARD$eol')
+      ..write('VERSION:3.0$eol')
+      ..write('FN;CHARSET=UTF-8:$name$eol')
+      ..write('N;CHARSET=UTF-8:$name;;;;$eol');
+    for (var i = 0; i < card.phones.length; i++) {
+      final phone = card.phones[i];
+      // "itemN." groups a number with its own label (iPhone and Android read
+      // the label from X-ABLabel).
+      out
+        ..write('item${i + 1}.TEL;TYPE=CELL:${phone.number}$eol')
+        ..write('item${i + 1}.X-ABLabel;CHARSET=UTF-8:'
+            '${_escape(phone.label)}$eol');
+    }
+    out.write('END:VCARD$eol');
   }
   return out.toString();
 }

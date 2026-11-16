@@ -69,14 +69,61 @@ void main() {
     expect(e.single.label, 'أم مينا – فصل 5 بنات / أم مريم – فصل 5 بنات');
   });
 
-  test('vCard: one card per entry, UTF-8 name, escaped, CRLF', () {
+  test('one contact per child with father, mother and child numbers', () {
+    final cards = contactCardsFor([
+      kid('1', 'مينا جورج',
+          mother: '01012345678', father: '01112345678', own: '01212345678'),
+      kid('2', 'بدون أرقام'),
+      kid('3', 'مريم', mother: '01512345678', active: false),
+    ], classes);
+    expect(cards, hasLength(1));
+    expect(cards.single.name, 'مينا جورج – فصل 5 بنات');
+    expect(cards.single.phones.map((p) => p.label),
+        ['الأب', 'الأم', 'المخدوم']);
+    expect(cards.single.phones.first.number, '+201112345678');
+  });
+
+  test('cards: choose who, and a repeated number is kept once', () {
+    final kids = [
+      kid('1', 'مينا', mother: '01012345678', father: '01112345678',
+          own: '+201012345678'),
+    ];
+    expect(contactCardsFor(kids, classes).single.phones, hasLength(2));
+    expect(
+        contactCardsFor(kids, classes, father: false, child: false)
+            .single
+            .phones
+            .map((p) => p.label),
+        ['الأم']);
+    expect(
+        contactCardsFor(kids, classes,
+            mother: false, father: false, child: false),
+        isEmpty);
+  });
+
+  test('siblings sharing a mother each get a card with her number', () {
+    final cards = contactCardsFor([
+      kid('1', 'مينا', mother: '01012345678'),
+      kid('2', 'مريم', mother: '01012345678'),
+    ], classes);
+    expect(cards, hasLength(2));
+  });
+
+  test('vCard: one card per child, labelled numbers, UTF-8, escaped, CRLF', () {
+    const eol = '\r\n';
     final v = buildVCards([
-      const ContactEntry('أم مينا, جورج; س', '+201012345678'),
+      const ContactCard('مينا, جورج; س', [
+        (label: 'الأب', number: '+201112345678'),
+        (label: 'الأم', number: '+201012345678'),
+      ]),
     ]);
-    expect(v, startsWith('BEGIN:VCARD\r\nVERSION:3.0\r\n'));
-    expect(v, contains(r'FN;CHARSET=UTF-8:أم مينا\, جورج\; س'));
-    expect(v, contains('TEL;TYPE=CELL:+201012345678\r\n'));
-    expect(v, endsWith('END:VCARD\r\n'));
+    expect(v, startsWith('BEGIN:VCARD${eol}VERSION:3.0$eol'));
+    expect(v, contains(r'FN;CHARSET=UTF-8:مينا\, جورج\; س'));
+    expect(v, contains('item1.TEL;TYPE=CELL:+201112345678$eol'));
+    expect(v, contains('item1.X-ABLabel;CHARSET=UTF-8:الأب$eol'));
+    expect(v, contains('item2.TEL;TYPE=CELL:+201012345678$eol'));
+    expect(v, contains('item2.X-ABLabel;CHARSET=UTF-8:الأم$eol'));
+    expect(v, endsWith('END:VCARD$eol'));
     expect(buildVCards([]), isEmpty);
   });
 }

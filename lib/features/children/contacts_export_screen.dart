@@ -45,7 +45,7 @@ class _ContactsExportScreenState extends State<ContactsExportScreen> {
     return (children: children, classes: classes);
   }
 
-  List<ContactEntry> _entries(_Data data) => contactEntriesFor(
+  List<ContactCard> _entries(_Data data) => contactCardsFor(
         data.children
             .where((c) => _classId == null || c.classId == _classId)
             .toList(),
@@ -55,7 +55,7 @@ class _ContactsExportScreenState extends State<ContactsExportScreen> {
         child: _kids,
       );
 
-  Future<void> _download(List<ContactEntry> entries) async {
+  Future<void> _download(List<ContactCard> entries) async {
     await Ui.runGuarded(
       context,
       () => FileService.saveAndShareVCard(
