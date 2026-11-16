@@ -196,12 +196,15 @@ class MoreScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: Column(
                 children: [
-                  _Entry(
-                    icon: Icons.contact_phone_rounded,
-                    title: AppStrings.servantDirectory,
-                    screen: const ServantDirectoryScreen(),
-                    color: AppColors.olive,
-                  ),
+                  // An admin already has the full servants list under system
+                  // management, so the contacts-only one is for everyone else.
+                  if (!isAdmin)
+                    _Entry(
+                      icon: Icons.contact_phone_rounded,
+                      title: AppStrings.servantDirectory,
+                      screen: const ServantDirectoryScreen(),
+                      color: AppColors.olive,
+                    ),
                   _Entry(
                     icon: Icons.menu_book_outlined,
                     title: AppStrings.lessonSchedule,

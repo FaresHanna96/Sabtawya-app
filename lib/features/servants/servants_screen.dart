@@ -6,11 +6,13 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/arabic_sort.dart';
+import '../../core/utils/whatsapp.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
+import '../../core/widgets/whatsapp_icon.dart';
 import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
@@ -589,10 +591,29 @@ class _ServantCard extends StatelessWidget {
                 if (mobile.isNotEmpty)
                   IconButton(
                     tooltip: AppStrings.call,
+                    visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.call_rounded, size: 20),
                     color: AppColors.success,
                     onPressed: () =>
                         launchUrl(Uri(scheme: 'tel', path: mobile)),
+                  ),
+                // The same ready check-in message as the servants contact list.
+                if (WhatsApp.normalise(mobile) != null)
+                  IconButton(
+                    tooltip: AppStrings.whatsapp,
+                    visualDensity: VisualDensity.compact,
+                    icon: const WhatsAppIcon(size: 22),
+                    onPressed: () => launchUrl(
+                      WhatsApp.link(
+                        WhatsApp.normalise(mobile)!,
+                        WhatsApp.servantCheckInMessage(
+                          name: servant.fullName,
+                          senderName:
+                              context.read<SessionController>().displayName,
+                        ),
+                      ),
+                      mode: LaunchMode.externalApplication,
+                    ),
                   ),
                 // Locking yourself out of the app is not a useful option.
                 if (!isMe)
