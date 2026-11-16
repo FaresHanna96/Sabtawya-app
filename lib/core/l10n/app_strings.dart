@@ -761,6 +761,7 @@ class AppStrings {
   static const clearSearch = 'مسح البحث';
   static const call = 'اتصال';
   static const whatsapp = 'رسالة واتساب';
+  static String whatsappTo(String who) => 'واتساب $who';
   static const clearField = 'مسح';
   static const noPhoneNumber = 'لا يوجد رقم';
 }

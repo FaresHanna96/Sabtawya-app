@@ -7,8 +7,10 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
+import '../../core/utils/whatsapp.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/whatsapp_icon.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/child.dart';
@@ -418,27 +420,68 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
         (AppStrings.callFather, child.fatherMobile!.trim()),
     ];
     if (numbers.isEmpty) return const SizedBox.shrink();
-    return Row(
+
+    // The same people on WhatsApp, for the numbers that can be written to.
+    final chats = <(String, String)>[
+      for (final (label, number) in numbers)
+        if (WhatsApp.normalise(number) != null)
+          (label, WhatsApp.normalise(number)!),
+    ];
+    final servantName = context.read<SessionController>().displayName;
+
+    Widget rowOf(List<Widget> buttons) => Row(
+          children: [
+            for (var i = 0; i < buttons.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(child: buttons[i]),
+            ],
+          ],
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < numbers.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(
-            child: FilledButton.tonalIcon(
+        rowOf([
+          for (final (label, number) in numbers)
+            FilledButton.tonalIcon(
               style: FilledButton.styleFrom(
                 foregroundColor: AppColors.success,
                 backgroundColor: AppColors.success.withValues(alpha: 0.12),
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
-              onPressed: () =>
-                  launchUrl(Uri(scheme: 'tel', path: numbers[i].$2)),
+              onPressed: () => launchUrl(Uri(scheme: 'tel', path: number)),
               icon: const Icon(Icons.call_rounded, size: 18),
-              label: Text(
-                numbers[i].$1,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
-          ),
+        ]),
+        if (chats.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          rowOf([
+            for (final (label, number) in chats)
+              FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  foregroundColor: const Color(0xFF128C4A),
+                  backgroundColor: WhatsAppIcon.green.withValues(alpha: 0.14),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                onPressed: () => launchUrl(
+                  WhatsApp.link(
+                    number,
+                    WhatsApp.greeting(
+                      childName: child.fullName,
+                      servantName: servantName,
+                    ),
+                  ),
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: const WhatsAppIcon(size: 18),
+                label: Text(
+                  AppStrings.whatsappTo(label),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ]),
         ],
       ],
     );

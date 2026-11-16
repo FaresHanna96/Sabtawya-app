@@ -3,8 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
+import '../utils/whatsapp.dart';
 import 'illustrations.dart';
 import 'motion.dart';
+import 'whatsapp_icon.dart';
 
 /// The Sabtawya emblem.
 class AppLogo extends StatelessWidget {
@@ -840,12 +842,27 @@ class InfoRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
+            child: isPhone
+                // A number never breaks over two lines: it shrinks to fit
+                // beside the call and WhatsApp buttons.
+                ? FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      text,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  )
+                : Text(
+                    text,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
           ),
           if (isPhone && hasValue) _CallButton(number: value!),
+          if (isPhone && hasValue && WhatsApp.normalise(value) != null)
+            _WhatsAppButton(number: WhatsApp.normalise(value)!),
         ],
       ),
     );
@@ -866,6 +883,28 @@ class _CallButton extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       tooltip: AppStrings.call,
       onPressed: () => launchUrl(Uri(scheme: 'tel', path: number)),
+    );
+  }
+}
+
+/// Opens a WhatsApp chat with the number next to it.
+class _WhatsAppButton extends StatelessWidget {
+  const _WhatsAppButton({required this.number});
+
+  /// Already in the international form.
+  final String number;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const WhatsAppIcon(size: 20),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      tooltip: AppStrings.whatsapp,
+      onPressed: () => launchUrl(
+        WhatsApp.link(number),
+        mode: LaunchMode.externalApplication,
+      ),
     );
   }
 }

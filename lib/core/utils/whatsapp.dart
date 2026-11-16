@@ -49,9 +49,21 @@ class WhatsApp {
     return null;
   }
 
-  /// `https://wa.me/<number>?text=<message>`.
-  static Uri link(String number, String message) =>
-      Uri.https('wa.me', '/$number', <String, String>{'text': message});
+  /// `https://wa.me/<number>?text=<message>`; with no message, just the chat.
+  static Uri link(String number, [String message = '']) => Uri.https(
+        'wa.me',
+        '/$number',
+        message.isEmpty ? null : <String, String>{'text': message},
+      );
+
+  /// A first line for a chat opened from a child's page.
+  static String greeting({
+    required String childName,
+    required String servantName,
+  }) {
+    final who = servantName.trim().isEmpty ? 'خادم الفصل' : servantName.trim();
+    return 'سلام ونعمة، معاك $who من خدمة السبت بخصوص ${childName.trim()}.';
+  }
 
   /// The ready message for a child who has been absent [absent] Saturdays.
   static String absenceMessage({

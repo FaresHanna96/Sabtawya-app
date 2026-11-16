@@ -112,6 +112,21 @@ void main() {
     });
   });
 
+  test('with no message the link is just the chat', () {
+    final uri = WhatsApp.link('201012345678');
+    expect(uri.toString(), 'https://wa.me/201012345678');
+    expect(uri.hasQuery, isFalse);
+  });
+
+  test('the greeting names the servant and the child', () {
+    final text =
+        WhatsApp.greeting(childName: ' مينا عادل ', servantName: 'أبانوب');
+    expect(text, contains('أبانوب'));
+    expect(text, contains('مينا عادل'));
+    expect(WhatsApp.greeting(childName: 'مينا', servantName: ' '),
+        contains('خادم الفصل'));
+  });
+
   test('the link carries the number and the encoded text', () {
     final uri = WhatsApp.link('201012345678', 'سلام ونعمة & شكرًا');
     expect(uri.scheme, 'https');
