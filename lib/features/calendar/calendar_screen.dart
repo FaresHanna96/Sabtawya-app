@@ -17,6 +17,7 @@ import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../state/session_controller.dart';
+import '../children/birthday_whatsapp_button.dart';
 import '../children/child_profile_screen.dart';
 import '../events/event_detail_screen.dart';
 
@@ -29,12 +30,16 @@ class _Item {
     required this.title,
     required this.subtitle,
     this.onTap,
+    this.action,
   });
 
   final _Kind kind;
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
+
+  /// A birthday's WhatsApp greeting button (shows nothing without a number).
+  final Widget? action;
 }
 
 class _CalendarData {
@@ -101,6 +106,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Map<String, String> classNames,
   ) {
     final items = <_Item>[];
+    final me = context.read<SessionController>().displayName;
 
     if (_shown.contains(_Kind.child)) {
       final born = data.children.where((c) =>
@@ -121,6 +127,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
               builder: (_) => ChildProfileScreen(childId: c.id),
             ),
           ),
+          action: BirthdayWhatsAppButton(
+            name: c.fullName,
+            servantName: me,
+            ownMobile: c.mobile,
+            child: c,
+            girl: c.gender == Gender.girl,
+          ),
         ));
       }
     }
@@ -139,6 +152,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             '${AppStrings.turningAge} ${day.year - p.birthDate!.year} '
                 '${AppStrings.years}',
           ].join(' • '),
+          action: BirthdayWhatsAppButton(
+            name: p.fullName,
+            servantName: me,
+            ownMobile: p.mobile,
+            girl: p.gender == Gender.girl,
+          ),
         ));
       }
     }
@@ -620,9 +639,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       child: ListTile(
         onTap: item.onTap,
-        trailing: item.onTap == null
+        trailing: item.action == null && item.onTap == null
             ? null
-            : const Icon(AppIcons.forward, color: AppColors.muted),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (item.action != null) item.action!,
+                  if (item.onTap != null)
+                    const Icon(AppIcons.forward, color: AppColors.muted),
+                ],
+              ),
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color, size: 20),
