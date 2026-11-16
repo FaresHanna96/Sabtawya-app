@@ -8,6 +8,7 @@ import '../../core/services/connectivity_service.dart';
 import '../../core/services/sync_service.dart';
 import '../../core/services/update_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
@@ -53,8 +54,24 @@ class _HomeShellState extends State<HomeShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkUpdate();
-    // Keeps the "caller name" list current (a no-op while the feature is off).
-    CallerIdService.refresh();
+    _callerName();
+  }
+
+  /// "Caller name" is on by default on Android: keeps its list current, and
+  /// the first time explains it and asks the phone's permission. Never again
+  /// once answered, and never after the servant switched it off in Settings.
+  Future<void> _callerName() async {
+    await CallerIdService.start();
+    if (!await CallerIdService.needsPrompt()) return;
+    await CallerIdService.markPrompted();
+    if (!mounted) return;
+    final yes = await Ui.confirm(
+      context,
+      title: AppStrings.callerIdTitle,
+      message: AppStrings.callerIdAsk,
+      confirmLabel: AppStrings.callerIdAllow,
+    );
+    if (yes) await CallerIdService.enable();
   }
 
   void _checkUpdate() {

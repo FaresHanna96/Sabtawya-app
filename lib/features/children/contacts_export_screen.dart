@@ -17,10 +17,14 @@ typedef _Data = ({List<Child> children, List<SchoolClass> classes});
 /// Downloads the families' numbers as a contacts file (`.vcf`). Opened on a
 /// phone it adds them to the contacts, so a call from a parent shows
 /// "أم مينا جورج – فصل 5 بنات" even if the servant never saved the number.
-/// A servant gets their own classes (the database already limits what they
-/// can read); the admin and the general servant can pick a class.
+/// Opened from a class page it holds that class's families; with no class it
+/// covers everyone the signed-in servant may read (the database already limits
+/// a servant to their own classes) and offers a class picker.
 class ContactsExportScreen extends StatefulWidget {
-  const ContactsExportScreen({super.key});
+  const ContactsExportScreen({super.key, this.classId});
+
+  /// The class page it was opened from, or null for every class.
+  final String? classId;
 
   @override
   State<ContactsExportScreen> createState() => _ContactsExportScreenState();
@@ -33,10 +37,11 @@ class _ContactsExportScreenState extends State<ContactsExportScreen> {
   bool _mothers = true;
   bool _fathers = true;
   bool _kids = true;
-  String? _classId;
+  late String? _classId = widget.classId;
 
   Future<_Data> _load() async {
-    final (children, classes) = await (_children.all(), _classes.list()).wait;
+    final (children, classes) =
+        await (_children.all(classId: widget.classId), _classes.list()).wait;
     return (children: children, classes: classes);
   }
 
@@ -104,7 +109,7 @@ class _ContactsExportScreenState extends State<ContactsExportScreen> {
                           ),
                         ],
                       ),
-                      if (data.classes.length > 1) ...[
+                      if (widget.classId == null && data.classes.length > 1) ...[
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String?>(
                           initialValue: _classId,

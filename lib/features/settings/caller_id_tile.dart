@@ -37,7 +37,7 @@ class _CallerIdTileState extends State<CallerIdTile> {
       now = await CallerIdService.enable();
       if (!now && mounted) Ui.info(context, AppStrings.callerIdDenied);
     } else {
-      await CallerIdService.disable();
+      await CallerIdService.disable(byUser: true);
     }
     if (mounted) {
       setState(() {

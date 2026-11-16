@@ -43,6 +43,21 @@ class MainActivity : FlutterActivity() {
                         CallerIdStore.clear(this)
                         result.success(null)
                     }
+                    "hasPermissions" -> result.success(hasCallerPermissions())
+                    // Small remembered choices: "user_off" (the servant turned
+                    // it off themselves), "prompted" (we already asked).
+                    "getFlag" -> result.success(
+                        CallerIdStore.flag(this, call.arguments.toString()),
+                    )
+                    "setFlag" -> {
+                        val args = call.arguments as? Map<*, *>
+                        CallerIdStore.setFlag(
+                            this,
+                            args?.get("name").toString(),
+                            args?.get("value") == true,
+                        )
+                        result.success(null)
+                    }
                     "isEnabled" ->
                         result.success(CallerIdStore.isEnabled(this) && hasCallerPermissions())
                     "requestPermissions" -> {

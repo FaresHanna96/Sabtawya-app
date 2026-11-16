@@ -23,6 +23,7 @@ import '../children/child_filters.dart';
 import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../children/child_tile.dart';
+import '../children/contacts_export_screen.dart';
 import 'class_form_screen.dart';
 import 'class_servants_card.dart';
 import 'patron_avatar.dart';
@@ -419,22 +420,38 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   }
 
   Widget _actions() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: _takeAttendance,
-            icon: const Icon(Icons.fact_check_outlined, size: 18),
-            label: const Text(AppStrings.attendanceTitle),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _takeAttendance,
+                icon: const Icon(Icons.fact_check_outlined, size: 18),
+                label: const Text(AppStrings.attendanceTitle),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _openHistory,
+                icon: const Icon(Icons.history, size: 18),
+                label: const Text(AppStrings.attendanceHistory),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _openHistory,
-            icon: const Icon(Icons.history, size: 18),
-            label: const Text(AppStrings.attendanceHistory),
+        const SizedBox(height: 10),
+        // The families' numbers as a contacts file, for this class.
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => ContactsExportScreen(classId: widget.classId),
+            ),
           ),
+          icon: const Icon(Icons.contacts_rounded, size: 18),
+          label: const Text(AppStrings.contactsExportTitle),
         ),
       ],
     );

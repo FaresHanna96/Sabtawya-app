@@ -43,6 +43,7 @@ class CallerIdService {
       // iPhone has no prompt: the servant switches the extension on in
       // Settings, so the numbers are saved first and work from then on.
       if (allowed || defaultTargetPlatform == TargetPlatform.iOS) {
+        await _setFlag('user_off', false);
         await _push();
       }
       return allowed;
@@ -51,9 +52,13 @@ class CallerIdService {
     }
   }
 
-  static Future<void> disable() async {
+  /// Clears the saved numbers. [byUser] is the servant switching it off
+  /// themselves, which is remembered so it is never turned on for them again;
+  /// signing out clears the numbers without that.
+  static Future<void> disable({bool byUser = false}) async {
     if (!supported) return;
     try {
+      if (byUser) await _setFlag('user_off', true);
       await _channel.invokeMethod<void>('clear');
     } catch (_) {}
   }
@@ -65,6 +70,53 @@ class CallerIdService {
     if (!await isEnabled()) return;
     try {
       await _push();
+    } catch (_) {}
+  }
+
+  /// On by default (Android): when the phone already allowed it, the numbers
+  /// are saved again after a sign-in with no question; otherwise just keeps
+  /// the list current. Never when the servant turned it off themselves.
+  static Future<void> start() async {
+    try {
+      if (supported &&
+          defaultTargetPlatform == TargetPlatform.android &&
+          !await _flag('user_off') &&
+          (await _channel.invokeMethod<bool>('hasPermissions') ?? false)) {
+        await _push();
+        return;
+      }
+    } catch (_) {
+      return;
+    }
+    await refresh();
+  }
+
+  /// Time to ask for the phone's permission: Android, not asked before, not
+  /// switched off by the servant, not already on.
+  static Future<bool> needsPrompt() async {
+    if (!supported || defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+    try {
+      return !await _flag('user_off') &&
+          !await _flag('prompted') &&
+          !(await _channel.invokeMethod<bool>('hasPermissions') ?? false);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Remembers that the question was put, so it is never asked again; the
+  /// switch in Settings stays available.
+  static Future<void> markPrompted() => _setFlag('prompted', true);
+
+  static Future<bool> _flag(String name) async =>
+      await _channel.invokeMethod<bool>('getFlag', name) ?? false;
+
+  static Future<void> _setFlag(String name, bool value) async {
+    try {
+      await _channel.invokeMethod<void>(
+          'setFlag', <String, Object>{'name': name, 'value': value});
     } catch (_) {}
   }
 

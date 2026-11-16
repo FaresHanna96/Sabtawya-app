@@ -23,6 +23,15 @@ object CallerIdStore {
             .edit().remove(LABELS).apply()
     }
 
+    fun flag(context: Context, name: String): Boolean =
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getBoolean("flag_$name", false)
+
+    fun setFlag(context: Context, name: String, value: Boolean) {
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit().putBoolean("flag_$name", value).apply()
+    }
+
     fun isEnabled(context: Context): Boolean =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE).contains(LABELS)
 
