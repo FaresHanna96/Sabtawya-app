@@ -5,9 +5,14 @@ class MapLocation {
   final double latitude;
   final double longitude;
 
-  /// Within the globe.
+  /// Within the globe, and not 0,0: that is where a missing position ends up
+  /// (an empty link, a failed fix), never a child's home.
   static bool isValid(double lat, double lng) =>
-      lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180 &&
+      !(lat == 0 && lng == 0);
 
   /// Roughly inside Egypt; a place outside is probably a wrong paste.
   bool get isInEgypt =>

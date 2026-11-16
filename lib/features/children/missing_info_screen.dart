@@ -271,39 +271,129 @@ class _FieldChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget chip({
-      required String label,
-      required int count,
-      required bool isSelected,
-      required VoidCallback onTap,
-      IconData? icon,
-    }) =>
-        ChoiceChip(
-          avatar: icon == null ? null : Icon(icon, size: 18),
-          label: Text('$label ($count)'),
-          selected: isSelected,
-          onSelected: (_) => onTap(),
-        );
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 4,
-      children: [
-        chip(
-          label: AppStrings.missingAny,
-          count: anyMissing,
-          isSelected: selected == null,
-          onTap: () => onSelected(null),
-        ),
-        for (final f in MissingField.values)
-          chip(
-            label: f.label,
-            count: counts[f] ?? 0,
-            icon: f.icon,
-            isSelected: selected == f,
-            onTap: () => onSelected(f),
+    // One row that scrolls sideways: seven wrapped chips took half the screen.
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          FieldChip(
+            label: AppStrings.missingAny,
+            count: anyMissing,
+            isSelected: selected == null,
+            onTap: () => onSelected(null),
           ),
-      ],
+          for (final f in MissingField.values) ...[
+            const SizedBox(width: 8),
+            FieldChip(
+              label: f.label,
+              count: counts[f] ?? 0,
+              icon: f.icon,
+              isSelected: selected == f,
+              onTap: () => onSelected(f),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One filter: its icon and name, and a small badge with how many children
+/// miss it. A filter with nothing missing is quieter and shows a tick instead
+/// of "0", so the eye goes to what still needs work.
+@visibleForTesting
+class FieldChip extends StatelessWidget {
+  const FieldChip({
+    super.key,
+    required this.label,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = count == 0;
+    final fg = isSelected ? Colors.white : AppColors.navy;
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$label, $count',
+      child: Opacity(
+        opacity: done && !isSelected ? 0.6 : 1,
+        child: Material(
+          color: isSelected ? AppColors.navy : AppColors.card,
+          shape: StadiumBorder(
+            side: BorderSide(
+              color: isSelected
+                  ? AppColors.navy
+                  : AppColors.navy.withValues(alpha: 0.15),
+            ),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const StadiumBorder(),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 8, 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18, color: fg),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: fg,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    constraints:
+                        const BoxConstraints(minWidth: 24, minHeight: 22),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.22)
+                          : done
+                              ? AppColors.success.withValues(alpha: 0.14)
+                              : AppColors.coral.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: done
+                        ? Icon(
+                            Icons.check_rounded,
+                            size: 14,
+                            color:
+                                isSelected ? Colors.white : AppColors.success,
+                          )
+                        : Text(
+                            '$count',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  isSelected ? Colors.white : AppColors.coral,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

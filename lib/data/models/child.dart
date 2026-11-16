@@ -120,7 +120,9 @@ class Child {
   bool get hasPhoto => photoPath != null && photoPath!.isNotEmpty;
 
   /// The home on the map, or null when none was saved.
-  MapLocation? get location => latitude == null || longitude == null
+  MapLocation? get location => latitude == null ||
+          longitude == null ||
+          !MapLocation.isValid(latitude!, longitude!)
       ? null
       : MapLocation(latitude!, longitude!);
 

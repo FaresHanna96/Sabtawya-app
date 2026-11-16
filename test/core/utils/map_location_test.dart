@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sabtawya/core/utils/map_location.dart';
+import 'package:sabtawya/data/models/child.dart';
 
 void main() {
   const home = MapLocation(30.05611, 31.34167);
@@ -142,6 +143,32 @@ void main() {
         if (text.startsWith('السعر')) continue;
         expect(got, isNull, reason: text);
       }
+    });
+  });
+
+  group('0,0 is no place', () {
+    test('is never read from a link or text', () {
+      for (final text in [
+        '0,0',
+        '0.0, 0.0',
+        'https://www.google.com/maps/@0,0,2z',
+        'https://www.google.com/maps?q=0,0',
+        'geo:0,0',
+      ]) {
+        expect(MapLocation.parse(text), isNull, reason: text);
+      }
+    });
+
+    test('a child saved with 0,0 shows no location', () {
+      final c = Child.fromMap({
+        'id': 'k',
+        'class_id': 'c',
+        'full_name': 'م',
+        'gender': 'boy',
+        'latitude': 0,
+        'longitude': 0,
+      });
+      expect(c.location, isNull);
     });
   });
 

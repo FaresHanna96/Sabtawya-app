@@ -105,8 +105,10 @@ serve(async (req) => {
         continue;
       }
 
-      // A page, not a redirect. Its text is not read: a map page also carries
-      // the centre of a default map, and a wrong place is worse than none.
+      // A page, not a redirect, and no coordinates in its address: a place
+      // shared by name. The page's own text is never read: to a server Google
+      // sends a generic map centred on Zurich whatever the place, and a wrong
+      // place is worse than none. The app tells the person what to do.
       await res.body?.cancel();
       return json({ url: url.href, coords: null });
     }

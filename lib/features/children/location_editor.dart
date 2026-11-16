@@ -34,7 +34,7 @@ class LocationEditor extends StatefulWidget {
   final Future<PhoneFix> Function()? fetchCurrent;
 
   /// Opens a shortened link. Defaults to the server function.
-  final Future<MapLocation?> Function(String text)? resolveLink;
+  final Future<ResolvedLink> Function(String text)? resolveLink;
 
   /// What is on the clipboard. Defaults to the real one.
   final Future<String?> Function()? readClipboard;
@@ -98,10 +98,12 @@ class _LocationEditorState extends State<LocationEditor> {
           await (widget.resolveLink ?? MapLinkResolver.resolve)(trimmed);
       if (!mounted) return;
       setState(() => _reading = false);
-      if (opened != null) {
-        _accept(opened);
+      if (opened.place != null) {
+        _accept(opened.place!);
       } else {
-        setState(() => _problem = AppStrings.locationShortLink);
+        setState(() => _problem = opened.opened
+            ? AppStrings.locationNamedPlace
+            : AppStrings.locationShortLink);
       }
       return;
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sabtawya/core/services/location_service.dart';
+import 'package:sabtawya/core/services/map_link_resolver.dart';
 import 'package:sabtawya/core/utils/map_location.dart';
 import 'package:sabtawya/data/models/child.dart';
 import 'package:sabtawya/features/children/child_location_card.dart';
@@ -142,7 +143,7 @@ void main() {
     Widget editor({
       MapLocation? value,
       Future<PhoneFix> Function()? fetch,
-      Future<MapLocation?> Function(String)? resolve,
+      Future<ResolvedLink> Function(String)? resolve,
       Future<String?> Function()? clip,
     }) {
       latest = value;
@@ -219,7 +220,7 @@ void main() {
         clip: () async => 'https://maps.app.goo.gl/abc123',
         resolve: (text) async {
           asked = text;
-          return _home;
+          return const ResolvedLink(place: _home, opened: true);
         },
       ));
       await tester.tap(find.text('لصق رابط من الحافظة'));
@@ -233,13 +234,27 @@ void main() {
         (tester) async {
       await tester.pumpWidget(editor(
         clip: () async => 'https://maps.app.goo.gl/abc123',
-        resolve: (_) async => null,
+        resolve: (_) async => ResolvedLink.failed,
       ));
       await tester.tap(find.text('لصق رابط من الحافظة'));
       await tester.pumpAndSettle();
 
       expect(latest, isNull);
       expect(find.textContaining('مش قادرين نفتح'), findsOneWidget);
+    });
+
+    testWidgets('a place shared by name says how to get a pin instead',
+        (tester) async {
+      await tester.pumpWidget(editor(
+        clip: () async => 'https://maps.app.goo.gl/AsjHVZGvE29Hw1VW8?g_st=ic',
+        resolve: (_) async => const ResolvedLink(opened: true),
+      ));
+      await tester.tap(find.text('لصق رابط من الحافظة'));
+      await tester.pumpAndSettle();
+
+      expect(latest, isNull);
+      expect(find.textContaining('مكان معروف بالاسم'), findsOneWidget);
+      expect(find.textContaining('مش قادرين نفتح'), findsNothing);
     });
 
     testWidgets('an empty clipboard says what to copy', (tester) async {
