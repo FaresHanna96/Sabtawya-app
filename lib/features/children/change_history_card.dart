@@ -129,6 +129,7 @@ class _ChangeRow extends StatelessWidget {
               )
             : (Icons.edit_rounded, AppColors.navyLight, AppStrings.changeEdited);
     final labels = g.labels;
+    final details = g.descriptions;
 
     return IntrinsicHeight(
       child: Row(
@@ -197,7 +198,11 @@ class _ChangeRow extends StatelessWidget {
                     style:
                         const TextStyle(fontSize: 12.5, color: AppColors.muted),
                   ),
-                  if (labels.isNotEmpty) ...[
+                  if (details.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    for (final d in details) _detail(d),
+                  ] else if (labels.isNotEmpty) ...[
+                    // Older entries only know which fields, not the values.
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
@@ -210,6 +215,39 @@ class _ChangeRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// "العنوان: من «قديم» إلى «جديد»", the field name picked out.
+  Widget _detail(FieldChangeText d) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.navyTint.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text.rich(
+          TextSpan(
+            text: '${d.label}: ',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+            children: [
+              TextSpan(
+                text: d.text,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF374151),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

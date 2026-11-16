@@ -373,9 +373,14 @@ class ChildChange {
     required this.entity,
     this.actorName,
     this.changed = const <String>[],
+    this.values = const <String, ({Object? before, Object? after})>{},
   });
 
   final DateTime createdAt;
+
+  /// What each edited field was and became (only entries made after the
+  /// values were recorded have them; visit fields are never in here).
+  final Map<String, ({Object? before, Object? after})> values;
 
   /// Column names an edit touched (only entries made since 1.0.31 have them).
   final List<String> changed;
@@ -397,5 +402,15 @@ class ChildChange {
         changed: map['changed'] is List
             ? (map['changed'] as List).map((e) => '$e').toList()
             : const <String>[],
+        values: map['changes'] is Map
+            ? {
+                for (final e in (map['changes'] as Map).entries)
+                  if (e.value is Map)
+                    '${e.key}': (
+                      before: (e.value as Map)['old'],
+                      after: (e.value as Map)['new'],
+                    ),
+              }
+            : const <String, ({Object? before, Object? after})>{},
       );
 }
