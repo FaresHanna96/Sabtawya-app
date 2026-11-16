@@ -12,6 +12,7 @@ import '../../core/widgets/async_section.dart';
 import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/class_group_header.dart';
 import '../../core/widgets/skeleton.dart';
+import '../../core/widgets/whatsapp_icon.dart';
 import '../../data/models/child.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/child_repository.dart';
@@ -400,8 +401,7 @@ class _AbsenceTile extends StatelessWidget {
               if (whatsapp != null)
                 IconButton(
                   tooltip: AppStrings.whatsapp,
-                  icon: const Icon(Icons.chat_rounded, size: 20),
-                  color: const Color(0xFF1FA855),
+                  icon: const WhatsAppIcon(size: 22),
                   onPressed: () => launchUrl(
                     WhatsApp.link(
                       whatsapp,
