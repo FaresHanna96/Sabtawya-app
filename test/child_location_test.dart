@@ -239,7 +239,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(latest, isNull);
-      expect(find.textContaining('الرابط المختصر'), findsOneWidget);
+      expect(find.textContaining('مش قادرين نفتح'), findsOneWidget);
     });
 
     testWidgets('an empty clipboard says what to copy', (tester) async {

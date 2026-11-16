@@ -235,43 +235,29 @@ class _LocationEditorState extends State<LocationEditor> {
             if (_warning != null) _Note(_warning!, AppColors.warning),
           ],
           const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: working ? null : _useCurrent,
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            icon: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location_rounded),
-            label: Text(
-              _busy
-                  ? AppStrings.locationLocating
-                  : AppStrings.locationUseCurrent,
-            ),
+          _Option(
+            icon: Icons.my_location_rounded,
+            title: _busy
+                ? AppStrings.locationLocating
+                : AppStrings.locationUseCurrent,
+            subtitle: AppStrings.locationUseCurrentHint,
+            busy: _busy,
+            compact: place != null,
+            filled: true,
+            onTap: working ? null : _useCurrent,
           ),
           const SizedBox(height: 8),
-          FilledButton.tonalIcon(
-            onPressed: working ? null : _fromClipboard,
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            icon: _reading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.content_paste_rounded),
-            label: Text(
-              _reading
-                  ? AppStrings.locationReadingLink
-                  : AppStrings.locationPasteButton,
-            ),
+          _Option(
+            icon: Icons.content_paste_rounded,
+            title: _reading
+                ? AppStrings.locationReadingLink
+                : AppStrings.locationPasteButton,
+            subtitle: AppStrings.locationHowTo,
+            busy: _reading,
+            compact: place != null,
+            filled: false,
+            onTap: working ? null : _fromClipboard,
           ),
-          if (place == null && !_typing)
-            const _Note(AppStrings.locationHowTo, AppColors.muted),
           if (_problem != null) _Note(_problem!, AppColors.danger),
           const SizedBox(height: 4),
           if (!_typing && _typed.text.isEmpty)
@@ -319,4 +305,90 @@ class _Note extends StatelessWidget {
           style: TextStyle(fontSize: 12.5, color: color, height: 1.4),
         ),
       );
+}
+
+/// A big, plain choice: what it does in bold, how in a line under it. Once a
+/// place is set the choices shrink to plain buttons for changing it.
+class _Option extends StatelessWidget {
+  const _Option({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.busy,
+    required this.compact,
+    required this.filled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool busy;
+  final bool compact;
+  final bool filled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final leading = busy
+        ? const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          )
+        : Icon(icon, size: 24);
+    if (compact) {
+      return OutlinedButton.icon(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+        icon: leading,
+        label: Text(title),
+      );
+    }
+    final fg = filled ? Colors.white : AppColors.navy;
+    return Material(
+      color: filled ? AppColors.navy : AppColors.navy.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              IconTheme(
+                data: IconThemeData(color: fg),
+                child: leading,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: fg,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: fg.withValues(alpha: 0.8),
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

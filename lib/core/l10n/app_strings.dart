@@ -801,9 +801,9 @@ class AppStrings {
   static const locationPasteButton = 'لصق رابط من الحافظة';
   static const locationOpenMaps = 'افتح خرائط جوجل';
   static const locationTypeInstead = 'أو اكتب الرابط أو الإحداثيات';
+  static const locationUseCurrentHint = 'لو إنت واقف قدام بيت المخدوم دلوقتي';
   static const locationHowTo =
-      'في خرائط جوجل: اضغط مطولاً على بيت المخدوم ← شارك ← نسخ، وارجع هنا '
-      'واضغط «لصق».';
+      'من خرائط جوجل: اضغط على المكان، ثم شارك، ثم انسخ الرابط المختصر، وارجع هنا';
   static const locationEdit = 'تعديل الموقع';
   static const locationSave = 'حفظ الموقع';
   static const locationSaved = 'تم حفظ الموقع';

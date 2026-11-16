@@ -66,13 +66,16 @@ class ChildLocationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      AppStrings.locationTitle,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.navy,
+                    const Flexible(
+                      child: Text(
+                        AppStrings.locationTitle,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
                       ),
                     ),
                     if (onSet != null)
