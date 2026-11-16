@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_version.dart';
 import 'connectivity_service.dart';
 import 'offline_store.dart';
 
@@ -59,6 +60,16 @@ class OfflineHttpClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final path = request.url.path;
     final method = request.method.toUpperCase();
+
+    // The database can refuse builds below a minimum (app_build_gate): say which
+    // build this is, on the header every Supabase request already carries (so the
+    // browser's CORS rules already allow it).
+    if (path.contains('/rest/v1/')) {
+      final info = request.headers['x-client-info'] ?? 'supabase-flutter';
+      if (!info.contains('sabtawya/')) {
+        request.headers['x-client-info'] = '$info sabtawya/$kAppBuild';
+      }
+    }
 
     if (path.contains('/rest/v1/') && !path.contains('/rest/v1/rpc/')) {
       if (method == 'GET' || method == 'HEAD') return _read(request);

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:sabtawya/core/config/app_version.dart';
 import 'package:sabtawya/core/services/offline_http_client.dart';
 import 'package:sabtawya/core/services/offline_store.dart';
 
@@ -55,6 +56,18 @@ void main() {
     );
     return jsonDecode(response.body) as List<dynamic>;
   }
+
+  test('every data request says which build sent it', () async {
+    String? seen;
+    final c = OfflineHttpClient(MockClient((request) async {
+      seen = request.headers['x-client-info'];
+      return http.Response('[]', 200,
+          headers: {'content-type': 'application/json'});
+    }));
+    await c.get(Uri.parse('$_base/children'),
+        headers: {'x-client-info': 'supabase-flutter/2.0'});
+    expect(seen, 'supabase-flutter/2.0 sabtawya/$kAppBuild');
+  });
 
   test('a read is answered from the last good copy when offline', () async {
     expect(await getChildren(), hasLength(1));
