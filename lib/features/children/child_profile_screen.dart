@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
-import '../../core/utils/whatsapp.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
-import '../../core/widgets/whatsapp_icon.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/child.dart';
@@ -24,6 +21,8 @@ import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'child_avatar.dart';
+import 'child_location_card.dart';
+import 'contact_cards.dart';
 import 'child_filters.dart';
 import 'child_form_screen.dart';
 
@@ -185,6 +184,16 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               // profile, so the numbers sit right under the name.
               FadeSlideIn(index: 1, child: _contactBar(child)),
               const SizedBox(height: 12),
+              // Where the child lives: open it on the map, or get directions.
+              FadeSlideIn(
+                index: 1,
+                child: ChildLocationCard(
+                  location: child.location,
+                  address: child.address,
+                  onSet: canEdit ? () => _edit(child) : null,
+                ),
+              ),
+              if (child.location != null || canEdit) const SizedBox(height: 12),
               if (data.yearReport != null) ...[
                 FadeSlideIn(
                   index: 2,
@@ -227,6 +236,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       value: child.mobile,
                       icon: Icons.phone_outlined,
                       isPhone: true,
+                      phoneActions: false,
                     ),
                     InfoRow(
                       label: AppStrings.childCode,
@@ -260,6 +270,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       value: child.motherMobile,
                       icon: Icons.phone_outlined,
                       isPhone: true,
+                      phoneActions: false,
                     ),
                     InfoRow(
                       label: AppStrings.fatherName,
@@ -271,6 +282,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       value: child.fatherMobile,
                       icon: Icons.phone_outlined,
                       isPhone: true,
+                      phoneActions: false,
                     ),
                   ],
                 ),
@@ -411,79 +423,19 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   /// One tap to call the child, the mother or the father (whichever numbers
   /// exist). Hidden when there is no number at all.
   Widget _contactBar(Child child) {
-    final numbers = <(String, String)>[
-      if ((child.mobile ?? '').trim().isNotEmpty)
-        (AppStrings.callChild, child.mobile!.trim()),
-      if ((child.motherMobile ?? '').trim().isNotEmpty)
-        (AppStrings.callMother, child.motherMobile!.trim()),
-      if ((child.fatherMobile ?? '').trim().isNotEmpty)
-        (AppStrings.callFather, child.fatherMobile!.trim()),
+    String? clean(String? v) => (v ?? '').trim().isEmpty ? null : v!.trim();
+    final people = <ContactPerson>[
+      if (clean(child.mobile) != null)
+        ContactPerson(AppStrings.callChild, clean(child.mobile)!),
+      if (clean(child.motherMobile) != null)
+        ContactPerson(AppStrings.callMother, clean(child.motherMobile)!),
+      if (clean(child.fatherMobile) != null)
+        ContactPerson(AppStrings.callFather, clean(child.fatherMobile)!),
     ];
-    if (numbers.isEmpty) return const SizedBox.shrink();
-
-    // The same people on WhatsApp, for the numbers that can be written to.
-    final chats = <(String, String)>[
-      for (final (label, number) in numbers)
-        if (WhatsApp.normalise(number) != null)
-          (label, WhatsApp.normalise(number)!),
-    ];
-    final servantName = context.read<SessionController>().displayName;
-
-    Widget rowOf(List<Widget> buttons) => Row(
-          children: [
-            for (var i = 0; i < buttons.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
-              Expanded(child: buttons[i]),
-            ],
-          ],
-        );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        rowOf([
-          for (final (label, number) in numbers)
-            FilledButton.tonalIcon(
-              style: FilledButton.styleFrom(
-                foregroundColor: AppColors.success,
-                backgroundColor: AppColors.success.withValues(alpha: 0.12),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-              onPressed: () => launchUrl(Uri(scheme: 'tel', path: number)),
-              icon: const Icon(Icons.call_rounded, size: 18),
-              label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-        ]),
-        if (chats.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          rowOf([
-            for (final (label, number) in chats)
-              FilledButton.tonalIcon(
-                style: FilledButton.styleFrom(
-                  foregroundColor: const Color(0xFF128C4A),
-                  backgroundColor: WhatsAppIcon.green.withValues(alpha: 0.14),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                onPressed: () => launchUrl(
-                  WhatsApp.link(
-                    number,
-                    WhatsApp.greeting(
-                      childName: child.fullName,
-                      servantName: servantName,
-                    ),
-                  ),
-                  mode: LaunchMode.externalApplication,
-                ),
-                icon: const WhatsAppIcon(size: 18),
-                label: Text(
-                  AppStrings.whatsappTo(label),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ]),
-        ],
-      ],
+    return ContactCards(
+      people: people,
+      childName: child.fullName,
+      servantName: context.read<SessionController>().displayName,
     );
   }
 

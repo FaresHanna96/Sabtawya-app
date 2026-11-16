@@ -10,6 +10,7 @@ import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../state/session_controller.dart';
+import '../children/birthday_whatsapp_button.dart';
 import '../children/child_profile_screen.dart';
 
 /// Shows today's birthdays on the home screen, split into two cards:
@@ -331,15 +332,27 @@ class _ServantBirthdayRow extends StatelessWidget {
         '${AppStrings.turningAge} $age ${AppStrings.years}',
         style: const TextStyle(fontSize: 12),
       ),
-      trailing: IconButton(
-        icon: const Icon(Icons.call, size: 18),
-        color: hasPhone ? AppColors.success : AppColors.muted,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        tooltip: hasPhone ? AppStrings.call : AppStrings.noPhoneNumber,
-        onPressed: hasPhone
-            ? () => launchUrl(Uri(scheme: 'tel', path: servant.mobile!))
-            : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BirthdayWhatsAppButton(
+            name: servant.fullName,
+            servantName: context.read<SessionController>().displayName,
+            ownMobile: servant.mobile,
+            girl: servant.gender == Gender.girl,
+            compact: true,
+          ),
+          IconButton(
+            icon: const Icon(Icons.call, size: 18),
+            color: hasPhone ? AppColors.success : AppColors.muted,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            tooltip: hasPhone ? AppStrings.call : AppStrings.noPhoneNumber,
+            onPressed: hasPhone
+                ? () => launchUrl(Uri(scheme: 'tel', path: servant.mobile!))
+                : null,
+          ),
+        ],
       ),
     );
   }
@@ -455,8 +468,19 @@ class _BirthdayRow extends StatelessWidget {
         '${AppStrings.turningAge} $age ${AppStrings.years}',
         style: const TextStyle(fontSize: 12),
       ),
-      trailing: hasPhone
-          ? IconButton(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BirthdayWhatsAppButton(
+            name: child.fullName,
+            servantName: context.read<SessionController>().displayName,
+            ownMobile: child.mobile,
+            child: child,
+            girl: child.gender == Gender.girl,
+            compact: true,
+          ),
+          if (hasPhone)
+            IconButton(
               icon: const Icon(Icons.call, size: 18),
               color: AppColors.success,
               padding: EdgeInsets.zero,
@@ -464,8 +488,9 @@ class _BirthdayRow extends StatelessWidget {
               tooltip: AppStrings.call,
               onPressed: () =>
                   launchUrl(Uri(scheme: 'tel', path: child.mobile!)),
-            )
-          : null,
+            ),
+        ],
+      ),
       onTap: () => Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
           builder: (_) => ChildProfileScreen(childId: child.id),

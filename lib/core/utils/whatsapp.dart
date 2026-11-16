@@ -65,6 +65,57 @@ class WhatsApp {
     return 'سلام ونعمة، معاك $who من خدمة السبت بخصوص ${childName.trim()}.';
   }
 
+  /// Who to write a birthday greeting to: the person's own number, else (for
+  /// a child) the mother's, then the father's. [toThePerson] is false for a
+  /// parent, so the greeting speaks about the child instead of to them.
+  static ({String number, bool toThePerson})? birthdayTarget({
+    String? ownMobile,
+    Child? child,
+  }) {
+    final own = normalise(ownMobile);
+    if (own != null) return (number: own, toThePerson: true);
+    if (child != null) {
+      for (final n in [child.motherMobile, child.fatherMobile]) {
+        final normal = normalise(n);
+        if (normal != null) return (number: normal, toThePerson: false);
+      }
+    }
+    return null;
+  }
+
+  /// The birthday greeting, to the person ("كل سنة وإنت طيب") or, when it goes
+  /// to a parent, about the child.
+  static String birthdayMessage({
+    required String name,
+    required String servantName,
+    required bool toThePerson,
+    bool girl = false,
+  }) {
+    final who = servantName.trim().isEmpty ? 'خادم الفصل' : servantName.trim();
+    final first = name.trim().split(RegExp(r'\s+')).first;
+    if (toThePerson) {
+      final wish = girl ? 'كل سنة وإنتي طيبة' : 'كل سنة وإنت طيب';
+      return 'سلام ونعمة يا $first، معاك $who من خدمة السبت. $wish '
+          'بمناسبة عيد ميلادك، ربنا يحفظك ويبارك حياتك.';
+    }
+    final wish = girl ? 'كل سنة و$first طيبة' : 'كل سنة و$first طيب';
+    final his = girl ? 'ميلادها' : 'ميلاده';
+    return 'سلام ونعمة، معاك $who من خدمة السبت. $wish بمناسبة عيد $his، '
+        'ربنا يحفظ${girl ? 'ها' : 'ه'} ويبارك حياتكم.';
+  }
+
+  /// Asks the family for what is missing from a child's record.
+  static String missingInfoMessage({
+    required String childName,
+    required String servantName,
+    required List<String> missing,
+  }) {
+    final who = servantName.trim().isEmpty ? 'خادم الفصل' : servantName.trim();
+    final what = missing.isEmpty ? 'بيانات' : missing.join('، ');
+    return 'سلام ونعمة، معاك $who من خدمة السبت. بنحدّث بيانات '
+        '${childName.trim()} ومحتاجين: $what. ممكن تبعتوهم لنا؟ شكرًا.';
+  }
+
   /// The ready message for a child who has been absent [absent] Saturdays.
   static String absenceMessage({
     required String childName,

@@ -8,6 +8,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/map_location.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/child.dart';
@@ -18,6 +19,7 @@ import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'child_avatar.dart';
+import 'location_editor.dart';
 
 /// Add or edit a child.
 ///
@@ -63,6 +65,8 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       TextEditingController(text: widget.child?.school ?? '');
   late final TextEditingController _address =
       TextEditingController(text: widget.child?.address ?? '');
+  MapLocation? _location;
+
   late final TextEditingController _notes =
       TextEditingController(text: widget.child?.notes ?? '');
 
@@ -87,6 +91,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
     _gender = widget.child?.gender ?? Gender.boy;
     _isDeacon = widget.child?.isDeacon ?? false;
     _birthDate = widget.child?.birthDate;
+    _location = widget.child?.location;
   }
 
   @override
@@ -247,6 +252,8 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       school: _school.text,
       address: _address.text,
       notes: _notes.text,
+      latitude: _location?.latitude,
+      longitude: _location?.longitude,
     );
 
     Child? stored;
@@ -432,6 +439,13 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                       controller: _address,
                       label: AppStrings.address,
                       icon: Icons.location_on_outlined,
+                    ),
+                    LocationEditor(
+                      value: _location,
+                      onChanged: (v) => setState(() {
+                        _dirty = true;
+                        _location = v;
+                      }),
                     ),
                     _field(
                       controller: _notes,

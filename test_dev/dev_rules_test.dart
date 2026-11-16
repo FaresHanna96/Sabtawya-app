@@ -816,6 +816,77 @@ void main() {
     });
   });
 
+  group('a child\'s place on the map', () {
+    late _Who servant;
+    late _Who admin;
+    late _Who general;
+    late String childId;
+    late dynamic before;
+
+    setUp(() async {
+      if (skip != null) return;
+      servant = await _login('servant');
+      admin = await _login('admin');
+      general = await _login('general');
+      final kid = await _call(
+          'GET', '/rest/v1/children?select=id,latitude,longitude&limit=1',
+          token: servant.token);
+      childId = kid.rows.single['id'] as String;
+      before = [kid.rows.single['latitude'], kid.rows.single['longitude']];
+    });
+
+    tearDown(() async {
+      if (skip != null) return;
+      await _call('PATCH', '/rest/v1/children?id=eq.$childId',
+          token: admin.token,
+          body: {'latitude': before[0], 'longitude': before[1]});
+    });
+
+    Future<_Reply> setPlace(_Who who, Object? lat, Object? lng) =>
+        _call('PATCH', '/rest/v1/children?id=eq.$childId',
+            token: who.token, body: {'latitude': lat, 'longitude': lng});
+
+    Future<List<dynamic>> place(_Who who) async {
+      final r = await _call(
+          'GET', '/rest/v1/children?select=latitude,longitude&id=eq.$childId',
+          token: who.token);
+      return [r.rows.single['latitude'], r.rows.single['longitude']];
+    }
+
+    dev('a servant of the class saves, reads and clears it', () async {
+      final saved = await setPlace(servant, 30.05611, 31.34167);
+      expect(saved.ok, isTrue, reason: '${saved.body}');
+      expect(await place(servant), [30.05611, 31.34167]);
+
+      final cleared = await setPlace(servant, null, null);
+      expect(cleared.ok, isTrue);
+      expect(await place(servant), [null, null]);
+    });
+
+    dev('half a place, or one off the globe, is refused', () async {
+      expect((await setPlace(servant, 30.0, null)).ok, isFalse);
+      expect((await setPlace(servant, null, 31.0)).ok, isFalse);
+      expect((await setPlace(servant, 91.0, 31.0)).ok, isFalse);
+      expect((await setPlace(servant, 30.0, 181.0)).ok, isFalse);
+      expect((await setPlace(servant, -90.0, -180.0)).ok, isTrue); // the edge
+      // Nothing half-written got in.
+      expect(await place(servant), [-90, -180]);
+    });
+
+    dev('the general servant reads but cannot change it', () async {
+      await setPlace(servant, 30.0, 31.0);
+      final byGeneral = await setPlace(general, 1.0, 2.0);
+      // Row security hides the update: nothing changes.
+      expect(await place(servant), [30, 31]);
+      expect(byGeneral.status, anyOf(200, 204, 403));
+    });
+
+    dev('an admin can set it too', () async {
+      expect((await setPlace(admin, 29.9, 31.2)).ok, isTrue);
+      expect(await place(admin), [29.9, 31.2]);
+    });
+  });
+
   group('push registration', () {
     Future<List<dynamic>> mine(_Who who, List<String> tokens) async {
       final r = await _call('GET',

@@ -1,0 +1,198 @@
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/l10n/app_strings.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/utils/whatsapp.dart';
+import '../../core/widgets/whatsapp_icon.dart';
+
+/// One person to reach: who they are to the child (الأم، الأب، المخدوم) and
+/// their number as it is stored.
+class ContactPerson {
+  const ContactPerson(this.label, this.number);
+
+  final String label;
+  final String number;
+}
+
+/// The quick contacts at the top of a child's page: one card with a row per
+/// person, the name and number on one side and two round buttons, call and
+/// WhatsApp, on the other. The rows keep the same size on every phone, so the
+/// buttons are always big enough for a thumb. A number WhatsApp cannot reach
+/// (a landline) gets the call button alone; a person with no number has no
+/// row.
+class ContactCards extends StatelessWidget {
+  const ContactCards({
+    super.key,
+    required this.people,
+    required this.childName,
+    required this.servantName,
+  });
+
+  final List<ContactPerson> people;
+  final String childName;
+
+  /// Who is writing, named in the first line of the WhatsApp message.
+  final String servantName;
+
+  @override
+  Widget build(BuildContext context) {
+    if (people.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.navy.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < people.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                color: AppColors.navy.withValues(alpha: 0.07),
+              ),
+            _ContactRow(
+              person: people[i],
+              childName: childName,
+              servantName: servantName,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactRow extends StatelessWidget {
+  const _ContactRow({
+    required this.person,
+    required this.childName,
+    required this.servantName,
+  });
+
+  final ContactPerson person;
+  final String childName;
+  final String servantName;
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = WhatsApp.normalise(person.number);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  person.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                // A number reads left to right, whatever the page direction.
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    person.number,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (chat != null) ...[
+            _RoundAction(
+              tooltip: AppStrings.whatsappTo(person.label),
+              color: WhatsAppIcon.green,
+              onTap: () => launchUrl(
+                WhatsApp.link(
+                  chat,
+                  WhatsApp.greeting(
+                    childName: childName,
+                    servantName: servantName,
+                  ),
+                ),
+                mode: LaunchMode.externalApplication,
+              ),
+              child: const WhatsAppIcon(size: 26),
+            ),
+            const SizedBox(width: 10),
+          ],
+          _RoundAction(
+            tooltip: '${AppStrings.call}: ${person.label}',
+            color: AppColors.success,
+            onTap: () =>
+                launchUrl(Uri(scheme: 'tel', path: person.number.trim())),
+            child: const Icon(Icons.call_rounded,
+                size: 24, color: AppColors.success),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A round 48 px button with a tinted fill: big enough for a thumb.
+class _RoundAction extends StatelessWidget {
+  const _RoundAction({
+    required this.tooltip,
+    required this.color,
+    required this.onTap,
+    required this.child,
+  });
+
+  static const double size = 48;
+
+  final String tooltip;
+  final Color color;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: Material(
+          color: color.withValues(alpha: 0.14),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Center(child: child),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

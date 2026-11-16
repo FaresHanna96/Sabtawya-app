@@ -1,5 +1,6 @@
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/map_location.dart';
 import 'parsers.dart';
 
 enum Gender {
@@ -72,6 +73,8 @@ class Child {
     this.address,
     this.notes,
     this.photoPath,
+    this.latitude,
+    this.longitude,
     this.lastPhoneVisitDate,
     this.lastPhoneVisitNotes,
     this.lastHomeVisitDate,
@@ -103,6 +106,10 @@ class Child {
   /// Path of the photo inside the `child-photos` bucket, not a URL: the bucket
   /// is private, so a signed URL is minted when the image is displayed.
   final String? photoPath;
+
+  /// Where the child lives on the map; both are set, or neither.
+  final double? latitude;
+  final double? longitude;
   final DateTime? lastPhoneVisitDate;
   final String? lastPhoneVisitNotes;
   final DateTime? lastHomeVisitDate;
@@ -111,6 +118,11 @@ class Child {
   final DateTime? updatedAt;
 
   bool get hasPhoto => photoPath != null && photoPath!.isNotEmpty;
+
+  /// The home on the map, or null when none was saved.
+  MapLocation? get location => latitude == null || longitude == null
+      ? null
+      : MapLocation(latitude!, longitude!);
 
   /// Completed years, or null when no birth date was recorded.
   int? get ageYears {
@@ -148,6 +160,8 @@ class Child {
         address: asTextOrNull(map['address']),
         notes: asTextOrNull(map['notes']),
         photoPath: asTextOrNull(map['photo_path']),
+        latitude: map['latitude'] == null ? null : asDouble(map['latitude']),
+        longitude: map['longitude'] == null ? null : asDouble(map['longitude']),
         lastPhoneVisitDate: asDateOrNull(map['last_phone_visit_date']),
         lastPhoneVisitNotes: asTextOrNull(map['last_phone_visit_notes']),
         lastHomeVisitDate: asDateOrNull(map['last_home_visit_date']),
@@ -176,6 +190,9 @@ class Child {
         'school': _nullIfBlank(school),
         'address': _nullIfBlank(address),
         'notes': _nullIfBlank(notes),
+        // Both or neither: a half place is no place.
+        'latitude': location?.latitude,
+        'longitude': location?.longitude,
         'last_phone_visit_date': lastPhoneVisitDate == null
             ? null
             : AppDateUtils.toIsoDate(lastPhoneVisitDate!),
@@ -211,6 +228,8 @@ class Child {
     String? notes,
     String? photoPath,
     bool clearPhoto = false,
+    MapLocation? location,
+    bool clearLocation = false,
   }) =>
       Child(
         id: id ?? this.id,
@@ -231,6 +250,8 @@ class Child {
         address: address ?? this.address,
         notes: notes ?? this.notes,
         photoPath: clearPhoto ? null : (photoPath ?? this.photoPath),
+        latitude: clearLocation ? null : (location?.latitude ?? latitude),
+        longitude: clearLocation ? null : (location?.longitude ?? longitude),
         lastPhoneVisitDate: lastPhoneVisitDate,
         lastPhoneVisitNotes: lastPhoneVisitNotes,
         lastHomeVisitDate: lastHomeVisitDate,
@@ -266,6 +287,8 @@ class Child {
         address: address,
         notes: notes,
         photoPath: photoPath,
+        latitude: latitude,
+        longitude: longitude,
         lastPhoneVisitDate: phoneVisitDate,
         lastPhoneVisitNotes: phoneVisitNotes,
         lastHomeVisitDate: homeVisitDate,

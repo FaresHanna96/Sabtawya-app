@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- A child's home: "use my current location" in the child form. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <!-- In-app update: the app downloads the new APK and asks Android to
          install it (the user still confirms). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>

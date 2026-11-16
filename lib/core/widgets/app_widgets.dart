@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_strings.dart';
@@ -814,12 +815,18 @@ class InfoRow extends StatelessWidget {
     required this.value,
     this.icon,
     this.isPhone = false,
+    this.phoneActions = true,
   });
 
   final String label;
   final String? value;
   final IconData? icon;
   final bool isPhone;
+
+  /// For a phone row: call and WhatsApp buttons beside the number. Off where
+  /// the same actions are already on the page (a child's page has them at the
+  /// top): the number is then a reference that copies on a tap.
+  final bool phoneActions;
 
   @override
   Widget build(BuildContext context) {
@@ -844,14 +851,27 @@ class InfoRow extends StatelessWidget {
           Expanded(
             child: isPhone
                 // A number never breaks over two lines: it shrinks to fit
-                // beside the call and WhatsApp buttons.
-                ? FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      text,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
+                // beside its buttons, and reads left to right.
+                ? Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: InkWell(
+                        onTap: hasValue && !phoneActions
+                            ? () => _copyNumber(context, value!.trim())
+                            : null,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            text,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   )
                 : Text(
@@ -860,13 +880,38 @@ class InfoRow extends StatelessWidget {
                         fontSize: 14, fontWeight: FontWeight.w600),
                   ),
           ),
-          if (isPhone && hasValue) _CallButton(number: value!),
-          if (isPhone && hasValue && WhatsApp.normalise(value) != null)
-            _WhatsAppButton(number: WhatsApp.normalise(value)!),
+          if (isPhone && hasValue && phoneActions) ...[
+            _CallButton(number: value!),
+            if (WhatsApp.normalise(value) != null)
+              _WhatsAppButton(number: WhatsApp.normalise(value)!),
+          ],
+          if (isPhone && hasValue && !phoneActions)
+            IconButton(
+              icon: const Icon(Icons.content_copy_rounded, size: 18),
+              color: AppColors.muted,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              tooltip: AppStrings.copyNumber,
+              onPressed: () => _copyNumber(context, value!.trim()),
+            ),
         ],
       ),
     );
   }
+}
+
+/// Puts [number] on the clipboard and says so.
+Future<void> _copyNumber(BuildContext context, String number) async {
+  await Clipboard.setData(ClipboardData(text: number));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      const SnackBar(
+        content: Text(AppStrings.numberCopied),
+        duration: Duration(seconds: 2),
+      ),
+    );
 }
 
 class _CallButton extends StatelessWidget {

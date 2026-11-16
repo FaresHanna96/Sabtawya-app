@@ -161,6 +161,20 @@ class AppStrings {
   static const logEmpty = 'لا توجد نشاطات بهذه التصفية';
   static const logLoadMore = 'عرض المزيد';
   static const loadFailed = 'تعذّر التحميل';
+  static const missingInfoTitle = 'بيانات ناقصة';
+  static const missingAny = 'أي بيان ناقص';
+  static const missingNone = 'مفيش بيانات ناقصة';
+  static const missingNoneAny = 'كل المخدومين بياناتهم كاملة.';
+  static String missingNoneField(String field) => 'كل المخدومين عندهم $field.';
+  static const missingProgressAll = 'اكتمال بيانات المخدومين';
+  static String missingProgressField(String field) => 'اكتمال: $field';
+  static String missingCount(int n) => n == 0
+      ? 'كله كامل'
+      : n == 1
+          ? 'مخدوم واحد ناقص'
+          : '$n مخدوم ناقص';
+  static String missingDoneOf(int done, int total) => 'اكتمل $done من $total';
+  static const missingAskFamily = 'اطلب البيانات من الأسرة على واتساب';
   static const noClassesAssigned = 'لم يتم تعيين أي فصل لك بعد';
   static const noClassesAssignedBody =
       'برجاء التواصل مع المسؤول لتعيينك على فصل.';
@@ -762,6 +776,32 @@ class AppStrings {
   static const call = 'اتصال';
   static const whatsapp = 'رسالة واتساب';
   static String whatsappTo(String who) => 'واتساب $who';
+  static const whatsappBirthday = 'تهنئة بواتساب';
+  static const copyNumber = 'نسخ الرقم';
+  static const locationTitle = 'الموقع على الخريطة';
+  static const locationAddPrompt = 'أضف موقع بيت المخدوم على الخريطة';
+  static const locationOpen = 'عرض على الخريطة';
+  static const locationDirections = 'اتجاهات للوصول';
+  static const locationClear = 'مسح الموقع';
+  static const locationPasteLabel = 'ألصق رابط الموقع أو الإحداثيات';
+  static const locationPasteFromClipboard = 'لصق من الحافظة';
+  static const locationUseCurrent = 'استخدم موقعي الحالي';
+  static const locationLocating = 'جارٍ تحديد موقعك...';
+  static const locationNotRecognised =
+      'مش قادرين نقرا الموقع من النص ده. ألصق رابط من خرائط جوجل أو الإحداثيات '
+      '(مثال: 30.0561, 31.3416).';
+  static const locationShortLink =
+      'الرابط المختصر مش بيتقرأ. افتحه في خرائط جوجل وانسخ الرابط الكامل أو '
+      'الإحداثيات.';
+  static const locationServiceOff =
+      'خدمة الموقع مقفولة في التليفون. افتحها وجرّب تاني.';
+  static const locationDenied = 'مفيش إذن للوصول لموقعك. وافق عليه وجرّب تاني.';
+  static const locationDeniedForever =
+      'إذن الموقع مرفوض. فعّله من إعدادات التطبيق في التليفون.';
+  static const locationTimeout =
+      'ما قدرناش نحدد موقعك. اتأكد إنك في مكان مفتوح وجرّب تاني.';
+  static const locationFailed = 'تعذّر تحديد الموقع.';
+  static const numberCopied = 'تم نسخ الرقم';
   static const clearField = 'مسح';
   static const noPhoneNumber = 'لا يوجد رقم';
 }

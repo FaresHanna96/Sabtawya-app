@@ -135,4 +135,81 @@ void main() {
     expect(uri.queryParameters['text'], 'سلام ونعمة & شكرًا');
     expect(uri.toString().contains(' '), isFalse);
   });
+
+  group('birthday greetings', () {
+    test("go to the person's own number first", () {
+      final t = WhatsApp.birthdayTarget(
+        ownMobile: '01011111111',
+        child: _child(mother: '01022222222'),
+      );
+      expect(t?.number, '201011111111');
+      expect(t?.toThePerson, isTrue);
+    });
+
+    test('a child with no usable number of their own: mother, then father', () {
+      final mother = WhatsApp.birthdayTarget(
+        ownMobile: '',
+        child: _child(mother: '01022222222', father: '01033333333'),
+      );
+      expect(mother?.number, '201022222222');
+      expect(mother?.toThePerson, isFalse);
+
+      final father = WhatsApp.birthdayTarget(
+        ownMobile: '0222222222', // a landline
+        child: _child(mother: 'x', father: '01033333333'),
+      );
+      expect(father?.number, '201033333333');
+      expect(father?.toThePerson, isFalse);
+    });
+
+    test('a servant has no parent to fall back to', () {
+      expect(WhatsApp.birthdayTarget(ownMobile: ''), isNull);
+      expect(WhatsApp.birthdayTarget(ownMobile: '0222222222'), isNull);
+    });
+
+    test('nobody reachable', () {
+      expect(WhatsApp.birthdayTarget(child: _child()), isNull);
+    });
+
+    test('the message to a boy and to a girl', () {
+      final boy = WhatsApp.birthdayMessage(
+          name: 'مينا عادل', servantName: 'أبانوب', toThePerson: true);
+      expect(boy, contains('يا مينا'));
+      expect(boy, contains('أبانوب'));
+      expect(boy, contains('كل سنة وإنت طيب'));
+      expect(boy, contains('عيد ميلادك'));
+
+      final girl = WhatsApp.birthdayMessage(
+          name: 'مريم سامي',
+          servantName: 'أبانوب',
+          toThePerson: true,
+          girl: true);
+      expect(girl, contains('كل سنة وإنتي طيبة'));
+    });
+
+    test('the message to a parent is about the child', () {
+      final boy = WhatsApp.birthdayMessage(
+          name: 'مينا عادل', servantName: 'أبانوب', toThePerson: false);
+      expect(boy, contains('كل سنة ومينا طيب'));
+      expect(boy, contains('ميلاده'));
+      expect(boy, contains('ربنا يحفظه'));
+
+      final girl = WhatsApp.birthdayMessage(
+          name: 'مريم سامي',
+          servantName: 'أبانوب',
+          toThePerson: false,
+          girl: true);
+      expect(girl, contains('كل سنة ومريم طيبة'));
+      expect(girl, contains('ميلادها'));
+      expect(girl, contains('ربنا يحفظها'));
+    });
+
+    test('without a servant name it still reads well', () {
+      expect(
+        WhatsApp.birthdayMessage(
+            name: 'مينا', servantName: ' ', toThePerson: true),
+        contains('خادم الفصل'),
+      );
+    });
+  });
 }

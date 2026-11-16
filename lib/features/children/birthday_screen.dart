@@ -19,6 +19,7 @@ import '../../data/repositories/servant_repository.dart';
 import '../../data/services/excel_service.dart';
 import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
+import 'birthday_whatsapp_button.dart';
 import 'child_avatar.dart';
 import 'child_profile_screen.dart';
 
@@ -67,6 +68,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
               childId: c.id,
               mobile: c.mobile,
               child: c,
+              girl: c.gender == Gender.girl,
             ),
       ];
     }
@@ -84,6 +86,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
             ],
             role: p.roleLabel,
             mobile: p.mobile,
+            girl: p.gender == Gender.girl,
           ),
     ];
   }
@@ -674,6 +677,7 @@ class _Person {
     this.role,
     this.mobile,
     this.child,
+    this.girl = false,
   });
 
   final String name;
@@ -689,6 +693,9 @@ class _Person {
 
   /// The child record (children tab only), for the photo avatar.
   final Child? child;
+
+  /// A girl or a female servant, for the wording of the greeting.
+  final bool girl;
 }
 
 /// The age a person turns on their next birthday (today counts as next).
@@ -789,6 +796,13 @@ class _BirthdayTile extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              BirthdayWhatsAppButton(
+                name: person.name,
+                servantName: context.read<SessionController>().displayName,
+                ownMobile: person.mobile,
+                child: person.child,
+                girl: person.girl,
+              ),
               if (hasPhone)
                 IconButton(
                   tooltip: AppStrings.call,

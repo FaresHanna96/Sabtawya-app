@@ -10,6 +10,7 @@ import '../attendance/attendance_history_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../children/absence_followup_screen.dart';
 import '../children/birthday_screen.dart';
+import '../children/missing_info_screen.dart';
 import '../children/committed_children_screen.dart';
 import '../activity_log/activity_log_screen.dart';
 import '../attendance/attendance_years_screen.dart';
@@ -81,6 +82,12 @@ class MoreScreen extends StatelessWidget {
                     title: AppStrings.birthdaysTitle,
                     screen: const BirthdayScreen(),
                     color: AppColors.coral,
+                  ),
+                  _Entry(
+                    icon: Icons.rule_rounded,
+                    title: AppStrings.missingInfoTitle,
+                    screen: const MissingInfoScreen(),
+                    color: AppColors.gold,
                   ),
                   _Entry(
                     icon: Icons.calendar_month_outlined,
