@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -99,6 +100,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _selected = CalendarGrid.dayOf(now);
       });
 
+  /// The birthday's two ways to reach the person: the WhatsApp greeting and a
+  /// call. The call needs the person's own number; the greeting may go to a
+  /// parent for a child with none.
+  Widget _birthdayActions({
+    required String name,
+    required String me,
+    required String? mobile,
+    Child? child,
+    bool girl = false,
+  }) {
+    final number = (mobile ?? '').trim();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        BirthdayWhatsAppButton(
+          name: name,
+          servantName: me,
+          ownMobile: mobile,
+          child: child,
+          girl: girl,
+        ),
+        if (number.isNotEmpty)
+          IconButton(
+            tooltip: AppStrings.call,
+            icon: const Icon(Icons.call_rounded, size: 20),
+            color: AppColors.success,
+            onPressed: () => launchUrl(Uri(scheme: 'tel', path: number)),
+          ),
+      ],
+    );
+  }
+
   /// Everything that happens on [day], for the kinds currently shown.
   List<_Item> _itemsOn(
     DateTime day,
@@ -127,10 +160,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               builder: (_) => ChildProfileScreen(childId: c.id),
             ),
           ),
-          action: BirthdayWhatsAppButton(
+          action: _birthdayActions(
             name: c.fullName,
-            servantName: me,
-            ownMobile: c.mobile,
+            me: me,
+            mobile: c.mobile,
             child: c,
             girl: c.gender == Gender.girl,
           ),
@@ -152,10 +185,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             '${AppStrings.turningAge} ${day.year - p.birthDate!.year} '
                 '${AppStrings.years}',
           ].join(' • '),
-          action: BirthdayWhatsAppButton(
+          action: _birthdayActions(
             name: p.fullName,
-            servantName: me,
-            ownMobile: p.mobile,
+            me: me,
+            mobile: p.mobile,
             girl: p.gender == Gender.girl,
           ),
         ));

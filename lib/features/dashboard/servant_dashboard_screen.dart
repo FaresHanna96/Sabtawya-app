@@ -165,12 +165,15 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                       AppColors.olive,
                       () => _push(const ChildFormScreen()),
                     ),
-                    QuickAction(
-                      Icons.emoji_events_rounded,
-                      AppStrings.weeklyCompetition,
-                      AppColors.gold,
-                      () => _push(const CompetitionsScreen()),
-                    ),
+                    // Competitions are for the general servant (and the admin),
+                    // not for a servant of a class.
+                    if (session.isGeneralServant || session.isAdmin)
+                      QuickAction(
+                        Icons.emoji_events_rounded,
+                        AppStrings.weeklyCompetition,
+                        AppColors.gold,
+                        () => _push(const CompetitionsScreen()),
+                      ),
                     QuickAction(
                       Icons.event_rounded,
                       AppStrings.events,

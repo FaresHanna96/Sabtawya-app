@@ -135,12 +135,15 @@ class MoreScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: Column(
                 children: [
-                  _Entry(
-                    icon: Icons.emoji_events_outlined,
-                    title: AppStrings.competitions,
-                    screen: const CompetitionsScreen(),
-                    color: AppColors.gold,
-                  ),
+                  // Only the general servant and the admin; a servant of a
+                  // class has no competitions.
+                  if (isAdmin || isGeneralServant)
+                    _Entry(
+                      icon: Icons.emoji_events_outlined,
+                      title: AppStrings.competitions,
+                      screen: const CompetitionsScreen(),
+                      color: AppColors.gold,
+                    ),
                   _Entry(
                     icon: Icons.event_outlined,
                     title: AppStrings.events,

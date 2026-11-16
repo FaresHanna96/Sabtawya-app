@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../attendance/attendance_screen.dart';
 import '../../core/l10n/app_strings.dart';
@@ -25,6 +26,7 @@ import '../servant_activities/lesson_prep_screen.dart';
 import '../servant_activities/prep_review_sheet.dart';
 import '../servant_activities/my_activities_screen.dart';
 import '../servant_activities/servant_activity_detail_screen.dart';
+import '../../state/session_controller.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/event_detail_screen.dart';
 import '../events/events_screen.dart';
@@ -48,6 +50,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _open(AppNotification n) async {
+    final session = context.read<SessionController>();
+    final seesCompetitions = session.isAdmin || session.isGeneralServant;
     if (!n.isRead) {
       try {
         await _repository.markRead(n.id);
@@ -87,7 +91,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // The event itself when it can still be found, else the list.
       'event_today' =>
         (ref == null ? null : await _eventDetail(ref)) ?? const EventsScreen(),
-      'competition_added' => const CompetitionsScreen(),
+      // Old notifications a plain servant may still hold: nothing to open.
+      'competition_added' when seesCompetitions => const CompetitionsScreen(),
       'child_added' when ref != null => ChildProfileScreen(childId: ref),
       // 'class_activity': somebody of this class did something in it.
       'class_assigned' ||
