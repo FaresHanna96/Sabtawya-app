@@ -63,9 +63,15 @@ class _LocationEditorState extends State<LocationEditor> {
   }
 
   /// Takes [place] as the answer, with a warning when it looks off.
-  void _accept(MapLocation place, {double? accuracy}) {
+  void _accept(
+    MapLocation place, {
+    double? accuracy,
+    bool approximate = false,
+  }) {
     String? warning;
-    if (accuracy != null && accuracy > 150) {
+    if (approximate) {
+      warning = AppStrings.locationFromPlacePage;
+    } else if (accuracy != null && accuracy > 150) {
       warning = AppStrings.locationWeakFix(accuracy.round());
     } else if (!place.isInEgypt) {
       warning = AppStrings.locationOutsideEgypt;
@@ -99,7 +105,7 @@ class _LocationEditorState extends State<LocationEditor> {
       if (!mounted) return;
       setState(() => _reading = false);
       if (opened.place != null) {
-        _accept(opened.place!);
+        _accept(opened.place!, approximate: opened.approximate);
       } else {
         setState(() => _problem = opened.opened
             ? AppStrings.locationNamedPlace

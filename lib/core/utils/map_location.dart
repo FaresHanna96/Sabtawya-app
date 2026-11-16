@@ -1,3 +1,5 @@
+import 'map_link_formats.dart';
+
 /// A place on the map (a child's home): latitude and longitude in degrees.
 class MapLocation {
   const MapLocation(this.latitude, this.longitude);
@@ -48,6 +50,10 @@ class MapLocation {
     final text = _latin(input.trim());
     if (text.isEmpty) return null;
 
+    // Yandex writes longitude first, so it is read before the general rules.
+    final yandex = _place(MapLinkFormats.yandex(text));
+    if (yandex != null) return yandex;
+
     const n = r'(-?\d{1,3}(?:\.\d+)?)';
     final patterns = <RegExp>[
       // .../place/Name/data=!3d30.05!4d31.34 (the pin itself)
@@ -84,6 +90,17 @@ class MapLocation {
     final dms = _parseDms(text);
     if (dms != null) return dms;
 
+    // Bing, HERE, Apple, lat=&lon=, Waze short links, plus codes, hemisphere
+    // letters, comma decimals.
+    for (final found in [
+      MapLinkFormats.other(text),
+      MapLinkFormats.hemisphere(text),
+      MapLinkFormats.commaDecimals(text),
+    ]) {
+      final place = _place(found);
+      if (place != null) return place;
+    }
+
     // Two decimal numbers among other words ("الموقع: 30.0561, 31.3416").
     // Decimals only, so a date or a phone number is never taken for a place.
     final loose =
@@ -97,6 +114,11 @@ class MapLocation {
     }
     return null;
   }
+
+  static MapLocation? _place((double, double)? found) =>
+      found != null && isValid(found.$1, found.$2)
+          ? MapLocation(found.$1, found.$2)
+          : null;
 
   /// 30°03'22.0"N 31°20'30.0"E, also as it comes in a link (%C2%B0, %22, +).
   static MapLocation? _parseDms(String raw) {

@@ -48,8 +48,8 @@ function unwrapConsent(u: URL): URL {
 const COORDS: RegExp[] = [
   /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/,
   /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
-  /center=(-?\d{1,3}\.\d+)(?:%2C|,)(-?\d{1,3}\.\d+)/,
-  /[?&;]q=(-?\d{1,3}\.\d+)(?:%2C|,)(-?\d{1,3}\.\d+)/,
+  /[?&;](?:q|ll|sll|query|destination|daddr|center)=(?:loc(?::|%3A))?(-?\d{1,3}\.\d+)(?:%2C|,|\+)(-?\d{1,3}\.\d+)/i,
+  /\/(?:place|search|dir)\/(-?\d{1,3}\.\d+),\+?(-?\d{1,3}\.\d+)/,
 ];
 
 function coordsIn(text: string): string | null {

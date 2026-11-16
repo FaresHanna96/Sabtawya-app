@@ -257,6 +257,20 @@ void main() {
       expect(find.textContaining('مش قادرين نفتح'), findsNothing);
     });
 
+    testWidgets('a place read off its page is kept but marked to be checked',
+        (tester) async {
+      await tester.pumpWidget(editor(
+        clip: () async => 'https://maps.app.goo.gl/AsjHVZGvE29Hw1VW8',
+        resolve: (_) async =>
+            const ResolvedLink(place: _home, opened: true, approximate: true),
+      ));
+      await tester.tap(find.text('لصق رابط من الحافظة'));
+      await tester.pumpAndSettle();
+
+      expect(latest, _home);
+      expect(find.textContaining('ممكن يكون'), findsOneWidget);
+    });
+
     testWidgets('an empty clipboard says what to copy', (tester) async {
       await tester.pumpWidget(editor(clip: () async => '  '));
       await tester.tap(find.text('لصق رابط من الحافظة'));
