@@ -413,6 +413,15 @@ class AppStrings {
   static const noAbsencesBody = 'كل المخدومين حضروا مؤخراً. ربنا يبارك';
   static String updateAvailable(String v) => 'إصدار جديد متاح ($v)';
   static const updateNow = 'تحديث الآن';
+  static String visitBy(String name) => 'بواسطة $name';
+  static const changeHistory = 'سجل التغييرات';
+  static const noChangeHistory = 'لا توجد تغييرات مسجلة';
+  static const changeAdded = 'إضافة المخدوم';
+  static const changeEdited = 'تعديل بيانات المخدوم';
+  static const changeAttendance = 'تسجيل الحضور';
+  static const updateRequiredTitle = 'تحديث مطلوب';
+  static String updateRequiredBody(String v) =>
+      'لازم تحدّث التطبيق للإصدار $v علشان تكمل استخدامه.';
   static String updateDownloading(int p) => 'جاري تحميل التحديث… $p٪';
   static const updateInstalling = 'اضغط «تثبيت» في الشاشة التي ظهرت';
   static const updateNeedsPermission =

@@ -33,7 +33,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _index = 0;
 
   /// Replayed on every tab change: the new tab fades and settles in instead
@@ -50,9 +50,20 @@ class _HomeShellState extends State<HomeShell>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkUpdate();
+  }
+
+  void _checkUpdate() {
     UpdateService.check().then((u) {
       if (mounted && u != null) setState(() => _update = u);
     });
+  }
+
+  /// A phone that stays open in the background still gets the forced screen.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkUpdate();
   }
 
   void _selectTab(int index) {
@@ -64,12 +75,14 @@ class _HomeShellState extends State<HomeShell>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabFade.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_update?.forced ?? false) return ForcedUpdateScreen(update: _update!);
     final session = context.watch<SessionController>();
     final connectivity = context.watch<ConnectivityService>();
     final sync = context.watch<SyncService>();
@@ -344,8 +357,12 @@ class _UpdateBanner extends StatefulWidget {
   State<_UpdateBanner> createState() => _UpdateBannerState();
 }
 
-class _UpdateBannerState extends State<_UpdateBanner> {
+/// Downloads and installs the APK from inside the app; shared by the
+/// dismissible banner and the blocking screen.
+mixin _InstallLogic<T extends StatefulWidget> on State<T> {
   static final _page = Uri.parse('https://sabtawya.vercel.app/apk.html');
+
+  AppUpdate get update;
 
   /// Null: waiting for a tap. 0-100: downloading. 101: installer opened.
   int? _progress;
@@ -354,7 +371,7 @@ class _UpdateBannerState extends State<_UpdateBanner> {
   void _openPage() => launchUrl(_page, mode: LaunchMode.externalApplication);
 
   void _start() {
-    final u = widget.update;
+    final u = update;
     if (!u.canInstallInApp) {
       _openPage();
       return;
@@ -403,6 +420,11 @@ class _UpdateBannerState extends State<_UpdateBanner> {
       _problem = message;
     });
   }
+}
+
+class _UpdateBannerState extends State<_UpdateBanner> with _InstallLogic<_UpdateBanner> {
+  @override
+  AppUpdate get update => widget.update;
 
   @override
   Widget build(BuildContext context) {
@@ -481,6 +503,102 @@ class _UpdateBannerState extends State<_UpdateBanner> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown instead of the app when this build is below the published
+/// `min_build`. No close button and no back: the only way on is to update.
+class ForcedUpdateScreen extends StatefulWidget {
+  const ForcedUpdateScreen({super.key, required this.update});
+
+  final AppUpdate update;
+
+  @override
+  State<ForcedUpdateScreen> createState() => _ForcedUpdateScreenState();
+}
+
+class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
+    with _InstallLogic<ForcedUpdateScreen> {
+  @override
+  AppUpdate get update => widget.update;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _progress;
+    final String text;
+    if (_problem != null) {
+      text = _problem!;
+    } else if (p == null) {
+      text = AppStrings.updateRequiredBody(widget.update.version);
+    } else if (p > 100) {
+      text = AppStrings.updateInstalling;
+    } else {
+      text = AppStrings.updateDownloading(p);
+    }
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(gradient: AppGradients.loginBackground),
+          child: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.system_update_rounded,
+                        size: 72, color: Colors.white),
+                    const SizedBox(height: 20),
+                    const Text(
+                      AppStrings.updateRequiredTitle,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.white70,
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (p != null && p <= 100)
+                      LinearProgressIndicator(
+                        value: p / 100,
+                        minHeight: 6,
+                        color: Colors.white,
+                        backgroundColor: Colors.white24,
+                      ),
+                    if (p == null)
+                      FilledButton(
+                        onPressed: _problem != null ? _openPage : _start,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.navyDark,
+                          minimumSize: const Size(200, 48),
+                        ),
+                        child: Text(
+                          _problem != null
+                              ? AppStrings.updateOpenPage
+                              : AppStrings.updateNow,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -45,6 +45,21 @@ void main() {
       expect(u32.apkUrl, 'https://x/a32.apk');
     });
 
+    test('forced only when this build is below min_build', () {
+      Map<String, Object?> json(Object? min) => {
+            'version': '1.0.4',
+            'build': 9,
+            if (min != null) 'min_build': min,
+          };
+      expect(UpdateService.newerThanThis(json(5), current: 3)!.forced, isTrue);
+      expect(UpdateService.newerThanThis(json(3), current: 3)!.forced, isFalse);
+      expect(UpdateService.newerThanThis(json(0), current: 3)!.forced, isFalse);
+      expect(UpdateService.newerThanThis(json(null), current: 3)!.forced,
+          isFalse);
+      expect(UpdateService.newerThanThis(json('x'), current: 3)!.forced,
+          isFalse);
+    });
+
     test('without APK details it falls back to the download page', () {
       final u = UpdateService.newerThanThis({'version': '1.0.4', 'build': 9},
           current: 3)!;

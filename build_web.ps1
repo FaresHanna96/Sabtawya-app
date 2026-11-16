@@ -29,9 +29,19 @@ if ($LASTEXITCODE -eq 0) {
     # a file that does not match (tampered or cut short).
     $hash64 = (Get-FileHash "$PSScriptRoot\sabtawya.apk" -Algorithm SHA256).Hash.ToLower()
     $hash32 = (Get-FileHash "$PSScriptRoot\sabtawya-armv7.apk" -Algorithm SHA256).Hash.ToLower()
+    # min_build: the oldest build allowed to run. Kept from the live site unless
+    # -Force raises it to this build, so a normal release never locks anyone out.
+    $minBuild = [int]$ver[2].Value
+    if (-not $Force) {
+        try {
+            $live = Invoke-RestMethod "https://sabtawya.vercel.app/version.json" -TimeoutSec 15
+            if ($live.min_build) { $minBuild = [int]$live.min_build } else { $minBuild = 0 }
+        } catch { $minBuild = 0 }
+    }
     $info = [ordered]@{
         version = $ver[1].Value
         build   = [int]$ver[2].Value
+        min_build = $minBuild
         date    = $apkFile.LastWriteTime.ToString("yyyy-MM-dd")
         size_mb = [math]::Round($apkFile.Length / 1MB)
         apk     = [ordered]@{

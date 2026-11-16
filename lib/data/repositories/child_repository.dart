@@ -208,11 +208,24 @@ class ChildRepository {
     try {
       final data = await Db.client
           .from(Db.tChildVisitLogs)
-          .select()
+          .select('*, recorder:profiles!child_visit_logs_recorded_by_fkey(full_name)')
           .eq('child_id', childId)
           .order('visit_date', ascending: false)
           .order('created_at', ascending: false);
       return rows(data).map(ChildVisitLog.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Who added, edited or recorded attendance for this child. Needs the
+  /// network (a database function, so it is not kept for offline); callers
+  /// treat a failure as "nothing to show".
+  Future<List<ChildChange>> changeHistory(String childId) async {
+    try {
+      final data = await Db.client
+          .rpc('child_change_history', params: {'p_child_id': childId});
+      return rows(data).map(ChildChange.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }

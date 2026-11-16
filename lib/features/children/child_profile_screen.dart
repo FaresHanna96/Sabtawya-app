@@ -75,7 +75,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
     // The six reads below do not depend on each other: run them side by side
     // instead of one after another (the profile waited for each in turn).
-    final (classOverview, yearReport, monthly, history, lastActivity, logs) =
+    final (classOverview, yearReport, monthly, history, lastActivity, logs, changes) =
         await (
       _classes.overviewById(child.classId),
       yearId == null
@@ -91,6 +91,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       _attendance.childHistory(childId: child.id, yearId: yearId),
       _reports.lastActivity(child.id),
       _children.visitLogs(child.id),
+      // Needs the network; offline or refused, the card just shows nothing.
+      _children
+          .changeHistory(child.id)
+          .catchError((Object _) => const <ChildChange>[]),
     ).wait;
 
     return _ProfileData(
@@ -101,6 +105,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       history: history,
       lastActivity: lastActivity,
       visitLogs: logs,
+      changes: changes,
     );
   }
 
@@ -390,6 +395,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 const SizedBox(height: 16),
               ],
               _visitHistoryCard(data, canEdit),
+              if (data.changes.isNotEmpty) _changeHistoryCard(data.changes),
               const SizedBox(height: 16),
               _lastActivityCard(data.lastActivity),
               if (data.monthly.isNotEmpty) ...[
@@ -822,6 +828,63 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
+  /// Who added or edited the child and who recorded their attendance. Only
+  /// shown when there is something; the list is capped by the database.
+  Widget _changeHistoryCard(List<ChildChange> changes) {
+    return SectionCard(
+      title: AppStrings.changeHistory,
+      icon: Icons.history_rounded,
+      accent: AppColors.navy,
+      collapsible: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [for (final c in changes) _changeRow(c)],
+      ),
+    );
+  }
+
+  Widget _changeRow(ChildChange c) {
+    final what = c.isAttendance
+        ? AppStrings.changeAttendance
+        : (c.action == 'insert'
+            ? AppStrings.changeAdded
+            : AppStrings.changeEdited);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            c.isAttendance ? Icons.fact_check_outlined : Icons.edit_outlined,
+            size: 18,
+            color: AppColors.navy,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(what, style: const TextStyle(fontSize: 13)),
+                if (c.actorName != null && c.actorName!.isNotEmpty)
+                  Text(
+                    AppStrings.visitBy(c.actorName!),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.w600),
+                  ),
+              ],
+            ),
+          ),
+          Text(
+            '${AppDateUtils.formatDate(c.createdAt)} • ${AppDateUtils.sinceLabel(c.createdAt)}',
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _visitLogRow(ChildVisitLog log, _ProfileData? deletable) {
     final isPhone = log.isPhone;
     return Padding(
@@ -843,6 +906,17 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   '${AppDateUtils.formatDate(log.visitDate)} • ${AppDateUtils.sinceLabel(log.visitDate)}',
                   style: const TextStyle(fontSize: 13),
                 ),
+                if (log.recorderName != null && log.recorderName!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      AppStrings.visitBy(log.recorderName!),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.navy,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
                 if (log.notes != null && log.notes!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
@@ -1104,6 +1178,7 @@ class _ProfileData {
     required this.history,
     required this.lastActivity,
     required this.visitLogs,
+    this.changes = const <ChildChange>[],
   });
 
   final Child child;
@@ -1113,6 +1188,7 @@ class _ProfileData {
   final List<ChildSessionScore> history;
   final ChildLastActivity? lastActivity;
   final List<ChildVisitLog> visitLogs;
+  final List<ChildChange> changes;
 }
 
 // ---------------------------------------------------------------------------

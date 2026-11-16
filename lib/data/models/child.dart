@@ -330,10 +330,15 @@ class ChildVisitLog {
     this.notes,
     required this.createdAt,
     this.recordedBy,
+    this.recorderName,
   });
 
   final String id;
   final String childId;
+
+  /// Name of the servant who wrote the entry, when the query joined it and the
+  /// reader is allowed to see that profile (null otherwise).
+  final String? recorderName;
 
   /// The servant who wrote the entry (null when that account was removed).
   final String? recordedBy;
@@ -354,5 +359,36 @@ class ChildVisitLog {
         notes: asTextOrNull(map['notes']),
         createdAt: asDate(map['created_at']),
         recordedBy: asTextOrNull(map['recorded_by']),
+        recorderName: map['recorder'] is Map
+            ? asTextOrNull((map['recorder'] as Map)['full_name'])
+            : null,
+      );
+}
+
+/// One line of a child's change history: who did what, and when.
+class ChildChange {
+  const ChildChange({
+    required this.createdAt,
+    required this.action,
+    required this.entity,
+    this.actorName,
+  });
+
+  final DateTime createdAt;
+
+  /// 'insert' or 'update'.
+  final String action;
+
+  /// 'children' (the profile) or 'attendance_records' (a Saturday's marks).
+  final String entity;
+  final String? actorName;
+
+  bool get isAttendance => entity == 'attendance_records';
+
+  factory ChildChange.fromMap(Map<String, dynamic> map) => ChildChange(
+        createdAt: asDate(map['created_at']),
+        action: asText(map['action']),
+        entity: asText(map['entity']),
+        actorName: asTextOrNull(map['actor_name']),
       );
 }

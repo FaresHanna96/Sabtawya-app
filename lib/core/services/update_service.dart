@@ -13,10 +13,15 @@ class AppUpdate {
     required this.build,
     this.apkUrl,
     this.sha256,
+    this.forced = false,
   });
 
   final String version;
   final int build;
+
+  /// True when this build is below the published `min_build`: the app must
+  /// be updated before it can be used.
+  final bool forced;
 
   /// This phone's APK and its fingerprint, for installing from inside the
   /// app. Null when version.json does not list them (then the download page).
@@ -76,9 +81,11 @@ class UpdateService {
     if (build <= current) return null;
     final apks = json['apk'];
     final apk = apks is Map ? apks[abi] : null;
+    final minBuild = json['min_build'];
     return AppUpdate(
       version: version,
       build: build,
+      forced: minBuild is int && current < minBuild,
       apkUrl: apk is Map && apk['url'] is String ? apk['url'] as String : null,
       sha256: apk is Map && apk['sha256'] is String
           ? (apk['sha256'] as String).toLowerCase()
