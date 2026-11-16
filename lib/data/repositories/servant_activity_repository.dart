@@ -82,6 +82,27 @@ class ServantActivityRepository {
     }
   }
 
+  /// One lesson prep by its id, or null when it does not exist or is not
+  /// visible to the signed-in person (row level security).
+  Future<LessonPrep?> prepById(String id) async {
+    try {
+      final data = await Db.client
+          .from(Db.tServantLessonPreps)
+          .select(
+            'id, servant_id, session_id, status, admin_comment, '
+            'reviewed_by, reviewed_at, created_at, '
+            'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
+            'attendance_sessions!inner(session_date), '
+            'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
+          )
+          .eq('id', id)
+          .maybeSingle();
+      return data == null ? null : LessonPrep.fromMap(data);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// All lesson preps for the signed-in servant, newest first.
   Future<List<LessonPrep>> myLessonPreps() async {
     try {

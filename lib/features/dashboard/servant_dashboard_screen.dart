@@ -21,6 +21,7 @@ import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
 import 'quick_action_grid.dart';
 import 'today_birthdays_section.dart';
+import 'weekly_attendance_chart.dart';
 
 /// The servant landing page. It shows only the assigned classes, which is a
 /// consequence of row level security rather than of filtering done here.
@@ -34,12 +35,18 @@ class ServantDashboardScreen extends StatefulWidget {
 class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
   static const _reports = ReportRepository();
 
-  final _sectionKey = GlobalKey<AsyncSectionState<List<ClassYearScore>>>();
+  final _sectionKey = GlobalKey<AsyncSectionState<_ServantDashboard>>();
 
-  Future<List<ClassYearScore>> _load() async {
+  /// The class scores and the Saturday-by-Saturday attendance. Both come
+  /// through row level security, so they cover the servant's classes only.
+  Future<_ServantDashboard> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
-    if (yearId == null) return <ClassYearScore>[];
-    return _reports.classScores(yearId);
+    if (yearId == null) return const _ServantDashboard();
+    final (scores, weeks) = await (
+      _reports.classScores(yearId),
+      _reports.weeklyAttendance(yearId),
+    ).wait;
+    return _ServantDashboard(scores: scores, weeks: weeks);
   }
 
   Future<void> _reload() =>
@@ -71,10 +78,22 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
       (sum, item) => sum + item.activeChildren,
     );
 
-    return AsyncSection<List<ClassYearScore>>(
+    final lastSaturday = InfoRow(
+      label: AppStrings.lastAttendance,
+      value: currentSession == null
+          ? AppStrings.noUpcomingSession
+          : AppDateUtils.formatDayDate(currentSession),
+      icon: Icons.event_available_outlined,
+    );
+
+    return AsyncSection<_ServantDashboard>(
       key: _sectionKey,
       load: _load,
-      builder: (context, scores, reload) {
+      builder: (context, data, reload) {
+        final scores = data.scores;
+        // With the chart, the last Saturday sits in its card (as on the
+        // admin home); with under two Saturdays it stays with the classes.
+        final hasChart = data.weeks.length >= 2;
         // Not a lazy ListView: it rebuilt each section as it scrolled back
         // into view, which replayed its entrance (after a delay) every time.
         return SingleChildScrollView(
@@ -166,8 +185,21 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (hasChart) ...[
+                FadeSlideIn(
+                  index: 5,
+                  child: WeeklyAttendanceChart(
+                    weeks: data.weeks,
+                    top: lastSaturday,
+                    classNames: {
+                      for (final c in classes) c.classId: c.className,
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               FadeSlideIn(
-                index: 5,
+                index: 6,
                 child: SectionCard(
                   title: AppStrings.myClasses,
                   icon: Icons.menu_book_rounded,
@@ -175,14 +207,10 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      InfoRow(
-                        label: AppStrings.lastAttendance,
-                        value: currentSession == null
-                            ? AppStrings.noUpcomingSession
-                            : AppDateUtils.formatDayDate(currentSession),
-                        icon: Icons.event_available_outlined,
-                      ),
-                      const Divider(height: 16),
+                      if (!hasChart) ...[
+                        lastSaturday,
+                        const Divider(height: 16),
+                      ],
                       for (final item in classes)
                         _ClassRow(
                           overview: item,
@@ -219,6 +247,17 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
     }
     return latest;
   }
+}
+
+/// What the servant home loads in one go.
+class _ServantDashboard {
+  const _ServantDashboard({
+    this.scores = const <ClassYearScore>[],
+    this.weeks = const <WeeklyAttendance>[],
+  });
+
+  final List<ClassYearScore> scores;
+  final List<WeeklyAttendance> weeks;
 }
 
 class _ClassRow extends StatelessWidget {

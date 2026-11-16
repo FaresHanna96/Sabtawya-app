@@ -11,13 +11,20 @@ import '../../core/widgets/skeleton.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../data/repositories/servant_repository.dart';
-import '../calendar/calendar_screen.dart';
+import '../../data/models/event.dart';
+import '../../data/repositories/event_repository.dart';
+import '../children/birthday_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../classes/class_detail_screen.dart';
+import '../../data/models/servant_activity.dart';
+import '../../data/repositories/servant_activity_repository.dart';
 import '../servant_activities/admin_servant_activities_screen.dart';
+import '../servant_activities/lesson_prep_screen.dart';
+import '../servant_activities/prep_review_sheet.dart';
 import '../servant_activities/my_activities_screen.dart';
 import '../servant_activities/servant_activity_detail_screen.dart';
 import '../competitions/competitions_screen.dart';
+import '../events/event_detail_screen.dart';
 import '../events/events_screen.dart';
 import '../lessons/lesson_schedule_screen.dart';
 import '../servants/pending_requests_screen.dart';
@@ -46,22 +53,58 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
     if (!mounted) return;
     final ref = n.refId;
+
+    // A prep sent for review opens its review sheet; a reviewed one opens
+    // that lesson's prep page. Entries made before the id was kept (they
+    // carry a servant's id, or none) fall through to the pages below.
+    final prep =
+        (n.kind == 'prep_submitted' || n.kind == 'prep_reviewed') && ref != null
+            ? await _prep(ref)
+            : null;
+    if (!mounted) return;
+    if (prep != null && n.kind == 'prep_submitted') {
+      await showPrepReviewSheet(
+        context,
+        prep: prep,
+        onReview: (status, comment) => const ServantActivityRepository()
+            .reviewPrep(prepId: prep.id, status: status, comment: comment),
+      );
+      if (mounted) await _reload();
+      return;
+    }
+
     final Widget? screen = switch (n.kind) {
       'signup' => const PendingRequestsScreen(),
       'lesson_changed' => const LessonScheduleScreen(),
-      'birthdays' => const CalendarScreen(),
+      'birthdays' => const BirthdayScreen(),
       'event_added' => const EventsScreen(),
+      // The event itself when it can still be found, else the list.
+      'event_today' =>
+        (ref == null ? null : await _eventDetail(ref)) ?? const EventsScreen(),
       'competition_added' => const CompetitionsScreen(),
       'child_added' when ref != null => ChildProfileScreen(childId: ref),
-      'attendance_taken' ||
-      'class_assigned' when ref != null =>
-        ClassDetailScreen(classId: ref),
+      'class_assigned' when ref != null => ClassDetailScreen(classId: ref),
+      // That class's sheet for the Saturday the entry names.
+      'attendance_taken' when ref != null => AttendanceScreen(
+          showAppBar: true,
+          initialClassId: ref,
+          initialDate: n.mentionedDate,
+        ),
       'prep_submitted' => (ref == null ? null : await _servantDetail(ref)) ??
           const AdminServantActivitiesScreen(),
-      'prep_reviewed' => const MyActivitiesScreen(showAppBar: true),
-      'attendance_missing' when ref != null =>
-        AttendanceScreen(showAppBar: true, initialClassId: ref),
-      // 'event_today' only informs: tapping it marks it read.
+      'prep_reviewed' => prep != null
+          ? LessonPrepScreen(
+              sessionId: prep.sessionId,
+              sessionDate: prep.sessionDate,
+            )
+          : const MyActivitiesScreen(showAppBar: true),
+      // The reminder is about the day it was sent.
+      'attendance_missing' when ref != null => AttendanceScreen(
+          showAppBar: true,
+          initialClassId: ref,
+          initialDate: n.createdAt,
+        ),
+      // 'decision' and 'class_removed' only inform: tapping marks them read.
       _ => null,
     };
     if (!mounted) return;
@@ -71,6 +114,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
     await _reload();
+  }
+
+  /// The preparation a notification is about, or null (an older entry whose
+  /// id is a servant's, a deleted prep, or no connection).
+  Future<LessonPrep?> _prep(String id) async {
+    try {
+      return await const ServantActivityRepository().prepById(id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The page of the event a notification is about.
+  Future<Widget?> _eventDetail(String eventId) async {
+    try {
+      final events = await const EventRepository().listEvents();
+      final match = events.where((Event e) => e.id == eventId);
+      return match.isEmpty ? null : EventDetailScreen(event: match.first);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// The activity page of the servant a prep notification is about.
