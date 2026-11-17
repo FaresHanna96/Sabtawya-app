@@ -265,6 +265,24 @@ class ReportRepository {
     }
   }
 
+  /// Children whose attendance fell by 25 points or more over the last four
+  /// Saturdays compared with the four before, biggest drop first. Row level
+  /// security limits it to the caller's classes.
+  Future<List<ChildTrend>> decliningChildren({required String yearId}) async {
+    try {
+      final data = await Db.client
+          .from(Db.vChildAttendanceTrend)
+          .select()
+          .eq('year_id', yearId)
+          .eq('is_declining', true);
+      final list = rows(data).map(ChildTrend.fromMap).toList()
+        ..sort((a, b) => b.drop.compareTo(a.drop));
+      return list;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Children who keep showing up: الملتزمون.
   ///
   /// Ordered by the unbroken run of Saturdays first and the overall rate

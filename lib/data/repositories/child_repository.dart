@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/visit_merge.dart';
 import '../models/child.dart';
+import '../models/import_batch.dart';
 import '../supabase/db.dart';
 
 class ChildRepository {
@@ -198,6 +199,77 @@ class ChildRepository {
       return (
         inserted: (map['inserted'] as num?)?.toInt() ?? 0,
         updated: (map['updated'] as num?)?.toInt() ?? 0,
+      );
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Puts back what one edit changed (needs the network). The database
+  /// refuses when the same fields were changed again afterwards.
+  Future<void> revertChange(int logId) async {
+    try {
+      await Db.client.rpc('revert_child_change', params: {'p_log_id': logId});
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The Excel imports the caller can still undo (their own; all for admins).
+  Future<List<ImportBatch>> recentImports() async {
+    try {
+      final data = await Db.client.rpc('recent_import_batches');
+      return rows(data).map(ImportBatch.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Removes the children an import added and restores the ones it changed.
+  Future<({int deleted, int restored})> undoImport(String batchId) async {
+    try {
+      final result =
+          await Db.client.rpc('undo_import', params: {'p_batch': batchId});
+      final map = result is Map ? result : const <String, dynamic>{};
+      return (
+        deleted: (map['deleted'] as num?)?.toInt() ?? 0,
+        restored: (map['restored'] as num?)?.toInt() ?? 0,
+      );
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The private health note of a child, or null when there is none (or the
+  /// caller may not see it: the database returns no row then).
+  Future<String?> healthNote(String childId) async {
+    try {
+      final data = await Db.client
+          .from(Db.tChildPrivateNotes)
+          .select('health_notes')
+          .eq('child_id', childId)
+          .maybeSingle();
+      final text = data?['health_notes']?.toString().trim();
+      return (text == null || text.isEmpty) ? null : text;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Saves the private health note; an empty text removes it.
+  Future<void> saveHealthNote(String childId, String? text) async {
+    final value = text?.trim() ?? '';
+    try {
+      if (value.isEmpty) {
+        await Db.client
+            .from(Db.tChildPrivateNotes)
+            .delete()
+            .eq('child_id', childId);
+        return;
+      }
+      await Db.client.from(Db.tChildPrivateNotes).upsert(
+        <String, dynamic>{'child_id': childId, 'health_notes': value},
+        onConflict: 'child_id',
       );
     } catch (e) {
       throw AppFailure.from(e);

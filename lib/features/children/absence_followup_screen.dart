@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
-import '../../core/utils/ui.dart';
 import '../../core/utils/whatsapp.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
@@ -19,6 +18,8 @@ import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import 'child_profile_screen.dart';
+import 'declining_attendance_screen.dart';
+import 'follow_up_call.dart';
 
 /// متابعة الغياب: children absent 2, 3 or 4+ Saturdays in a row, grouped by
 /// class, worst first, with a call button and "تم الافتقاد", which records a
@@ -61,68 +62,34 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
       _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _markFollowedUp(ChildStreak s, Child? child) async {
-    final type = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                '${AppStrings.followUpHow} ${s.childName}',
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.call_rounded, color: AppColors.success),
-              title: const Text(AppStrings.followUpPhone),
-              onTap: () => Navigator.of(sheet).pop('phone'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home_rounded, color: AppColors.navy),
-              title: const Text(AppStrings.followUpHome),
-              onTap: () => Navigator.of(sheet).pop('home'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (type == null || !mounted) return;
-    final today = AppDateUtils.dateOnly(DateTime.now());
-    final note = AppStrings.followUpNote(s.absentStreak);
-    final ok = await Ui.runGuarded(
+    final saved = await logFollowUp(
       context,
-      () async {
-        // Same as saving a visit on the child's profile: the child's last
-        // visit, and an entry in the visit history.
-        if (child != null) {
-          await _children.update(child.withVisits(
-            phoneVisitDate: type == 'phone' ? today : child.lastPhoneVisitDate,
-            phoneVisitNotes: type == 'phone' ? note : child.lastPhoneVisitNotes,
-            homeVisitDate: type == 'home' ? today : child.lastHomeVisitDate,
-            homeVisitNotes: type == 'home' ? note : child.lastHomeVisitNotes,
-          ));
-        }
-        await _children.recordVisitLog(
-          childId: s.childId,
-          visitType: type,
-          visitDate: today,
-          notes: note,
-        );
-      },
-      successMessage: AppStrings.saved,
+      childId: s.childId,
+      childName: s.childName,
+      absentStreak: s.absentStreak,
+      child: child,
     );
-    if (ok) await _reload();
+    if (saved) await _reload();
   }
 
   @override
   Widget build(BuildContext context) {
     final classes = context.watch<SessionController>().myClasses;
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.absenceFollowUp)),
+      appBar: AppBar(
+        title: const Text(AppStrings.absenceFollowUp),
+        actions: [
+          IconButton(
+            tooltip: AppStrings.decliningAttendance,
+            icon: const Icon(Icons.trending_down_rounded),
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => const DecliningAttendanceScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: AsyncSection<_Data>(
           key: _sectionKey,

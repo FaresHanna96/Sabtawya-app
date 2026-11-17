@@ -366,6 +366,23 @@ class AppStrings {
   static const pickVisitDate = 'اختر تاريخ الافتقاد';
   static const visitsSaved = 'تم حفظ بيانات الافتقاد';
   static const visitHistory = 'سجل الافتقادات';
+  static const undo = 'تراجع';
+  static const undoEditTitle = 'التراجع عن هذا التعديل';
+  static const undoEditMessage =
+      'ستعود البيانات إلى ما كانت عليه قبل هذا التعديل. يتعذر ذلك لو تغيّرت بعده.';
+  static const undoDone = 'تم التراجع';
+  static const recentImports = 'استيرادات حديثة';
+  static const undoImportTitle = 'التراجع عن الاستيراد';
+  static const undoImportMessage =
+      'سيُحذف المخدومون الذين أضافهم هذا الاستيراد وتعود بيانات من عدّلهم إلى ما كانت. يتعذر ذلك لو عُدّل أحدهم بعده.';
+  static String importBatchLine(String when, int added, int changed) =>
+      '$when: أضاف $added، عدّل $changed';
+  static const healthNotesTitle = 'ملاحظات صحية وخاصة';
+  static const healthNotesHint =
+      'حساسية، حالة صحية، ظروف أسرية... (يراها خدام الفصل والأمين فقط)';
+  static const healthNotesEmpty = 'لا توجد ملاحظات';
+  static const healthNotesSaved = 'تم حفظ الملاحظات';
+  static const healthNotesPrivate = 'خاصة: لا يراها غير خدام الفصل والأمين';
   static const noVisitHistory = 'لا يوجد سجل افتقادات بعد';
   static const childBirthdaysTitle = 'أعياد ميلاد المخدومين';
   static const servantBirthdays = 'أعياد ميلاد الخدام';
@@ -380,6 +397,13 @@ class AppStrings {
   static const allClasses = 'كل الفصول';
   static const pickClasses = 'اختر فصلاً أو أكثر';
   static const absenceFollowUp = 'متابعة الغياب';
+  static const decliningAttendance = 'حضور في تراجع';
+  static const decliningEmpty = 'لا يوجد مخدومين حضورهم في تراجع';
+  static const decliningEmptyBody =
+      'تظهر هنا حالة من حضورها قل بوضوح في آخر ٤ سبوت عن ٤ قبلها';
+  static String decliningLine(int recent, int previous) =>
+      'كان $previous٪ وأصبح $recent٪';
+  static const attendanceTrend = 'آخر سبوت';
   static const searchEverything = 'ابحث عن مخدوم أو فصل أو خادم';
   static const searchHint = 'اكتب حرفين على الأقل';
   static const activityReport = 'الأنشطة';
@@ -398,6 +422,15 @@ class AppStrings {
   static String saturdayDetail(String date, int came, int of, int pct) =>
       'سبت $date: حضر $came من $of ($pct%)';
   static const followUpHow = 'كيف تم افتقاد';
+  static const followUpNoteGeneric = 'افتقاد بعد غياب متتالي';
+  static const logCall = 'سجّل افتقاد';
+  static const absenceAlertSettings = 'تنبيهات الغياب';
+  static const absenceAlertLevelsLabel =
+      'عدد السبوت المتتالية للتنبيه (مثال: 2,3)';
+  static const absenceAlertLevelsHelp =
+      'يُرسل تنبيه لخدام الفصل عند وصول غياب المخدوم لهذه الأعداد';
+  static const absenceAlertLevelsInvalid =
+      'اكتب من رقم إلى 4 أرقام بين 1 و20 مفصولة بفاصلة';
   static const followUpPhone = 'مكالمة تليفون';
   static const followUpHome = 'زيارة منزلية';
   static String followUpNote(int n) => 'افتقاد بعد غياب $n سبوت متتالية';

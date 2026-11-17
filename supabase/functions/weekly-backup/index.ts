@@ -52,6 +52,7 @@ const TABLES = [
   'attendance_sessions',
   'attendance_records',
   'child_visit_logs',
+  'child_private_notes',
   'events',
   'event_payments',
   'event_reservations',

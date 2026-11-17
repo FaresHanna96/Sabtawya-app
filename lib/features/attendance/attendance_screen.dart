@@ -475,6 +475,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         for (final plan in plans) {
           await _repository.saveEntries(plan);
         }
+        // Whole Saturday written: now tell the servants about children whose
+        // absences reached an alert level (online only; never fails the save).
+        if (!isOffline) {
+          for (final sessionId in bySession.keys) {
+            await _repository.checkAbsenceAlerts(sessionId);
+          }
+        }
       },
       successMessage: isOffline
           ? AppStrings.attendanceSavedOffline

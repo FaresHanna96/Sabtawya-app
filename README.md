@@ -140,5 +140,18 @@ with 7-Zip or WinRAR. A test run that sends no mail:
 `POST /functions/v1/weekly-backup` with header `x-backup-secret` and body
 `{"dryRun":true}` (or `{"part":"photos","dryRun":true}`).
 
+## Monthly report email
+
+`monthly-report` runs from `pg_cron` on the 1st of each month (Cairo 9 AM) and
+emails the previous month's attendance report, an Excel file with the same
+columns as the app's monthly export, to every active admin (one mail each). It
+uses the same secrets as the backup (`GMAIL_USER`, `GMAIL_PASS`) and the same
+`x-backup-secret` header. Nothing is sent for a month with no attendance taken.
+Try it without sending: `POST /functions/v1/monthly-report` with the header and
+body `{"dryRun":true,"month":"2026-10"}`. Deploy with
+`supabase functions deploy monthly-report`. The Excel builder is plain
+TypeScript; its tests run without Deno:
+`node --test supabase/functions/monthly-report/monthly_test.ts`.
+
 Errors the app does not handle go to Firebase Crashlytics on Android and to the
 `app_errors` table on the web; admins read them on the stats page.

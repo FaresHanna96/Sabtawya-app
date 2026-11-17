@@ -334,6 +334,16 @@ class AttendanceRepository {
     }
   }
 
+  /// Asks the database to alert the class's servants about children whose
+  /// absences just reached an alert level. Best effort: it needs a connection
+  /// and a failure must never turn a saved attendance into an error.
+  Future<void> checkAbsenceAlerts(String sessionId) async {
+    try {
+      await Db.client
+          .rpc('check_absence_alerts', params: {'p_session_id': sessionId});
+    } catch (_) {}
+  }
+
   // ----------------------------------------------------------------- history
 
   /// Saturday-by-Saturday history for one child, across classes so a move never

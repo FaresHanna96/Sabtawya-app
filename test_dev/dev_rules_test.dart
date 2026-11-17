@@ -984,6 +984,209 @@ void main() {
     });
   });
 
+  group('private health notes', () {
+    dev('only that class\'s servants and admins read or write them; '
+        'the general servant never does', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final general = await _login('general');
+
+      // A child of the servant's own class (RLS already limits the servant).
+      final kid = await _call('GET', '/rest/v1/children?select=id&limit=1',
+          token: servant.token);
+      final id = kid.rows.single['id'];
+      final url = '/rest/v1/child_private_notes?child_id=eq.$id';
+
+      try {
+        final saved = await _call('POST', '/rest/v1/child_private_notes',
+            token: servant.token,
+            body: {'child_id': id, 'health_notes': 'حساسية (اختبار)'},
+            prefer: 'return=representation');
+        expect(saved.ok, isTrue, reason: '${saved.body}');
+
+        final byServant = await _call('GET', url, token: servant.token);
+        expect(byServant.rows, hasLength(1));
+        final byAdmin = await _call('GET', url, token: admin.token);
+        expect(byAdmin.rows, hasLength(1));
+
+        // The general servant reads every child but not the note.
+        final byGeneral = await _call('GET', url, token: general.token);
+        expect(byGeneral.rows, isEmpty);
+        final writeGeneral = await _call('POST', '/rest/v1/child_private_notes',
+            token: general.token,
+            body: {'child_id': id, 'health_notes': 'x'},
+            prefer: 'resolution=merge-duplicates');
+        expect(writeGeneral.ok, isFalse);
+
+        // Not readable without signing in.
+        final anon = await _call('GET', url);
+        expect(anon.rows, isEmpty);
+      } finally {
+        await _call('DELETE', url, token: admin.token);
+      }
+    });
+  });
+
+  group('absence alerts', () {
+    dev('only an admin reads or changes the alert levels', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+
+      final denied = await _call('POST', '/rest/v1/rpc/get_app_setting',
+          token: servant.token, body: {'p_key': 'absence_alert_levels'});
+      expect(denied.ok, isFalse);
+      final deniedSet = await _call('POST', '/rest/v1/rpc/set_app_setting',
+          token: servant.token,
+          body: {'p_key': 'absence_alert_levels', 'p_value': '1'});
+      expect(deniedSet.ok, isFalse);
+
+      final before = await _call('POST', '/rest/v1/rpc/get_app_setting',
+          token: admin.token, body: {'p_key': 'absence_alert_levels'});
+      expect(before.ok, isTrue, reason: '${before.body}');
+      try {
+        final bad = await _call('POST', '/rest/v1/rpc/set_app_setting',
+            token: admin.token,
+            body: {'p_key': 'absence_alert_levels', 'p_value': '0,99'});
+        expect(bad.ok, isFalse);
+        final other = await _call('POST', '/rest/v1/rpc/get_app_setting',
+            token: admin.token, body: {'p_key': 'backup_secret'});
+        expect(other.ok, isFalse, reason: 'secrets must not be readable');
+        final good = await _call('POST', '/rest/v1/rpc/set_app_setting',
+            token: admin.token,
+            body: {'p_key': 'absence_alert_levels', 'p_value': '2, 4'});
+        expect(good.ok, isTrue, reason: '${good.body}');
+        final now = await _call('POST', '/rest/v1/rpc/get_app_setting',
+            token: admin.token, body: {'p_key': 'absence_alert_levels'});
+        expect(now.body, '2,4');
+      } finally {
+        await _call('POST', '/rest/v1/rpc/set_app_setting',
+            token: admin.token,
+            body: {
+              'p_key': 'absence_alert_levels',
+              'p_value': (before.body ?? '2,3').toString(),
+            });
+      }
+    });
+
+    dev('checking an unknown session alerts nobody and does not fail',
+        () async {
+      final servant = await _login('servant');
+      final r = await _call('POST', '/rest/v1/rpc/check_absence_alerts',
+          token: servant.token,
+          body: {'p_session_id': '00000000-0000-0000-0000-000000000000'});
+      expect(r.ok, isTrue, reason: '${r.body}');
+      expect(r.body, 0);
+    });
+
+    dev('the alert bookkeeping table is not readable through the API',
+        () async {
+      final admin = await _login('admin');
+      final r = await _call('GET', '/rest/v1/absence_alerts?select=*',
+          token: admin.token);
+      expect(r.ok, isFalse);
+    });
+  });
+
+  group('undo', () {
+    dev('an edit can be reverted, but not after a later edit of the same field',
+        () async {
+      final servant = await _login('servant');
+      final general = await _login('general');
+      final kid = await _call('GET', '/rest/v1/children?select=id,notes&limit=1',
+          token: servant.token);
+      final id = kid.rows.single['id'];
+      final original = kid.rows.single['notes'];
+      final url = '/rest/v1/children?id=eq.$id';
+
+      Future<int?> lastLogId() async {
+        final h = await _call('POST', '/rest/v1/rpc/child_change_history',
+            token: servant.token, body: {'p_child_id': id});
+        for (final r in h.rows) {
+          final changes = r['changes'];
+          if (r['entity'] == 'children' &&
+              changes is Map &&
+              changes.containsKey('notes')) {
+            return (r['id'] as num).toInt();
+          }
+        }
+        return null;
+      }
+
+      try {
+        await _call('PATCH', url, token: servant.token, body: {'notes': 'اختبار ١'});
+        final first = await lastLogId();
+        expect(first, isNotNull);
+
+        // The general servant cannot revert.
+        final denied = await _call('POST', '/rest/v1/rpc/revert_child_change',
+            token: general.token, body: {'p_log_id': first});
+        expect(denied.ok, isFalse);
+
+        final ok = await _call('POST', '/rest/v1/rpc/revert_child_change',
+            token: servant.token, body: {'p_log_id': first});
+        expect(ok.ok, isTrue, reason: '${ok.body}');
+        final back = await _call('GET', '$url&select=notes', token: servant.token);
+        expect(back.rows.single['notes'], original);
+
+        // A later edit of the same field blocks reverting the earlier one.
+        await _call('PATCH', url, token: servant.token, body: {'notes': 'اختبار ٢'});
+        final second = await lastLogId();
+        await _call('PATCH', url, token: servant.token, body: {'notes': 'اختبار ٣'});
+        final blocked = await _call('POST', '/rest/v1/rpc/revert_child_change',
+            token: servant.token, body: {'p_log_id': second});
+        expect(blocked.ok, isFalse);
+        final still = await _call('GET', '$url&select=notes', token: servant.token);
+        expect(still.rows.single['notes'], 'اختبار ٣');
+      } finally {
+        await _call('PATCH', url, token: servant.token, body: {'notes': original});
+      }
+    });
+
+    dev('an import can be undone once, and the batch table is closed',
+        () async {
+      final admin = await _login('admin');
+      final classes = await _call('GET', '/rest/v1/classes?select=id&limit=1',
+          token: admin.token);
+      final classId = classes.rows.single['id'];
+      final name = 'اختبار تراجع ${DateTime.now().microsecondsSinceEpoch}';
+
+      final imported = await _call('POST', '/rest/v1/rpc/import_children',
+          token: admin.token,
+          body: {
+            'p_inserts': [
+              {'class_id': classId, 'full_name': name, 'gender': 'boy'}
+            ],
+            'p_updates': [],
+          });
+      expect(imported.ok, isTrue, reason: '${imported.body}');
+      final batch = (imported.body as Map)['batch_id'];
+      expect(batch, isNotNull);
+
+      final direct = await _call('GET', '/rest/v1/import_batches?select=*',
+          token: admin.token);
+      expect(direct.ok, isFalse, reason: 'the table must not be readable');
+
+      try {
+        final undone = await _call('POST', '/rest/v1/rpc/undo_import',
+            token: admin.token, body: {'p_batch': batch});
+        expect(undone.ok, isTrue, reason: '${undone.body}');
+        expect((undone.body as Map)['deleted'], 1);
+        final gone = await _call(
+            'GET', '/rest/v1/children?select=id&full_name=eq.${Uri.encodeComponent(name)}',
+            token: admin.token);
+        expect(gone.rows, isEmpty);
+
+        final twice = await _call('POST', '/rest/v1/rpc/undo_import',
+            token: admin.token, body: {'p_batch': batch});
+        expect(twice.ok, isFalse);
+      } finally {
+        await _call('DELETE',
+            '/rest/v1/children?full_name=eq.${Uri.encodeComponent(name)}',
+            token: admin.token);
+      }
+    });
+  });
+
   group('the Excel import function', () {
     final made = <String>{};
 
@@ -1058,7 +1261,9 @@ void main() {
             ],
           });
       expect(r.ok, isTrue, reason: '${r.body}');
-      expect(r.body, {'inserted': 2, 'updated': 1});
+      expect(r.body, containsPair('inserted', 2));
+      expect(r.body, containsPair('updated', 1));
+      expect((r.body as Map)['batch_id'], isNotNull);
       await findByName('اختبار استيراد');
       expect(made, hasLength(3));
 

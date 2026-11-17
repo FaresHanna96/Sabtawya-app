@@ -423,6 +423,41 @@ class ChildStreak {
       );
 }
 
+/// A row of `v_child_attendance_trend`: how often a child came in the last four
+/// Saturdays against the four before (percent of those Saturdays).
+class ChildTrend {
+  const ChildTrend({
+    required this.childId,
+    required this.childName,
+    required this.classId,
+    required this.className,
+    required this.recentRate,
+    required this.previousRate,
+    required this.isDeclining,
+  });
+
+  final String childId;
+  final String childName;
+  final String classId;
+  final String className;
+  final int recentRate;
+  final int previousRate;
+  final bool isDeclining;
+
+  /// Percentage points lost (negative when the child improved).
+  int get drop => previousRate - recentRate;
+
+  factory ChildTrend.fromMap(Map<String, dynamic> map) => ChildTrend(
+        childId: asText(map['child_id']),
+        childName: asText(map['child_name']),
+        classId: asText(map['class_id']),
+        className: asText(map['class_name']),
+        recentRate: asDouble(map['recent_rate']).round(),
+        previousRate: asDouble(map['previous_rate']).round(),
+        isDeclining: map['is_declining'] == true,
+      );
+}
+
 /// A row of `v_child_activity_rates`: how many of the Saturdays held so far
 /// the child came to each activity.
 class ChildActivityRate {

@@ -10,6 +10,7 @@ class AppNotification {
     required this.createdAt,
     this.readAt,
     this.refId,
+    this.childId,
   });
 
   final String id;
@@ -23,6 +24,9 @@ class AppNotification {
 
   /// What it is about: a servant, a child or a class, depending on [kind].
   final String? refId;
+
+  /// The child an 'absence_child' entry is about (its [refId] is the class).
+  final String? childId;
 
   bool get isRead => readAt != null;
 
@@ -54,5 +58,6 @@ class AppNotification {
         createdAt: asDate(map['created_at']).toLocal(),
         readAt: asDateOrNull(map['read_at']),
         refId: asTextOrNull(map['ref_id']),
+        childId: asTextOrNull(map['child_id']),
       );
 }

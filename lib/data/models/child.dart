@@ -371,12 +371,16 @@ class ChildChange {
     required this.createdAt,
     required this.action,
     required this.entity,
+    this.id,
     this.actorName,
     this.changed = const <String>[],
     this.values = const <String, ({Object? before, Object? after})>{},
   });
 
   final DateTime createdAt;
+
+  /// The activity-log entry, used to undo it (null for older callers).
+  final int? id;
 
   /// What each edited field was and became (only entries made after the
   /// values were recorded have them; visit fields are never in here).
@@ -395,6 +399,7 @@ class ChildChange {
   bool get isAttendance => entity == 'attendance_records';
 
   factory ChildChange.fromMap(Map<String, dynamic> map) => ChildChange(
+        id: map['id'] is num ? (map['id'] as num).toInt() : null,
         createdAt: asDate(map['created_at']),
         action: asText(map['action']),
         entity: asText(map['entity']),

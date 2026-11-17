@@ -11,6 +11,7 @@ import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import '../auth/change_password_screen.dart';
 import '../profile/my_profile_screen.dart';
+import 'absence_alert_tile.dart';
 import 'caller_id_tile.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -128,6 +129,11 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const CallerIdTile(),
+            if (session.isAdmin) ...[
+              const SizedBox(height: 16),
+              const AbsenceAlertTile(),
+              const SizedBox(height: 16),
+            ],
             SectionCard(
               title: AppStrings.about,
               icon: Icons.info_rounded,

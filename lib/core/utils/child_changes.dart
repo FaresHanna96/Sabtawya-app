@@ -24,6 +24,27 @@ const Map<String, String> _fieldLabels = <String, String>{
   'longitude': 'الموقع',
 };
 
+/// The columns the database's revert_child_change can put back.
+const Set<String> revertibleFields = <String>{
+  'full_name',
+  'gender',
+  'birth_date',
+  'mobile',
+  'mother_name',
+  'mother_mobile',
+  'father_name',
+  'father_mobile',
+  'confession_father',
+  'school',
+  'address',
+  'notes',
+  'is_active',
+  'is_deacon',
+  'latitude',
+  'longitude',
+  'class_id',
+};
+
 const Set<String> _visitFields = <String>{
   'last_phone_visit_date',
   'last_phone_visit_notes',
@@ -79,13 +100,27 @@ class ChildChangeGroup {
     required this.actorName,
     required this.fields,
     Map<String, ({Object? before, Object? after})>? values,
-  }) : values = values ?? <String, ({Object? before, Object? after})>{};
+    List<int>? ids,
+  })  : values = values ?? <String, ({Object? before, Object? after})>{},
+        ids = ids ?? <int>[];
 
   final DateTime latest;
   final String entity;
   final String action;
   final String? actorName;
   final Set<String> fields;
+
+  /// The log entries of this line, newest first: the ones an undo reverts
+  /// (only edits that recorded their values).
+  final List<int> ids;
+
+  /// Whether "تراجع" makes sense: an edit with recorded values, at least one of
+  /// them a field the database can put back (not the photo).
+  bool get canUndo =>
+      !isAttendance &&
+      !isAdded &&
+      ids.isNotEmpty &&
+      values.keys.any(revertibleFields.contains);
 
   /// Per field: the oldest "before" and the newest "after" of the day.
   final Map<String, ({Object? before, Object? after})> values;
@@ -183,6 +218,7 @@ List<ChildChangeGroup> groupChanges(List<ChildChange> changes) {
         last.action == c.action &&
         last.actorName == c.actorName) {
       last.fields.addAll(c.changed.where((f) => !_visitFields.contains(f)));
+      if (isEdit && c.id != null && c.values.isNotEmpty) last.ids.add(c.id!);
       // Older entry of the same day: its "before" is the day's starting value.
       for (final e in c.values.entries) {
         final had = last.values[e.key];
@@ -197,6 +233,7 @@ List<ChildChangeGroup> groupChanges(List<ChildChange> changes) {
         actorName: c.actorName,
         fields: <String>{...c.changed.where((f) => !_visitFields.contains(f))},
         values: {...c.values},
+        ids: [if (isEdit && c.id != null && c.values.isNotEmpty) c.id!],
       ));
     }
   }

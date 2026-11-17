@@ -5,6 +5,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/child_changes.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
@@ -20,12 +21,14 @@ import '../../data/repositories/report_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
+import 'attendance_sparkline.dart';
 import 'change_history_card.dart';
 import 'child_avatar.dart';
 import 'child_location_card.dart';
 import 'contact_cards.dart';
 import 'child_filters.dart';
 import 'child_form_screen.dart';
+import 'health_notes_card.dart';
 import 'location_sheet.dart';
 import 'missing_info.dart';
 import 'missing_info_banner.dart';
@@ -118,6 +121,31 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       MaterialPageRoute<bool>(builder: (_) => ChildFormScreen(child: child)),
     );
     if (changed == true) await _reload();
+  }
+
+  /// Puts back what one history line changed, newest edit first.
+  Future<void> _undoChange(ChildChangeGroup group) async {
+    final confirmed = await Ui.confirm(
+      context,
+      title: AppStrings.undoEditTitle,
+      message: AppStrings.undoEditMessage,
+      confirmLabel: AppStrings.undo,
+      destructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    final ok = await Ui.runGuarded(
+      context,
+      () async {
+        for (final id in group.ids) {
+          await _children.revertChange(id);
+        }
+      },
+      successMessage: AppStrings.undoDone,
+    );
+    if (ok && mounted) {
+      await context.read<SessionController>().refreshClasses();
+      await _reload();
+    }
   }
 
   Future<void> _setLocation(Child child) async {
@@ -231,6 +259,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   child: _summary(data.yearReport!, data.monthly, data.history),
                 ),
                 const SizedBox(height: 16),
+                if (data.history.length >= 2) ...[
+                  AttendanceSparkline(history: data.history),
+                  const SizedBox(height: 16),
+                ],
               ],
               SectionCard(
                 title: AppStrings.personalInfo,
@@ -383,6 +415,13 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (canSeeHealthNotes(session, child.classId)) ...[
+                HealthNotesCard(
+                  key: ValueKey('health|${child.id}'),
+                  childId: child.id,
+                ),
+                const SizedBox(height: 16),
+              ],
               if (canEdit) ...[
                 _VisitSection(
                   // Re-create when the stored visit changes (saved or a history
@@ -398,7 +437,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               _visitHistoryCard(data, canEdit),
               if (data.changes.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                ChangeHistoryCard(changes: data.changes),
+                ChangeHistoryCard(
+                  changes: data.changes,
+                  onUndo: canEdit ? _undoChange : null,
+                ),
               ],
               const SizedBox(height: 16),
               _lastActivityCard(data.lastActivity),

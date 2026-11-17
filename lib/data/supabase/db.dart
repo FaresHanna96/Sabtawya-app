@@ -39,6 +39,7 @@ class Db {
   static const vChildLastActivity = 'v_child_last_activity';
   static const vChildCommitment = 'v_child_commitment';
   static const vChildAttendanceStreak = 'v_child_attendance_streak';
+  static const vChildAttendanceTrend = 'v_child_attendance_trend';
   static const vPendingServants = 'v_pending_servants';
   static const vChildBirthdays = 'v_child_birthdays';
   static const vServantBirthdays = 'v_servant_birthdays';
@@ -65,6 +66,7 @@ class Db {
 
   // Tables – pastoral visits
   static const tChildVisitLogs = 'child_visit_logs';
+  static const tChildPrivateNotes = 'child_private_notes';
   static const tLessons = 'lessons';
   static const tLessonExtras = 'lesson_extras';
   static const tLessonBreaks = 'lesson_breaks';

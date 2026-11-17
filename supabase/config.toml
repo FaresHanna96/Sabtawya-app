@@ -420,3 +420,7 @@ enabled = true
 # Called by pg_cron without a sign-in; guarded by a secret header instead.
 [functions.weekly-backup]
 verify_jwt = false
+
+# The monthly report email, called by pg_cron the same way.
+[functions.monthly-report]
+verify_jwt = false

@@ -18,6 +18,7 @@ import '../children/absence_followup_screen.dart';
 import '../children/birthday_screen.dart';
 import '../children/missing_info_screen.dart';
 import '../children/child_profile_screen.dart';
+import '../children/follow_up_call.dart';
 import '../classes/class_detail_screen.dart';
 import '../../data/models/servant_activity.dart';
 import '../../data/repositories/servant_activity_repository.dart';
@@ -94,6 +95,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // Old notifications a plain servant may still hold: nothing to open.
       'competition_added' when seesCompetitions => const CompetitionsScreen(),
       'child_added' when ref != null => ChildProfileScreen(childId: ref),
+      // A child's absences reached an alert level: their profile.
+      'absence_child' when n.childId != null =>
+        ChildProfileScreen(childId: n.childId!),
       // 'class_activity': somebody of this class did something in it.
       'class_assigned' ||
       'class_activity' when ref != null =>
@@ -166,6 +170,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  /// The notification's own button: write the follow-up down without opening
+  /// the child first.
+  Future<void> _logCall(AppNotification n) async {
+    final saved = await logFollowUp(
+      context,
+      childId: n.childId!,
+      childName: n.body.split(' غاب ').first,
+    );
+    if (!saved || !mounted) return;
+    if (!n.isRead) {
+      try {
+        await _repository.markRead(n.id);
+      } catch (_) {}
+    }
+    await _reload();
+  }
+
   Future<void> _markAll() async {
     try {
       await _repository.markAllRead();
@@ -191,6 +212,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Icons.volunteer_activism_rounded,
             AppColors.coral
           ),
+        'absence_child' => (Icons.person_off_outlined, AppColors.coral),
         'class_removed' => (Icons.person_remove_outlined, AppColors.coral),
         'event_today' => (Icons.celebration_rounded, AppColors.gold),
         'attendance_missing' => (Icons.alarm_rounded, AppColors.coral),
@@ -252,9 +274,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           style: const TextStyle(fontSize: 12),
                         ),
                         isThreeLine: true,
-                        trailing: n.isRead
-                            ? null
-                            : Icon(Icons.circle, size: 10, color: color),
+                        trailing: n.kind == 'absence_child' && n.childId != null
+                            ? TextButton.icon(
+                                onPressed: () => _logCall(n),
+                                icon: const Icon(Icons.call_rounded, size: 18),
+                                label: const Text(AppStrings.logCall),
+                              )
+                            : n.isRead
+                                ? null
+                                : Icon(Icons.circle, size: 10, color: color),
                       ),
                     ));
               },

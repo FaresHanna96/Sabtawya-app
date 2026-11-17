@@ -13,6 +13,7 @@ import '../../data/services/child_import_service.dart';
 import '../../data/services/excel_service.dart';
 import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
+import 'recent_imports_card.dart';
 
 /// Imports a class roster from an `.xlsx` file.
 ///
@@ -185,12 +186,14 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-              // Setup card, then the summary, then one card per row.
-              itemCount: 2 + rows.length,
+              // Imports that can be undone, the setup card, then the summary,
+              // then one card per row.
+              itemCount: 3 + rows.length,
               itemBuilder: (context, index) =>
                   staggered(index, Builder(builder: (context) {
-                if (index == 0) return _setupCard();
-                if (index == 1) {
+                if (index == 0) return const RecentImportsCard();
+                if (index == 1) return _setupCard();
+                if (index == 2) {
                   return plan == null
                       ? _hintCard()
                       : Padding(
@@ -198,7 +201,7 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
                           child: _summaryCard(plan),
                         );
                 }
-                return _RowCard(row: rows[index - 2]);
+                return _RowCard(row: rows[index - 3]);
               })),
             ),
           ),

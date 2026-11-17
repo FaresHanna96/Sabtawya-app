@@ -11,13 +11,22 @@ import '../../data/models/child.dart';
 /// timeline: one heading per day, then who did what and at what time. Same-day
 /// entries by the same person are one line; the latest five show first.
 class ChangeHistoryCard extends StatefulWidget {
-  const ChangeHistoryCard({super.key, required this.changes, this.now});
+  const ChangeHistoryCard({
+    super.key,
+    required this.changes,
+    this.now,
+    this.onUndo,
+  });
 
   /// Newest first, as the database returns them.
   final List<ChildChange> changes;
 
   /// Only for tests; the real card reads the clock.
   final DateTime? now;
+
+  /// Called with the line to undo; null hides the button (for people who
+  /// may not edit the child).
+  final Future<void> Function(ChildChangeGroup group)? onUndo;
 
   @override
   State<ChangeHistoryCard> createState() => _ChangeHistoryCardState();
@@ -41,7 +50,11 @@ class _ChangeHistoryCardState extends State<ChangeHistoryCard> {
       final endsDay = i == shown.length - 1 ||
           !AppDateUtils.isSameDay(shown[i + 1].latest.toLocal(), day);
       if (newDay) rows.add(_dayHeader(day, first: i == 0));
-      rows.add(_ChangeRow(group: shown[i], connect: !endsDay));
+      rows.add(_ChangeRow(
+        group: shown[i],
+        connect: !endsDay,
+        onUndo: widget.onUndo,
+      ));
     }
 
     return SectionCard(
@@ -109,9 +122,14 @@ class _ChangeHistoryCardState extends State<ChangeHistoryCard> {
 }
 
 class _ChangeRow extends StatelessWidget {
-  const _ChangeRow({required this.group, required this.connect});
+  const _ChangeRow({
+    required this.group,
+    required this.connect,
+    this.onUndo,
+  });
 
   final ChildChangeGroup group;
+  final Future<void> Function(ChildChangeGroup group)? onUndo;
 
   /// Draw the line down to the next entry of the same day.
   final bool connect;
@@ -210,6 +228,18 @@ class _ChangeRow extends StatelessWidget {
                       children: [for (final l in labels) _chip(l)],
                     ),
                   ],
+                  if (g.canUndo && onUndo != null)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        onPressed: () => onUndo!(g),
+                        icon: const Icon(Icons.undo_rounded, size: 16),
+                        label: const Text(AppStrings.undo),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
