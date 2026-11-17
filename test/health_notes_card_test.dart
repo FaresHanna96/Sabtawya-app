@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sabtawya/core/theme/app_theme.dart';
 import 'package:sabtawya/features/children/health_notes_card.dart';
 
 Widget _app(Widget child) => MaterialApp(
+      theme: AppTheme.light(),
       home: Scaffold(
         body: SingleChildScrollView(
           child: Directionality(textDirection: TextDirection.rtl, child: child),
@@ -59,6 +61,25 @@ void main() {
       )));
       await tester.pumpAndSettle();
       expect(find.text('لا توجد ملاحظات'), findsOneWidget);
+    });
+
+    testWidgets('editing shows a cancel and a save button that fit',
+        (tester) async {
+      await tester.pumpWidget(_app(HealthNotesCard(
+        childId: 'k',
+        load: (_) async => 'ربو',
+        save: (_, __) async {},
+      )));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+
+      // The default theme has a full-width FilledButton; with the app's own
+      // theme inside a Row that threw and drew nothing.
+      expect(tester.takeException(), isNull);
+      expect(find.text('إلغاء'), findsOneWidget);
+      expect(find.text('حفظ'), findsOneWidget);
+      expect(tester.getSize(find.byType(FilledButton)).width, lessThan(300));
     });
 
     testWidgets('a failed load offers a retry, not an empty note',

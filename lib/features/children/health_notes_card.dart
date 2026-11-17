@@ -174,8 +174,13 @@ class _HealthNotesCardState extends State<HealthNotesCard> {
                 child: const Text(AppStrings.cancel),
               ),
               const Spacer(),
+              // The theme's FilledButton is full width; inside a Row it must
+              // be told to size to its label.
               FilledButton(
                 onPressed: _submit,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(96, 44),
+                ),
                 child: const Text(AppStrings.save),
               ),
             ],
