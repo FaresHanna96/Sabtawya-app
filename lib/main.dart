@@ -37,5 +37,9 @@ Future<void> main() async {
 
   await ErrorReporter.init();
   AccessLog.appOpened();
+  AccessLog.recordBuild();
+  Supabase.instance.client.auth.onAuthStateChange.listen((e) {
+    if (e.event == AuthChangeEvent.signedIn) AccessLog.recordBuild();
+  });
   runApp(const SabtawyaApp());
 }
