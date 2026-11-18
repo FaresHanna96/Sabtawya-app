@@ -24,6 +24,7 @@ import '../servant_activities/my_activities_screen.dart';
 import '../notifications/notifications_bell.dart';
 import '../search/app_search.dart';
 import 'more_screen.dart';
+import 'whats_new_popup.dart';
 
 /// The signed-in shell: five tabs, with the dashboard and the labels adapting
 /// to the role. A servant sees "فصولي" where an admin sees "الفصول".
@@ -55,6 +56,9 @@ class _HomeShellState extends State<HomeShell>
     WidgetsBinding.instance.addObserver(this);
     _checkUpdate();
     _callerName();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) WhatsNewPopup.maybeShow(context);
+    });
   }
 
   /// "Caller name" is on by default on Android: keeps its list current, and
