@@ -50,18 +50,32 @@ class WhatsNewStore {
 class WhatsNewPopup {
   const WhatsNewPopup._();
 
+  /// True while one call is reading and recording what this phone has seen.
+  static bool _checking = false;
+
   static Future<void> maybeShow(
     BuildContext context, {
     int build = kAppBuild,
     Map<int, List<WhatsNewItem>> notes = kWhatsNew,
     WhatsNewStore? store,
   }) async {
-    final s = store ?? WhatsNewStore.instance;
-    final seen = await s.seen();
-    if (seen < 0 || seen >= build) return;
-    final items = notes[build];
-    await s.markSeen(build);
-    if (items == null || items.isEmpty || !context.mounted) return;
+    // The home screen can be built twice while the profile loads; a second
+    // call arriving while the first is still checking would see "not shown
+    // yet" too and stack a second popup.
+    if (_checking) return;
+    _checking = true;
+    final List<WhatsNewItem>? items;
+    try {
+      final s = store ?? WhatsNewStore.instance;
+      final seen = await s.seen();
+      if (seen < 0 || seen >= build) return;
+      items = notes[build];
+      await s.markSeen(build);
+    } finally {
+      _checking = false;
+    }
+    final shown = items;
+    if (shown == null || shown.isEmpty || !context.mounted) return;
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -71,7 +85,7 @@ class WhatsNewPopup {
           child: ListView(
             shrinkWrap: true,
             children: [
-              for (final i in items)
+              for (final i in shown)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
                   child: Row(
