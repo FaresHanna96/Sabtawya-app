@@ -6,6 +6,7 @@
 #   .\send_update_push.ps1 -DryRun    only say how many people it would reach
 #
 # build_web.ps1 runs this after a successful deploy (skip it there with -NoPush).
+# It also turns on the weekly Friday reminder (notify_update_reminder) for four weeks.
 # Sending twice for the same version is harmless: whoever already has that notice is skipped.
 # Production only: the repo's supabase/ folder must be linked to the production project.
 param([switch]$DryRun)
@@ -38,6 +39,14 @@ if ($DryRun) {
 # UTF-8 without a BOM, so the Arabic text reaches the database intact.
 $file = Join-Path $env:TEMP "sabtawya_update_push.sql"
 [System.IO.File]::WriteAllText($file, $sql, (New-Object System.Text.UTF8Encoding($false)))
+
+# Remember the version and keep reminding for four weeks (supabase/migrations/20261118006).
+if (-not $DryRun) {
+    $until = (Get-Date).AddDays(28).ToString('yyyy-MM-dd')
+    $cfg = "update public.app_config set value = '$ver' where key = 'latest_app_version'; update public.app_config set value = '$until' where key = 'update_reminder_until';"
+    npx supabase db query --remote --yes -o json $cfg 2>&1 | Out-Null
+    Write-Host "Weekly Friday reminder is on until $until."
+}
 
 $out = npx supabase db query --remote --yes -o json -f $file 2>&1 | Out-String
 Remove-Item $file -ErrorAction SilentlyContinue

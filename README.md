@@ -125,6 +125,8 @@ changed.
    `build_web.ps1` also runs `send_update_push.ps1`: a push and a bell entry to every active user
    ("install version x.y.z"). Skip it for a release with `-NoPush`; a repeat for the same version
    is skipped by the script itself.
+   Two kinds of update notice: `app_update` (this release push) and `app_update_reminder` (a weekly Friday
+   5 PM Cairo reminder for four weeks after each release, `notify_update_reminder`).
 7. Check `https://sabtawya.vercel.app/version.json` and compare the SHA-256 of the
    downloaded APKs with the local files.
 
