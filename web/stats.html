@@ -415,6 +415,23 @@
              '</span><small>' + esc(x.who || '—') + ' • ' + esc(x.app_version || '') + '</small></div><span class="tm">' + hm(x.created_at) + '</span></div>';
       });
     }
+    // Who is still on an older app (build below the published one, or no build reported).
+    var u = await sb.rpc('admin_update_status');
+    if (!u.error) {
+      var us = u.data || [];
+      var latest = 0;
+      try { latest = (await (await fetch('version.json?t=' + Date.now())).json()).build || 0; } catch (_) {}
+      var old = us.filter(function (x) { return !x.build || x.build < latest; });
+      h += '<div class="p" style="font-weight:700;margin-top:6px"><span>لم يحدّثوا بعد (' + old.length + ' من ' + us.length + ')</span></div>';
+      if (!old.length) h += '<div class="empty">الكل على آخر نسخة 🎉</div>';
+      old.forEach(function (x) {
+        var tel = String(x.mobile || '').replace(/[^0-9]/g, '');
+        var ok = /^01[0-9]{9}$/.test(tel);
+        var wa = ok ? 'https://wa.me/2' + tel + '?text=' + encodeURIComponent('أهلاً، فيه نسخة جديدة من تطبيق سبتاوية. حمّلها من: https://sabtawya.vercel.app/apk.html') : '';
+        h += '<div class="p"><div>' + esc(x.full_name) + '<small>' + (ROLE[x.role] || esc(x.role)) + ' • ' + (x.build ? 'نسخة ' + x.build : 'نسخة قديمة') + '</small></div><div>' +
+             (ok ? '<a href="tel:' + tel + '">اتصال</a> ' : '') + (wa ? '<a href="' + wa + '" target="_blank" rel="noopener">واتساب</a>' : '') + '</div></div>';
+      });
+    }
     $('whoList').innerHTML = h; $('whoList').hidden = false; $('whoLogin').hidden = true;
     $('out').onclick = async function () { await sb.auth.signOut(); isAdmin = false; $('whoList').hidden = true; $('whoLogin').hidden = false; };
   }
