@@ -122,6 +122,9 @@ changed.
 6. `.\build_web.ps1` builds the site, copies both APKs next to it, writes
    `version.json` (with each APK's SHA-256) and deploys to Vercel project
    `sabtawya`. It refuses to deploy without both APKs.
+   `build_web.ps1` also runs `send_update_push.ps1`: a push and a bell entry to every active user
+   ("install version x.y.z"). Skip it for a release with `-NoPush`; a repeat for the same version
+   is skipped by the script itself.
 7. Check `https://sabtawya.vercel.app/version.json` and compare the SHA-256 of the
    downloaded APKs with the local files.
 

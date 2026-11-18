@@ -1,0 +1,50 @@
+﻿# Tell every active user, with a push and an entry in the bell, that a new version is out.
+# Tapping the push opens the app; a build below min_build then shows the full-screen update
+# screen (the only way on is to install), and an older one gets the server's "please update".
+#
+#   .\send_update_push.ps1            send for the version in pubspec.yaml
+#   .\send_update_push.ps1 -DryRun    only say how many people it would reach
+#
+# build_web.ps1 runs this after a successful deploy (skip it there with -NoPush).
+# Sending twice for the same version is harmless: whoever already has that notice is skipped.
+# Production only: the repo's supabase/ folder must be linked to the production project.
+param([switch]$DryRun)
+
+$prodRef = "fxclufgfkvfrhdleyndf"
+$linked = (Get-Content "$PSScriptRoot\supabase\.temp\project-ref" -ErrorAction SilentlyContinue)
+if ($linked -ne $prodRef) {
+    Write-Error "supabase/ is not linked to production ($prodRef). Not sending."
+    exit 1
+}
+
+$ver = (Select-String -Path "$PSScriptRoot\pubspec.yaml" -Pattern '^version:\s*(\S+)\+(\d+)').Matches[0].Groups[1].Value
+$title = 'تحديث جديد لسبتاوية'
+$body = "اضغط لفتح التطبيق وتثبيت النسخة $ver. التحديث مطلوب عشان التطبيق يفضل شغال."
+
+$select = @"
+select p.id, 'app_update', '$title', '$body'
+from public.profiles p
+where p.is_active and not p.is_hidden
+  and not exists (select 1 from public.notifications n
+                  where n.user_id = p.id and n.kind = 'app_update' and n.body = '$body')
+"@
+
+if ($DryRun) {
+    $sql = "select count(*) as would_send from ($select) x;"
+} else {
+    $sql = "insert into public.notifications (user_id, kind, title, body) $select returning user_id;"
+}
+
+# UTF-8 without a BOM, so the Arabic text reaches the database intact.
+$file = Join-Path $env:TEMP "sabtawya_update_push.sql"
+[System.IO.File]::WriteAllText($file, $sql, (New-Object System.Text.UTF8Encoding($false)))
+
+$out = npx supabase db query --remote --yes -o json -f $file 2>&1 | Out-String
+Remove-Item $file -ErrorAction SilentlyContinue
+if ($DryRun) {
+    $m = [regex]::Match($out, '"would_send":\s*"?(\d+)')
+    Write-Host "Would notify $($m.Groups[1].Value) users about $ver."
+} else {
+    $n = ([regex]::Matches($out, '"user_id"')).Count
+    Write-Host "Update notice for $ver sent to $n users (push goes out by itself)."
+}
