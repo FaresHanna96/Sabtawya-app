@@ -1,0 +1,32 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sabtawya-web",
+      "runtimeExecutable": "D:\\dev\\flutter\\bin\\flutter.bat",
+      "runtimeArgs": [
+        "run",
+        "-d", "web-server",
+        "--web-port", "8082",
+        "--dart-define=SUPABASE_URL=https://fxclufgfkvfrhdleyndf.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_5j2lzDrUoKL3RUlJTIBoag_fU8ClIuT"
+      ],
+      "port": 8082,
+      "autoPort": false
+    },
+    {
+      "name": "web-pages",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8093", "--directory", "D:\\Projects\\sabtawya\\web"],
+      "port": 8093,
+      "autoPort": false
+    },
+    {
+      "name": "dev-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8092", "--directory", "D:\\Projects\\sabtawya\\build\\web_dev"],
+      "port": 8092,
+      "autoPort": false
+    }
+  ]
+}
