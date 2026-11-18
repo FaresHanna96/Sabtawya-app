@@ -1,8 +1,9 @@
 -- Friday 5 PM (Cairo): every servant is reminded to prepare tomorrow's lesson, one
 -- reminder per class they serve, naming that class's lesson (title and page).
 --
--- Skipped for the whole week when tomorrow's Saturday is in lesson_breaks (the lesson
--- is postponed or cancelled). Skipped for a servant who already submitted the prep for
+-- When tomorrow's Saturday is in lesson_breaks (the lesson is postponed or cancelled) no
+-- prep reminder goes out; the servants of the classes get a 'lesson_changed' notice
+-- instead (postponed / no lesson), once. Skipped for a servant who already submitted the prep for
 -- that class's session. One reminder per servant and class per Friday (none within 20 hours of the last).
 --
 -- Which lesson a Saturday has follows the app (LessonProgramme.slotOn): lesson 1 is the
@@ -36,6 +37,7 @@ declare
   v_month     int;
   v_week      int;
   v_sent      integer;
+  v_shift     boolean;
 begin
   if not p_force and (extract(isodow from v_now) <> 5 or extract(hour from v_now) <> 17) then
     return 0;
@@ -45,9 +47,28 @@ begin
   if extract(isodow from v_sat) <> 6 then
     return 0;
   end if;
-  -- Postponed or cancelled: no lesson tomorrow, nothing to prepare.
-  if exists (select 1 from public.lesson_breaks where break_date = v_sat) then
-    return 0;
+  -- Postponed or cancelled: no lesson tomorrow, so no prep reminder. The servants of
+  -- the classes are told instead, once, so nobody comes in or prepares for nothing.
+  select b.shift into v_shift from public.lesson_breaks b where b.break_date = v_sat;
+  if found then
+    insert into public.notifications (user_id, kind, title, body)
+    select distinct cs.servant_id,
+           'lesson_changed',
+           case when v_shift then 'درس بكرة مؤجل' else 'لا درس بكرة' end,
+           case when v_shift
+                then 'تم تأجيل درس بكرة، فمفيش تحضير للدرس الجمعة دي.'
+                else 'تم إلغاء درس بكرة، فمفيش تحضير للدرس الجمعة دي.' end
+    from public.class_servants cs
+    join public.classes c on c.id = cs.class_id and c.is_active
+    join public.profiles p on p.id = cs.servant_id and p.is_active and not p.is_hidden
+    where not exists (
+      select 1 from public.notifications n
+      where n.user_id = cs.servant_id and n.kind = 'lesson_changed'
+        and n.title = case when v_shift then 'درس بكرة مؤجل' else 'لا درس بكرة' end
+        and n.created_at > now() - interval '20 hours'
+    );
+    get diagnostics v_sent = row_count;
+    return v_sent;
   end if;
 
   v_year := extract(year from v_sat)::int;
