@@ -18,7 +18,9 @@ if ($linked -ne $prodRef) {
     exit 1
 }
 
-$ver = (Select-String -Path "$PSScriptRoot\pubspec.yaml" -Pattern '^version:\s*(\S+)\+(\d+)').Matches[0].Groups[1].Value
+$verMatch = (Select-String -Path "$PSScriptRoot\pubspec.yaml" -Pattern '^version:\s*(\S+)\+(\d+)').Matches[0]
+$ver = $verMatch.Groups[1].Value
+$build = $verMatch.Groups[2].Value
 $title = 'تحديث جديد لسبتاوية'
 $body = "اضغط لفتح التطبيق وتثبيت النسخة $ver. التحديث مطلوب عشان التطبيق يفضل شغال."
 
@@ -46,7 +48,7 @@ if (-not $DryRun) {
     $end = (Get-Date).AddDays(28)
     while ($end.DayOfWeek -ne 'Friday') { $end = $end.AddDays(1) }
     $until = $end.ToString('yyyy-MM-dd')
-    $cfg = "update public.app_config set value = '$ver' where key = 'latest_app_version'; update public.app_config set value = '$until' where key = 'update_reminder_until';"
+    $cfg = "update public.app_config set value = '$ver' where key = 'latest_app_version'; update public.app_config set value = '$until' where key = 'update_reminder_until'; update public.app_config set value = '$build' where key = 'latest_app_build';"
     npx supabase db query --remote --yes -o json $cfg 2>&1 | Out-Null
     Write-Host "Weekly Friday reminder is on until $until."
 }
