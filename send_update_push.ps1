@@ -40,9 +40,12 @@ if ($DryRun) {
 $file = Join-Path $env:TEMP "sabtawya_update_push.sql"
 [System.IO.File]::WriteAllText($file, $sql, (New-Object System.Text.UTF8Encoding($false)))
 
-# Remember the version and keep reminding for four weeks (supabase/migrations/20261118006).
+# Remember the version and keep reminding every Friday until then (supabase/migrations/20261118006 and 008).
 if (-not $DryRun) {
-    $until = (Get-Date).AddDays(28).ToString('yyyy-MM-dd')
+    # Four weeks on, rounded up to a Friday so the last Friday's reminder is not cut off.
+    $end = (Get-Date).AddDays(28)
+    while ($end.DayOfWeek -ne 'Friday') { $end = $end.AddDays(1) }
+    $until = $end.ToString('yyyy-MM-dd')
     $cfg = "update public.app_config set value = '$ver' where key = 'latest_app_version'; update public.app_config set value = '$until' where key = 'update_reminder_until';"
     npx supabase db query --remote --yes -o json $cfg 2>&1 | Out-Null
     Write-Host "Weekly Friday reminder is on until $until."
