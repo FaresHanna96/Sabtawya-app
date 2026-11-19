@@ -37,7 +37,12 @@ class AbsenceAlertTile extends StatefulWidget {
 }
 
 class _AbsenceAlertTileState extends State<AbsenceAlertTile> {
-  final _controller = TextEditingController();
+  /// The offered numbers of Saturdays in a row; a stored level outside this
+  /// range is offered as well, so nothing set before is lost.
+  static const _offered = [1, 2, 3, 4, 5, 6, 7, 8];
+  static const _maxLevels = 4;
+
+  Set<int> _levels = {2, 3};
   bool _loading = true;
   bool _failed = false;
   String? _error;
@@ -69,18 +74,12 @@ class _AbsenceAlertTileState extends State<AbsenceAlertTile> {
     _fetch();
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
   Future<void> _fetch() async {
     try {
       final v = await _read();
       if (!mounted) return;
       setState(() {
-        _controller.text = v ?? '2,3';
+        _levels = (AbsenceAlertTile.parseLevels(v ?? '2,3') ?? const [2, 3]).toSet();
         _loading = false;
         _failed = false;
       });
@@ -93,20 +92,37 @@ class _AbsenceAlertTileState extends State<AbsenceAlertTile> {
     }
   }
 
+  void _toggle(int n) {
+    setState(() {
+      if (_levels.contains(n)) {
+        _levels = {..._levels}..remove(n);
+        _error = null;
+      } else if (_levels.length >= _maxLevels) {
+        _error = 'اختر حتى $_maxLevels أعداد فقط';
+      } else {
+        _levels = {..._levels, n};
+        _error = null;
+      }
+    });
+  }
+
+  /// "2 و3 سبوت متتالية" for the sentence under the chips.
+  String get _summary {
+    final sorted = _levels.toList()..sort();
+    return sorted.join(' و');
+  }
+
   Future<void> _submit() async {
-    final levels = AbsenceAlertTile.parseLevels(_controller.text);
-    if (levels == null) {
-      setState(() => _error = AppStrings.absenceAlertLevelsInvalid);
+    if (_levels.isEmpty) {
+      setState(() => _error = 'اختر عددًا واحدًا على الأقل');
       return;
     }
-    setState(() => _error = null);
-    final text = levels.join(',');
-    final ok = await Ui.runGuarded(
+    final text = (_levels.toList()..sort()).join(',');
+    await Ui.runGuarded(
       context,
       () => _write(text),
       successMessage: AppStrings.saved,
     );
-    if (ok && mounted) _controller.text = text;
   }
 
   @override
@@ -133,19 +149,33 @@ class _AbsenceAlertTileState extends State<AbsenceAlertTile> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      AppStrings.absenceAlertLevelsHelp,
-                      style: TextStyle(fontSize: 12, color: AppColors.muted),
+                      'اختر بعد كام سبت غياب متتالي يوصل تنبيه لخدام الفصل',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final n in ({..._offered, ..._levels}.toList()..sort()))
+                          FilterChip(
+                            label: Text(n == 1 ? 'سبت واحد' : '$n سبوت'),
+                            selected: _levels.contains(n),
+                            onSelected: (_) => _toggle(n),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _controller,
-                      keyboardType: TextInputType.number,
-                      textDirection: TextDirection.ltr,
-                      decoration: InputDecoration(
-                        labelText: AppStrings.absenceAlertLevelsLabel,
-                        errorText: _error,
+                    if (_error != null)
+                      Text(_error!,
+                          style: const TextStyle(
+                              fontSize: 12.5, color: AppColors.danger))
+                    else if (_levels.isNotEmpty)
+                      Text(
+                        'هيوصل تنبيه لما المخدوم يغيب $_summary '
+                        '${_levels.length == 1 && _levels.first == 1 ? 'سبت' : 'سبوت'} متتالية.',
+                        style: const TextStyle(fontSize: 12.5),
                       ),
-                    ),
                     const SizedBox(height: 12),
                     Align(
                       alignment: AlignmentDirectional.centerEnd,

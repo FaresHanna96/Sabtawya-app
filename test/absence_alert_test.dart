@@ -48,10 +48,14 @@ void main() {
     });
   });
 
-  testWidgets('the settings tile shows the stored levels and refuses bad input',
+  testWidgets('the settings tile shows the stored levels as chips and saves the choice',
       (tester) async {
     var saved = '';
     await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(
+        snackBarTheme:
+            const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      ),
       home: Scaffold(
         body: SingleChildScrollView(
           child: Directionality(
@@ -65,13 +69,46 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('2,4'), findsOneWidget);
+    expect(find.textContaining('يغيب 2 و4'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), 'x');
+    await tester.tap(find.widgetWithText(FilterChip, '3 سبوت'));
+    await tester.pump();
+    expect(find.textContaining('يغيب 2 و3 و4'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilterChip, '4 سبوت'));
+    await tester.pump();
+
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+    expect(saved, '2,3');
+  });
+
+  testWidgets('at most four levels, and at least one', (tester) async {
+    var saved = '';
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: AbsenceAlertTile(
+              load: () async => '1,2,3,4',
+              save: (v) async => saved = v,
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, '5 سبوت'));
+    await tester.pump();
+    expect(find.text('اختر حتى 4 أعداد فقط'), findsOneWidget);
+
+    for (final n in ['سبت واحد', '2 سبوت', '3 سبوت', '4 سبوت']) {
+      await tester.tap(find.widgetWithText(FilterChip, n));
+      await tester.pump();
+    }
     await tester.tap(find.byType(FilledButton));
     await tester.pumpAndSettle();
     expect(saved, '');
-    expect(find.text('اكتب من رقم إلى 4 أرقام بين 1 و20 مفصولة بفاصلة'),
-        findsOneWidget);
+    expect(find.text('اختر عددًا واحدًا على الأقل'), findsOneWidget);
   });
 }
