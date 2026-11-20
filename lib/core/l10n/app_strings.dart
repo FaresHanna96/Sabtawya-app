@@ -1015,7 +1015,6 @@ class AppStrings {
   static String classesDoingWell(int n) => n == 1
       ? 'فصل واحد ماشي كويس'
       : '$n فصول ماشية كويس';
-  static const myClassHealthTitle = 'حال فصلي';
   static const healthScoreHint =
       'الدرجة من حضور الأطفال وتسجيل الحضور والتحضير والافتقاد. اضغط على الفصل للتفاصيل.';
   static const healthNoAbsent = 'مفيش غياب متكرر';

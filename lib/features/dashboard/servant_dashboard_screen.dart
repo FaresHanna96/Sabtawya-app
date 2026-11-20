@@ -146,19 +146,6 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
               const SizedBox(height: 16),
               const FadeSlideIn(index: 2, child: TodayBirthdaysSection()),
               const FadeSlideIn(index: 2, child: MissingInfoSection()),
-              if (data.health != null && data.health!.isNotEmpty)
-                FadeSlideIn(
-                  index: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: ClassHealthSection(
-                      classes: ClassHealth.joinAttendance(data.health!, {
-                        for (final s in data.scores) s.classId: s.percentage,
-                      }),
-                      title: AppStrings.myClassHealthTitle,
-                    ),
-                  ),
-                ),
               FadeSlideIn(
                 index: 3,
                 child: LessonOfDay(date: upcomingSaturday()),
@@ -236,13 +223,25 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                         lastSaturday,
                         const Divider(height: 16),
                       ],
-                      for (final item in classes)
-                        _ClassRow(
-                          overview: item,
-                          score: _scoreOf(scores, item.classId),
-                          onTap: () =>
-                              _push(ClassDetailScreen(classId: item.classId)),
-                        ),
+                      // Each class with its health (حال فصلي merged in): the
+                      // score bar and what to fix; tapping shows the details
+                      // and the way to the class. Without it, the plain rows.
+                      if (data.health != null && data.health!.isNotEmpty)
+                        ClassHealthSection(
+                          classes: ClassHealth.joinAttendance(data.health!, {
+                            for (final s in scores) s.classId: s.percentage,
+                          }),
+                          framed: false,
+                          showChildren: true,
+                        )
+                      else
+                        for (final item in classes)
+                          _ClassRow(
+                            overview: item,
+                            score: _scoreOf(scores, item.classId),
+                            onTap: () =>
+                                _push(ClassDetailScreen(classId: item.classId)),
+                          ),
                     ],
                   ),
                 ),

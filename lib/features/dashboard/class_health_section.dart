@@ -18,10 +18,18 @@ class ClassHealthSection extends StatefulWidget {
     super.key,
     required this.classes,
     this.title = AppStrings.classHealthTitle,
+    this.framed = true,
+    this.showChildren = false,
   });
 
   final List<ClassHealth> classes;
   final String title;
+
+  /// False when the lines sit inside another card (the servant's "فصلي").
+  final bool framed;
+
+  /// Adds "10 طفل" next to each class name.
+  final bool showChildren;
 
   static Color colorOf(HealthLevel level) => switch (level) {
         HealthLevel.red => AppColors.danger,
@@ -53,6 +61,20 @@ class _ClassHealthSectionState extends State<ClassHealthSection> {
   Widget build(BuildContext context) {
     final sorted = [...widget.classes]..sort(ClassHealth.byConcern);
     final needy = sorted.where((c) => c.level != HealthLevel.green).length;
+    final lines = [
+      for (final c in sorted)
+        _Line(
+          health: c,
+          showChildren: widget.showChildren,
+          onTap: () => _open(c),
+        ),
+    ];
+    if (!widget.framed) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: lines,
+      );
+    }
 
     return SectionCard(
       title: widget.title,
@@ -71,7 +93,7 @@ class _ClassHealthSectionState extends State<ClassHealthSection> {
               style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
           ),
-          for (final c in sorted) _Line(health: c, onTap: () => _open(c)),
+          ...lines,
         ],
       ),
     );
@@ -98,10 +120,15 @@ class _ClassHealthSectionState extends State<ClassHealthSection> {
 /// "3 بنات ........ 62%" over a thin bar, and under it the one thing to fix
 /// (only when the class is not green).
 class _Line extends StatelessWidget {
-  const _Line({required this.health, required this.onTap});
+  const _Line({
+    required this.health,
+    required this.onTap,
+    this.showChildren = false,
+  });
 
   final ClassHealth health;
   final VoidCallback onTap;
+  final bool showChildren;
 
   @override
   Widget build(BuildContext context) {
@@ -119,8 +146,20 @@ class _Line extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    health.className,
+                  child: Text.rich(
+                    TextSpan(children: [
+                      TextSpan(text: health.className),
+                      if (showChildren)
+                        TextSpan(
+                          text: '  ${health.activeChildren} '
+                              '${AppStrings.childrenTitle}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                    ]),
                     style: const TextStyle(
                         fontSize: 14, fontWeight: FontWeight.w700),
                   ),
