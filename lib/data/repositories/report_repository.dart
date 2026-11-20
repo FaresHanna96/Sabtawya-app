@@ -1,4 +1,5 @@
 import '../../core/utils/app_failure.dart';
+import '../models/class_health.dart';
 import '../models/parsers.dart';
 import '../models/reports.dart';
 import '../supabase/db.dart';
@@ -26,6 +27,17 @@ class ReportRepository {
           .eq('year_id', yearId)
           .order('class_name');
       return rows(data).map(ClassYearScore.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// أمين الخدمة only: how each active class is doing this year.
+  Future<List<ClassHealth>> classHealth(String yearId) async {
+    try {
+      final data =
+          await Db.client.rpc('class_health', params: {'p_year': yearId});
+      return rows(data).map(ClassHealth.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }

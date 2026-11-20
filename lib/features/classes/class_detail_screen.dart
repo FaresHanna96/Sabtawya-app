@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/whatsapp_icon.dart';
+import '../messages/parent_messages_screen.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -259,7 +261,11 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     const SizedBox(height: 12),
                     FadeSlideIn(index: 1, child: _patron(overview)),
                     const SizedBox(height: 12),
-                    FadeSlideIn(index: 2, child: _actions()),
+                    FadeSlideIn(
+                      index: 2,
+                      child: _actions(visible, overview.classId,
+                          overview.className),
+                    ),
                     const SizedBox(height: 12),
                     FadeSlideIn(index: 3, child: _servants(data.servants)),
                     const SizedBox(height: 16),
@@ -419,7 +425,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     );
   }
 
-  Widget _actions() {
+  /// [shown] is the children the filter shows, which "رسالة للأهالي"
+  /// messages (all of them, or e.g. only the absent ones once filtered).
+  Widget _actions(List<Child> shown, String classId, String className) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -452,6 +460,25 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           ),
           icon: const Icon(Icons.contacts_rounded, size: 18),
           label: const Text(AppStrings.contactsExportTitle),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => ParentMessagesScreen(
+                children: [
+                  for (final c in shown)
+                    if (c.isActive) c,
+                ],
+                classNames: {classId: className},
+              ),
+            ),
+          ),
+          icon: const WhatsAppIcon(size: 18),
+          label: Text(
+            '${AppStrings.parentMessages} '
+            '(${shown.where((c) => c.isActive).length})',
+          ),
         ),
       ],
     );

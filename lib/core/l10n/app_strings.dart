@@ -919,4 +919,131 @@ class AppStrings {
   static const numberCopied = 'تم نسخ الرقم';
   static const clearField = 'مسح';
   static const noPhoneNumber = 'لا يوجد رقم';
+
+  // ── Duplicate child warning ────────────────────────────────────────────────
+  static const similarTitle = 'يمكن الطفل ده متسجل قبل كده';
+  static const similarBody =
+      'لقينا طفل شبهه في البيانات. اتأكد إنه مش نفس الطفل قبل ما تضيفه.';
+  static const similarSaveAnyway = 'حفظ على أي حال';
+  static const similarBack = 'رجوع';
+  static const similarOpen = 'فتح الملف';
+  static const similarInactive = 'غير نشط';
+  static String similarReason(String reason) => switch (reason) {
+        'same_name' => 'نفس الاسم',
+        'same_first_and_father' => 'نفس الاسم الأول واسم الأب',
+        _ => 'نفس الاسم الأول ونفس رقم التليفون',
+      };
+  static String similarRow(String name, String className) =>
+      'يشبه: $name ($className)';
+  static const similarSkipRow = 'لا تضف';
+  static String similarImportWarning(int n) =>
+      'تنبيه: $n ${n == 1 ? 'صف يشبه طفلًا مسجلًا' : 'صفوف تشبه أطفالًا مسجلين'}';
+
+  // ── Announcements ──────────────────────────────────────────────────────────
+  static const announcementsTitle = 'الإعلانات';
+  static const newAnnouncement = 'إعلان جديد';
+  static const noAnnouncements = 'لا توجد إعلانات';
+  static const noAnnouncementsBody =
+      'اكتب إعلانًا يوصل للخدام في الجرس وكإشعار على التليفون.';
+  static const announcementTitleLabel = 'العنوان';
+  static const announcementBodyLabel = 'نص الإعلان';
+  static const announcementAudience = 'يوصل لمين؟';
+  static const audienceAll = 'كل الخدام';
+  static const audienceServants = 'خدام الفصول';
+  static const audienceGeneral = 'الخدام العامين';
+  static const audienceClasses = 'فصول محددة';
+  static const pickClassesFirst = 'اختر فصلًا واحدًا على الأقل';
+  static const sendAnnouncement = 'إرسال الإعلان';
+  static String confirmSendAnnouncement(String audience) =>
+      'هيوصل الإعلان لـ: $audience، في الجرس وكإشعار. متأكد؟';
+  static String announcementSent(int n) => 'تم الإرسال إلى $n';
+  static const announcementNeedsConnection =
+      'إرسال الإعلان محتاج إنترنت. اتصل وجرّب تاني.';
+  static String readOf(int read, int total) => 'قرأه $read من $total';
+  static const notReadYet = 'لم يقرأ بعد';
+  static const readAt = 'قرأه';
+  static const announcementReads = 'مين قرأ الإعلان';
+  static const remindOnWhatsApp = 'تذكير على واتساب';
+  static String announcementReminder(String first, String title) =>
+      'سلام ونعمة يا $first، فيه إعلان جديد في تطبيق سبتاوية: «$title». '
+      'افتحه من الجرس لما يكون عندك وقت. ربنا يبارك خدمتك.';
+  static const announcement = 'إعلان';
+  static const deleteAnnouncement = 'حذف الإعلان';
+  static const confirmDeleteAnnouncement =
+      'هيتشال الإعلان من عند كل اللي وصلهم. متأكد؟';
+  static const requiredField = 'مطلوب';
+
+  // ── Parent messages ────────────────────────────────────────────────────────
+  static const parentMessages = 'رسالة للأهالي';
+  static const messageTemplates = 'قوالب الرسائل';
+  static const newMessage = 'رسالة جديدة';
+  static const messageText = 'نص الرسالة';
+  static const messageTagsHint = 'اضغط لإضافة: ';
+  static const messageTemplateTitle = 'اسم القالب';
+  static const addTemplate = 'إضافة قالب';
+  static const editTemplate = 'تعديل القالب';
+  static const deleteTemplate = 'حذف القالب';
+  static const confirmDeleteTemplate =
+      'هيتشال القالب ده من عند كل الخدام. متأكد؟';
+  static const noTemplates = 'لا توجد قوالب بعد';
+  static const noTemplatesBody =
+      'القوالب اللي هنا بتظهر لكل الخدام وهما بيبعتوا للأهالي، جنب الجاهزة في التطبيق.';
+  static const builtInTemplate = 'جاهز';
+  static String messagesSent(int sent, int total) => 'أُرسل $sent من $total';
+  static const openNext = 'افتح التالي';
+  static const allMessagesSent = 'اتبعتت كل الرسائل';
+  static const familiesNoNumber = 'بدون رقم واتساب';
+  static const messagePreview = 'شكل الرسالة';
+  static const writeMessageFirst = 'اكتب الرسالة الأول';
+  static const noChildrenToMessage = 'مفيش أطفال في القائمة دي';
+  static String messageFamilies(int n) => '$n ${n == 1 ? 'أسرة' : 'أسر'}';
+
+  // ── Class health ───────────────────────────────────────────────────────────
+  static const classHealthTitle = 'صحة الفصول';
+  static const allClassesHealthy =
+      'كل الفصول ماشية كويس السنة دي. ربنا يبارك تعبكم!';
+  static const healthServants = 'الخدام';
+  static const healthChildren = 'الأطفال النشطين';
+  static const healthTaken = 'الحضور المسجّل';
+  static const healthLate = 'اتسجّل متأخر';
+  static const healthPresent = 'نسبة الحضور';
+  static const healthPrep = 'التحضير المرفوع';
+  static const healthAccepted = 'مقبول';
+  static const healthFollowUp = 'الغائبين اللي اتعمل لهم افتقاد';
+  static String outOf(int a, int b) => '$a من $b';
+  static const healthGood = 'ماشيين كويس';
+  static const healthToFollow = 'محتاجين متابعة';
+  static const healthNeedsSupport = 'محتاجين دعم';
+  static const healthGoodClasses = 'ماشيين كويس:';
+  static const healthNoAbsent = 'مفيش غياب متكرر';
+  static String showAllClasses(int n) => 'عرض الكل ($n)';
+  static const openClass = 'فتح الفصل';
+
+  // ── Lesson materials ───────────────────────────────────────────────────────
+  static const materialsTitle = 'المواد والأفكار';
+  static const materialsLink = 'المواد والأفكار';
+  static String gradeLabel(int grade) => 'صف $grade';
+  static const noMaterials = 'لسه مفيش مواد للدرس ده.';
+  static const allGrades = 'لكل الصفوف';
+  static const forAllGrades = 'لكل الصفوف في نفس الأسبوع';
+  static const addMaterial = 'إضافة مادة';
+  static const deleteMaterial = 'حذف المادة';
+  static const materialAdded = 'تمت الإضافة';
+  static const materialLink = 'رابط';
+  static const materialFile = 'ملف';
+  static const materialTitle = 'الاسم';
+  static const materialUrl = 'الرابط';
+  static const materialBadUrl = 'اكتب رابط يبدأ بـ https://';
+  static const picture = 'صورة';
+  static const pickFileFirst = 'اختر الملف الأول';
+  static const materialUnavailable = 'الملف مش متاح دلوقتي';
+  static const sharedPrepsTitle = 'تحضيرات مميزة';
+  static const prepFile = 'ملف';
+  static const sharePrep = 'مشاركة كمثال لخدام نفس الصف';
+  static const sharePrepHint =
+      'هيظهر التحضير ده تحت «المواد والأفكار» لنفس الدرس عند كل الخدام.';
+  static const sharePrepNoLesson = 'السبت ده ماكانش فيه درس، فمينفعش يتشارك.';
+  static const sharePrepNeedsAccept = 'اقبل التحضير الأول عشان تقدر تشاركه.';
+  static const prepShared = 'تمت المشاركة';
+  static const prepUnshared = 'اتشال من المشاركة';
 }

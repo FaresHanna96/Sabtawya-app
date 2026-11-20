@@ -19,7 +19,9 @@ import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'child_avatar.dart';
+import 'child_profile_screen.dart';
 import 'location_editor.dart';
+import 'similar_children_dialog.dart';
 
 /// Add or edit a child.
 ///
@@ -221,6 +223,50 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
     }
   }
 
+  /// True when the child may be added: nobody looks the same, the person said
+  /// it is a different child, or the check could not run (no connection).
+  /// Opening the existing child's profile replaces this form.
+  Future<bool> _confirmNotDuplicate(Child draft) async {
+    List<SimilarChild> matches;
+    try {
+      final found = await _repository.similar([
+        SimilarQuery(
+          key: '',
+          name: draft.fullName,
+          mobiles: [draft.mobile, draft.motherMobile, draft.fatherMobile],
+        ),
+      ]);
+      matches = found[''] ?? const <SimilarChild>[];
+    } catch (_) {
+      return true;
+    }
+    if (matches.isEmpty || !mounted) return true;
+
+    final session = context.read<SessionController>();
+    final choice = await showSimilarChildrenDialog(
+      context,
+      matches,
+      canOpen: (classId) =>
+          session.isAdmin ||
+          session.isGeneralServant ||
+          session.myClasses.any((c) => c.classId == classId),
+    );
+    if (!mounted) return false;
+    switch (choice) {
+      case SaveAnyway():
+        return true;
+      case GoBack():
+        return false;
+      case OpenExisting(:final childId):
+        await Navigator.of(context).pushReplacement<void, void>(
+          MaterialPageRoute<void>(
+            builder: (_) => ChildProfileScreen(childId: childId),
+          ),
+        );
+        return false;
+    }
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final classId = _classId;
@@ -255,6 +301,10 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       latitude: _location?.latitude,
       longitude: _location?.longitude,
     );
+
+    // A new child: warn first when one that looks the same is registered.
+    if (target == null && !await _confirmNotDuplicate(draft)) return;
+    if (!mounted) return;
 
     Child? stored;
     final saved = await Ui.runGuarded(

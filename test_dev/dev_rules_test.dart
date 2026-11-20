@@ -636,7 +636,7 @@ void main() {
     Future<List<Map<String, dynamic>>> inbox(_Who who) async {
       final r = await _call(
           'GET',
-          '/rest/v1/notifications?select=kind,title,body,ref_id'
+          '/rest/v1/notifications?select=kind,title,body,ref_id,child_id'
               '&created_at=gte.$started&order=created_at.desc',
           token: who.token);
       return [for (final n in r.rows) n as Map<String, dynamic>];
@@ -761,6 +761,9 @@ void main() {
           hasLength(1));
       expect(got.firstWhere((n) => n['kind'] == 'class_activity')['ref_id'],
           classId);
+      // About one child: it also names the child, so the bell opens them.
+      expect(got.firstWhere((n) => n['kind'] == 'class_activity')['child_id'],
+          childId);
 
       // Stopped.
       await _call('PATCH', '/rest/v1/children?id=eq.$childId',
@@ -1333,4 +1336,518 @@ void main() {
       expect(r.ok, isFalse);
     });
   });
+  // ── 1.0.48: look-alikes, announcements, templates, class health, materials ──
+
+  group('look-alike children', () {
+    dev('a servant learns of a look-alike in another class, and only its '
+        'name, class and why', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final mine = await _call('GET',
+          '/rest/v1/class_servants?select=class_id&servant_id=eq.${servant.id}',
+          token: admin.token);
+      final myClass = mine.rows.first['class_id'];
+      final classes = await _call(
+          'GET', '/rest/v1/classes?select=id&is_active=eq.true&id=neq.$myClass',
+          token: admin.token);
+      final other = classes.rows.first['id'];
+
+      final add = await _call('POST', '/rest/v1/children',
+          token: admin.token,
+          body: {
+            'class_id': other,
+            'full_name': 'زززشبيه عادل فؤاد',
+            'gender': 'boy',
+            'mother_mobile': '01012340987',
+          },
+          prefer: 'return=representation');
+      expect(add.ok, isTrue, reason: '${add.body}');
+      final id = add.rows.single['id'];
+      try {
+        final r = await _call('POST', '/rest/v1/rpc/similar_children',
+            token: servant.token,
+            body: {
+              'p_candidates': [
+                // Two spaces: still the same child.
+                {'key': 'father', 'name': 'زززشبيه  عادل', 'mobiles': []},
+                {
+                  'key': 'phone',
+                  'name': 'زززشبيه مختلف',
+                  'mobiles': ['+20 101 234 0987'],
+                },
+                // A brother: the mother's number, another first name.
+                {
+                  'key': 'brother',
+                  'name': 'زززأخوه عادل فؤاد',
+                  'mobiles': ['01012340987'],
+                },
+                {'key': 'self', 'name': 'زززشبيه عادل فؤاد', 'exclude_id': id},
+              ],
+            });
+        expect(r.ok, isTrue, reason: '${r.body}');
+        final byKey = {
+          for (final row in r.rows) (row as Map)['key']: row,
+        };
+        expect(byKey['father']?['child_id'], id);
+        expect(byKey['father']?['reason'], 'same_first_and_father');
+        expect(byKey['phone']?['reason'], 'same_first_and_phone');
+        expect(byKey.containsKey('brother'), isFalse);
+        expect(byKey.containsKey('self'), isFalse);
+        expect(byKey['father']!.keys.toSet(), {
+          'key',
+          'child_id',
+          'full_name',
+          'class_id',
+          'class_name',
+          'is_active',
+          'reason',
+        });
+
+        final anon = await _call('POST', '/rest/v1/rpc/similar_children',
+            body: {
+              'p_candidates': [
+                {'key': 'x', 'name': 'زززشبيه عادل'},
+              ],
+            });
+        expect(anon.ok && anon.rows.isNotEmpty, isFalse);
+      } finally {
+        await _call('DELETE', '/rest/v1/children?id=eq.$id',
+            token: admin.token);
+      }
+    });
+  });
+
+  group('announcements', () {
+    dev('only the admin sends; the audience alone gets it; reads are counted; '
+        'deleting it clears the bells', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final general = await _login('general');
+
+      final denied = await _call('POST', '/rest/v1/rpc/send_announcement',
+          token: servant.token,
+          body: {
+            'p_title': 'x',
+            'p_body': 'x',
+            'p_audience': 'all',
+            'p_class_ids': <String>[],
+          });
+      expect(denied.ok, isFalse);
+
+      final sent = await _call('POST', '/rest/v1/rpc/send_announcement',
+          token: admin.token,
+          body: {
+            'p_title': 'اختبار إعلان',
+            'p_body': 'نص إعلان للاختبار',
+            'p_audience': 'servants',
+            'p_class_ids': <String>[],
+          });
+      expect(sent.ok, isTrue, reason: '${sent.body}');
+      final id = (sent.body as Map)['id'] as String;
+      expect((sent.body as Map)['recipients'], greaterThanOrEqualTo(1));
+      try {
+        Future<List<dynamic>> bell(_Who who) async => (await _call(
+                'GET',
+                '/rest/v1/notifications?select=id,read_at'
+                    '&kind=eq.announcement&ref_id=eq.$id',
+                token: who.token))
+            .rows;
+
+        final mine = await bell(servant);
+        expect(mine, hasLength(1));
+        expect(await bell(general), isEmpty, reason: 'servants only');
+        expect(await bell(admin), isEmpty, reason: 'not the sender');
+
+        Future<Map> summary() async {
+          final r = await _call('POST', '/rest/v1/rpc/announcements_summary',
+              token: admin.token, body: <String, dynamic>{});
+          return r.rows.firstWhere((a) => (a as Map)['id'] == id) as Map;
+        }
+
+        expect((await summary())['read_count'], 0);
+        await _call('PATCH',
+            '/rest/v1/notifications?id=eq.${(mine.single as Map)['id']}',
+            token: servant.token,
+            body: {'read_at': DateTime.now().toUtc().toIso8601String()});
+        expect((await summary())['read_count'], 1);
+        final reads = await _call('POST', '/rest/v1/rpc/announcement_reads',
+            token: admin.token, body: {'p_id': id});
+        final row = reads.rows
+            .firstWhere((r) => (r as Map)['user_id'] == servant.id) as Map;
+        expect(row['read_at'], isNotNull);
+
+        // Not for a servant to read.
+        final list = await _call('POST', '/rest/v1/rpc/announcements_summary',
+            token: servant.token, body: <String, dynamic>{});
+        expect(list.rows, isEmpty);
+        final table = await _call('GET', '/rest/v1/announcements?select=id',
+            token: servant.token);
+        expect(table.rows, isEmpty);
+        final who = await _call('POST', '/rest/v1/rpc/announcement_reads',
+            token: servant.token, body: {'p_id': id});
+        expect(who.rows, isEmpty);
+
+        // A servant cannot delete it; the admin's delete clears every bell.
+        await _call('DELETE', '/rest/v1/announcements?id=eq.$id',
+            token: servant.token);
+        expect(await bell(servant), hasLength(1));
+        final del = await _call('DELETE', '/rest/v1/announcements?id=eq.$id',
+            token: admin.token);
+        expect(del.ok, isTrue, reason: '${del.body}');
+        expect(await bell(servant), isEmpty);
+      } finally {
+        await _call('DELETE', '/rest/v1/announcements?id=eq.$id',
+            token: admin.token);
+      }
+    });
+
+    dev('chosen classes: their servants get it; no class is refused',
+        () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final mine = await _call('GET',
+          '/rest/v1/class_servants?select=class_id&servant_id=eq.${servant.id}',
+          token: admin.token);
+      final sent = await _call('POST', '/rest/v1/rpc/send_announcement',
+          token: admin.token,
+          body: {
+            'p_title': 'اختبار فصل',
+            'p_body': 'لفصل واحد',
+            'p_audience': 'classes',
+            'p_class_ids': [mine.rows.first['class_id']],
+          });
+      expect(sent.ok, isTrue, reason: '${sent.body}');
+      final id = (sent.body as Map)['id'];
+      try {
+        final got = await _call(
+            'GET',
+            '/rest/v1/notifications?select=id&kind=eq.announcement'
+                '&ref_id=eq.$id',
+            token: servant.token);
+        expect(got.rows, hasLength(1));
+        final none = await _call('POST', '/rest/v1/rpc/send_announcement',
+            token: admin.token,
+            body: {
+              'p_title': 'x',
+              'p_body': 'x',
+              'p_audience': 'classes',
+              'p_class_ids': <String>[],
+            });
+        expect(none.ok, isFalse, reason: 'classes need at least one class');
+
+        // A class nobody serves: refused, and nothing is kept.
+        final served = await _call(
+            'GET', '/rest/v1/class_servants?select=class_id',
+            token: admin.token);
+        final servedIds = {for (final r in served.rows) (r as Map)['class_id']};
+        final all = await _call(
+            'GET', '/rest/v1/classes?select=id&is_active=eq.true',
+            token: admin.token);
+        final empty = all.rows
+            .map((c) => (c as Map)['id'])
+            .where((id) => !servedIds.contains(id))
+            .toList();
+        if (empty.isNotEmpty) {
+          final before = await _call('GET', '/rest/v1/announcements?select=id',
+              token: admin.token);
+          final nobody = await _call('POST', '/rest/v1/rpc/send_announcement',
+              token: admin.token,
+              body: {
+                'p_title': 'x',
+                'p_body': 'x',
+                'p_audience': 'classes',
+                'p_class_ids': [empty.first],
+              });
+          expect(nobody.ok, isFalse, reason: 'nobody would get it');
+          final after = await _call('GET', '/rest/v1/announcements?select=id',
+              token: admin.token);
+          expect(after.rows.length, before.rows.length);
+        }
+      } finally {
+        await _call('DELETE', '/rest/v1/announcements?id=eq.$id',
+            token: admin.token);
+      }
+    });
+  });
+
+  group('message templates', () {
+    dev('everyone reads them; only the admin writes', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final add = await _call('POST', '/rest/v1/message_templates',
+          token: admin.token,
+          body: {'title': 'اختبار قالب', 'body': 'سلام {الطفل}'},
+          prefer: 'return=representation');
+      expect(add.ok, isTrue, reason: '${add.body}');
+      final id = add.rows.single['id'];
+      try {
+        final read = await _call(
+            'GET', '/rest/v1/message_templates?select=id&id=eq.$id',
+            token: servant.token);
+        expect(read.rows, hasLength(1));
+        final write = await _call('POST', '/rest/v1/message_templates',
+            token: servant.token, body: {'title': 'x', 'body': 'x'});
+        expect(write.ok, isFalse);
+        await _call('PATCH', '/rest/v1/message_templates?id=eq.$id',
+            token: servant.token, body: {'body': 'تغيير'});
+        final still = await _call(
+            'GET', '/rest/v1/message_templates?select=body&id=eq.$id',
+            token: admin.token);
+        expect(still.rows.single['body'], 'سلام {الطفل}');
+        final anon =
+            await _call('GET', '/rest/v1/message_templates?select=id');
+        expect(anon.rows, isEmpty);
+      } finally {
+        await _call('DELETE', '/rest/v1/message_templates?id=eq.$id',
+            token: admin.token);
+      }
+    });
+  });
+
+  group('class health', () {
+    dev('the admin reads one row per active class; nobody else does',
+        () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final general = await _login('general');
+      final year = await _call('GET',
+          '/rest/v1/attendance_years?select=id&is_current=eq.true&limit=1',
+          token: admin.token);
+      final yearId = year.rows.single['id'];
+
+      final r = await _call('POST', '/rest/v1/rpc/class_health',
+          token: admin.token, body: {'p_year': yearId});
+      expect(r.ok, isTrue, reason: '${r.body}');
+      final active = await _call(
+          'GET', '/rest/v1/classes?select=id&is_active=eq.true',
+          token: admin.token);
+      expect(r.rows, hasLength(active.rows.length));
+      for (final row in r.rows) {
+        final m = row as Map;
+        expect(m['taken'] as int, lessThanOrEqualTo(m['held'] as int));
+        expect(m['taken_late'] as int, lessThanOrEqualTo(m['taken'] as int));
+        expect(m['absent_followed'] as int,
+            lessThanOrEqualTo(m['absent_2plus'] as int));
+        expect(m['prep_accepted'] as int,
+            lessThanOrEqualTo(m['prep_submitted'] as int));
+      }
+
+      for (final who in [servant, general]) {
+        final denied = await _call('POST', '/rest/v1/rpc/class_health',
+            token: who.token, body: {'p_year': yearId});
+        expect(denied.ok, isFalse);
+      }
+    });
+  });
+
+  group('lesson materials', () {
+    dev('everyone reads them; only the admin adds a row or a file', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+
+      final link = await _call('POST', '/rest/v1/lesson_materials',
+          token: admin.token,
+          body: {
+            'coptic_month': 1,
+            'week': 1,
+            'grade': 5,
+            'kind': 'link',
+            'title': 'اختبار رابط',
+            'url': 'https://example.com/lesson',
+          },
+          prefer: 'return=representation');
+      expect(link.ok, isTrue, reason: '${link.body}');
+      final id = link.rows.single['id'];
+      const path = 'test-m1-w1/dev-test.pdf';
+      try {
+        final read = await _call(
+            'GET', '/rest/v1/lesson_materials?select=id&id=eq.$id',
+            token: servant.token);
+        expect(read.rows, hasLength(1));
+
+        final byServant = await _call('POST', '/rest/v1/lesson_materials',
+            token: servant.token,
+            body: {
+              'coptic_month': 1,
+              'week': 1,
+              'kind': 'link',
+              'title': 'x',
+              'url': 'https://example.com',
+            });
+        expect(byServant.ok, isFalse);
+        final badUrl = await _call('POST', '/rest/v1/lesson_materials',
+            token: admin.token,
+            body: {
+              'coptic_month': 1,
+              'week': 1,
+              'kind': 'link',
+              'title': 'x',
+              'url': 'javascript:alert(1)',
+            });
+        expect(badUrl.ok, isFalse);
+
+        // Files: the servant cannot upload; the admin can, and the servant
+        // then reads it.
+        final servantUp = await _upload(
+            'lesson-materials', 'test-m1-w1/by-servant.pdf', servant.token);
+        expect(servantUp.ok, isFalse);
+        final up = await _upload('lesson-materials', path, admin.token);
+        expect(up.ok, isTrue, reason: '${up.body}');
+        final down = await _download('lesson-materials', path, servant.token);
+        expect(down.ok, isTrue);
+      } finally {
+        await _call('DELETE', '/rest/v1/lesson_materials?id=eq.$id',
+            token: admin.token);
+        await _call('DELETE', '/storage/v1/object/lesson-materials',
+            token: admin.token,
+            body: {
+              'prefixes': [path],
+            });
+      }
+    });
+  });
+
+  group('shared preps', () {
+    dev('a servant cannot send a prep already accepted or shared; only an '
+        'accepted prep is shared, by the admin; then others read it and its '
+        'files, and not after it is unshared', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final general = await _login('general');
+
+      final mine = await _call('GET',
+          '/rest/v1/class_servants?select=class_id&servant_id=eq.${servant.id}',
+          token: admin.token);
+      final classId = mine.rows.first['class_id'];
+      final sessions = await _call(
+          'GET',
+          '/rest/v1/attendance_sessions?select=id&class_id=eq.$classId'
+              '&order=session_date.desc&limit=40',
+          token: admin.token);
+      final prior = await _call(
+          'GET',
+          '/rest/v1/servant_lesson_preps?select=session_id'
+              '&servant_id=eq.${servant.id}',
+          token: admin.token);
+      final used = {for (final p in prior.rows) (p as Map)['session_id']};
+      final sessionId = sessions.rows
+          .map((s) => (s as Map)['id'])
+          .firstWhere((s) => !used.contains(s));
+
+      for (final cheat in <Map<String, dynamic>>[
+        {'status': 'accepted'},
+        {'shared_at': DateTime.now().toUtc().toIso8601String()},
+      ]) {
+        final r = await _call('POST', '/rest/v1/servant_lesson_preps',
+            token: servant.token,
+            body: {
+              'servant_id': servant.id,
+              'session_id': sessionId,
+              ...cheat,
+            });
+        expect(r.ok, isFalse, reason: 'insert with $cheat');
+      }
+
+      final made = await _call('POST', '/rest/v1/servant_lesson_preps',
+          token: servant.token,
+          body: {'servant_id': servant.id, 'session_id': sessionId},
+          prefer: 'return=representation');
+      expect(made.ok, isTrue, reason: '${made.body}');
+      final prepId = made.rows.single['id'] as String;
+      final path = '$prepId/dev-test.pdf';
+      final args = <String, dynamic>{'p_month': 1, 'p_week': 1, 'p_grade': 5};
+      Future<List<dynamic>> examples(_Who who) async => (await _call(
+              'POST', '/rest/v1/rpc/shared_preps',
+              token: who.token, body: args))
+          .rows
+          .where((p) => (p as Map)['prep_id'] == prepId)
+          .toList();
+      try {
+        final up = await _upload('servant-submissions', path, servant.token);
+        expect(up.ok, isTrue, reason: '${up.body}');
+        await _call('POST', '/rest/v1/servant_lesson_prep_photos',
+            token: servant.token,
+            body: {'prep_id': prepId, 'storage_path': path});
+
+        // Not accepted yet: cannot be shared, and stays private.
+        final early = await _call('POST', '/rest/v1/rpc/share_prep',
+            token: admin.token, body: {'p_prep': prepId, ...args});
+        expect(early.ok, isFalse);
+        expect(
+            (await _download('servant-submissions', path, general.token)).ok,
+            isFalse);
+
+        await _call('PATCH', '/rest/v1/servant_lesson_preps?id=eq.$prepId',
+            token: admin.token, body: {'status': 'accepted'});
+        final bySelf = await _call('POST', '/rest/v1/rpc/share_prep',
+            token: servant.token, body: {'p_prep': prepId, ...args});
+        expect(bySelf.ok, isFalse);
+        final shared = await _call('POST', '/rest/v1/rpc/share_prep',
+            token: admin.token, body: {'p_prep': prepId, ...args});
+        expect(shared.ok, isTrue, reason: '${shared.body}');
+
+        final seen = await examples(general);
+        expect(seen, hasLength(1));
+        expect((seen.single as Map)['storage_paths'], [path]);
+        expect(
+            (await _download('servant-submissions', path, general.token)).ok,
+            isTrue);
+
+        await _call('POST', '/rest/v1/rpc/unshare_prep',
+            token: admin.token, body: {'p_prep': prepId});
+        expect(await examples(general), isEmpty);
+        expect(
+            (await _download('servant-submissions', path, general.token)).ok,
+            isFalse);
+      } finally {
+        await _call('DELETE', '/storage/v1/object/servant-submissions',
+            token: admin.token,
+            body: {
+              'prefixes': [path],
+            });
+        await _call('DELETE', '/rest/v1/servant_lesson_preps?id=eq.$prepId',
+            token: admin.token);
+        for (final who in [admin, servant]) {
+          await _call(
+              'DELETE',
+              '/rest/v1/notifications?kind=in.(prep_submitted,prep_reviewed)'
+                  '&created_at=gte.$started',
+              token: who.token);
+        }
+      }
+    });
+  });
+}
+
+/// Uploads a tiny PDF to [bucket]/[path] as the holder of [token].
+Future<_Reply> _upload(String bucket, String path, String token) async {
+  final r = await http.post(
+    Uri.parse('$_base/storage/v1/object/$bucket/$path'),
+    headers: {
+      'apikey': _key!,
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/pdf',
+      'x-upsert': 'true',
+    },
+    body: utf8.encode('%PDF-1.4\n%dev test\n'),
+  );
+  dynamic body;
+  try {
+    body = jsonDecode(r.body);
+  } catch (_) {
+    body = r.body;
+  }
+  return _Reply(r.statusCode, body);
+}
+
+/// Reads [bucket]/[path] as the holder of [token].
+Future<_Reply> _download(String bucket, String path, String token) async {
+  final r = await http.get(
+    // A fresh query each time, so a cached answer from before a policy
+    // change is not what is checked.
+    Uri.parse('$_base/storage/v1/object/authenticated/$bucket/$path'
+        '?t=${DateTime.now().microsecondsSinceEpoch}'),
+    headers: {'apikey': _key!, 'Authorization': 'Bearer $token'},
+  );
+  return _Reply(r.statusCode, null);
 }

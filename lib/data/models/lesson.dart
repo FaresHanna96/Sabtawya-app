@@ -170,3 +170,67 @@ class LessonProgramme {
     return match == null ? null : int.parse(match.group(1)!);
   }
 }
+
+/// A PDF, picture or link attached to a lesson of the programme.
+class LessonMaterial {
+  const LessonMaterial({
+    required this.id,
+    required this.slot,
+    required this.title,
+    required this.isLink,
+    this.grade,
+    this.url,
+    this.storagePath,
+    this.mime,
+  });
+
+  final String id;
+  final LessonSlot slot;
+
+  /// Null for every grade.
+  final int? grade;
+  final String title;
+  final bool isLink;
+  final String? url;
+  final String? storagePath;
+  final String? mime;
+
+  bool get isPdf =>
+      mime == 'application/pdf' ||
+      (storagePath?.toLowerCase().endsWith('.pdf') ?? false);
+
+  factory LessonMaterial.fromMap(Map<String, dynamic> map) => LessonMaterial(
+        id: asText(map['id']),
+        slot: LessonSlot(asInt(map['coptic_month']), asInt(map['week'])),
+        grade: map['grade'] == null ? null : asInt(map['grade']),
+        title: asText(map['title']),
+        isLink: asText(map['kind']) == 'link',
+        url: asTextOrNull(map['url']),
+        storagePath: asTextOrNull(map['storage_path']),
+        mime: asTextOrNull(map['mime']),
+      );
+}
+
+/// An accepted prep أمين الخدمة shared as an example for a lesson.
+class SharedPrep {
+  const SharedPrep({
+    required this.prepId,
+    required this.servantName,
+    required this.sessionDate,
+    required this.storagePaths,
+  });
+
+  final String prepId;
+  final String servantName;
+  final DateTime sessionDate;
+  final List<String> storagePaths;
+
+  factory SharedPrep.fromMap(Map<String, dynamic> map) => SharedPrep(
+        prepId: asText(map['prep_id']),
+        servantName: asText(map['servant_name']),
+        sessionDate: asDate(map['session_date']),
+        storagePaths: map['storage_paths'] is List
+            ? [for (final p in map['storage_paths'] as List) '$p']
+            : const <String>[],
+      );
+}

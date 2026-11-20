@@ -1,12 +1,17 @@
-import '../../core/widgets/image_viewer.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
+import '../../core/widgets/image_viewer.dart';
+import '../../data/models/lesson.dart';
 import '../../data/models/servant_activity.dart';
+import '../../data/repositories/lesson_repository.dart';
+import '../../state/session_controller.dart';
+import '../lessons/lesson_widgets.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 
@@ -41,6 +46,54 @@ class PrepReviewSheet extends StatefulWidget {
 class _PrepReviewSheetState extends State<PrepReviewSheet> {
   final _commentController = TextEditingController();
   int _photoPage = 0;
+
+  static const _lessons = LessonRepository();
+
+  /// "مشاركة كمثال": applied at once for an accepted prep, otherwise on accept.
+  late bool _share = widget.prep.isShared;
+  bool _sharing = false;
+
+  /// The lesson the prep was for: its slot in the programme and its grade.
+  /// Null when that Saturday had no lesson (or the class has no grade).
+  Future<({LessonSlot slot, int grade})?> _lessonOfPrep() async {
+    final prep = widget.prep;
+    final grade = LessonProgramme.gradeOf(prep.className ?? '');
+    final first = firstSessionDay(context.read<SessionController>());
+    if (grade == null || first == null) return null;
+    final programme = await _lessons.programme();
+    final lesson = programme.lessonOn(prep.sessionDate, grade, firstDay: first);
+    return lesson == null ? null : (slot: lesson.slot, grade: grade);
+  }
+
+  Future<void> _toggleShare(bool on) async {
+    final prep = widget.prep;
+    if (!prep.isAccepted) {
+      // Not accepted yet: remembered, done together with "قبول".
+      setState(() => _share = on);
+      return;
+    }
+    setState(() => _sharing = true);
+    try {
+      if (on) {
+        final target = await _lessonOfPrep();
+        if (!mounted) return;
+        if (target == null) {
+          Ui.info(context, AppStrings.sharePrepNoLesson);
+          return;
+        }
+        await _lessons.sharePrep(prep.id, target.slot, target.grade);
+      } else {
+        await _lessons.unsharePrep(prep.id);
+      }
+      if (!mounted) return;
+      setState(() => _share = on);
+      Ui.success(context, on ? AppStrings.prepShared : AppStrings.prepUnshared);
+    } catch (e) {
+      if (mounted) Ui.error(context, e);
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -118,6 +171,24 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
                   ],
                 ),
             ],
+            if (context.read<SessionController>().isAdmin) ...[
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _share,
+                onChanged: _sharing ? null : _toggleShare,
+                title: const Text(
+                  AppStrings.sharePrep,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  prep.isAccepted
+                      ? AppStrings.sharePrepHint
+                      : AppStrings.sharePrepNeedsAccept,
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _commentController,
@@ -162,8 +233,26 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
       Ui.info(context, AppStrings.commentRequired);
       return;
     }
+    // Accepted with "مشاركة كمثال" ticked: share it once it is accepted.
+    final shareAfter = status == 'accepted' && _share && !widget.prep.isShared;
+    final target = shareAfter ? await _lessonOfPrep() : null;
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pop();
     await widget.onReview(status, comment);
+    if (!shareAfter) return;
+    if (target == null) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text(AppStrings.sharePrepNoLesson)));
+      return;
+    }
+    try {
+      await _lessons.sharePrep(widget.prep.id, target.slot, target.grade);
+      messenger.showSnackBar(
+          const SnackBar(content: Text(AppStrings.prepShared)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 
   static String _statusLabel(String status) => switch (status) {

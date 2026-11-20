@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../messages/parent_messages_screen.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -10,6 +11,8 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/utils/message_template.dart';
+import '../../data/models/child.dart';
 import '../../data/models/event.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/event_repository.dart';
@@ -63,6 +66,12 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   /// father's. Children with no number at all are left out.
   Map<String, String> _phones = const {};
 
+  /// The children of the list, for messaging their families.
+  Map<String, Child> _childrenById = const {};
+
+  /// The balances on screen, for "رسالة للأهالي" on the tab being viewed.
+  List<ChildEventBalance> _lastBalances = const [];
+
   /// "كاش 150  •  كيتي 50"
   String _methodLine(Map<String, double> m) =>
       '${AppStrings.paymentMethodCash} ${(m['cash'] ?? 0).toStringAsFixed(0)}'
@@ -73,6 +82,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     final balances = await _repository.balances(widget.event.id);
     try {
       final children = await const ChildRepository().all();
+      _childrenById = {for (final c in children) c.id: c};
       final phones = <String, String>{};
       for (final c in children) {
         for (final n in [c.mobile, c.motherMobile, c.fatherMobile]) {
@@ -91,6 +101,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     } catch (_) {
       _byChild = const {}; // the split is an extra; never block the list
     }
+    _lastBalances = balances;
     return balances;
   }
 
@@ -158,12 +169,51 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     );
   }
 
+  /// Messages the families of the children on the tab being viewed: a
+  /// payment reminder (with what each still owes) on the tabs that owe, an
+  /// event reminder on the others.
+  Future<void> _message() async {
+    final tabName = ExcelService.eventTabs[_tabController.index];
+    final filter = ExcelService.eventTabFilter[tabName] ?? (_) => true;
+    final shown = _lastBalances.where(filter).toList();
+    final children = [
+      for (final b in shown)
+        if (_childrenById[b.childId] != null) _childrenById[b.childId]!,
+    ];
+    final owes = shown.any((b) => b.remaining > 0) &&
+        tabName != AppStrings.paidInFull;
+    final names = {
+      for (final c in context.read<SessionController>().myClasses)
+        c.classId: c.className,
+    };
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ParentMessagesScreen(
+          children: children,
+          classNames: names,
+          eventTitle: widget.event.title,
+          remainingByChild: {
+            for (final b in shown)
+              if (b.remaining > 0) b.childId: b.remaining,
+          },
+          preferredTemplate:
+              owes ? kPaymentReminderTitle : kEventReminderTitle,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.event.title),
         actions: [
+          IconButton(
+            tooltip: AppStrings.parentMessages,
+            onPressed: _message,
+            icon: const Icon(Icons.chat_outlined),
+          ),
           IconButton(
             tooltip: AppStrings.exportEvent,
             onPressed: _exporting ? null : _export,

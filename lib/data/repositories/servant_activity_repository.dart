@@ -17,9 +17,9 @@ class ServantActivityRepository {
           .from(Db.tServantLessonPreps)
           .select(
             'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, '
+            'reviewed_by, reviewed_at, created_at, shared_at, '
             'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date), '
+            'attendance_sessions!inner(session_date, classes(name)), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           )
           .eq('session_id', sessionId)
@@ -90,9 +90,9 @@ class ServantActivityRepository {
           .from(Db.tServantLessonPreps)
           .select(
             'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, '
+            'reviewed_by, reviewed_at, created_at, shared_at, '
             'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date), '
+            'attendance_sessions!inner(session_date, classes(name)), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           )
           .eq('id', id)
@@ -110,9 +110,9 @@ class ServantActivityRepository {
           .from(Db.tServantLessonPreps)
           .select(
             'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, '
+            'reviewed_by, reviewed_at, created_at, shared_at, '
             'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date), '
+            'attendance_sessions!inner(session_date, classes(name)), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           )
           .eq('servant_id', Db.userId!)
@@ -132,9 +132,9 @@ class ServantActivityRepository {
           .from(Db.tServantLessonPreps)
           .select(
             'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, '
+            'reviewed_by, reviewed_at, created_at, shared_at, '
             'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date), '
+            'attendance_sessions!inner(session_date, classes(name)), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           )
           .eq('servant_id', servantId)
@@ -152,9 +152,9 @@ class ServantActivityRepository {
           .from(Db.tServantLessonPreps)
           .select(
             'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, '
+            'reviewed_by, reviewed_at, created_at, shared_at, '
             'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date), '
+            'attendance_sessions!inner(session_date, classes(name)), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           )
           .eq('status', 'pending')
@@ -274,9 +274,9 @@ class ServantActivityRepository {
           .from(Db.tServantLessonPreps)
           .select(
             'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, '
+            'reviewed_by, reviewed_at, created_at, shared_at, '
             'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date), '
+            'attendance_sessions!inner(session_date, classes(name)), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           )
           .inFilter('session_id', sessionIds);

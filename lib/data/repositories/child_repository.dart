@@ -66,6 +66,31 @@ class ChildRepository {
     }
   }
 
+  /// Registered children (in any class) that look like the ones in
+  /// [queries]: the same name, or the same first name with the same father's
+  /// name or a shared phone. Keyed by [SimilarQuery.key]; children with no
+  /// look-alike are absent from the map.
+  Future<Map<String, List<SimilarChild>>> similar(
+    List<SimilarQuery> queries,
+  ) async {
+    if (queries.isEmpty) return const <String, List<SimilarChild>>{};
+    try {
+      final data = await Db.client.rpc(
+        'similar_children',
+        params: {
+          'p_candidates': [for (final q in queries) q.toJson()],
+        },
+      );
+      final out = <String, List<SimilarChild>>{};
+      for (final row in rows(data).map(SimilarChild.fromMap)) {
+        (out[row.key] ??= <SimilarChild>[]).add(row);
+      }
+      return out;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<Child> update(Child child) async {
     try {
       final data = await Db.client
@@ -140,6 +165,18 @@ class ChildRepository {
 
   /// Existing children carrying any of [codes], used to decide insert vs update
   /// during an Excel import. Codes are unique across the whole system.
+  /// The children with these ids that the caller may see, in no set order.
+  Future<List<Child>> byIds(List<String> ids) async {
+    if (ids.isEmpty) return <Child>[];
+    try {
+      final data =
+          await Db.client.from(Db.tChildren).select().inFilter('id', ids);
+      return rows(data).map(Child.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<List<Child>> byCodes(List<String> codes) async {
     if (codes.isEmpty) return <Child>[];
     try {

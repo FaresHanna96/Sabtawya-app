@@ -70,11 +70,15 @@ class Db {
   static const tLessons = 'lessons';
   static const tLessonExtras = 'lesson_extras';
   static const tLessonBreaks = 'lesson_breaks';
+  static const tLessonMaterials = 'lesson_materials';
+  static const tMessageTemplates = 'message_templates';
+  static const tAnnouncements = 'announcements';
 
   // Storage buckets
   static const bucketChildPhotos = 'child-photos';
   static const bucketClassPatrons = 'class-patrons';
   static const bucketServantSubmissions = 'servant-submissions';
+  static const bucketLessonMaterials = 'lesson-materials';
 }
 
 /// Shorthand for the repeated `List<dynamic> -> List<Map<String, dynamic>>`

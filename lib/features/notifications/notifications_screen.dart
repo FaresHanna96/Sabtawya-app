@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../announcements/announcement_dialog.dart';
 import '../attendance/attendance_screen.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -69,6 +70,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ? await _prep(ref)
             : null;
     if (!mounted) return;
+    // An announcement is read where it is: its whole text in a dialog.
+    if (n.kind == 'announcement') {
+      await showAnnouncementDialog(
+        context,
+        title: n.title,
+        body: n.body,
+        sentAt: n.createdAt,
+      );
+      if (mounted) await _reload();
+      return;
+    }
     if (prep != null && n.kind == 'prep_submitted') {
       await showPrepReviewSheet(
         context,
@@ -97,6 +109,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'child_added' when ref != null => ChildProfileScreen(childId: ref),
       // A child's absences reached an alert level: their profile.
       'absence_child' when n.childId != null =>
+        ChildProfileScreen(childId: n.childId!),
+      // 'class_activity' about one child (edited, stopped, moved in, a visit):
+      // that child's profile. Older entries carry only the class.
+      'class_activity' when n.childId != null =>
         ChildProfileScreen(childId: n.childId!),
       // 'class_activity': somebody of this class did something in it.
       'class_assigned' ||
@@ -196,6 +212,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   (IconData, Color) _look(String kind) => switch (kind) {
         'signup' => (Icons.how_to_reg_outlined, AppColors.maroon),
+        'announcement' => (Icons.campaign_rounded, AppColors.maroon),
         'decision' => (Icons.verified_outlined, AppColors.olive),
         'prep_submitted' => (Icons.menu_book_outlined, AppColors.sky),
         'prep_reviewed' => (Icons.rate_review_outlined, AppColors.gold),
@@ -269,10 +286,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 n.isRead ? FontWeight.w600 : FontWeight.w800,
                           ),
                         ),
-                        subtitle: Text(
-                          '${n.body}\n${AppDateUtils.sinceLabel(n.createdAt)}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        subtitle: n.kind == 'announcement'
+                            // A long announcement: its start here, the
+                            // whole text when tapped.
+                            ? Text.rich(
+                                TextSpan(children: [
+                                  TextSpan(
+                                    text: n.body.length > 160
+                                        ? '${n.body.substring(0, 160)}…'
+                                        : n.body,
+                                  ),
+                                  TextSpan(
+                                    text:
+                                        '\n${AppDateUtils.sinceLabel(n.createdAt)}',
+                                  ),
+                                ]),
+                                style: const TextStyle(fontSize: 12),
+                              )
+                            : Text(
+                                '${n.body}\n${AppDateUtils.sinceLabel(n.createdAt)}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                         isThreeLine: true,
                         trailing: n.kind == 'absence_child' && n.childId != null
                             ? TextButton.icon(

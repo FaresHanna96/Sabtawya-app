@@ -15,8 +15,13 @@ class ImportPlan {
 
   Iterable<ImportRow> get _usable => rows.where((row) => !row.hasErrors);
 
-  List<ImportRow> get inserts =>
-      _usable.where((row) => row.action == ImportAction.insert).toList();
+  /// The rows to add: a look-alike the person ticked "لا تضف" stays out.
+  List<ImportRow> get inserts => _usable
+      .where((row) => row.action == ImportAction.insert && !row.skipLookAlike)
+      .toList();
+
+  /// Rows to be added that look like a child already registered.
+  int get lookAlikeCount => inserts.where((row) => row.similar.isNotEmpty).length;
 
   List<ImportRow> get updates =>
       _usable.where((row) => row.action == ImportAction.update).toList();
@@ -125,7 +130,30 @@ class ChildImportService {
       }
     }
 
+    await _flagLookAlikes(rows);
     return ImportPlan(rows: rows, classId: classId, mode: mode);
+  }
+
+  /// Marks the rows about to be added that look like a child already
+  /// registered in any class (a warning, not an error: the person decides).
+  /// A failed check leaves the rows unflagged rather than blocking the import.
+  Future<void> _flagLookAlikes(List<ImportRow> rows) async {
+    final inserts = rows.where((r) => r.action == ImportAction.insert);
+    final queries = [
+      for (final row in inserts)
+        SimilarQuery(
+          key: '${row.rowNumber}',
+          name: row.name,
+          mobiles: [row.mobile, row.motherMobile, row.fatherMobile],
+        ),
+    ];
+    if (queries.isEmpty) return;
+    try {
+      final found = await _children.similar(queries);
+      for (final row in inserts) {
+        row.similar = found['${row.rowNumber}'] ?? const <SimilarChild>[];
+      }
+    } catch (_) {}
   }
 
   Future<ImportResult> apply(ImportPlan plan) async {

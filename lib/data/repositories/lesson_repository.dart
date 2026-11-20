@@ -1,6 +1,9 @@
+import 'package:image_picker/image_picker.dart';
+
 import '../../core/utils/app_failure.dart';
 import '../models/lesson.dart';
 import '../models/parsers.dart';
+import '../services/photo_service.dart';
 import '../supabase/db.dart';
 
 /// The weekly lesson programme. It is small and static, so it is read whole;
@@ -91,6 +94,129 @@ class LessonRepository {
           .from(Db.tLessonBreaks)
           .delete()
           .eq('break_date', LessonProgramme.keyOf(saturday));
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  // ── Materials ──────────────────────────────────────────────────────────────
+
+  /// The materials of [slot] for [grade], plus those for every grade.
+  Future<List<LessonMaterial>> materials(LessonSlot slot, int grade) async {
+    try {
+      final data = await Db.client
+          .from(Db.tLessonMaterials)
+          .select()
+          .eq('coptic_month', slot.month)
+          .eq('week', slot.week)
+          .or('grade.is.null,grade.eq.$grade')
+          .order('created_at');
+      return rows(data).map(LessonMaterial.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// أمين الخدمة: a web link (a video, a Drive folder) for the lesson.
+  Future<void> addLink({
+    required LessonSlot slot,
+    required int? grade,
+    required String title,
+    required String url,
+  }) async {
+    try {
+      await Db.client.from(Db.tLessonMaterials).insert(<String, dynamic>{
+        'coptic_month': slot.month,
+        'week': slot.week,
+        'grade': grade,
+        'kind': 'link',
+        'title': title.trim(),
+        'url': url.trim(),
+      });
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// أمين الخدمة: a PDF or a picture for the lesson.
+  Future<void> addFile({
+    required LessonSlot slot,
+    required int? grade,
+    required String title,
+    required XFile file,
+  }) async {
+    final path = await PhotoService.upload(
+      bucket: Db.bucketLessonMaterials,
+      ownerId: 'm${slot.month}-w${slot.week}',
+      file: file,
+    );
+    try {
+      await Db.client.from(Db.tLessonMaterials).insert(<String, dynamic>{
+        'coptic_month': slot.month,
+        'week': slot.week,
+        'grade': grade,
+        'kind': 'file',
+        'title': title.trim(),
+        'storage_path': path,
+        'mime': path.toLowerCase().endsWith('.pdf')
+            ? 'application/pdf'
+            : 'image/${path.split('.').last}',
+      });
+    } catch (e) {
+      // Do not leave a file nobody can see.
+      try {
+        await PhotoService.remove(
+            bucket: Db.bucketLessonMaterials, path: path);
+      } catch (_) {}
+      throw AppFailure.from(e);
+    }
+  }
+
+  Future<void> deleteMaterial(LessonMaterial m) async {
+    try {
+      await Db.client.from(Db.tLessonMaterials).delete().eq('id', m.id);
+      if (m.storagePath != null) {
+        await PhotoService.remove(
+            bucket: Db.bucketLessonMaterials, path: m.storagePath);
+      }
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  // ── Shared preps ───────────────────────────────────────────────────────────
+
+  Future<List<SharedPrep>> sharedPreps(LessonSlot slot, int grade) async {
+    try {
+      final data = await Db.client.rpc('shared_preps', params: {
+        'p_month': slot.month,
+        'p_week': slot.week,
+        'p_grade': grade,
+      });
+      return rows(data).map(SharedPrep.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// أمين الخدمة: shows an accepted prep to the servants of [grade] under the
+  /// lesson of [slot].
+  Future<void> sharePrep(String prepId, LessonSlot slot, int grade) async {
+    try {
+      await Db.client.rpc('share_prep', params: {
+        'p_prep': prepId,
+        'p_month': slot.month,
+        'p_week': slot.week,
+        'p_grade': grade,
+      });
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  Future<void> unsharePrep(String prepId) async {
+    try {
+      await Db.client.rpc('unshare_prep', params: {'p_prep': prepId});
     } catch (e) {
       throw AppFailure.from(e);
     }

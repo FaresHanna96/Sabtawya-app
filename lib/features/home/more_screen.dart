@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
+import '../announcements/announcements_screen.dart';
 import '../attendance/attendance_history_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../children/absence_followup_screen.dart';
@@ -24,6 +25,7 @@ import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
 import '../settings/settings_screen.dart';
 import '../lessons/lesson_schedule_screen.dart';
+import '../messages/message_templates_screen.dart';
 import '../sync/sync_screen.dart';
 
 /// The hub for everything that does not deserve its own tab.
@@ -167,6 +169,18 @@ class MoreScreen extends StatelessWidget {
                       icon: Icons.volunteer_activism_outlined,
                       title: AppStrings.servantsTitle,
                       screen: const ServantsScreen(),
+                      color: AppColors.maroon,
+                    ),
+                    _Entry(
+                      icon: Icons.campaign_outlined,
+                      title: AppStrings.announcementsTitle,
+                      screen: const AnnouncementsScreen(),
+                      color: AppColors.maroon,
+                    ),
+                    _Entry(
+                      icon: Icons.chat_outlined,
+                      title: AppStrings.messageTemplates,
+                      screen: const MessageTemplatesScreen(),
                       color: AppColors.maroon,
                     ),
                     _Entry(

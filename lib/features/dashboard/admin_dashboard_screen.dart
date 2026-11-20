@@ -16,6 +16,8 @@ import '../classes/class_detail_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
+import '../../data/models/class_health.dart';
+import 'class_health_section.dart';
 import 'missing_info_section.dart';
 import 'quick_action_grid.dart';
 import 'weekly_attendance_chart.dart';
@@ -55,11 +57,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     // The class scores already count only the Saturdays held so far, so the
     // monthly table (thousands of rows) is no longer downloaded here.
-    final (stats, activity, scores, weeks) = await (
+    // Class health is أمين الخدمة's only (the general servant shares this
+    // screen); it is an extra, so a failure leaves the card out.
+    final isAdmin = context.read<SessionController>().isAdmin;
+    final healthFuture = isAdmin
+        ? _reports
+            .classHealth(yearId)
+            .then<List<ClassHealth>?>((h) => h)
+            .catchError((Object _) => null)
+        : Future<List<ClassHealth>?>.value(null);
+
+    final (stats, activity, scores, weeks, health) = await (
       _reports.adminStats(),
       _reports.recentActivity(),
       _reports.classScores(yearId),
       _reports.weeklyAttendance(yearId),
+      healthFuture,
     ).wait;
 
     return _AdminDashboard(
@@ -67,6 +80,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       classScores: scores,
       activity: activity,
       weeks: weeks,
+      health: health,
     );
   }
 
@@ -163,6 +177,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               FadeSlideIn(index: 5, child: _quickActions()),
               const SizedBox(height: 16),
+              if (data.health != null && data.health!.isNotEmpty) ...[
+                FadeSlideIn(
+                  index: 6,
+                  child: ClassHealthSection(classes: data.health!),
+                ),
+                const SizedBox(height: 16),
+              ],
               // The last Saturday sits in the weekly chart's card; with no
               // chart yet (under two Saturdays) it keeps a card of its own.
               FadeSlideIn(
@@ -497,7 +518,11 @@ class _AdminDashboard {
     required this.classScores,
     required this.activity,
     this.weeks = const <WeeklyAttendance>[],
+    this.health,
   });
+
+  /// صحة الفصول; null for the general servant or when it could not load.
+  final List<ClassHealth>? health;
 
   final AdminStats stats;
   final List<ClassYearScore> classScores;

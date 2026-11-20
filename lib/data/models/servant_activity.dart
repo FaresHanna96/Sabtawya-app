@@ -14,6 +14,8 @@ class LessonPrep {
     this.reviewedBy,
     this.reviewedAt,
     this.createdAt,
+    this.sharedAt,
+    this.className,
   });
 
   final String id;
@@ -29,6 +31,15 @@ class LessonPrep {
   final String? reviewedBy;
   final DateTime? reviewedAt;
   final DateTime? createdAt;
+
+  /// When أمين الخدمة shared it as an example; null when not shared.
+  final DateTime? sharedAt;
+
+  /// The class of the Saturday it was prepared for (its grade picks the
+  /// lesson it is shared under).
+  final String? className;
+
+  bool get isShared => sharedAt != null;
 
   bool get isPending => status == 'pending';
   bool get isAccepted => status == 'accepted';
@@ -57,6 +68,10 @@ class LessonPrep {
       reviewedBy: asTextOrNull(map['reviewed_by']),
       reviewedAt: asDateOrNull(map['reviewed_at']),
       createdAt: asDateOrNull(map['created_at']),
+      sharedAt: asDateOrNull(map['shared_at']),
+      className: asTextOrNull(
+        (session?['classes'] as Map<String, dynamic>?)?['name'],
+      ),
     );
   }
 }

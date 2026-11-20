@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'lesson_materials_sheet.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
@@ -171,15 +172,46 @@ class LessonBlock extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      entry.value!.page == null
-                          ? entry.value!.title
-                          : '${entry.value!.title} '
-                              '(${AppStrings.page} ${entry.value!.page})',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.value!.page == null
+                              ? entry.value!.title
+                              : '${entry.value!.title} '
+                                  '(${AppStrings.page} ${entry.value!.page})',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        // What أمين الخدمة attached, and shared preps.
+                        InkWell(
+                          onTap: () => showLessonMaterials(
+                            context,
+                            lesson: entry.value!,
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.attach_file_rounded,
+                                    size: 14, color: AppColors.sky),
+                                SizedBox(width: 2),
+                                Text(
+                                  AppStrings.materialsLink,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.sky,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

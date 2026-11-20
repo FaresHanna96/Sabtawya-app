@@ -419,3 +419,63 @@ class ChildChange {
             : const <String, ({Object? before, Object? after})>{},
       );
 }
+
+/// A registered child that looks like one being added: what
+/// `similar_children` returns (name, class and why it matched, nothing else).
+class SimilarChild {
+  const SimilarChild({
+    required this.key,
+    required this.childId,
+    required this.fullName,
+    required this.classId,
+    required this.className,
+    required this.isActive,
+    required this.reason,
+  });
+
+  /// Which candidate it answers (a row number for the import, '' for the form).
+  final String key;
+  final String childId;
+  final String fullName;
+  final String classId;
+  final String className;
+  final bool isActive;
+
+  /// 'same_name' | 'same_first_and_father' | 'same_first_and_phone'.
+  final String reason;
+
+  factory SimilarChild.fromMap(Map<String, dynamic> map) => SimilarChild(
+        key: asText(map['key']),
+        childId: asText(map['child_id']),
+        fullName: asText(map['full_name']),
+        classId: asText(map['class_id']),
+        className: asText(map['class_name']),
+        isActive: asBool(map['is_active'], true),
+        reason: asText(map['reason']),
+      );
+}
+
+/// One child to look for in `similar_children`.
+class SimilarQuery {
+  const SimilarQuery({
+    required this.key,
+    required this.name,
+    this.mobiles = const <String?>[],
+    this.excludeId,
+  });
+
+  final String key;
+  final String name;
+  final List<String?> mobiles;
+  final String? excludeId;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'key': key,
+        'name': name,
+        'mobiles': [
+          for (final m in mobiles)
+            if (m != null && m.trim().isNotEmpty) m.trim(),
+        ],
+        'exclude_id': excludeId,
+      };
+}

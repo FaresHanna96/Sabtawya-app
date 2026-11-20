@@ -82,6 +82,13 @@ class ImportRow {
   /// import will move them into the selected one.
   bool movesClass = false;
 
+  /// Registered children (any class) this new row looks like. A warning only.
+  List<SimilarChild> similar = const <SimilarChild>[];
+
+  /// The person ticked "لا تضف" on a look-alike row. Kept when the row is
+  /// resolved again (another mode), because it is the person's own choice.
+  bool skipLookAlike = false;
+
   /// Everything to show against the row in the preview.
   List<String> get errors => <String>[...parseErrors, ...importErrors];
 
@@ -94,6 +101,7 @@ class ImportRow {
     note = null;
     existing = null;
     movesClass = false;
+    similar = const <SimilarChild>[];
     action = ImportAction.skip;
   }
 

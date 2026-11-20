@@ -134,6 +134,8 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
       if (plan.updateCount > 0)
         '${AppStrings.importUpdated} ${plan.updateCount}',
       if (plan.movesCount > 0) '${AppStrings.moveChild}: ${plan.movesCount}',
+      if (plan.lookAlikeCount > 0)
+        AppStrings.similarImportWarning(plan.lookAlikeCount),
     ];
 
     final confirmed = await Ui.confirm(
@@ -201,7 +203,12 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
                           child: _summaryCard(plan),
                         );
                 }
-                return _RowCard(row: rows[index - 3]);
+                final row = rows[index - 3];
+                return _RowCard(
+                  row: row,
+                  onSkipLookAlike: (skip) =>
+                      setState(() => row.skipLookAlike = skip),
+                );
               })),
             ),
           ),
@@ -388,9 +395,17 @@ class _Tally extends StatelessWidget {
 /// One preview row. Errors are tinted red so a bad cell is obvious before
 /// anything reaches the database.
 class _RowCard extends StatelessWidget {
-  const _RowCard({required this.row});
+  const _RowCard({required this.row, required this.onSkipLookAlike});
 
   final ImportRow row;
+
+  /// The "لا تضف" tick on a row that looks like a registered child.
+  final ValueChanged<bool> onSkipLookAlike;
+
+  bool get _lookAlike =>
+      !row.hasErrors &&
+      row.action == ImportAction.insert &&
+      row.similar.isNotEmpty;
 
   Color get _accent {
     if (row.hasErrors) return AppColors.danger;
@@ -483,6 +498,31 @@ class _RowCard extends StatelessWidget {
                       color: AppColors.muted,
                       message: row.note!,
                       compact: true,
+                    ),
+                  ],
+                  if (_lookAlike) ...[
+                    for (final m in row.similar) ...[
+                      const SizedBox(height: 4),
+                      _Banner(
+                        icon: Icons.content_copy_rounded,
+                        color: AppColors.warning,
+                        message:
+                            '${AppStrings.similarRow(m.fullName, m.className)}'
+                            ' • ${AppStrings.similarReason(m.reason)}',
+                        compact: true,
+                      ),
+                    ],
+                    CheckboxListTile(
+                      value: row.skipLookAlike,
+                      onChanged: (v) => onSkipLookAlike(v ?? false),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      visualDensity: VisualDensity.compact,
+                      title: const Text(
+                        AppStrings.similarSkipRow,
+                        style: TextStyle(fontSize: 13),
+                      ),
                     ),
                   ],
                   if (row.movesClass && !row.hasErrors) ...[
