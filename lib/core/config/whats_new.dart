@@ -12,6 +12,14 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  50: [
+    WhatsNewItem(Icons.monitor_heart_outlined, 'صحة الفصل',
+        'درجة واحدة لكل فصل من حضور الأطفال وتسجيل الحضور والتحضير والافتقاد، وخادم الفصل يشوف حال فصله في الرئيسية.'),
+    WhatsNewItem(Icons.attach_file_rounded, 'شارك مواد الدرس',
+        'أي خادم يقدر يضيف رابط فيديو أو صورة أو ملف تحت «المواد والأفكار» للدرس، حتى وهو بيرفع التحضير.'),
+    WhatsNewItem(Icons.cleaning_services_outlined, 'صفحات أخف',
+        'شيلنا الحاجات اللي مش محتاجينها: «رسالة للأهالي» بقت في قائمة الفصل (⋮).'),
+  ],
   49: [
     WhatsNewItem(Icons.chat_outlined, 'رسالة للأهالي',
         'من صفحة الفصل أو الرحلة: ابعت رسالة جاهزة لكل أسرة على واتساب، والإخوات في رسالة واحدة.'),
