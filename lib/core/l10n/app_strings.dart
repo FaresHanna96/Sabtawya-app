@@ -139,7 +139,6 @@ class AppStrings {
   static const futureSession = 'سبت لم يأتِ بعد';
   static const showUpcoming = 'السبوت القادمة';
   static const averageAttendance = 'متوسط الحضور';
-  static const classPerformance = 'أداء الفصول';
   static const recentActivity = 'آخر النشاطات';
   static const activityLogTitle = 'سجل النشاط';
   static const logFilters = 'تصفية';
@@ -403,7 +402,6 @@ class AppStrings {
       'تظهر هنا حالة من حضورها قل بوضوح في آخر ٤ سبوت عن ٤ قبلها';
   static String decliningLine(int recent, int previous) =>
       'كان $previous٪ وأصبح $recent٪';
-  static const attendanceTrend = 'آخر سبوت';
   static const searchEverything = 'ابحث عن مخدوم أو فصل أو خادم';
   static const searchHint = 'اكتب حرفين على الأقل';
   static const activityReport = 'الأنشطة';
@@ -1014,7 +1012,12 @@ class AppStrings {
   static const healthGood = 'ماشيين كويس';
   static const healthToFollow = 'محتاجين متابعة';
   static const healthNeedsSupport = 'محتاجين دعم';
-  static const healthGoodClasses = 'ماشيين كويس:';
+  static String classesDoingWell(int n) => n == 1
+      ? 'فصل واحد ماشي كويس'
+      : '$n فصول ماشية كويس';
+  static const myClassHealthTitle = 'حال فصلي';
+  static const healthScoreHint =
+      'الدرجة من حضور الأطفال وتسجيل الحضور والتحضير والافتقاد. اضغط على الفصل للتفاصيل.';
   static const healthNoAbsent = 'مفيش غياب متكرر';
   static String showAllClasses(int n) => 'عرض الكل ($n)';
   static const openClass = 'فتح الفصل';
@@ -1023,10 +1026,11 @@ class AppStrings {
   static const materialsTitle = 'المواد والأفكار';
   static const materialsLink = 'المواد والأفكار';
   static String gradeLabel(int grade) => 'صف $grade';
-  static const noMaterials = 'لسه مفيش مواد للدرس ده.';
+  static const noMaterials =
+      'لسه مفيش مواد للدرس ده. لو عندك فيديو أو صورة أو ملف ساعدك، ضيفه هنا لباقي الخدام.';
   static const allGrades = 'لكل الصفوف';
   static const forAllGrades = 'لكل الصفوف في نفس الأسبوع';
-  static const addMaterial = 'إضافة مادة';
+  static const addMaterial = 'إضافة رابط أو ملف';
   static const deleteMaterial = 'حذف المادة';
   static const materialAdded = 'تمت الإضافة';
   static const materialLink = 'رابط';

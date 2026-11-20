@@ -182,10 +182,16 @@ class LessonMaterial {
     this.url,
     this.storagePath,
     this.mime,
+    this.createdBy,
+    this.authorName,
   });
 
   final String id;
   final LessonSlot slot;
+
+  /// Who added it (a servant or أمين الخدمة), and their name.
+  final String? createdBy;
+  final String? authorName;
 
   /// Null for every grade.
   final int? grade;
@@ -208,6 +214,8 @@ class LessonMaterial {
         url: asTextOrNull(map['url']),
         storagePath: asTextOrNull(map['storage_path']),
         mime: asTextOrNull(map['mime']),
+        createdBy: asTextOrNull(map['created_by']),
+        authorName: asTextOrNull(map['author_name']),
       );
 }
 

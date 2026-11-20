@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/motion.dart';
+import '../../data/models/class_health.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/report_repository.dart';
@@ -19,6 +20,7 @@ import '../events/events_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
+import 'class_health_section.dart';
 import 'missing_info_section.dart';
 import 'quick_action_grid.dart';
 import 'today_birthdays_section.dart';
@@ -43,11 +45,16 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
   Future<_ServantDashboard> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
     if (yearId == null) return const _ServantDashboard();
-    final (scores, weeks) = await (
+    // "حال فصلي" is an extra: a failure (or an older server) leaves it out.
+    final (scores, weeks, health) = await (
       _reports.classScores(yearId),
       _reports.weeklyAttendance(yearId),
+      _reports
+          .classHealth(yearId)
+          .then<List<ClassHealth>?>((h) => h)
+          .catchError((Object _) => null),
     ).wait;
-    return _ServantDashboard(scores: scores, weeks: weeks);
+    return _ServantDashboard(scores: scores, weeks: weeks, health: health);
   }
 
   Future<void> _reload() =>
@@ -139,6 +146,19 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
               const SizedBox(height: 16),
               const FadeSlideIn(index: 2, child: TodayBirthdaysSection()),
               const FadeSlideIn(index: 2, child: MissingInfoSection()),
+              if (data.health != null && data.health!.isNotEmpty)
+                FadeSlideIn(
+                  index: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: ClassHealthSection(
+                      classes: ClassHealth.joinAttendance(data.health!, {
+                        for (final s in data.scores) s.classId: s.percentage,
+                      }),
+                      title: AppStrings.myClassHealthTitle,
+                    ),
+                  ),
+                ),
               FadeSlideIn(
                 index: 3,
                 child: LessonOfDay(date: upcomingSaturday()),
@@ -259,10 +279,14 @@ class _ServantDashboard {
   const _ServantDashboard({
     this.scores = const <ClassYearScore>[],
     this.weeks = const <WeeklyAttendance>[],
+    this.health,
   });
 
   final List<ClassYearScore> scores;
   final List<WeeklyAttendance> weeks;
+
+  /// حال فصلي: the servant's own class(es); null when it could not load.
+  final List<ClassHealth>? health;
 }
 
 class _ClassRow extends StatelessWidget {

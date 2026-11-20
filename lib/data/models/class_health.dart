@@ -31,6 +31,7 @@ class ClassHealth {
     required this.absent2plus,
     required this.absentFollowed,
     this.presentPct,
+    this.attendancePct,
   });
 
   final String classId;
@@ -50,6 +51,32 @@ class ClassHealth {
 
   /// Present over marked, 0-100; null before any mark.
   final double? presentPct;
+
+  /// The class's attendance as the reports and "أداء الفصول" counted it:
+  /// Saturdays the children came over Saturdays held, 0-100. Joined in from
+  /// the class year scores; the health score prefers it to [presentPct].
+  final double? attendancePct;
+
+  /// This class with [pct] as its [attendancePct].
+  ClassHealth withAttendance(double? pct) => ClassHealth(
+        classId: classId,
+        className: className,
+        servantsCount: servantsCount,
+        activeChildren: activeChildren,
+        held: held,
+        taken: taken,
+        takenLate: takenLate,
+        prepExpected: prepExpected,
+        prepSubmitted: prepSubmitted,
+        prepAccepted: prepAccepted,
+        absent2plus: absent2plus,
+        absentFollowed: absentFollowed,
+        presentPct: presentPct,
+        attendancePct: pct,
+      );
+
+  /// The children's attendance used by the score and shown in the card.
+  double? get childrenAttendance => attendancePct ?? presentPct;
   final int prepExpected;
   final int prepSubmitted;
   final int prepAccepted;
@@ -146,7 +173,7 @@ class ClassHealth {
         HealthArea.followUp,
       ));
     }
-    final pct = presentPct;
+    final pct = childrenAttendance;
     if (pct != null && pct < presentAmber) {
       out.add(HealthReason(
         HealthLevel.amber,
@@ -163,14 +190,62 @@ class ClassHealth {
   static double? share(int part, int whole) =>
       whole <= 0 ? null : (part / whole).clamp(0.0, 1.0);
 
-  HealthLevel get level =>
-      reasons.isEmpty ? HealthLevel.green : reasons.first.level;
+  // ── The health score ──────────────────────────────────────────────────────
 
-  /// Worst class first, then by name.
-  static int byConcern(ClassHealth a, ClassHealth b) {
-    final l = a.level.index.compareTo(b.level.index);
-    if (l != 0) return l;
-    final n = b.reasons.length.compareTo(a.reasons.length);
-    return n != 0 ? n : a.className.compareTo(b.className);
+  /// How much each part counts. The children coming is what the service is
+  /// for, so it weighs most; the servants' work behind it shares the rest.
+  static const wAttendance = 40, wTaken = 20, wPrep = 20, wFollowUp = 20;
+
+  /// Score at or above which a class is green / amber (else red).
+  static const scoreGreen = 75, scoreAmber = 50;
+
+  /// 0-100, from the parts that can be measured so far (a part with nothing
+  /// to measure yet, e.g. no prep expected, is left out and the rest
+  /// re-weighed). Null before anything can be measured.
+  int? get score {
+    var total = 0.0;
+    var weight = 0;
+    void add(double? share, int w) {
+      if (share == null) return;
+      total += share.clamp(0.0, 1.0) * w;
+      weight += w;
+    }
+
+    final att = childrenAttendance;
+    add(att == null ? null : att / 100, wAttendance);
+    add(share(taken, held), wTaken);
+    add(share(prepSubmitted, prepExpected), wPrep);
+    // Nobody absent twice in a row: nothing left to follow up.
+    add(
+        absent2plus == 0
+            ? (held > 0 ? 1.0 : null)
+            : absentFollowed / absent2plus,
+        wFollowUp);
+    if (weight == 0) return null;
+    return (100 * total / weight).round();
   }
+
+  /// Green / amber / red from the [score]; a class with no servant is red
+  /// whatever its numbers.
+  HealthLevel get level {
+    if (servantsCount == 0) return HealthLevel.red;
+    final s = score;
+    if (s == null || s >= scoreGreen) return HealthLevel.green;
+    return s >= scoreAmber ? HealthLevel.amber : HealthLevel.red;
+  }
+
+  /// Lowest score first (no score last), then by name.
+  static int byConcern(ClassHealth a, ClassHealth b) {
+    final sa = a.servantsCount == 0 ? -1 : (a.score ?? 101);
+    final sb = b.servantsCount == 0 ? -1 : (b.score ?? 101);
+    final c = sa.compareTo(sb);
+    return c != 0 ? c : a.className.compareTo(b.className);
+  }
+
+  /// [classes] with the attendance % of [byClass] (class id → percent).
+  static List<ClassHealth> joinAttendance(
+    List<ClassHealth> classes,
+    Map<String, double> byClass,
+  ) =>
+      [for (final c in classes) c.withAttendance(byClass[c.classId])];
 }

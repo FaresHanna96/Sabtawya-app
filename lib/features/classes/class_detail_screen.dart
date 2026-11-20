@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/widgets/whatsapp_icon.dart';
 import '../messages/parent_messages_screen.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -222,11 +221,18 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                           .any((c) => c.classId == overview.classId))
                     PopupMenuButton<_ClassAction>(
                       onSelected: (action) => switch (action) {
+                        _ClassAction.message => _messageFamilies(
+                            visible, overview.classId, overview.className),
                         _ClassAction.edit => _edit(overview.asClass),
                         _ClassAction.archive => _toggleArchive(overview),
                         _ClassAction.delete => _delete(overview),
                       },
                       itemBuilder: (context) => [
+                        // The families of the children the filter shows.
+                        const PopupMenuItem<_ClassAction>(
+                          value: _ClassAction.message,
+                          child: Text(AppStrings.parentMessages),
+                        ),
                         const PopupMenuItem<_ClassAction>(
                           value: _ClassAction.edit,
                           child: Text(AppStrings.editClass),
@@ -263,8 +269,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     const SizedBox(height: 12),
                     FadeSlideIn(
                       index: 2,
-                      child: _actions(visible, overview.classId,
-                          overview.className),
+                      child: _actions(),
                     ),
                     const SizedBox(height: 12),
                     FadeSlideIn(index: 3, child: _servants(data.servants)),
@@ -425,9 +430,26 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     );
   }
 
-  /// [shown] is the children the filter shows, which "رسالة للأهالي"
-  /// messages (all of them, or e.g. only the absent ones once filtered).
-  Widget _actions(List<Child> shown, String classId, String className) {
+  /// "رسالة للأهالي" from the menu: the families of the active children the
+  /// filter shows (all of them, or e.g. only the absent ones once filtered).
+  Future<void> _messageFamilies(
+    List<Child> shown,
+    String classId,
+    String className,
+  ) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => ParentMessagesScreen(
+            children: [
+              for (final c in shown)
+                if (c.isActive) c,
+            ],
+            classNames: {classId: className},
+          ),
+        ),
+      );
+
+  Widget _actions() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -461,25 +483,6 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           icon: const Icon(Icons.contacts_rounded, size: 18),
           label: const Text(AppStrings.contactsExportTitle),
         ),
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: () => Navigator.of(context).push<void>(
-            MaterialPageRoute<void>(
-              builder: (_) => ParentMessagesScreen(
-                children: [
-                  for (final c in shown)
-                    if (c.isActive) c,
-                ],
-                classNames: {classId: className},
-              ),
-            ),
-          ),
-          icon: const WhatsAppIcon(size: 18),
-          label: Text(
-            '${AppStrings.parentMessages} '
-            '(${shown.where((c) => c.isActive).length})',
-          ),
-        ),
       ],
     );
   }
@@ -490,7 +493,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       );
 }
 
-enum _ClassAction { edit, archive, delete }
+enum _ClassAction { message, edit, archive, delete }
 
 class _ClassDetail {
   const _ClassDetail({

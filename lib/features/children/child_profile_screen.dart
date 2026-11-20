@@ -21,7 +21,6 @@ import '../../data/repositories/report_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
-import 'attendance_sparkline.dart';
 import 'change_history_card.dart';
 import 'child_avatar.dart';
 import 'child_location_card.dart';
@@ -259,10 +258,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   child: _summary(data.yearReport!, data.monthly, data.history),
                 ),
                 const SizedBox(height: 16),
-                if (data.history.length >= 2) ...[
-                  AttendanceSparkline(history: data.history),
-                  const SizedBox(height: 16),
-                ],
               ],
               SectionCard(
                 title: AppStrings.personalInfo,

@@ -117,13 +117,16 @@ class _LessonMaterialsSheetState extends State<LessonMaterialsSheet> {
       destructive: true,
     );
     if (!yes || !mounted) return;
-    final ok = await Ui.runGuarded(context, () => _repository.deleteMaterial(m));
+    final ok =
+        await Ui.runGuarded(context, () => _repository.deleteMaterial(m));
     if (ok) await _reload();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<SessionController>().isAdmin;
+    final session = context.watch<SessionController>();
+    final isAdmin = session.isAdmin;
+    final me = session.profile?.id;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.65,
@@ -168,12 +171,16 @@ class _LessonMaterialsSheetState extends State<LessonMaterialsSheet> {
                     color: m.isPdf ? AppColors.danger : AppColors.sky,
                   ),
                   title: Text(m.title),
-                  subtitle: m.grade == null
-                      ? const Text(AppStrings.allGrades,
-                          style: TextStyle(fontSize: 12))
-                      : null,
+                  subtitle: Text(
+                    [
+                      if (m.authorName != null) m.authorName!,
+                      if (m.grade == null) AppStrings.allGrades,
+                    ].join(' • '),
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   onTap: () => _open(m),
-                  trailing: isAdmin
+                  // أمين الخدمة removes any; a servant only their own.
+                  trailing: isAdmin || (me != null && m.createdBy == me)
                       ? IconButton(
                           tooltip: AppStrings.deleteMaterial,
                           onPressed: () => _delete(m),
@@ -183,12 +190,11 @@ class _LessonMaterialsSheetState extends State<LessonMaterialsSheet> {
                       : null,
                 ),
               ),
-            if (isAdmin)
-              OutlinedButton.icon(
-                onPressed: _add,
-                icon: const Icon(Icons.add),
-                label: const Text(AppStrings.addMaterial),
-              ),
+            OutlinedButton.icon(
+              onPressed: _add,
+              icon: const Icon(Icons.add),
+              label: const Text(AppStrings.addMaterial),
+            ),
             if (data.preps.isNotEmpty) ...[
               const SizedBox(height: 20),
               const Text(

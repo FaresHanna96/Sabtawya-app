@@ -12,7 +12,6 @@ import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
-import '../classes/class_detail_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
@@ -57,15 +56,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     // The class scores already count only the Saturdays held so far, so the
     // monthly table (thousands of rows) is no longer downloaded here.
-    // Class health is أمين الخدمة's only (the general servant shares this
-    // screen); it is an extra, so a failure leaves the card out.
-    final isAdmin = context.read<SessionController>().isAdmin;
-    final healthFuture = isAdmin
-        ? _reports
-            .classHealth(yearId)
-            .then<List<ClassHealth>?>((h) => h)
-            .catchError((Object _) => null)
-        : Future<List<ClassHealth>?>.value(null);
+    // Class health (أمين الخدمة and the general servant, every class) is an
+    // extra: a failure leaves the card out.
+    final healthFuture = _reports
+        .classHealth(yearId)
+        .then<List<ClassHealth>?>((h) => h)
+        .catchError((Object _) => null);
 
     final (stats, activity, scores, weeks, health) = await (
       _reports.adminStats(),
@@ -180,7 +176,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               if (data.health != null && data.health!.isNotEmpty) ...[
                 FadeSlideIn(
                   index: 6,
-                  child: ClassHealthSection(classes: data.health!),
+                  // أداء الفصول lives inside it now: the attendance % is
+                  // part of each class's health score.
+                  child: ClassHealthSection(
+                    classes: ClassHealth.joinAttendance(data.health!, {
+                      for (final s in data.classScores) s.classId: s.percentage,
+                    }),
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -203,24 +205,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 16),
               FadeSlideIn(index: 7, child: _childrenSplit(stats)),
               const SizedBox(height: 16),
-              if (data.classScores.isNotEmpty) ...[
-                FadeSlideIn(
-                  index: 7,
-                  child: SectionCard(
-                    title: AppStrings.classPerformance,
-                    icon: Icons.bar_chart_rounded,
-                    accent: AppColors.olive,
-                    child: Column(
-                      children: [
-                        for (final (i, score)
-                            in _ranked(data.classScores).indexed)
-                          _classRow(i, score),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
               if (data.activity.isNotEmpty)
                 FadeSlideIn(index: 8, child: _activity(data.activity)),
             ],
@@ -301,63 +285,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Classes best first by attendance (Saturdays came over held so far, the
-  /// % on the bar), points breaking ties, so the rank badge matches the bar.
-  List<ClassYearScore> _ranked(List<ClassYearScore> scores) =>
-      [...scores]..sort((a, b) {
-          final byPct = b.percentage.compareTo(a.percentage);
-          return byPct != 0 ? byPct : b.points.compareTo(a.points);
-        });
-
-  /// One class in the ranking: its place, the bar, and an arrow to open it.
-  Widget _classRow(int i, ClassYearScore score) {
-    final pct = score.percentage;
-    final medal = switch (i) {
-      0 => AppColors.warning,
-      1 => AppColors.navyLight,
-      2 => AppColors.olive,
-      _ => AppColors.muted,
-    };
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => _push(ClassDetailScreen(classId: score.classId)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: medal.withValues(alpha: 0.14),
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                '${i + 1}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: medal,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: PercentageBar(
-                percentage: pct,
-                label: '${score.className} '
-                    '(${score.children} ${AppStrings.childLabel})',
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
-          ],
-        ),
       ),
     );
   }

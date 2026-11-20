@@ -1605,7 +1605,8 @@ void main() {
   });
 
   group('class health', () {
-    dev('the admin reads one row per active class; nobody else does',
+    dev('the admin and the general servant read every active class; a '
+        'servant only their own',
         () async {
       final admin = await _login('admin');
       final servant = await _login('servant');
@@ -1632,16 +1633,29 @@ void main() {
             lessThanOrEqualTo(m['prep_submitted'] as int));
       }
 
-      for (final who in [servant, general]) {
-        final denied = await _call('POST', '/rest/v1/rpc/class_health',
-            token: who.token, body: {'p_year': yearId});
-        expect(denied.ok, isFalse);
-      }
+      final mine = await _call('GET',
+          '/rest/v1/class_servants?select=class_id&servant_id=eq.${servant.id}',
+          token: admin.token);
+      final myClasses = {for (final m in mine.rows) (m as Map)['class_id']};
+      final own = await _call('POST', '/rest/v1/rpc/class_health',
+          token: servant.token, body: {'p_year': yearId});
+      expect(own.ok, isTrue, reason: '${own.body}');
+      expect(own.rows, isNotEmpty);
+      expect({for (final r in own.rows) (r as Map)['class_id']},
+          everyElement(isIn(myClasses)));
+
+      final byGeneral = await _call('POST', '/rest/v1/rpc/class_health',
+          token: general.token, body: {'p_year': yearId});
+      expect(byGeneral.rows, hasLength(active.rows.length));
+      final anon = await _call('POST', '/rest/v1/rpc/class_health',
+          body: {'p_year': yearId});
+      expect(anon.ok, isFalse);
     });
   });
 
   group('lesson materials', () {
-    dev('everyone reads them; only the admin adds a row or a file', () async {
+    dev('every servant reads and adds them, named as the author; a servant '
+        'removes only their own; files the same', () async {
       final admin = await _login('admin');
       final servant = await _login('servant');
 
@@ -1658,25 +1672,49 @@ void main() {
           prefer: 'return=representation');
       expect(link.ok, isTrue, reason: '${link.body}');
       final id = link.rows.single['id'];
+      String? mineId;
       const path = 'test-m1-w1/dev-test.pdf';
+      const servantPath = 'test-m1-w1/by-servant.pdf';
       try {
         final read = await _call(
             'GET', '/rest/v1/lesson_materials?select=id&id=eq.$id',
             token: servant.token);
         expect(read.rows, hasLength(1));
 
-        final byServant = await _call('POST', '/rest/v1/lesson_materials',
+        // A servant adds one: it is theirs, whatever they claim.
+        final mine = await _call('POST', '/rest/v1/lesson_materials',
             token: servant.token,
             body: {
               'coptic_month': 1,
               'week': 1,
               'kind': 'link',
-              'title': 'x',
-              'url': 'https://example.com',
-            });
-        expect(byServant.ok, isFalse);
+              'title': 'فيديو من خادم',
+              'url': 'https://example.com/video',
+              'created_by': admin.id,
+            },
+            prefer: 'return=representation');
+        expect(mine.ok, isTrue, reason: '${mine.body}');
+        mineId = mine.rows.single['id'] as String;
+        expect(mine.rows.single['created_by'], servant.id);
+        expect(mine.rows.single['author_name'], isNotNull);
+
+        // Not the admin's; and no editing.
+        await _call('DELETE', '/rest/v1/lesson_materials?id=eq.$id',
+            token: servant.token);
+        expect(
+            (await _call('GET', '/rest/v1/lesson_materials?select=id&id=eq.$id',
+                    token: admin.token))
+                .rows,
+            hasLength(1));
+        await _call('PATCH', '/rest/v1/lesson_materials?id=eq.$mineId',
+            token: servant.token, body: {'title': 'تغيير'});
+        final still = await _call('GET',
+            '/rest/v1/lesson_materials?select=title&id=eq.$mineId',
+            token: admin.token);
+        expect(still.rows.single['title'], 'فيديو من خادم');
+
         final badUrl = await _call('POST', '/rest/v1/lesson_materials',
-            token: admin.token,
+            token: servant.token,
             body: {
               'coptic_month': 1,
               'week': 1,
@@ -1686,22 +1724,39 @@ void main() {
             });
         expect(badUrl.ok, isFalse);
 
-        // Files: the servant cannot upload; the admin can, and the servant
-        // then reads it.
-        final servantUp = await _upload(
-            'lesson-materials', 'test-m1-w1/by-servant.pdf', servant.token);
-        expect(servantUp.ok, isFalse);
+        // Their own goes.
+        final gone = await _call(
+            'DELETE', '/rest/v1/lesson_materials?id=eq.$mineId',
+            token: servant.token, prefer: 'return=representation');
+        expect(gone.rows, hasLength(1));
+        mineId = null;
+
+        // Files: both upload; each reads; a servant cannot delete the admin's.
         final up = await _upload('lesson-materials', path, admin.token);
         expect(up.ok, isTrue, reason: '${up.body}');
-        final down = await _download('lesson-materials', path, servant.token);
-        expect(down.ok, isTrue);
+        final servantUp =
+            await _upload('lesson-materials', servantPath, servant.token);
+        expect(servantUp.ok, isTrue, reason: '${servantUp.body}');
+        expect((await _download('lesson-materials', path, servant.token)).ok,
+            isTrue);
+        await _call('DELETE', '/storage/v1/object/lesson-materials',
+            token: servant.token,
+            body: {
+              'prefixes': [path],
+            });
+        expect((await _download('lesson-materials', path, admin.token)).ok,
+            isTrue);
       } finally {
         await _call('DELETE', '/rest/v1/lesson_materials?id=eq.$id',
             token: admin.token);
+        if (mineId != null) {
+          await _call('DELETE', '/rest/v1/lesson_materials?id=eq.$mineId',
+              token: admin.token);
+        }
         await _call('DELETE', '/storage/v1/object/lesson-materials',
             token: admin.token,
             body: {
-              'prefixes': [path],
+              'prefixes': [path, servantPath],
             });
       }
     });

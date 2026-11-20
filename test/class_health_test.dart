@@ -30,58 +30,100 @@ ClassHealth health({
     );
 
 void main() {
-  test('a class doing well is green with no reasons', () {
-    final h = health();
-    expect(h.reasons, isEmpty);
-    expect(h.level, HealthLevel.green);
+  group('score', () {
+    test('a class doing well scores high and is green', () {
+      // 80% attendance (x40) + everything else full (3 x 20).
+      final h = health();
+      expect(h.score, 92);
+      expect(h.level, HealthLevel.green);
+      expect(h.reasons, isEmpty);
+    });
+
+    test('attendance weighs 40, the servants\' work 20 each', () {
+      final h = health(
+        present: 50,
+        taken: 5,
+        prepSubmitted: 10,
+        absent: 2,
+        followed: 1,
+      );
+      expect(h.score, 50); // 20 + 10 + 10 + 10
+      expect(h.level, HealthLevel.amber);
+    });
+
+    test('under 50 is red', () {
+      final h = health(
+        present: 20,
+        taken: 2,
+        prepSubmitted: 2,
+        absent: 4,
+        followed: 0,
+      );
+      expect(h.score, 14); // 8 + 4 + 2 + 0
+      expect(h.level, HealthLevel.red);
+    });
+
+    test('a part with nothing to measure is left out and the rest re-weighed',
+        () {
+      // No prep expected: 32 + 20 + 20 out of 80.
+      expect(health(prepExpected: 0, prepSubmitted: 0).score, 90);
+    });
+
+    test('nothing measurable yet: no score, not flagged', () {
+      final h = health(held: 0, taken: 0, present: null, prepExpected: 0);
+      expect(h.score, isNull);
+      expect(h.level, HealthLevel.green);
+    });
+
+    test('no servant is red whatever the numbers', () {
+      expect(health(servants: 0).level, HealthLevel.red);
+    });
+
+    test('the reports\' attendance % is used when joined in', () {
+      final h = ClassHealth.joinAttendance([health(present: 80)], {
+        '5 ولاد': 30,
+      }).single;
+      expect(h.childrenAttendance, 30);
+      expect(h.score, 72); // 12 + 20 + 20 + 20
+      expect(h.level, HealthLevel.amber);
+    });
   });
 
-  test('no servant is red', () {
-    expect(health(servants: 0, prepExpected: 0).level, HealthLevel.red);
+  group('reasons', () {
+    test('attendance recorded on few Saturdays', () {
+      final r = health(taken: 7).reasons.first;
+      expect(r.text, 'الحضور اتسجّل في 7 من 10 سبوت');
+      expect(r.area, HealthArea.attendance);
+      expect(r.level, HealthLevel.red);
+    });
+
+    test('preps sent', () {
+      expect(health(prepSubmitted: 7).reasons.single.text, 'التحضير اترفع 35%');
+      expect(health(prepSubmitted: 14).reasons, isEmpty);
+    });
+
+    test('absent children without a visit', () {
+      expect(health(absent: 2, followed: 2).reasons, isEmpty);
+      expect(health(absent: 2, followed: 1).reasons.single.text,
+          'طفل غايب من غير افتقاد');
+    });
+
+    test('recorded late often', () {
+      expect(health(late: 3).reasons, isEmpty);
+      expect(health(late: 4).reasons.single.area, HealthArea.late);
+    });
+
+    test('worst first', () {
+      final h = health(late: 5, prepSubmitted: 2);
+      expect(h.reasons.first.level, HealthLevel.red);
+      expect(h.reasons.last.level, HealthLevel.amber);
+    });
   });
 
-  test('attendance recorded: under 90% amber, under 75% red', () {
-    expect(health(taken: 9).level, HealthLevel.green);
-    expect(health(taken: 8).level, HealthLevel.amber);
-    expect(health(taken: 7).level, HealthLevel.red);
-    expect(health(taken: 7).reasons.first.text, 'الحضور اتسجّل في 7 من 10 سبوت');
-    expect(health(taken: 7).reasons.first.area, HealthArea.attendance);
-  });
-
-  test('recorded late more than 30% of the time is amber', () {
-    expect(health(late: 3).level, HealthLevel.green);
-    expect(health(late: 4).level, HealthLevel.amber);
-  });
-
-  test('preps: under 70% amber, under 40% red, none expected is fine', () {
-    expect(health(prepSubmitted: 14).level, HealthLevel.green);
-    expect(health(prepSubmitted: 13).level, HealthLevel.amber);
-    expect(health(prepSubmitted: 7).level, HealthLevel.red);
-    expect(health(prepSubmitted: 7).reasons.single.text, 'التحضير اترفع 35%');
-    expect(health(prepExpected: 0, prepSubmitted: 0).level, HealthLevel.green);
-  });
-
-  test('absent children without a visit: one amber, three red', () {
-    expect(health(absent: 2, followed: 2).level, HealthLevel.green);
-    expect(health(absent: 2, followed: 1).level, HealthLevel.amber);
-    expect(health(absent: 4, followed: 1).level, HealthLevel.red);
-  });
-
-  test('low attendance is amber; no marks yet says nothing', () {
-    expect(health(present: 45).level, HealthLevel.amber);
-    expect(health(present: null).level, HealthLevel.green);
-  });
-
-  test('reasons come worst first', () {
-    final h = health(late: 5, prepSubmitted: 2);
-    expect(h.reasons.first.level, HealthLevel.red);
-    expect(h.reasons.last.level, HealthLevel.amber);
-  });
-
-  test('classes sort worst first, then by name', () {
+  test('classes sort lowest score first, a class with no servant on top', () {
     final list = [
       health(name: 'ب'),
-      health(name: 'أ', taken: 8),
+      health(name: 'أ', present: 20),
       health(name: 'ج', servants: 0),
     ]..sort(ClassHealth.byConcern);
     expect(list.map((c) => c.className), ['ج', 'أ', 'ب']);
