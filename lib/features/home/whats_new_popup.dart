@@ -76,6 +76,40 @@ class WhatsNewPopup {
     }
     final shown = items;
     if (shown == null || shown.isEmpty || !context.mounted) return;
+    await _dialog(context, shown);
+  }
+
+  /// Shows [build]'s notes on demand (المزيد's «جديد في سبتاوية»), whether or
+  /// not they were seen. Returns false when that build has no notes.
+  static Future<bool> show(
+    BuildContext context, {
+    int build = kAppBuild,
+    Map<int, List<WhatsNewItem>> notes = kWhatsNew,
+  }) async {
+    final items = notes[build];
+    if (items == null || items.isEmpty) return false;
+    await _dialog(context, items);
+    return true;
+  }
+
+  /// The newest build that has notes, at or below [build].
+  static int? latestWithNotes({
+    int build = kAppBuild,
+    Map<int, List<WhatsNewItem>> notes = kWhatsNew,
+  }) {
+    int? best;
+    for (final b in notes.keys) {
+      if (b <= build && notes[b]!.isNotEmpty && (best == null || b > best)) {
+        best = b;
+      }
+    }
+    return best;
+  }
+
+  static Future<void> _dialog(
+    BuildContext context,
+    List<WhatsNewItem> shown,
+  ) async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -98,7 +132,8 @@ class WhatsNewPopup {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(i.title,
-                                style: const TextStyle(fontWeight: FontWeight.w700)),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700)),
                             const SizedBox(height: 2),
                             Text(i.body),
                           ],

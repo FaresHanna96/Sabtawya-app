@@ -11,7 +11,11 @@ import '../children/missing_info_screen.dart';
 /// the list of what is missing. Nothing is shown while loading, when it
 /// failed, or when every record is complete.
 class MissingInfoSection extends StatefulWidget {
-  const MissingInfoSection({super.key, this.load});
+  const MissingInfoSection({super.key, this.load, this.reloadToken = 0});
+
+  /// Changes when the home reloads (pull-to-refresh, or data changed
+  /// elsewhere); the card then fetches again, keeping what it shows meanwhile.
+  final int reloadToken;
 
   /// The children; defaults to the real ones (a servant's classes, or all for
   /// an admin, through row level security). Tests give their own.
@@ -22,8 +26,16 @@ class MissingInfoSection extends StatefulWidget {
 }
 
 class _MissingInfoSectionState extends State<MissingInfoSection> {
-  late final Future<List<Child>> _future =
+  late Future<List<Child>> _future = _fetch();
+
+  Future<List<Child>> _fetch() =>
       (widget.load ?? () => const ChildRepository().all())();
+
+  @override
+  void didUpdateWidget(MissingInfoSection old) {
+    super.didUpdateWidget(old);
+    if (old.reloadToken != widget.reloadToken) _future = _fetch();
+  }
 
   @override
   Widget build(BuildContext context) {

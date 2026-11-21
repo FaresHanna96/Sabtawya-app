@@ -15,7 +15,7 @@ import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 
-/// "المواد والأفكار" of one lesson: what أمين الخدمة attached (PDFs, pictures,
+/// "وسائل الإيضاح" of one lesson: what أمين الخدمة attached (PDFs, pictures,
 /// links) and the preps he shared as examples. Opened from a lesson line.
 Future<void> showLessonMaterials(
   BuildContext context, {

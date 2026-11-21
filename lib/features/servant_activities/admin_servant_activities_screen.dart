@@ -16,6 +16,7 @@ import '../../data/services/excel_service.dart';
 import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
 import 'prep_review_sheet.dart';
+import 'preps_inbox_screen.dart';
 import 'servant_activities_report_screen.dart';
 import 'servant_activity_detail_screen.dart';
 
@@ -234,6 +235,14 @@ class _SummaryTabState extends State<_SummaryTab>
     _key.currentState?.reload();
   }
 
+  /// «قيد المراجعة» opens every prep in one list (التحضيرات).
+  Future<void> _openPreps() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const PrepsInboxScreen()),
+    );
+    _key.currentState?.reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -269,6 +278,7 @@ class _SummaryTabState extends State<_SummaryTab>
                     totalServants: data.summaries.length,
                     totalSessions: data.totalSessions,
                     totalPending: totalPending,
+                    onPendingTap: _openPreps,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -966,11 +976,13 @@ class _StatsHeader extends StatelessWidget {
     required this.totalServants,
     required this.totalSessions,
     required this.totalPending,
+    this.onPendingTap,
   });
 
   final int totalServants;
   final int totalSessions;
   final int totalPending;
+  final VoidCallback? onPendingTap;
 
   @override
   Widget build(BuildContext context) {
@@ -997,6 +1009,7 @@ class _StatsHeader extends StatelessWidget {
             value: '$totalPending',
             label: 'قيد المراجعة',
             accent: totalPending > 0 ? AppColors.warning : Colors.white70,
+            onTap: onPendingTap,
           ),
         ],
       ),
@@ -1010,29 +1023,38 @@ class _HeaderStat extends StatelessWidget {
     required this.value,
     required this.label,
     this.accent,
+    this.onTap,
   });
 
   final IconData icon;
   final String value;
   final String label;
   final Color? accent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = accent ?? Colors.white;
+    final stat = Column(
+      children: [
+        Icon(icon, size: 18, color: color.withValues(alpha: 0.85)),
+        const SizedBox(height: 4),
+        Text(value,
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+        Text(label,
+            style:
+                TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7))),
+      ],
+    );
     return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, size: 18, color: color.withValues(alpha: 0.85)),
-          const SizedBox(height: 4),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-          Text(label,
-              style:
-                  TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7))),
-        ],
-      ),
+      child: onTap == null
+          ? stat
+          : InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(12),
+              child: stat,
+            ),
     );
   }
 }

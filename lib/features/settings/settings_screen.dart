@@ -14,23 +14,25 @@ import '../profile/my_profile_screen.dart';
 import 'absence_alert_tile.dart';
 import 'caller_id_tile.dart';
 
+/// Asks first (warning about changes still waiting to sync), then signs out.
+/// Shared by Settings and the profile header on المزيد.
+Future<void> confirmLogout(BuildContext context) async {
+  final waiting = context.read<SyncService>().pendingCount;
+  final confirmed = await Ui.confirm(
+    context,
+    title: AppStrings.logout,
+    message: waiting > 0
+        ? AppStrings.confirmLogoutPending(waiting)
+        : AppStrings.confirmLogout,
+    confirmLabel: AppStrings.logout,
+    destructive: true,
+  );
+  if (!confirmed || !context.mounted) return;
+  await context.read<SessionController>().signOut();
+}
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
-  Future<void> _logout(BuildContext context) async {
-    final waiting = context.read<SyncService>().pendingCount;
-    final confirmed = await Ui.confirm(
-      context,
-      title: AppStrings.logout,
-      message: waiting > 0
-          ? AppStrings.confirmLogoutPending(waiting)
-          : AppStrings.confirmLogout,
-      confirmLabel: AppStrings.logout,
-      destructive: true,
-    );
-    if (!confirmed || !context.mounted) return;
-    await context.read<SessionController>().signOut();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +209,7 @@ class SettingsScreen extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.danger,
               ),
-              onPressed: () => _logout(context),
+              onPressed: () => confirmLogout(context),
               icon: const Icon(Icons.logout),
               label: const Text(AppStrings.logout),
             ),

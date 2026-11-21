@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/shared_requests.dart';
 import '../../core/utils/visit_merge.dart';
 import '../models/child.dart';
 import '../models/import_batch.dart';
@@ -27,6 +28,24 @@ class ChildRepository {
   /// their assigned classes because of the `children_select` policy.
   Future<List<Child>> all({
     bool includeInactive = false,
+    String? classId,
+  }) {
+    // The home's birthdays and missing-info cards (and the Children tab) ask
+    // for the same list at the same moment: one download serves them all.
+    return _shared
+        .run(
+          '$includeInactive|${classId ?? ''}',
+          () => _fetchAll(includeInactive: includeInactive, classId: classId),
+        )
+        // Each caller gets its own list, so sorting one does not reorder
+        // another.
+        .then(List<Child>.of);
+  }
+
+  static final _shared = SharedRequests<List<Child>>();
+
+  Future<List<Child>> _fetchAll({
+    required bool includeInactive,
     String? classId,
   }) async {
     try {
@@ -317,7 +336,8 @@ class ChildRepository {
     try {
       final data = await Db.client
           .from(Db.tChildVisitLogs)
-          .select('*, recorder:profiles!child_visit_logs_recorded_by_fkey(full_name)')
+          .select(
+              '*, recorder:profiles!child_visit_logs_recorded_by_fkey(full_name)')
           .eq('child_id', childId)
           .order('visit_date', ascending: false)
           .order('created_at', ascending: false);

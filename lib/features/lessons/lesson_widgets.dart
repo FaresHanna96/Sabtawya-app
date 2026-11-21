@@ -54,19 +54,32 @@ class LessonOfDay extends StatefulWidget {
     required this.date,
     this.title = AppStrings.lessonOfWeek,
     this.showExtras = true,
+    this.reloadToken = 0,
   });
 
   final DateTime date;
   final String title;
   final bool showExtras;
 
+  /// Changes when the home reloads (pull-to-refresh, or data changed
+  /// elsewhere); the card then fetches again, keeping what it shows meanwhile.
+  final int reloadToken;
+
   @override
   State<LessonOfDay> createState() => _LessonOfDayState();
 }
 
 class _LessonOfDayState extends State<LessonOfDay> {
-  late final Future<LessonProgramme> _programme =
+  late Future<LessonProgramme> _programme =
       const LessonRepository().programme();
+
+  @override
+  void didUpdateWidget(LessonOfDay old) {
+    super.didUpdateWidget(old);
+    if (old.reloadToken != widget.reloadToken) {
+      _programme = const LessonRepository().programme();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

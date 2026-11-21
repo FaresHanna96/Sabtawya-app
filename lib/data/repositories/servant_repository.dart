@@ -1,3 +1,4 @@
+import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 import '../models/profile.dart';
 import '../services/email_service.dart';
@@ -274,8 +275,7 @@ class ServantRepository {
       return (await birthdays())
           .where((p) =>
               p.birthDate != null &&
-              p.birthDate!.month == today.month &&
-              p.birthDate!.day == today.day)
+              AppDateUtils.isBirthdayOn(p.birthDate!, today))
           .toList();
     } catch (_) {
       return [];

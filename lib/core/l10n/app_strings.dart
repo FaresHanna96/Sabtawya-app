@@ -136,6 +136,8 @@ class AppStrings {
   static const nextAttendance = 'موعد الحضور القادم';
   static const lastAttendance = 'آخر سبت للحضور';
   static const noUpcomingSession = 'لا توجد جلسة قادمة';
+  static const noAttendanceYet = 'لم يُسجَّل حضور بعد';
+  static const noBirthdaysToday = 'لا توجد أعياد ميلاد اليوم';
   static const futureSession = 'سبت لم يأتِ بعد';
   static const showUpcoming = 'السبوت القادمة';
   static const averageAttendance = 'متوسط الحضور';
@@ -461,6 +463,14 @@ class AppStrings {
   static const updateBadFile = 'الملف لم يكتمل تحميله. حاول مرة أخرى';
   static const updateFailed = 'تعذر التحديث من داخل التطبيق';
   static const updateOpenPage = 'صفحة التحميل';
+  static const checkForUpdates = 'التحقق من التحديثات';
+  static const checkingForUpdates = 'جاري التحقق من التحديثات…';
+  static String upToDate(String v) => 'أنت على آخر إصدار ($v)';
+  static const updateCheckFailed =
+      'تعذر التحقق من التحديثات. تأكد من الإنترنت وحاول مرة أخرى';
+  static const updateReloadBody =
+      'افتح الإصدار الجديد دلوقتي؟ كل اللي سجلته محفوظ.';
+  static const updateReload = 'إعادة التحميل';
   static String classesCount(int n) => n <= 10 ? '$n فصول' : '$n فصل';
   static const done = 'تم';
   static String monthsCount(int n) => n <= 10 ? '$n شهور' : '$n شهر';
@@ -860,6 +870,18 @@ class AppStrings {
   static const reportsAndFollowUp = 'التقارير والمتابعة';
   static const importExportTitle = 'ملفات Excel';
   static const competitionsAndEvents = 'المسابقات والنشاطات';
+
+  // ── المزيد ────────────────────────────────────────────────────────────────
+  static const moreFollowUp = 'المتابعة';
+  static const moreReportsExcel = 'التقارير والإكسل';
+  static const moreService = 'الخدمة';
+  static const moreAdmin = 'الإدارة';
+  static const moreApp = 'التطبيق';
+  static const moreSearchHint = 'ابحث في المزيد…';
+  static const moreNoMatches = 'مفيش حاجة بالاسم ده';
+  static const whatsNewTitle = 'جديد في سبتاوية';
+  static String versionLabel(String version, int build) =>
+      'الإصدار $version ($build)';
   static const showPassword = 'إظهار كلمة المرور';
   static const hidePassword = 'إخفاء كلمة المرور';
   static const clearSearch = 'مسح البحث';
@@ -997,7 +1019,11 @@ class AppStrings {
   static String messageFamilies(int n) => '$n ${n == 1 ? 'أسرة' : 'أسر'}';
 
   // ── Class health ───────────────────────────────────────────────────────────
-  static const classHealthTitle = 'صحة الفصول';
+  static const classHealthTitle = 'متابعة الفصول';
+  static const myClassHealthTitle = 'متابعة فصلي';
+  static const noClassHealth = 'لسه مفيش بيانات لمتابعة الفصول';
+  static const noClassHealthBody =
+      'الدرجة بتظهر بعد أول سبت يتسجّل فيه الحضور.';
   static const allClassesHealthy =
       'كل الفصول ماشية كويس السنة دي. ربنا يبارك تعبكم!';
   static const healthServants = 'الخدام';
@@ -1012,9 +1038,8 @@ class AppStrings {
   static const healthGood = 'ماشيين كويس';
   static const healthToFollow = 'محتاجين متابعة';
   static const healthNeedsSupport = 'محتاجين دعم';
-  static String classesDoingWell(int n) => n == 1
-      ? 'فصل واحد ماشي كويس'
-      : '$n فصول ماشية كويس';
+  static String classesDoingWell(int n) =>
+      n == 1 ? 'فصل واحد ماشي كويس' : '$n فصول ماشية كويس';
   static const healthScoreHint =
       'الدرجة من حضور الأطفال وتسجيل الحضور والتحضير والافتقاد. اضغط على الفصل للتفاصيل.';
   static const healthNoAbsent = 'مفيش غياب متكرر';
@@ -1022,8 +1047,8 @@ class AppStrings {
   static const openClass = 'فتح الفصل';
 
   // ── Lesson materials ───────────────────────────────────────────────────────
-  static const materialsTitle = 'المواد والأفكار';
-  static const materialsLink = 'المواد والأفكار';
+  static const materialsTitle = 'وسائل الإيضاح';
+  static const materialsLink = 'وسائل الإيضاح';
   static String gradeLabel(int grade) => 'صف $grade';
   static const noMaterials =
       'لسه مفيش مواد للدرس ده. لو عندك فيديو أو صورة أو ملف ساعدك، ضيفه هنا لباقي الخدام.';
@@ -1044,9 +1069,25 @@ class AppStrings {
   static const prepFile = 'ملف';
   static const sharePrep = 'مشاركة كمثال لخدام نفس الصف';
   static const sharePrepHint =
-      'هيظهر التحضير ده تحت «المواد والأفكار» لنفس الدرس عند كل الخدام.';
+      'هيظهر التحضير ده تحت «وسائل الإيضاح» لنفس الدرس عند كل الخدام.';
   static const sharePrepNoLesson = 'السبت ده ماكانش فيه درس، فمينفعش يتشارك.';
   static const sharePrepNeedsAccept = 'اقبل التحضير الأول عشان تقدر تشاركه.';
   static const prepShared = 'تمت المشاركة';
+  static const prepsInboxTitle = 'التحضيرات';
+  static const prepsReviewed = 'اتراجعت';
+  static String prepsPendingChip(int n) => 'قيد المراجعة ($n)';
+  static String reviewAllInRow(int n) => 'راجع ورا بعض ($n)';
+  static String prepPosition(int i, int n) => '$i من $n';
+  static const skip = 'تخطي';
+  static const prepsAllReviewed = 'خلصت المراجعة';
+  static const noPendingPreps = 'مفيش تحضيرات مستنية مراجعة 👌';
+  static const noReviewedPreps = 'لسه مفيش تحضيرات اتراجعت';
+  static String prepFilesCount(int n) => n == 1
+      ? 'ملف واحد'
+      : n == 2
+          ? 'ملفين'
+          : n <= 10
+              ? '$n ملفات'
+              : '$n ملف';
   static const prepUnshared = 'اتشال من المشاركة';
 }

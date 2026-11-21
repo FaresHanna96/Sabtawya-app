@@ -16,18 +16,28 @@ class QuickAction {
 }
 
 /// "إجراءات سريعة": equal tiles, an icon on a tinted circle with the label
-/// under it. Up to four share a row; more wrap into rows of three or four so
-/// every tile keeps the same width and nothing scrolls sideways.
+/// under it. Up to four share a row; more are split into rows as even as
+/// possible (5 -> 3 + 2, 7 -> 4 + 3), so no tile is left alone on a row. A
+/// shorter last row keeps the same tile width and sits in the middle, and the
+/// tiles of a row are equally tall even when one label takes two lines.
 class QuickActionGrid extends StatelessWidget {
   const QuickActionGrid({super.key, required this.actions});
 
   final List<QuickAction> actions;
 
+  static const _gap = 8.0;
+
+  /// How many tiles share a row for [count] actions.
+  @visibleForTesting
+  static int perRow(int count) {
+    if (count <= 4) return count;
+    final rows = (count / 4).ceil();
+    return (count / rows).ceil();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final perRow = actions.length <= 4
-        ? actions.length
-        : (actions.length % 3 == 0 ? 3 : 4);
+    final perRow = QuickActionGrid.perRow(actions.length);
     final rows = <List<QuickAction>>[];
     for (var i = 0; i < actions.length; i += perRow) {
       rows.add(actions.sublist(i, (i + perRow).clamp(0, actions.length)));
@@ -37,25 +47,32 @@ class QuickActionGrid extends StatelessWidget {
       title: AppStrings.quickActions,
       icon: Icons.bolt_rounded,
       accent: AppColors.gold,
-      child: Column(
-        children: [
-          for (var r = 0; r < rows.length; r++) ...[
-            if (r > 0) const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < perRow; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  Expanded(
-                    child: i < rows[r].length
-                        ? _Tile(action: rows[r][i])
-                        : const SizedBox.shrink(),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final width = (box.maxWidth - _gap * (perRow - 1)) / perRow;
+          return Column(
+            children: [
+              for (var r = 0; r < rows.length; r++) ...[
+                if (r > 0) const SizedBox(height: _gap),
+                IntrinsicHeight(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < rows[r].length; i++) ...[
+                        if (i > 0) const SizedBox(width: _gap),
+                        SizedBox(
+                          width: width,
+                          child: _Tile(action: rows[r][i]),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
-            ),
-          ],
-        ],
+            ],
+          );
+        },
       ),
     );
   }

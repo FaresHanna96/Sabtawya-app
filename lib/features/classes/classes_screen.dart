@@ -12,26 +12,50 @@ import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../state/session_controller.dart';
 import 'class_detail_screen.dart';
+import 'class_health_tab.dart';
 import 'class_form_screen.dart';
 import 'patron_avatar.dart';
 
 /// The class list. An admin sees every class including archived ones; a servant
-/// sees only the classes assigned to them, which the policies enforce.
+/// sees only the classes assigned to them, which the policies enforce. A
+/// servant with a single class sees that class's page here instead of a list.
 class ClassesScreen extends StatefulWidget {
   const ClassesScreen({super.key, this.showAppBar = false});
 
   final bool showAppBar;
 
+  /// The class to show directly: a servant's one and only class. Null for
+  /// an admin or general servant (every class) and for two or more classes.
+  static ClassOverview? onlyClass({
+    required bool everyClass,
+    required List<ClassOverview> mine,
+  }) =>
+      !everyClass && mine.length == 1 ? mine.single : null;
+
   @override
   State<ClassesScreen> createState() => _ClassesScreenState();
 }
 
-class _ClassesScreenState extends State<ClassesScreen> {
+class _ClassesScreenState extends State<ClassesScreen>
+    with SingleTickerProviderStateMixin {
   static const _repository = ClassRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<List<ClassOverview>>>();
 
+  /// The list, and متابعة الفصول (moved here from the home page).
+  late final TabController _tabs = TabController(length: 2, vsync: this)
+    ..addListener(() {
+      // The add button belongs to the list only.
+      if (!_tabs.indexIsChanging && mounted) setState(() {});
+    });
+
   bool _includeArchived = false;
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   Future<List<ClassOverview>> _load() =>
       _repository.overview(includeInactive: _includeArchived);
@@ -57,58 +81,112 @@ class _ClassesScreenState extends State<ClassesScreen> {
     if (added == true) await _reload();
   }
 
+  void _toggleArchived(bool value) {
+    setState(() => _includeArchived = value);
+    _sectionKey.currentState?.reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
     final isAdmin = session.isAdmin;
     final isGeneralServant = session.isGeneralServant;
+    final everyClass = isAdmin || isGeneralServant;
+
+    final tabBar = TabBar(
+      controller: _tabs,
+      indicatorColor: Colors.white,
+      labelColor: Colors.white,
+      unselectedLabelColor: Colors.white60,
+      tabs: [
+        Tab(
+          text: everyClass ? AppStrings.classesTitle : AppStrings.myClasses,
+        ),
+        Tab(
+          text: everyClass
+              ? AppStrings.classHealthTitle
+              : AppStrings.myClassHealthTitle,
+        ),
+      ],
+    );
+
+    // A servant with one class gets that class itself: a list holding one
+    // card would only be a tap in the way.
+    final onlyClass = ClassesScreen.onlyClass(
+      everyClass: everyClass,
+      mine: session.myClasses,
+    );
+
+    final list = Column(
+      children: [
+        // When embedded as a tab there is no AppBar to hold the toggle.
+        if (isAdmin && !widget.showAppBar)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: FilterChip(
+                label: const Text(AppStrings.showInactive),
+                avatar: const Icon(Icons.inventory_2_outlined, size: 16),
+                selected: _includeArchived,
+                onSelected: _toggleArchived,
+              ),
+            ),
+          ),
+        Expanded(child: _buildList(isAdmin, isGeneralServant)),
+      ],
+    );
+
+    // Each page keeps its state (and its loaded data) while the other shows.
+    final pages = TabBarView(
+      controller: _tabs,
+      children: [
+        _KeepAlive(
+          child: onlyClass == null
+              ? list
+              : ClassDetailScreen(
+                  key: ValueKey(onlyClass.classId),
+                  classId: onlyClass.classId,
+                  embedded: true,
+                ),
+        ),
+        const _KeepAlive(child: ClassHealthTab()),
+      ],
+    );
 
     return Scaffold(
       appBar: widget.showAppBar
           ? AppBar(
-              title: Text((isAdmin || isGeneralServant)
-                  ? AppStrings.classesTitle
-                  : AppStrings.myClasses),
+              title: Text(
+                  everyClass ? AppStrings.classesTitle : AppStrings.myClasses),
               actions: [
-                if (isAdmin)
+                if (isAdmin && _tabs.index == 0)
                   IconButton(
                     tooltip: AppStrings.showInactive,
                     isSelected: _includeArchived,
                     icon: const Icon(Icons.inventory_2_outlined),
                     selectedIcon: const Icon(Icons.inventory_2),
-                    onPressed: () {
-                      setState(() => _includeArchived = !_includeArchived);
-                      _sectionKey.currentState?.reload();
-                    },
+                    onPressed: () => _toggleArchived(!_includeArchived),
                   ),
               ],
+              bottom: tabBar,
             )
           : null,
       body: SafeArea(
-        child: Column(
-          children: [
-            // When embedded as a tab there is no AppBar to hold the toggle.
-            if (isAdmin && !widget.showAppBar)
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: FilterChip(
-                    label: const Text(AppStrings.showInactive),
-                    avatar: const Icon(Icons.inventory_2_outlined, size: 16),
-                    selected: _includeArchived,
-                    onSelected: (value) {
-                      setState(() => _includeArchived = value);
-                      _sectionKey.currentState?.reload();
-                    },
+        child: widget.showAppBar
+            ? pages
+            : Column(
+                children: [
+                  Material(
+                    color: Theme.of(context).appBarTheme.backgroundColor ??
+                        Theme.of(context).colorScheme.primary,
+                    child: tabBar,
                   ),
-                ),
+                  Expanded(child: pages),
+                ],
               ),
-            Expanded(child: _buildList(isAdmin, isGeneralServant)),
-          ],
-        ),
       ),
-      floatingActionButton: isAdmin
+      floatingActionButton: isAdmin && _tabs.index == 0
           ? FloatingActionButton.extended(
               heroTag: null,
               onPressed: _add,
@@ -164,6 +242,28 @@ class _ClassesScreenState extends State<ClassesScreen> {
         );
       },
     );
+  }
+}
+
+/// Keeps a sub-tab's page alive while the other one is on screen.
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

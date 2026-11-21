@@ -32,6 +32,23 @@ class AppUpdate {
       apkUrl != null && sha256 != null && sha256!.length == 64;
 }
 
+enum UpdateStatus { upToDate, available, failed }
+
+/// What a check found: [update] is set only when [status] is available.
+class UpdateCheck {
+  const UpdateCheck.upToDate()
+      : status = UpdateStatus.upToDate,
+        update = null;
+  const UpdateCheck.available(AppUpdate this.update)
+      : status = UpdateStatus.available;
+  const UpdateCheck.failed()
+      : status = UpdateStatus.failed,
+        update = null;
+
+  final UpdateStatus status;
+  final AppUpdate? update;
+}
+
 /// Checks the site's version.json (written by build_web.ps1 on every deploy)
 /// against this build. Android only: the website is always the latest one.
 class UpdateService {
@@ -40,20 +57,57 @@ class UpdateService {
   static const _url = 'https://sabtawya.vercel.app/version.json';
 
   /// The newer version, or null when up to date, on the web, or offline.
+  /// Runs by itself at launch and on resume, so it stays silent.
   static Future<AppUpdate?> check({http.Client? client}) async {
     if (kIsWeb) return null;
+    return (await checkNow(client: client)).update;
+  }
+
+  /// The check the servant asks for (المزيد): unlike [check] it tells "up to
+  /// date" apart from "could not check". On the web it reads the site's own
+  /// version.json, so a tab left open for days learns a newer one is out.
+  static Future<UpdateCheck> checkNow({
+    http.Client? client,
+    bool web = kIsWeb,
+    int current = kAppBuild,
+  }) async {
+    final c = client ?? http.Client();
     try {
-      final c = client ?? http.Client();
-      final resp = await c.get(Uri.parse(_url), headers: {
+      final url = web
+          ? Uri.base.resolve('version.json').replace(
+              queryParameters: {
+                't': '${DateTime.now().millisecondsSinceEpoch}'
+              },
+            )
+          : Uri.parse(_url);
+      final resp = await c.get(url, headers: {
         'Cache-Control': 'no-cache'
       }).timeout(const Duration(seconds: 6));
-      if (resp.statusCode != 200) return null;
-      return newerThanThis(
-        jsonDecode(utf8.decode(resp.bodyBytes)),
-        abi: deviceAbi(),
+      if (resp.statusCode != 200) return const UpdateCheck.failed();
+      final raw = jsonDecode(utf8.decode(resp.bodyBytes));
+      if (raw is! Map) return const UpdateCheck.failed();
+      // build_web.ps1 writes `build`; a plain `flutter build web` (the dev
+      // site) only has Flutter's own `build_number`, as text.
+      final json = {
+        ...raw,
+        if (raw['build'] == null && raw['build_number'] is String)
+          'build': int.tryParse(raw['build_number'] as String),
+      };
+      if (json['build'] is! int || json['version'] is! String) {
+        return const UpdateCheck.failed();
+      }
+      final u = newerThanThis(
+        json,
+        current: current,
+        abi: web ? 'arm64' : deviceAbi(),
       );
+      return u == null
+          ? const UpdateCheck.upToDate()
+          : UpdateCheck.available(u);
     } catch (_) {
-      return null; // never bother anyone because the check failed
+      return const UpdateCheck.failed(); // offline, timed out, bad file
+    } finally {
+      if (client == null) c.close();
     }
   }
 

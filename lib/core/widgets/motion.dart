@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart' show kTouchSlop;
 
 bool _reduceMotion(BuildContext context) =>
     MediaQuery.maybeOf(context)?.disableAnimations ?? false;
@@ -54,6 +55,7 @@ class Bounce extends StatefulWidget {
 
 class _BounceState extends State<Bounce> {
   bool _down = false;
+  Offset? _start;
 
   void _set(bool v) {
     if (widget.onTap != null && _down != v) setState(() => _down = v);
@@ -61,17 +63,32 @@ class _BounceState extends State<Bounce> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // The press is read from the raw pointer, not from a tap recognizer: the
+    // child is usually an InkWell with its own tap, which won the gesture and
+    // left the scale unseen on a quick tap. A drag (scrolling) lets go.
+    return Listener(
       behavior: HitTestBehavior.translucent,
-      onTapDown: (_) => _set(true),
-      onTapUp: (_) => _set(false),
-      onTapCancel: () => _set(false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _down ? 0.96 : 1,
-        duration: const Duration(milliseconds: 110),
-        curve: Curves.easeOut,
-        child: widget.child,
+      onPointerDown: (e) {
+        _start = e.position;
+        _set(true);
+      },
+      onPointerMove: (e) {
+        final start = _start;
+        if (start != null && (e.position - start).distance > kTouchSlop) {
+          _set(false);
+        }
+      },
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _down ? 0.96 : 1,
+          duration: const Duration(milliseconds: 110),
+          curve: Curves.easeOut,
+          child: widget.child,
+        ),
       ),
     );
   }

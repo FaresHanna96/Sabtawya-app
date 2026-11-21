@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_date_utils.dart';
 import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/school_class.dart';
@@ -16,7 +17,11 @@ import '../children/child_profile_screen.dart';
 /// Shows today's birthdays on the home screen, split into two cards:
 /// one for children (المخدومين) and one for servants (الخدام).
 class TodayBirthdaysSection extends StatefulWidget {
-  const TodayBirthdaysSection({super.key});
+  const TodayBirthdaysSection({super.key, this.reloadToken = 0});
+
+  /// Changes when the home reloads (pull-to-refresh, or data changed
+  /// elsewhere); the card then fetches again, keeping what it shows meanwhile.
+  final int reloadToken;
 
   @override
   State<TodayBirthdaysSection> createState() => _TodayBirthdaysSectionState();
@@ -26,11 +31,16 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
   static const _childRepo = ChildRepository();
   static const _servantRepo = ServantRepository();
 
-  late final Future<(List<Child>, List<Profile>)> _future = Future.wait([
-    _childRepo.all(),
-    _servantRepo.servantsWithBirthdayToday(),
-  ]).then(
-      (results) => (results[0] as List<Child>, results[1] as List<Profile>));
+  late Future<(List<Child>, List<Profile>)> _future = _fetch();
+
+  static Future<(List<Child>, List<Profile>)> _fetch() =>
+      (_childRepo.all(), _servantRepo.servantsWithBirthdayToday()).wait;
+
+  @override
+  void didUpdateWidget(TodayBirthdaysSection old) {
+    super.didUpdateWidget(old);
+    if (old.reloadToken != widget.reloadToken) _future = _fetch();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +52,7 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
             ? (snapshot.data!.$1
                 .where((c) =>
                     c.birthDate != null &&
-                    c.birthDate!.month == today.month &&
-                    c.birthDate!.day == today.day)
+                    AppDateUtils.isBirthdayOn(c.birthDate!, today))
                 .toList()
               ..sort((a, b) => a.fullName.compareTo(b.fullName)))
             : <Child>[];
@@ -271,7 +280,7 @@ class _EmptyBirthdays extends StatelessWidget {
           Icon(Icons.cake_outlined, size: 16, color: AppColors.muted),
           SizedBox(width: 8),
           Text(
-            'لا توجد اعياد ميلاد اليوم',
+            AppStrings.noBirthdaysToday,
             style: TextStyle(fontSize: 13, color: AppColors.muted),
           ),
         ],

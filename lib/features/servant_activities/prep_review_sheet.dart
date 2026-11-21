@@ -15,18 +15,33 @@ import '../lessons/lesson_widgets.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 
+/// How a review sheet ended: the prep was reviewed, skipped («تخطي», only
+/// offered in a review run), or the sheet was closed.
+enum PrepReviewResult { reviewed, skipped, closed }
+
 /// Shared bottom sheet for reviewing a lesson prep submission.
 /// Opens via [showPrepReviewSheet].
-Future<void> showPrepReviewSheet(
+///
+/// In a review run ([position] like «2 من 7», [canSkip]) the caller opens the
+/// next prep when this one comes back reviewed or skipped.
+Future<PrepReviewResult> showPrepReviewSheet(
   BuildContext context, {
   required LessonPrep prep,
   required Future<void> Function(String status, String? comment) onReview,
-}) {
-  return showModalBottomSheet<void>(
+  String? position,
+  bool canSkip = false,
+}) async {
+  final result = await showModalBottomSheet<PrepReviewResult>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => PrepReviewSheet(prep: prep, onReview: onReview),
+    builder: (_) => PrepReviewSheet(
+      prep: prep,
+      onReview: onReview,
+      position: position,
+      canSkip: canSkip,
+    ),
   );
+  return result ?? PrepReviewResult.closed;
 }
 
 class PrepReviewSheet extends StatefulWidget {
@@ -34,10 +49,18 @@ class PrepReviewSheet extends StatefulWidget {
     super.key,
     required this.prep,
     required this.onReview,
+    this.position,
+    this.canSkip = false,
   });
 
   final LessonPrep prep;
   final Future<void> Function(String status, String? comment) onReview;
+
+  /// Where this prep is in a review run, e.g. «2 من 7».
+  final String? position;
+
+  /// Shows «تخطي», which closes the sheet as [PrepReviewResult.skipped].
+  final bool canSkip;
 
   @override
   State<PrepReviewSheet> createState() => _PrepReviewSheetState();
@@ -128,14 +151,75 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              AppDateUtils.formatDayDate(prep.sessionDate),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            // Who sent it and for which class: going through everyone's
+            // preps, the date alone does not say whose this is.
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (prep.servantName.isNotEmpty)
+                        Text(
+                          prep.servantName,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      Text(
+                        [
+                          if (prep.className != null) prep.className!,
+                          AppDateUtils.formatDayDate(prep.sessionDate),
+                        ].join(' • '),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.position != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.navy.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      widget.position!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
-            Text(
-              _statusLabel(prep.status),
-              style: TextStyle(fontSize: 13, color: _statusColor(prep.status)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    prepStatusLabel(prep.status),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: prepStatusColor(prep.status),
+                    ),
+                  ),
+                ),
+                if (widget.canSkip)
+                  TextButton.icon(
+                    onPressed: () =>
+                        Navigator.of(context).pop(PrepReviewResult.skipped),
+                    icon: const Icon(Icons.skip_next_rounded, size: 18),
+                    label: const Text(AppStrings.skip),
+                  ),
+              ],
             ),
             if (prep.photos.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -171,7 +255,8 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
                   ],
                 ),
             ],
-            if (context.read<SessionController>().isAdmin) ...[
+            // No session (a test) counts as not an admin.
+            if (context.read<SessionController?>()?.isAdmin ?? false) ...[
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -238,7 +323,7 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
     final target = shareAfter ? await _lessonOfPrep() : null;
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(PrepReviewResult.reviewed);
     await widget.onReview(status, comment);
     if (!shareAfter) return;
     if (target == null) {
@@ -248,25 +333,26 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
     }
     try {
       await _lessons.sharePrep(widget.prep.id, target.slot, target.grade);
-      messenger.showSnackBar(
-          const SnackBar(content: Text(AppStrings.prepShared)));
+      messenger
+          .showSnackBar(const SnackBar(content: Text(AppStrings.prepShared)));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('$e')));
     }
   }
-
-  static String _statusLabel(String status) => switch (status) {
-        'accepted' => AppStrings.prepAccepted,
-        'commented' => AppStrings.prepCommented,
-        _ => AppStrings.prepPending,
-      };
-
-  static Color _statusColor(String status) => switch (status) {
-        'accepted' => AppColors.success,
-        'commented' => AppColors.warning,
-        _ => AppColors.muted,
-      };
 }
+
+/// A prep's status in words: «قيد المراجعة», «مقبول», «يوجد تعليق».
+String prepStatusLabel(String status) => switch (status) {
+      'accepted' => AppStrings.prepAccepted,
+      'commented' => AppStrings.prepCommented,
+      _ => AppStrings.prepPending,
+    };
+
+Color prepStatusColor(String status) => switch (status) {
+      'accepted' => AppColors.success,
+      'commented' => AppColors.warning,
+      _ => AppColors.muted,
+    };
 
 class _StorageImage extends StatefulWidget {
   const _StorageImage({required this.storagePath});

@@ -8,6 +8,14 @@ import '../../core/utils/app_failure.dart';
 class ServantActivityRepository {
   const ServantActivityRepository();
 
+  /// A prep with its photos, its Saturday and class, and who sent it.
+  static const _prepSelect =
+      'id, servant_id, session_id, status, admin_comment, '
+      'reviewed_by, reviewed_at, created_at, shared_at, '
+      'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
+      'attendance_sessions!inner(session_date, classes(name)), '
+      'profiles!servant_lesson_preps_servant_id_fkey(full_name)';
+
   // ----------------------------------------------------------------- servant
 
   /// The servant's own lesson prep for [sessionId], or null if not yet submitted.
@@ -15,13 +23,7 @@ class ServantActivityRepository {
     try {
       final data = await Db.client
           .from(Db.tServantLessonPreps)
-          .select(
-            'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, shared_at, '
-            'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date, classes(name)), '
-            'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-          )
+          .select(_prepSelect)
           .eq('session_id', sessionId)
           .eq('servant_id', Db.userId!)
           .maybeSingle();
@@ -88,13 +90,7 @@ class ServantActivityRepository {
     try {
       final data = await Db.client
           .from(Db.tServantLessonPreps)
-          .select(
-            'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, shared_at, '
-            'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date, classes(name)), '
-            'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-          )
+          .select(_prepSelect)
           .eq('id', id)
           .maybeSingle();
       return data == null ? null : LessonPrep.fromMap(data);
@@ -108,13 +104,7 @@ class ServantActivityRepository {
     try {
       final data = await Db.client
           .from(Db.tServantLessonPreps)
-          .select(
-            'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, shared_at, '
-            'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date, classes(name)), '
-            'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-          )
+          .select(_prepSelect)
           .eq('servant_id', Db.userId!)
           .order('created_at', ascending: false);
       return rows(data).map(LessonPrep.fromMap).toList();
@@ -130,13 +120,7 @@ class ServantActivityRepository {
     try {
       final data = await Db.client
           .from(Db.tServantLessonPreps)
-          .select(
-            'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, shared_at, '
-            'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date, classes(name)), '
-            'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-          )
+          .select(_prepSelect)
           .eq('servant_id', servantId)
           .order('created_at', ascending: false);
       return rows(data).map(LessonPrep.fromMap).toList();
@@ -150,16 +134,37 @@ class ServantActivityRepository {
     try {
       final data = await Db.client
           .from(Db.tServantLessonPreps)
-          .select(
-            'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, shared_at, '
-            'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date, classes(name)), '
-            'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-          )
+          .select(_prepSelect)
           .eq('status', 'pending')
           .order('created_at', ascending: true);
       return rows(data).map(LessonPrep.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The latest [limit] preps of every status, newest first («التحضيرات»).
+  Future<List<LessonPrep>> recentPreps({int limit = 200}) async {
+    try {
+      final data = await Db.client
+          .from(Db.tServantLessonPreps)
+          .select(_prepSelect)
+          .order('created_at', ascending: false)
+          .limit(limit);
+      return rows(data).map(LessonPrep.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// How many preps wait for review: ids only, for a badge.
+  Future<int> pendingPrepsCount() async {
+    try {
+      final data = await Db.client
+          .from(Db.tServantLessonPreps)
+          .select('id')
+          .eq('status', 'pending');
+      return rows(data).length;
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -272,13 +277,7 @@ class ServantActivityRepository {
       // Step 2: load preps for those sessions
       final data = await Db.client
           .from(Db.tServantLessonPreps)
-          .select(
-            'id, servant_id, session_id, status, admin_comment, '
-            'reviewed_by, reviewed_at, created_at, shared_at, '
-            'servant_lesson_prep_photos(id, prep_id, storage_path, created_at), '
-            'attendance_sessions!inner(session_date, classes(name)), '
-            'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-          )
+          .select(_prepSelect)
           .inFilter('session_id', sessionIds);
       return rows(data).map(LessonPrep.fromMap).toList();
     } catch (e) {

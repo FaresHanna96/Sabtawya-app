@@ -102,6 +102,39 @@ class AppDateUtils {
 
   static String formatPercentage(num value) => '${value.toStringAsFixed(1)}%';
 
+  /// Whether someone born on [birth] has their birthday on [day]. A 29 February
+  /// birthday falls on the 28th in a year without one, so it is never skipped.
+  static bool isBirthdayOn(DateTime birth, DateTime day) {
+    if (birth.month != day.month) return false;
+    if (birth.day == day.day) return true;
+    final leap = DateTime(day.year, 2, 29).month == 2;
+    return birth.month == 2 && birth.day == 29 && day.day == 28 && !leap;
+  }
+
+  /// "الآن", "منذ 5 دقائق", "منذ ساعتين" within the day; after that the
+  /// day-level wording of [sinceLabel] and the date and time.
+  static String agoLabel(DateTime at, {DateTime? now}) {
+    final diff = (now ?? DateTime.now()).difference(at.toLocal());
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inMinutes < 60) {
+      return _count(diff.inMinutes, 'دقيقة', 'دقيقتين', 'دقائق');
+    }
+    if (diff.inHours < 24) {
+      return _count(diff.inHours, 'ساعة', 'ساعتين', 'ساعات');
+    }
+    return '${sinceLabel(at, now: now)} • ${formatDateTime(at)}';
+  }
+
+  /// Arabic counting: one, two, 3 to 10 take the plural, 11 and up the
+  /// singular ("منذ 5 دقائق" but "منذ 15 دقيقة").
+  static String _count(int n, String one, String two, String few) =>
+      switch (n) {
+        1 => 'منذ $one',
+        2 => 'منذ $two',
+        <= 10 => 'منذ $n $few',
+        _ => 'منذ $n $one',
+      };
+
   /// How long ago [date] was, in Arabic: `اليوم`, `منذ أسبوعين`, `منذ 5 أسابيع`.
   ///
   /// Arabic counts in three shapes - one, two, and many - so a plain

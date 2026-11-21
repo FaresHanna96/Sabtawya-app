@@ -39,6 +39,10 @@ class _HomeShellState extends State<HomeShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _index = 0;
 
+  /// Tabs opened so far. The others are not built yet, so opening the app
+  /// loads the home only, not every tab's data at once.
+  final Set<int> _opened = {0};
+
   /// Replayed on every tab change: the new tab fades and settles in instead
   /// of cutting. It starts finished so the first frame is fully visible.
   late final AnimationController _tabFade = AnimationController(
@@ -92,7 +96,10 @@ class _HomeShellState extends State<HomeShell>
 
   void _selectTab(int index) {
     if (index == _index) return;
-    setState(() => _index = index);
+    setState(() {
+      _index = index;
+      _opened.add(index);
+    });
     final still = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (!still) _tabFade.forward(from: 0);
   }
@@ -153,11 +160,12 @@ class _HomeShellState extends State<HomeShell>
               ? const AdminServantActivitiesScreen(showAppBar: false)
               : const MyActivitiesScreen(),
         ),
-      const _Tab(
+      _Tab(
         label: AppStrings.more,
         icon: Icons.more_horiz_outlined,
         selectedIcon: Icons.more_horiz,
-        child: MoreScreen(),
+        // Brings the banner back even if it was closed (or the forced screen).
+        child: MoreScreen(onUpdateFound: (u) => setState(() => _update = u)),
       ),
     ];
 
@@ -181,7 +189,9 @@ class _HomeShellState extends State<HomeShell>
             ),
           ),
           const NotificationsBell(),
-          if (_index == 2 && isAdmin)
+          // A class servant may import into their own class too (the import
+          // screen offers only their classes; the policies enforce it).
+          if (_index == 2 && !isGeneralServant)
             IconButton(
               tooltip: AppStrings.importChildren,
               icon: const Icon(Icons.upload_file),
@@ -194,7 +204,12 @@ class _HomeShellState extends State<HomeShell>
           IconButton(
             tooltip: AppStrings.refresh,
             icon: const Icon(Icons.refresh),
-            onPressed: () => session.refreshAll(),
+            // The profile and classes, then the screen itself: the tab on
+            // view reloads now, the others when next opened.
+            onPressed: () async {
+              await session.refreshAll();
+              session.markChanged();
+            },
           ),
         ],
       ),
@@ -247,7 +262,12 @@ class _HomeShellState extends State<HomeShell>
                     // to reload until it is opened (see AsyncSection).
                     children: [
                       for (final (i, tab) in tabs.indexed)
-                        TickerMode(enabled: i == _index, child: tab.child),
+                        _opened.contains(i)
+                            ? TickerMode(
+                                enabled: i == _index,
+                                child: tab.child,
+                              )
+                            : const SizedBox.shrink(),
                     ],
                   ),
                 ),
@@ -446,7 +466,8 @@ mixin _InstallLogic<T extends StatefulWidget> on State<T> {
   }
 }
 
-class _UpdateBannerState extends State<_UpdateBanner> with _InstallLogic<_UpdateBanner> {
+class _UpdateBannerState extends State<_UpdateBanner>
+    with _InstallLogic<_UpdateBanner> {
   @override
   AppUpdate get update => widget.update;
 
@@ -578,7 +599,8 @@ class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
       canPop: false,
       child: Scaffold(
         body: Container(
-          decoration: const BoxDecoration(gradient: AppGradients.loginBackground),
+          decoration:
+              const BoxDecoration(gradient: AppGradients.loginBackground),
           child: SafeArea(
             child: Center(
               child: Padding(

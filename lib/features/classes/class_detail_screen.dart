@@ -32,9 +32,17 @@ import 'patron_avatar.dart';
 /// Everything about one class: its counters, its servants, and its children
 /// with the same filtering as the main directory.
 class ClassDetailScreen extends StatefulWidget {
-  const ClassDetailScreen({super.key, required this.classId});
+  const ClassDetailScreen({
+    super.key,
+    required this.classId,
+    this.embedded = false,
+  });
 
   final String classId;
+
+  /// Shown inside the Classes tab (a servant with one class) rather than
+  /// pushed: no app bar of its own, the name and menu head the page instead.
+  final bool embedded;
 
   @override
   State<ClassDetailScreen> createState() => _ClassDetailScreenState();
@@ -207,57 +215,79 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               .where((child) => _filter.includeInactive || child.isActive)
               .length;
 
+          // أمين الخدمة manages the class; a servant of this class can edit it
+          // (the database allows exactly that) but not archive or delete it.
+          // Without any item the menu is not shown.
+          final canManage = isAdmin ||
+              session.myClasses.any((c) => c.classId == overview.classId);
+          final Widget? menu = !canManage
+              ? null
+              : PopupMenuButton<_ClassAction>(
+                  onSelected: (action) => switch (action) {
+                    _ClassAction.message => _messageFamilies(
+                        visible, overview.classId, overview.className),
+                    _ClassAction.edit => _edit(overview.asClass),
+                    _ClassAction.archive => _toggleArchive(overview),
+                    _ClassAction.delete => _delete(overview),
+                  },
+                  itemBuilder: (context) => [
+                    // The families of the children the filter shows.
+                    const PopupMenuItem<_ClassAction>(
+                      value: _ClassAction.message,
+                      child: Text(AppStrings.parentMessages),
+                    ),
+                    const PopupMenuItem<_ClassAction>(
+                      value: _ClassAction.edit,
+                      child: Text(AppStrings.editClass),
+                    ),
+                    if (isAdmin)
+                      PopupMenuItem<_ClassAction>(
+                        value: _ClassAction.archive,
+                        child: Text(
+                          overview.isActive
+                              ? AppStrings.archiveClass
+                              : AppStrings.restoreClass,
+                        ),
+                      ),
+                    if (isAdmin)
+                      const PopupMenuItem<_ClassAction>(
+                        value: _ClassAction.delete,
+                        child: Text(
+                          AppStrings.deleteClass,
+                          style: TextStyle(color: AppColors.danger),
+                        ),
+                      ),
+                  ],
+                );
+
           return CustomScrollView(
             slivers: [
-              SliverAppBar(
-                title: Text(overview.className),
-                pinned: true,
-                actions: [
-                  // أمين الخدمة manages the class; a servant of this class can
-                  // edit it (the database allows exactly that) but not archive
-                  // or delete it. Without any item the menu is not shown.
-                  if (isAdmin ||
-                      session.myClasses
-                          .any((c) => c.classId == overview.classId))
-                    PopupMenuButton<_ClassAction>(
-                      onSelected: (action) => switch (action) {
-                        _ClassAction.message => _messageFamilies(
-                            visible, overview.classId, overview.className),
-                        _ClassAction.edit => _edit(overview.asClass),
-                        _ClassAction.archive => _toggleArchive(overview),
-                        _ClassAction.delete => _delete(overview),
-                      },
-                      itemBuilder: (context) => [
-                        // The families of the children the filter shows.
-                        const PopupMenuItem<_ClassAction>(
-                          value: _ClassAction.message,
-                          child: Text(AppStrings.parentMessages),
-                        ),
-                        const PopupMenuItem<_ClassAction>(
-                          value: _ClassAction.edit,
-                          child: Text(AppStrings.editClass),
-                        ),
-                        if (isAdmin)
-                          PopupMenuItem<_ClassAction>(
-                            value: _ClassAction.archive,
-                            child: Text(
-                              overview.isActive
-                                  ? AppStrings.archiveClass
-                                  : AppStrings.restoreClass,
+              if (widget.embedded)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 4, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            overview.className,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                        if (isAdmin)
-                          const PopupMenuItem<_ClassAction>(
-                            value: _ClassAction.delete,
-                            child: Text(
-                              AppStrings.deleteClass,
-                              style: TextStyle(color: AppColors.danger),
-                            ),
-                          ),
+                        ),
+                        if (menu != null) menu,
                       ],
                     ),
-                ],
-              ),
+                  ),
+                )
+              else
+                SliverAppBar(
+                  title: Text(overview.className),
+                  pinned: true,
+                  actions: [if (menu != null) menu],
+                ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 sliver: SliverList.list(

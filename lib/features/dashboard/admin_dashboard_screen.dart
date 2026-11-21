@@ -15,8 +15,6 @@ import '../children/child_form_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
-import '../../data/models/class_health.dart';
-import 'class_health_section.dart';
 import 'missing_info_section.dart';
 import 'quick_action_grid.dart';
 import 'weekly_attendance_chart.dart';
@@ -36,10 +34,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<_AdminDashboard>>();
 
-  /// "عرض الكل" on the low-attendance list and the activity feed.
+  /// "عرض الكل" on the activity feed.
   bool _showAllActivity = false;
 
+  /// Counts the loads: the birthdays, missing-info and lesson cards load on
+  /// their own, and fetch again whenever it changes.
+  int _loads = 0;
+
   Future<_AdminDashboard> _load() async {
+    _loads++;
     final yearId = context.read<SessionController>().currentYear?.id;
 
     // The reads do not depend on each other, so run them side by side
@@ -47,37 +50,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (yearId == null) {
       final (stats, activity) =
           await (_reports.adminStats(), _reports.recentActivity()).wait;
-      return _AdminDashboard(
-        stats: stats,
-        classScores: const <ClassYearScore>[],
-        activity: activity,
-      );
+      return _AdminDashboard(stats: stats, activity: activity);
     }
 
-    // The class scores already count only the Saturdays held so far, so the
-    // monthly table (thousands of rows) is no longer downloaded here.
-    // Class health (أمين الخدمة and the general servant, every class) is an
-    // extra: a failure leaves the card out.
-    final healthFuture = _reports
-        .classHealth(yearId)
-        .then<List<ClassHealth>?>((h) => h)
-        .catchError((Object _) => null);
-
-    final (stats, activity, scores, weeks, health) = await (
+    // صحة الفصول (with the class scores it needs) moved to the Classes tab,
+    // so the home no longer downloads either.
+    final (stats, activity, weeks) = await (
       _reports.adminStats(),
       _reports.recentActivity(),
-      _reports.classScores(yearId),
       _reports.weeklyAttendance(yearId),
-      healthFuture,
     ).wait;
 
-    return _AdminDashboard(
-      stats: stats,
-      classScores: scores,
-      activity: activity,
-      weeks: weeks,
-      health: health,
-    );
+    return _AdminDashboard(stats: stats, activity: activity, weeks: weeks);
   }
 
   Future<void> _reload() =>
@@ -165,27 +149,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const FadeSlideIn(index: 3, child: TodayBirthdaysSection()),
-              const FadeSlideIn(index: 3, child: MissingInfoSection()),
+              FadeSlideIn(
+                index: 3,
+                child: TodayBirthdaysSection(reloadToken: _loads),
+              ),
+              FadeSlideIn(
+                index: 3,
+                child: MissingInfoSection(reloadToken: _loads),
+              ),
               FadeSlideIn(
                 index: 4,
-                child: LessonOfDay(date: upcomingSaturday()),
+                child: LessonOfDay(
+                  date: upcomingSaturday(),
+                  reloadToken: _loads,
+                ),
               ),
               FadeSlideIn(index: 5, child: _quickActions()),
               const SizedBox(height: 16),
-              if (data.health != null && data.health!.isNotEmpty) ...[
-                FadeSlideIn(
-                  index: 6,
-                  // أداء الفصول lives inside it now: the attendance % is
-                  // part of each class's health score.
-                  child: ClassHealthSection(
-                    classes: ClassHealth.joinAttendance(data.health!, {
-                      for (final s in data.classScores) s.classId: s.percentage,
-                    }),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
               // The last Saturday sits in the weekly chart's card; with no
               // chart yet (under two Saturdays) it keeps a card of its own.
               FadeSlideIn(
@@ -220,7 +200,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _lastSaturday(AdminStats stats) => InfoRow(
         label: AppStrings.lastAttendance,
         value: stats.lastSessionDate == null
-            ? AppStrings.noUpcomingSession
+            ? AppStrings.noAttendanceYet
             : AppDateUtils.formatDayDate(stats.lastSessionDate!),
         icon: Icons.event_available_outlined,
       );
@@ -363,7 +343,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Text(entry.description, style: const TextStyle(fontSize: 13)),
                   const SizedBox(height: 2),
                   Text(
-                    _ago(entry.createdAt),
+                    AppDateUtils.agoLabel(entry.createdAt),
                     style:
                         const TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
@@ -374,29 +354,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
     );
-  }
-
-  /// "منذ 5 دقائق" / "منذ ساعتين" today, the day-level wording after that.
-  String _ago(DateTime at) {
-    final diff = DateTime.now().difference(at.toLocal());
-    if (diff.inMinutes < 1) return 'الآن';
-    if (diff.inMinutes < 60) {
-      final m = diff.inMinutes;
-      return m == 1
-          ? 'منذ دقيقة'
-          : m == 2
-              ? 'منذ دقيقتين'
-              : 'منذ $m دقيقة';
-    }
-    if (diff.inHours < 24) {
-      final h = diff.inHours;
-      return h == 1
-          ? 'منذ ساعة'
-          : h == 2
-              ? 'منذ ساعتين'
-              : 'منذ $h ساعات';
-    }
-    return '${AppDateUtils.sinceLabel(at)} • ${AppDateUtils.formatDateTime(at)}';
   }
 
   Widget _greeting(String name, String? yearName) =>
@@ -442,17 +399,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 class _AdminDashboard {
   const _AdminDashboard({
     required this.stats,
-    required this.classScores,
     required this.activity,
     this.weeks = const <WeeklyAttendance>[],
-    this.health,
   });
 
-  /// صحة الفصول; null for the general servant or when it could not load.
-  final List<ClassHealth>? health;
-
   final AdminStats stats;
-  final List<ClassYearScore> classScores;
   final List<ActivityLogEntry> activity;
 
   /// Attendance per Saturday, for the weekly chart.
