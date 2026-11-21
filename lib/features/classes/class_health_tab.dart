@@ -60,6 +60,20 @@ class ClassHealthTab extends StatelessWidget {
             ],
           );
         }
+        // A servant with one class gets its whole picture at once: a list
+        // of one line would only be a tap in the way.
+        if (!everyClass && classes.length == 1) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            child: SectionCard(
+              title: AppStrings.myClassHealthTitle,
+              icon: Icons.monitor_heart_outlined,
+              accent: ClassHealthSection.colorOf(classes.single.level),
+              child: ClassHealthDetail(health: classes.single),
+            ),
+          );
+        }
         return SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

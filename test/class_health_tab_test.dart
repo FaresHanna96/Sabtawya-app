@@ -59,6 +59,40 @@ void main() {
     expect(find.text(AppStrings.myClassHealthTitle), findsOneWidget);
   });
 
+  testWidgets('a servant with one class sees its details straight away',
+      (tester) async {
+    await _pump(tester, () async => [_health('5 ولاد', taken: 7)],
+        everyClass: false);
+    // The measures are on the page, no tap or sheet needed.
+    expect(find.text(AppStrings.healthTaken), findsOneWidget);
+    expect(find.text(AppStrings.healthPrep), findsOneWidget);
+    expect(find.text(AppStrings.healthFollowUp), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    // The class itself is the next sub-tab, so no «فتح الفصل» here.
+    expect(find.text(AppStrings.openClass), findsNothing);
+  });
+
+  testWidgets('a servant with two classes still gets the list', (tester) async {
+    await _pump(
+      tester,
+      () async => [_health('5 ولاد'), _health('3 بنات')],
+      everyClass: false,
+    );
+    expect(find.text(AppStrings.healthTaken), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNWidgets(2));
+  });
+
+  testWidgets('an admin with one class still gets the list', (tester) async {
+    await _pump(tester, () async => [_health('5 ولاد')]);
+    expect(find.text(AppStrings.healthTaken), findsNothing);
+    // Its details still open in a sheet, with «فتح الفصل».
+    await tester.tap(find.textContaining('5 ولاد'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text(AppStrings.healthTaken), findsOneWidget);
+    expect(find.text(AppStrings.openClass), findsOneWidget);
+  });
+
   testWidgets('nothing yet shows the empty state', (tester) async {
     await _pump(tester, () async => const <ClassHealth>[]);
     expect(find.text(AppStrings.noClassHealth), findsOneWidget);

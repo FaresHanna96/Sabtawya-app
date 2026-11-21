@@ -67,6 +67,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
 
+  /// A class that did not record, from the weekly chart: its attendance for
+  /// that Saturday, then every card reloads.
+  Future<void> _record(String classId, DateTime date) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => AttendanceScreen(
+          showAppBar: true,
+          initialClassId: classId,
+          initialDate: date,
+        ),
+      ),
+    );
+    if (mounted) context.read<SessionController>().markChanged();
+  }
+
   Future<void> _push(Widget screen) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(builder: (_) => screen),
@@ -166,19 +181,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               FadeSlideIn(index: 5, child: _quickActions()),
               const SizedBox(height: 16),
-              // The last Saturday sits in the weekly chart's card; with no
-              // chart yet (under two Saturdays) it keeps a card of its own.
+              // The chart names its own Saturday; with nothing recorded yet
+              // the last Saturday keeps a card of its own.
               FadeSlideIn(
                 index: 6,
-                child: data.weeks.length >= 2
+                child: data.weeks.any((w) => w.recorded)
                     ? WeeklyAttendanceChart(
                         weeks: data.weeks,
-                        top: _lastSaturday(stats),
                         classNames: {
                           for (final c
                               in context.read<SessionController>().myClasses)
                             c.classId: c.className,
                         },
+                        onRecord: _record,
                       )
                     : SectionCard(child: _lastSaturday(stats)),
               ),

@@ -421,6 +421,38 @@ class AppStrings {
       '${names.length == 1 ? 'فصل لم يسجّل' : names.length == 2 ? 'فصلين لم يسجّلوا' : '${names.length} فصول لم يسجّلوا'} الحضور: ${names.join('، ')}';
   static String saturdayDetail(String date, int came, int of, int pct) =>
       'سبت $date: حضر $came من $of ($pct%)';
+  static String attendedOn(String date) => 'حضروا سبت $date';
+  static String _points(int n) => n == 1
+      ? 'نقطة'
+      : n == 2
+          ? 'نقطتين'
+          : n <= 10
+              ? '$n نقاط'
+              : '$n نقطة';
+
+  /// Percentage points from the Saturday before, with both numbers.
+  static String pointsChange(int diff, int from, int to) => diff == 0
+      ? 'زي السبت اللي قبله ($to%)'
+      : diff > 0
+          ? 'أعلى ${_points(diff)} من السبت اللي قبله (من $from% لـ $to%)'
+          : 'أقل ${_points(-diff)} من السبت اللي قبله (من $from% لـ $to%)';
+  static String saturdaysMissed(List<String> dates) => dates.length == 1
+      ? 'سبت ${dates.single} ما اتسجلش'
+      : 'سبوت ${dates.join('، ')} ما اتسجلتش';
+  static String weekNotRecorded(String date) => 'سبت $date: ما اتسجلش';
+  static String weekBreak(String date) => 'سبت $date: إجازة، مفيش درس';
+  static const todayNoneYet = 'النهارده: لسه محدش سجّل';
+  static String todayProgress(int done, int all) =>
+      'النهارده: سجّل $done من $all فصول';
+  static const stillRecording = 'لسه بيسجّلوا:';
+  static const notRecordedLabel = 'لم يسجّل الحضور:';
+  static String serviceWide(int pct) => 'الخدمة كلها $pct%';
+  static const todayBar = 'النهارده';
+  static const breakShort = 'إجازة';
+  static const legendHigh = '60% وأكثر';
+  static const legendMid = '40–59%';
+  static const legendLow = 'أقل من 40%';
+  static const goalLine = 'الهدف 60%';
   static const followUpHow = 'كيف تم افتقاد';
   static const followUpNoteGeneric = 'افتقاد بعد غياب متتالي';
   static const logCall = 'سجّل افتقاد';

@@ -176,47 +176,94 @@ class ReportRepository {
     }
   }
 
-  /// Saturday by Saturday (up to today, oldest first): who came across every
-  /// class the caller can see, out of their active children. One query.
+  /// How far back the weekly chart looks: 12 Saturdays, enough for the ten
+  /// it shows and the one before them.
+  static const _weeksBack = Duration(days: 84);
+
+  static String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Saturday by Saturday over the last 12 weeks (up to today, oldest first):
+  /// who came across every class the caller can see, out of their active
+  /// children, each class kept apart. A Saturday nobody recorded stays in
+  /// (the card shows the gap); a week with no lesson is marked as a break.
   Future<List<WeeklyAttendance>> weeklyAttendance(String yearId) async {
     try {
       final today = DateTime.now();
-      final iso = '${today.year.toString().padLeft(4, '0')}-'
-          '${today.month.toString().padLeft(2, '0')}-'
-          '${today.day.toString().padLeft(2, '0')}';
-      final data = await Db.client
-          .from(Db.vClassSessionSummary)
-          .select('session_date, class_id, present_count, active_children, '
-              'recorded_count')
-          .eq('year_id', yearId)
-          .lte('session_date', iso)
-          .order('session_date', ascending: true);
-      final byDate = <String, List<int>>{};
-      final missing = <String, List<String>>{};
-      for (final r in rows(data)) {
-        final d = asText(r['session_date']);
-        // A class whose attendance was not taken does not count as absent;
-        // it is listed as not recorded instead.
-        if (asInt(r['recorded_count']) == 0) {
-          (missing[d] ??= []).add(asText(r['class_id']));
-          continue;
-        }
-        final acc = byDate[d] ??= [0, 0];
-        acc[0] += asInt(r['present_count']);
-        acc[1] += asInt(r['active_children']);
+      final iso = _iso(today);
+      final from = _iso(today.subtract(_weeksBack));
+      final results = await Future.wait<dynamic>([
+        Db.client
+            .from(Db.vClassSessionSummary)
+            .select('session_date, class_id, present_count, active_children, '
+                'recorded_count')
+            .eq('year_id', yearId)
+            .gte('session_date', from)
+            .lte('session_date', iso)
+            .order('session_date', ascending: true),
+        Db.client
+            .from(Db.tLessonBreaks)
+            .select('break_date')
+            .gte('break_date', from)
+            .lte('break_date', iso),
+      ]);
+      final breaks = {
+        for (final r in rows(results[1])) asText(r['break_date'])
+      };
+      final byDate = <String, List<ClassWeek>>{};
+      for (final r in rows(results[0])) {
+        (byDate[asText(r['session_date'])] ??= []).add(ClassWeek(
+          classId: asText(r['class_id']),
+          present: asInt(r['present_count']),
+          children: asInt(r['active_children']),
+          // A class whose attendance was not taken does not count as absent.
+          recorded: asInt(r['recorded_count']) > 0,
+        ));
       }
-      // Saturdays where nobody recorded yet are left out altogether.
       return [
-        for (final e in byDate.entries)
+        for (final MapEntry(key: d, value: classes) in byDate.entries)
           WeeklyAttendance(
-            date: DateTime.parse(e.key),
-            present: e.value[0],
-            children: e.value[1],
-            missingClassIds: missing[e.key] ?? const [],
+            date: DateTime.parse(d),
+            present: classes
+                .where((c) => c.recorded)
+                .fold(0, (s, c) => s + c.present),
+            children: classes
+                .where((c) => c.recorded)
+                .fold(0, (s, c) => s + c.children),
+            missingClassIds: [
+              for (final c in classes)
+                if (!c.recorded) c.classId,
+            ],
+            perClass: classes,
+            isBreak: breaks.contains(d),
+            isToday: d == iso,
           ),
       ];
     } catch (e) {
       throw AppFailure.from(e);
+    }
+  }
+
+  /// The whole service's attendance % per Saturday over the same 12 weeks,
+  /// for a servant to compare their class with. Totals only (a database
+  /// function), so a servant learns nothing about another class. Empty when
+  /// it cannot be read: the comparison is then simply not shown.
+  Future<Map<DateTime, double>> serviceWeeklyAttendance(String yearId) async {
+    try {
+      final from = _iso(DateTime.now().subtract(_weeksBack));
+      final data = await Db.client.rpc(
+        'service_weekly_attendance',
+        params: {'p_year': yearId, 'p_from': from},
+      );
+      return {
+        for (final r in rows(data))
+          if (asInt(r['children']) > 0)
+            DateTime.parse(asText(r['session_date'])):
+                asInt(r['present']) / asInt(r['children']) * 100,
+      };
+    } catch (_) {
+      return const {};
     }
   }
 

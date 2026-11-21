@@ -49,11 +49,13 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
     _loads++;
     final yearId = context.read<SessionController>().currentYear?.id;
     if (yearId == null) return const _ServantDashboard();
-    final (scores, weeks) = await (
+    final (scores, weeks, service) = await (
       _reports.classScores(yearId),
       _reports.weeklyAttendance(yearId),
+      // The whole service's %, to compare the class with (totals only).
+      _reports.serviceWeeklyAttendance(yearId),
     ).wait;
-    return _ServantDashboard(scores: scores, weeks: weeks);
+    return _ServantDashboard(scores: scores, weeks: weeks, service: service);
   }
 
   Future<void> _reload() =>
@@ -98,9 +100,9 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
       load: _load,
       builder: (context, data, reload) {
         final scores = data.scores;
-        // With the chart, the last Saturday sits in its card (as on the
-        // admin home); with under two Saturdays it stays with the classes.
-        final hasChart = data.weeks.length >= 2;
+        // The chart names its own Saturday; with nothing recorded yet the
+        // last Saturday stays with the classes.
+        final hasChart = data.weeks.any((w) => w.recorded);
         // Not a lazy ListView: it rebuilt each section as it scrolled back
         // into view, which replayed its entrance (after a delay) every time.
         return SingleChildScrollView(
@@ -210,10 +212,15 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                   index: 5,
                   child: WeeklyAttendanceChart(
                     weeks: data.weeks,
-                    top: lastSaturday,
                     classNames: {
                       for (final c in classes) c.classId: c.className,
                     },
+                    benchmark: data.service,
+                    onRecord: (classId, date) => _push(AttendanceScreen(
+                      showAppBar: true,
+                      initialClassId: classId,
+                      initialDate: date,
+                    )),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -276,10 +283,14 @@ class _ServantDashboard {
   const _ServantDashboard({
     this.scores = const <ClassYearScore>[],
     this.weeks = const <WeeklyAttendance>[],
+    this.service = const <DateTime, double>{},
   });
 
   final List<ClassYearScore> scores;
   final List<WeeklyAttendance> weeks;
+
+  /// The whole service's % per Saturday; empty when it could not be read.
+  final Map<DateTime, double> service;
 }
 
 class _ClassRow extends StatelessWidget {

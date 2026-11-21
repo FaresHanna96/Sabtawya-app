@@ -503,25 +503,105 @@ class ChildActivityRate {
       );
 }
 
+/// One class on one Saturday: who came out of its active children, and
+/// whether it took attendance at all.
+class ClassWeek {
+  const ClassWeek({
+    required this.classId,
+    required this.present,
+    required this.children,
+    required this.recorded,
+  });
+
+  final String classId;
+  final int present;
+  final int children;
+  final bool recorded;
+
+  double get percentage => children > 0 ? present / children * 100 : 0;
+}
+
 /// Attendance on one Saturday across the classes shown: who came, out of the
 /// active children, for the dashboard's weekly chart.
+///
+/// Every Saturday up to today is kept, also one nobody recorded, so a gap
+/// shows instead of vanishing; [isBreak] marks a week with no lesson
+/// (lesson_breaks), [isToday] a Saturday still being recorded.
 class WeeklyAttendance {
   const WeeklyAttendance({
     required this.date,
     required this.present,
     required this.children,
     this.missingClassIds = const [],
+    this.perClass = const [],
+    this.isBreak = false,
+    this.isToday = false,
   });
 
   final DateTime date;
+
+  /// Totals over the classes that recorded; a class that did not is left
+  /// out (not counted as absent) and listed in [missingClassIds].
   final int present;
   final int children;
 
-  /// Classes that did not take attendance that Saturday: left out of
-  /// [children] (not counted as absent), and named on the card.
+  /// Classes that did not take attendance that Saturday.
   final List<String> missingClassIds;
 
+  /// Each class that Saturday, recorded or not.
+  final List<ClassWeek> perClass;
+
+  final bool isBreak;
+  final bool isToday;
+
   double get percentage => children > 0 ? present / children * 100 : 0;
+
+  /// At least one class took attendance.
+  bool get recorded =>
+      perClass.isEmpty ? children > 0 : perClass.any((c) => c.recorded);
+
+  /// Today, with some classes still to record.
+  bool get inProgress => isToday && (!recorded || missingClassIds.isNotEmpty);
+
+  /// The Saturday the card's big numbers are about: the latest one recorded
+  /// and finished (today only once every class has recorded).
+  static WeeklyAttendance? headline(List<WeeklyAttendance> weeks) {
+    for (final w in weeks.reversed) {
+      if (w.recorded && !w.inProgress) return w;
+    }
+    return null;
+  }
+
+  /// The recorded Saturday before [w], skipping holidays, gaps and today.
+  static WeeklyAttendance? previous(
+    List<WeeklyAttendance> weeks,
+    WeeklyAttendance w,
+  ) {
+    WeeklyAttendance? found;
+    for (final x in weeks) {
+      if (!x.date.isBefore(w.date)) break;
+      if (x.recorded && !x.inProgress) found = x;
+    }
+    return found;
+  }
+
+  /// Past Saturdays after [after] that nobody recorded and were no holiday.
+  static List<WeeklyAttendance> missedAfter(
+    List<WeeklyAttendance> weeks,
+    WeeklyAttendance? after,
+  ) =>
+      [
+        for (final w in weeks)
+          if ((after == null || w.date.isAfter(after.date)) &&
+              !w.recorded &&
+              !w.isBreak &&
+              !w.isToday)
+            w,
+      ];
+
+  /// Percentage points from [older] to [newer], as shown (rounded).
+  static int pointsChange(WeeklyAttendance newer, WeeklyAttendance older) =>
+      newer.percentage.round() - older.percentage.round();
 }
 
 /// One child's score at one Saturday, for reports over an exact date range.

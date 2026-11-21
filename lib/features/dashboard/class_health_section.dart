@@ -103,16 +103,21 @@ class _ClassHealthSectionState extends State<ClassHealthSection> {
         context: context,
         showDragHandle: true,
         isScrollControlled: true,
-        builder: (sheet) => _DetailSheet(
-          health: c,
-          onOpenClass: () {
-            Navigator.of(sheet).pop();
-            Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(
-                builder: (_) => ClassDetailScreen(classId: c.classId),
-              ),
-            );
-          },
+        builder: (sheet) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: ClassHealthDetail(
+              health: c,
+              onOpenClass: () {
+                Navigator.of(sheet).pop();
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ClassDetailScreen(classId: c.classId),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
       );
 }
@@ -202,110 +207,109 @@ class _Line extends StatelessWidget {
   }
 }
 
-/// A class's whole picture, on tap: what to look at, then each measure as a
-/// bar, and its page.
-class _DetailSheet extends StatelessWidget {
-  const _DetailSheet({required this.health, required this.onOpenClass});
+/// A class's whole picture: what to look at, then each measure as a bar, and
+/// its page. In a sheet on tap, or straight in «متابعة فصلي» for a servant
+/// with one class.
+class ClassHealthDetail extends StatelessWidget {
+  const ClassHealthDetail({super.key, required this.health, this.onOpenClass});
 
   final ClassHealth health;
-  final VoidCallback onOpenClass;
+
+  /// «فتح الفصل»; null hides it (the class is already the next sub-tab).
+  final VoidCallback? onOpenClass;
 
   @override
   Widget build(BuildContext context) {
     final c = health;
     final color = ClassHealthSection.colorOf(c.level);
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Icon(Icons.circle, size: 12, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    c.className,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                ),
-                Text(
-                  c.score == null
-                      ? ClassHealthSection.labelOf(c.level)
-                      : '${c.score}% • ${ClassHealthSection.labelOf(c.level)}',
-                  style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w800, color: color),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${AppStrings.healthServants}: ${c.servantsCount} • '
-              '${AppStrings.healthChildren}: ${c.activeChildren}',
-              style: const TextStyle(fontSize: 12, color: AppColors.muted),
-            ),
-            const SizedBox(height: 12),
-            for (final r in c.reasons)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    Icon(ClassHealthSection.areaIcon(r.area),
-                        size: 16, color: ClassHealthSection.colorOf(r.level)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(r.text, style: const TextStyle(fontSize: 13)),
-                    ),
-                  ],
-                ),
+            Icon(Icons.circle, size: 12, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                c.className,
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
-            if (c.reasons.isNotEmpty) const Divider(height: 24),
-            _Bar(
-              label: AppStrings.healthPresent,
-              value: c.childrenAttendance == null
-                  ? '—'
-                  : '${c.childrenAttendance!.toStringAsFixed(0)}%',
-              share: c.childrenAttendance == null
-                  ? null
-                  : c.childrenAttendance! / 100,
-              good: ClassHealth.scoreGreen / 100,
             ),
-            _Bar(
-              label: AppStrings.healthTaken,
-              value: AppStrings.outOf(c.taken, c.held),
-              share: ClassHealth.share(c.taken, c.held),
-              good: ClassHealth.takenAmber,
-            ),
-            _Bar(
-              label: AppStrings.healthPrep,
-              value: c.prepExpected == 0
-                  ? '—'
-                  : AppStrings.outOf(c.prepSubmitted, c.prepExpected),
-              share: ClassHealth.share(c.prepSubmitted, c.prepExpected),
-              good: ClassHealth.prepAmber,
-            ),
-            _Bar(
-              label: AppStrings.healthFollowUp,
-              value: c.absent2plus == 0
-                  ? AppStrings.healthNoAbsent
-                  : AppStrings.outOf(c.absentFollowed, c.absent2plus),
-              share: c.absent2plus == 0
-                  ? 1
-                  : ClassHealth.share(c.absentFollowed, c.absent2plus),
-              good: 1,
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: onOpenClass,
-              icon: const Icon(Icons.class_outlined, size: 18),
-              label: const Text(AppStrings.openClass),
+            Text(
+              c.score == null
+                  ? ClassHealthSection.labelOf(c.level)
+                  : '${c.score}% • ${ClassHealthSection.labelOf(c.level)}',
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w800, color: color),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 4),
+        Text(
+          '${AppStrings.healthServants}: ${c.servantsCount} • '
+          '${AppStrings.healthChildren}: ${c.activeChildren}',
+          style: const TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
+        const SizedBox(height: 12),
+        for (final r in c.reasons)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Icon(ClassHealthSection.areaIcon(r.area),
+                    size: 16, color: ClassHealthSection.colorOf(r.level)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(r.text, style: const TextStyle(fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+        if (c.reasons.isNotEmpty) const Divider(height: 24),
+        _Bar(
+          label: AppStrings.healthPresent,
+          value: c.childrenAttendance == null
+              ? '—'
+              : '${c.childrenAttendance!.toStringAsFixed(0)}%',
+          share:
+              c.childrenAttendance == null ? null : c.childrenAttendance! / 100,
+          good: ClassHealth.scoreGreen / 100,
+        ),
+        _Bar(
+          label: AppStrings.healthTaken,
+          value: AppStrings.outOf(c.taken, c.held),
+          share: ClassHealth.share(c.taken, c.held),
+          good: ClassHealth.takenAmber,
+        ),
+        _Bar(
+          label: AppStrings.healthPrep,
+          value: c.prepExpected == 0
+              ? '—'
+              : AppStrings.outOf(c.prepSubmitted, c.prepExpected),
+          share: ClassHealth.share(c.prepSubmitted, c.prepExpected),
+          good: ClassHealth.prepAmber,
+        ),
+        _Bar(
+          label: AppStrings.healthFollowUp,
+          value: c.absent2plus == 0
+              ? AppStrings.healthNoAbsent
+              : AppStrings.outOf(c.absentFollowed, c.absent2plus),
+          share: c.absent2plus == 0
+              ? 1
+              : ClassHealth.share(c.absentFollowed, c.absent2plus),
+          good: 1,
+        ),
+        if (onOpenClass != null) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onOpenClass,
+            icon: const Icon(Icons.class_outlined, size: 18),
+            label: const Text(AppStrings.openClass),
+          ),
+        ],
+      ],
     );
   }
 }
