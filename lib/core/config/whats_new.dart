@@ -12,6 +12,16 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  52: [
+    WhatsNewItem(Icons.more_horiz_rounded, 'المزيد بشكل جديد',
+        'اسمك فوق، بحث، وأهم ٦ حاجات بتستخدمها بأرقام اللي مستنيك فيها، و«التحقق من التحديثات» تحت.'),
+    WhatsNewItem(Icons.fact_check_rounded, 'التحضيرات',
+        'لأمين الخدمة: كل التحضيرات في مكان واحد، و«راجع ورا بعض» يفتحهم واحد ورا التاني.'),
+    WhatsNewItem(Icons.monitor_heart_outlined, 'متابعة الفصول',
+        'بقت في تاب الفصول، وخادم الفصل الواحد يفتح فصله على طول من غير ما يدوّر.'),
+    WhatsNewItem(Icons.attach_file_rounded, 'وسائل الإيضاح',
+        'ده الاسم الجديد لـ«المواد والأفكار» تحت كل درس.'),
+  ],
   51: [
     WhatsNewItem(Icons.monitor_heart_outlined, 'فصلي',
         'في الرئيسية: كل فصل بعدد أطفاله ودرجة صحته، واضغط عليه تشوف التفاصيل وتفتح الفصل.'),
