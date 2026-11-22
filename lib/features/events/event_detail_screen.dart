@@ -688,6 +688,24 @@ class _BalanceRow extends StatelessWidget {
 // Payment history bottom sheet
 // ---------------------------------------------------------------------------
 
+/// The same sheet the event tab opens for a child: pay, see the payments, or
+/// reserve without paying. [onChanged] runs after any change.
+Future<void> showChildPaymentSheet(
+  BuildContext context, {
+  required Event event,
+  required ChildEventBalance balance,
+  required VoidCallback onChanged,
+}) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _PaymentHistorySheet(
+        event: event,
+        balance: balance,
+        onChanged: onChanged,
+      ),
+    );
+
 class _PaymentHistorySheet extends StatefulWidget {
   const _PaymentHistorySheet({
     required this.event,

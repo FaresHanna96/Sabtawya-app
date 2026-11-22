@@ -976,6 +976,13 @@ class AppStrings {
   static const reservedSaved = 'تم الحجز';
   static const reservationCancelled = 'تم إلغاء الحجز';
   static const reservedUnpaidStatus = 'حاجز (لم يدفع)';
+  static const bookShort = 'حجز';
+  static const bookedShort = 'محجوز';
+  static const bookedPaidShort = 'دفع';
+  static const pickEvent = 'اختر النشاط';
+  static const bookingPaidNote = 'دفع بالفعل: الدفع من شاشة النشاط';
+  static String bookingFor(String title) => 'حجز: $title';
+  static String bookedOf(int n, int m) => 'محجوز $n من $m';
   static const paymentStatus = 'الحالة';
   static const serialNo = 'م';
   static const remaining = 'المتبقي';

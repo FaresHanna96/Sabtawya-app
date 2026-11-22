@@ -18,6 +18,22 @@ class EventRepository {
     }
   }
 
+  /// Events from today on, the nearest first: what a child can still be
+  /// booked for.
+  Future<List<Event>> upcomingEvents({DateTime? today}) async {
+    try {
+      final day = (today ?? DateTime.now()).toIso8601String().split('T').first;
+      final data = await Db.client
+          .from(Db.tEvents)
+          .select()
+          .gte('event_date', day)
+          .order('event_date', ascending: true);
+      return rows(data).map(Event.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<Event> createEvent({
     required String title,
     required DateTime eventDate,

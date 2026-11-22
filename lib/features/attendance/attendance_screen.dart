@@ -19,12 +19,15 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/event.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/lesson_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
+import '../events/event_detail_screen.dart' show showChildPaymentSheet;
 import '../children/child_filters.dart';
 import 'attendance_draft.dart';
 import 'break_sheet.dart';
@@ -155,6 +158,159 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
+  // ── booking for the next نشاط ترفيهي ───────────────────────────────────
+  static const _events = EventRepository();
+
+  /// Events from today on, the nearest first, and the one being booked.
+  List<Event> _upcoming = const <Event>[];
+  Event? _bookingEvent;
+
+  /// Each child's booking line for [_bookingEvent] (childId -> balance).
+  Map<String, ChildEventBalance> _booking = const <String, ChildEventBalance>{};
+
+  Future<void> _loadUpcoming() async {
+    try {
+      final list = await _events.upcomingEvents();
+      if (!mounted || list.isEmpty) return;
+      setState(() {
+        _upcoming = list;
+        _bookingEvent = list.first;
+      });
+      await _loadBooking();
+    } catch (_) {
+      // Without them there is just no booking button.
+    }
+  }
+
+  Future<void> _loadBooking() async {
+    final event = _bookingEvent;
+    if (event == null) return;
+    try {
+      final lines = await _events.balances(event.id);
+      if (!mounted || _bookingEvent?.id != event.id) return;
+      setState(() => _booking = {for (final b in lines) b.childId: b});
+    } catch (_) {
+      // Keeps what was shown.
+    }
+  }
+
+  Future<void> _pickBookingEvent() async {
+    final picked = await showModalBottomSheet<Event>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                AppStrings.pickEvent,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+            ),
+            for (final e in _upcoming)
+              ListTile(
+                selected: e.id == _bookingEvent?.id,
+                leading: const Icon(Icons.celebration_rounded, size: 20),
+                title: Text(e.title),
+                subtitle: Text(AppDateUtils.formatDayDate(e.eventDate)),
+                onTap: () => Navigator.pop(context, e),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted || picked.id == _bookingEvent?.id) return;
+    setState(() {
+      _bookingEvent = picked;
+      _booking = const <String, ChildEventBalance>{};
+    });
+    await _loadBooking();
+  }
+
+  /// Where this child stands for the event being booked; null hides the
+  /// button (no upcoming event, or the line is not known).
+  EntryBooking? _bookingOf(AttendanceEntry entry) {
+    if (_bookingEvent == null) return null;
+    final line = _booking[entry.child.id];
+    if (line == null) return null;
+    if (line.isPaid) return EntryBooking.paid;
+    return line.reserved ? EntryBooking.reserved : EntryBooking.none;
+  }
+
+  /// Opens the event tab's own sheet for the child: pay, or reserve without
+  /// paying. It is not an attendance mark, so it ignores the lock and the
+  /// unsaved marks.
+  Future<void> _toggleBooking(AttendanceEntry entry) async {
+    final event = _bookingEvent;
+    final line = _booking[entry.child.id];
+    if (event == null || line == null) return;
+    await showChildPaymentSheet(
+      context,
+      event: event,
+      balance: line,
+      onChanged: _loadBooking,
+    );
+    if (mounted) await _loadBooking();
+  }
+
+  /// "حجز: رحلة — السبت ٥/١٢" and how many of the children shown are booked.
+  Widget _bookingBar() {
+    final event = _bookingEvent!;
+    final booked =
+        _entries.where((e) => _booking[e.child.id]?.isBooked ?? false).length;
+    final canPick = _upcoming.length > 1;
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 4),
+      decoration: BoxDecoration(
+        color: AppColors.sky.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.celebration_rounded, size: 18, color: AppColors.sky),
+          const SizedBox(width: 8),
+          Expanded(
+            child: InkWell(
+              onTap: canPick ? _pickBookingEvent : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${AppStrings.bookingFor(event.title)} • '
+                        '${AppDateUtils.formatDayDate(event.eventDate)}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (canPick)
+                      const Icon(Icons.arrow_drop_down_rounded,
+                          color: AppColors.muted),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Text(
+            AppStrings.bookedOf(booked, _entries.length),
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.sky,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -175,6 +331,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted && on) setState(() => _compact = true);
     });
     _loadBreaks();
+    _loadUpcoming();
   }
 
   @override
@@ -412,6 +569,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _loading = false;
       });
       _watch();
+      if (_bookingEvent != null) unawaited(_loadBooking());
       if (!quiet) unawaited(_restoreDrafts());
     } catch (e) {
       if (!mounted) return;
@@ -897,6 +1055,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final highlight = _flashed.contains(_entries[i].child.id);
         final enabled = _canEditSheet(_entrySheet[i]);
         void onToggle(AttendanceActivity a) => _toggle(_entries[i], a);
+        final booking = _bookingOf(_entries[i]);
+        final VoidCallback? onBook =
+            booking == null ? null : () => _toggleBooking(_entries[i]);
         if (_compact) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
@@ -905,6 +1066,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               highlight: highlight,
               enabled: enabled,
               onToggle: onToggle,
+              booking: booking,
+              onBook: onBook,
             ),
           );
         }
@@ -917,6 +1080,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               highlight: highlight,
               enabled: enabled,
               onToggle: onToggle,
+              booking: booking,
+              onBook: onBook,
             ),
           ),
         );
@@ -1107,6 +1272,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
             const SizedBox(height: 10),
             _dateNavigator(),
+            if (_bookingEvent != null) ...[
+              const SizedBox(height: 10),
+              _bookingBar(),
+            ],
             if (_isBreakDay) ...[
               const SizedBox(height: 10),
               Container(
@@ -1533,6 +1702,18 @@ void markAllEntries(
 /// One child on one line: the name, then the four activities as round
 /// buttons. About twice as many children fit on a screen as with the cards.
 @visibleForTesting
+/// Where a child stands for the upcoming نشاط ترفيهي being booked.
+enum EntryBooking {
+  /// No place booked yet.
+  none,
+
+  /// A place booked, not paid.
+  reserved,
+
+  /// Paid already (counts as booked).
+  paid,
+}
+
 class AttendanceEntryRow extends StatelessWidget {
   const AttendanceEntryRow({
     super.key,
@@ -1540,12 +1721,18 @@ class AttendanceEntryRow extends StatelessWidget {
     required this.enabled,
     required this.onToggle,
     this.highlight = false,
+    this.booking,
+    this.onBook,
   });
 
   final AttendanceEntry entry;
   final bool enabled;
   final bool highlight;
   final ValueChanged<AttendanceActivity> onToggle;
+
+  /// The booking mark shows only when an upcoming event is being booked.
+  final EntryBooking? booking;
+  final VoidCallback? onBook;
 
   @override
   Widget build(BuildContext context) {
@@ -1574,7 +1761,68 @@ class AttendanceEntryRow extends StatelessWidget {
                 enabled: enabled,
                 onTap: () => onToggle(a),
               ),
+            if (booking != null) _BookMark(state: booking!, onTap: onBook),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The round bookmark on a compact line.
+class _BookMark extends StatelessWidget {
+  const _BookMark({required this.state, required this.onTap});
+
+  final EntryBooking state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final paid = state == EntryBooking.paid;
+    final on = state != EntryBooking.none;
+    final color = paid ? AppColors.success : AppColors.sky;
+    final label = switch (state) {
+      EntryBooking.none => AppStrings.bookShort,
+      EntryBooking.reserved => AppStrings.bookedShort,
+      EntryBooking.paid => AppStrings.bookedPaidShort,
+    };
+    return Semantics(
+      button: true,
+      toggled: on,
+      label: label,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: label,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 22,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Center(
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: on ? color.withValues(alpha: 0.16) : null,
+                  border: Border.all(
+                    color: on
+                        ? color.withValues(alpha: 0.6)
+                        : AppColors.muted.withValues(alpha: 0.25),
+                    width: 1.4,
+                  ),
+                ),
+                child: Icon(
+                  on
+                      ? Icons.bookmark_added_rounded
+                      : Icons.bookmark_add_outlined,
+                  size: 17,
+                  color: on ? color : AppColors.muted.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1651,7 +1899,13 @@ class AttendanceEntryCard extends StatelessWidget {
     required this.enabled,
     required this.onToggle,
     this.highlight = false,
+    this.booking,
+    this.onBook,
   });
+
+  /// The booking chip shows only when an upcoming event is being booked.
+  final EntryBooking? booking;
+  final VoidCallback? onBook;
 
   final AttendanceEntry entry;
   final bool enabled;
@@ -1763,6 +2017,13 @@ class AttendanceEntryCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (booking != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: _BookChip(state: booking!, onTap: onBook),
+                      ),
+                    ],
                     if (entry.updatedByName != null) ...[
                       const SizedBox(height: 6),
                       Text(
@@ -1777,6 +2038,73 @@ class AttendanceEntryCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "حجز" / "محجوز" / "دفع" under a child's four toggles.
+class _BookChip extends StatelessWidget {
+  const _BookChip({required this.state, required this.onTap});
+
+  final EntryBooking state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final paid = state == EntryBooking.paid;
+    final on = state != EntryBooking.none;
+    final color = paid ? AppColors.success : AppColors.sky;
+    final label = switch (state) {
+      EntryBooking.none => AppStrings.bookShort,
+      EntryBooking.reserved => AppStrings.bookedShort,
+      EntryBooking.paid => AppStrings.bookedPaidShort,
+    };
+    return Semantics(
+      button: true,
+      toggled: on,
+      label: label,
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: on ? color.withValues(alpha: 0.12) : null,
+            border: Border.all(
+              color: on
+                  ? color.withValues(alpha: 0.45)
+                  : AppColors.muted.withValues(alpha: 0.3),
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                paid
+                    ? Icons.check_circle_rounded
+                    : (on
+                        ? Icons.bookmark_added_rounded
+                        : Icons.bookmark_add_outlined),
+                size: 15,
+                color: on ? color : AppColors.muted,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  fontWeight: FontWeight.w700,
+                  color: on ? color : AppColors.muted,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -12,6 +12,10 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  54: [
+    WhatsNewItem(Icons.bookmark_add_outlined, 'احجز للنشاط من الحضور',
+        'وانت بتسجل الحضور، اضغط «حجز» على أي مخدوم يتحجز له في النشاط الترفيهي الجاي، ومكتوب فوق كام واحد حجز.'),
+  ],
   53: [
     WhatsNewItem(Icons.bar_chart_rounded, 'الحضور كل سبت',
         'بقى واضح هو عن أنهي سبت، والسبت اللي ما اتسجلش بيبان «—» والإجازة «إجازة»، واضغط على أي سبت تشوف كل فصل.'),
