@@ -190,16 +190,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   /// Keeps the event being booked among [_bookable] (none: the booking bar and
   /// buttons go away).
-  void _syncBooking() {
+  /// Returns true when the event changed and its lines are being loaded.
+  bool _syncBooking() {
     final list = _bookable;
     final keep = list.where((e) => e.id == _bookingEvent?.id);
     final next = keep.isNotEmpty ? keep.first : (list.isEmpty ? null : list.first);
-    if (next?.id == _bookingEvent?.id) return;
+    if (next?.id == _bookingEvent?.id) return false;
     setState(() {
       _bookingEvent = next;
       _booking = const <String, ChildEventBalance>{};
     });
-    if (next != null) unawaited(_loadBooking());
+    if (next == null) return false;
+    unawaited(_loadBooking());
+    return true;
   }
 
   Future<void> _loadBooking() async {
@@ -272,7 +275,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       balance: line,
       onChanged: _loadBooking,
     );
-    if (mounted) await _loadBooking();
   }
 
   /// "حجز: رحلة — السبت ٥/١٢" and how many of the children shown are booked.
@@ -589,8 +591,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _loading = false;
       });
       _watch();
-      _syncBooking();
-      if (_bookingEvent != null) unawaited(_loadBooking());
+      // A changed event already loads its lines; otherwise refresh them.
+      if (!_syncBooking() && _bookingEvent != null) unawaited(_loadBooking());
       if (!quiet) unawaited(_restoreDrafts());
     } catch (e) {
       if (!mounted) return;
@@ -1708,9 +1710,6 @@ void markAllEntries(
   }
 }
 
-/// One child on one line: the name, then the four activities as round
-/// buttons. About twice as many children fit on a screen as with the cards.
-@visibleForTesting
 /// Where a child stands for the upcoming نشاط ترفيهي being booked.
 enum EntryBooking {
   /// No place booked yet.
@@ -1723,6 +1722,9 @@ enum EntryBooking {
   paid,
 }
 
+/// One child on one line: the name, then the four activities as round
+/// buttons. About twice as many children fit on a screen as with the cards.
+@visibleForTesting
 class AttendanceEntryRow extends StatelessWidget {
   const AttendanceEntryRow({
     super.key,

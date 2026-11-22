@@ -114,6 +114,11 @@ class SessionController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    // While the new-password form is open, saving the password fires
+    // userUpdated and a resume fires tokenRefreshed. Treating them as a fresh
+    // sign-in would tear the form down before it could confirm and sign the
+    // user out. Only a sign-out (handled above) leaves this state.
+    if (_status == SessionStatus.passwordRecovery) return;
     // Token refreshes, resume-from-background and user-metadata events arrive
     // for the user who is already signed in. Flipping to the loading state for
     // those would tear down whatever screen (and unsaved attendance) is open.
