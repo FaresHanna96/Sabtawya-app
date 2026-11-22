@@ -254,7 +254,7 @@ class _YearFormScreenState extends State<_YearFormScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() {
       if (isStart) {
         _start = picked;

@@ -173,11 +173,17 @@ class _EventTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      event.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    Hero(
+                      tag: 'event-title-${event.id}',
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: Text(
+                          event.title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 2),

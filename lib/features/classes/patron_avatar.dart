@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 
@@ -86,6 +87,7 @@ class _PatronAvatarState extends State<PatronAvatar> {
                   width: widget.size,
                   height: widget.size,
                   cacheWidth: px,
+                  frameBuilder: fadeInFrame,
                   errorBuilder: (_, __, ___) => _placeholder(),
                   loadingBuilder: (context, child, progress) =>
                       progress == null ? child : _placeholder(),

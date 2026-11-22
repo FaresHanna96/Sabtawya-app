@@ -281,6 +281,13 @@ class OfflineHttpClient extends http.BaseClient {
     required Map<String, dynamic>? patch,
     bool keepExisting = false,
   }) async {
+    // A filter the kept answers cannot evaluate (or/and): do not guess, the
+    // next online read corrects them.
+    if (method != 'POST' &&
+        (url.queryParameters.containsKey('or') ||
+            url.queryParameters.containsKey('and'))) {
+      return;
+    }
     final writeFilters = _filtersOf(url);
 
     for (final entry in OfflineStore.cachedEntries().toList()) {
@@ -317,7 +324,7 @@ class OfflineHttpClient extends http.BaseClient {
           if (changed) _sort(list, entryUrl.queryParameters['order']);
         } else if (method == 'PATCH' && patch != null) {
           for (var i = list.length - 1; i >= 0; i--) {
-            if (!_matches(list[i], writeFilters)) continue;
+            if (!_matches(list[i], writeFilters, strict: true)) continue;
             final merged = <String, dynamic>{...list[i], ...patch};
             changed = true;
             if (_matches(merged, entryFilters)) {
@@ -328,7 +335,7 @@ class OfflineHttpClient extends http.BaseClient {
           }
         } else if (method == 'DELETE') {
           final before = list.length;
-          list.removeWhere((r) => _matches(r, writeFilters));
+          list.removeWhere((r) => _matches(r, writeFilters, strict: true));
           changed = list.length != before;
         }
         body = list;
@@ -336,7 +343,8 @@ class OfflineHttpClient extends http.BaseClient {
           body is Map &&
           method == 'PATCH' &&
           patch != null) {
-        if (_matches(Map<String, dynamic>.from(body), writeFilters)) {
+        if (_matches(Map<String, dynamic>.from(body), writeFilters,
+            strict: true)) {
           body = <String, dynamic>{...body, ...patch};
           changed = true;
         }
@@ -423,9 +431,17 @@ class OfflineHttpClient extends http.BaseClient {
             e.key: e.value,
       };
 
-  bool _matches(Map<String, dynamic> row, Map<String, String> filters) {
+  /// [strict]: a row that lacks a filter's column does not match. Used for a
+  /// write's own filters, so a PATCH or DELETE never reaches rows of a kept
+  /// list that did not select that column. A kept list's own filters stay
+  /// lenient (cannot tell, so keep the row).
+  bool _matches(Map<String, dynamic> row, Map<String, String> filters,
+      {bool strict = false}) {
     for (final f in filters.entries) {
-      if (!row.containsKey(f.key)) continue; // cannot tell, so keep it
+      if (!row.containsKey(f.key)) {
+        if (strict) return false;
+        continue;
+      }
       if (!_test(row[f.key], f.value)) return false;
     }
     return true;

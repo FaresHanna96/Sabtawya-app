@@ -168,9 +168,13 @@ class AuthRepository {
     } catch (e) {
       throw AppFailure.from(e);
     } finally {
-      // The next person on this device must not see this one's data, also
-      // when the sign-out could not reach the server (offline).
-      await OfflineStore.clearCache();
+      // The next person on this device must not see this one's data. Only
+      // once this person is really out: a sign-out that failed offline leaves
+      // them signed in, and wiping their data then would leave them with an
+      // empty app and no way to refill it offline.
+      if (Db.client.auth.currentSession == null) {
+        await OfflineStore.clearCache();
+      }
     }
   }
 
@@ -182,25 +186,17 @@ class AuthRepository {
     }
   }
 
+  /// Always the same answer, whether or not the email has an account, so
+  /// nobody can use this form to find out who is registered. The auth service
+  /// itself sends the link only to a real account.
   Future<void> sendPasswordReset(String email) async {
-    final trimmed = email.trim();
     try {
-      final resp = await Db.client.functions.invoke(
-        'send-email',
-        body: <String, dynamic>{'type': 'check_email', 'email': trimmed},
-      );
-      final exists = (resp.data as Map<String, dynamic>?)?['exists'] == true;
-      if (!exists) {
-        throw AppFailure('لم يتم العثور على حساب بهذا البريد الإلكتروني');
-      }
       await Db.client.auth.resetPasswordForEmail(
-        trimmed,
+        email.trim(),
         redirectTo: kIsWeb
             ? 'https://sabtawya.vercel.app'
             : 'sabtawya://login-callback',
       );
-    } on AppFailure {
-      rethrow;
     } catch (e) {
       throw AppFailure.from(e);
     }

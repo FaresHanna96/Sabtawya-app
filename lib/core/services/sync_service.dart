@@ -110,8 +110,10 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
           if (code >= 200 && code < 300) {
             await OfflineStore.removeWrite(write.id);
             sent++;
-          } else if (code == 401 || code >= 500) {
-            break; // sign-in expired or server trouble: try again later
+          } else if (code == 401 || code == 408 || code == 429 || code >= 500) {
+            // Sign-in expired, a timeout, rate limiting or server trouble:
+            // not the write's fault, so try again later.
+            break;
           } else {
             await OfflineStore.markFailed(write, _reason(code, body));
           }

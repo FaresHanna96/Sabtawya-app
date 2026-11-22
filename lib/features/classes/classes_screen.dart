@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/class_colors.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
@@ -17,6 +18,8 @@ import 'class_detail_screen.dart';
 import 'class_health_tab.dart';
 import 'class_form_screen.dart';
 import 'patron_avatar.dart';
+
+export '../../core/theme/class_colors.dart' show classColourIndex;
 
 /// The class list. An admin sees every class including archived ones; a servant
 /// sees only the classes assigned to them, which the policies enforce. A
@@ -263,7 +266,7 @@ class _ClassesScreenState extends State<ClassesScreen>
             index: index,
             child: _ClassCard(
               overview: classes[index],
-              accent: _accentFor(classes[index].classId),
+              accent: classAccent(classes[index].classId),
               saturday: data.saturday,
               recorded: data.recorded[classes[index].classId],
               onRecord: () => _record(classes[index].classId, data.saturday),
@@ -298,21 +301,6 @@ class _KeepAliveState extends State<_KeepAlive>
   }
 }
 
-/// A class keeps its colour whatever else is listed (archived classes shown
-/// or not): it comes from the class id, not from the row it sits on.
-Color _accentFor(String classId) =>
-    _palette[classColourIndex(classId, _palette.length)];
-
-/// A stable index in 0..[count) for [classId] (the same on every run).
-@visibleForTesting
-int classColourIndex(String classId, int count) {
-  var h = 0;
-  for (final c in classId.codeUnits) {
-    h = (h * 31 + c) & 0x7fffffff;
-  }
-  return h % count;
-}
-
 /// The list and this week's attendance status per class.
 class _ClassesData {
   const _ClassesData(this.classes, this.recorded, this.saturday);
@@ -324,15 +312,6 @@ class _ClassesData {
   final Map<String, bool> recorded;
   final DateTime saturday;
 }
-
-const _palette = <Color>[
-  AppColors.navyLight,
-  AppColors.olive,
-  AppColors.coral,
-  AppColors.gold,
-  AppColors.sky,
-  AppColors.maroon,
-];
 
 class _ClassCard extends StatelessWidget {
   const _ClassCard({

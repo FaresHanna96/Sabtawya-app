@@ -31,4 +31,10 @@ void main() {
       ['مريم', 'مريم جرجس', 'مريم سامح'],
     );
   });
+
+  test('Persian letters in names match the Arabic ones (چوليا finds ج)', () {
+    expect(ArabicSort.key('چوليا'), ArabicSort.key('جوليا'));
+    expect(ArabicSort.key('چوليا صبري').contains(ArabicSort.key('ج')), isTrue);
+    expect(ArabicSort.key('پيتر'), ArabicSort.key('بيتر'));
+  });
 }

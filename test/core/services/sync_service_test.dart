@@ -153,6 +153,20 @@ void main() {
     expect(OfflineStore.failedWrites(), isEmpty);
   });
 
+  for (final code in [408, 429]) {
+    test('a $code is retried later, not set aside as failed', () async {
+      await queue('children', owner: 'user-a');
+      await queue('classes', owner: 'user-a');
+      answer = (_, __) => http.Response('slow down', code);
+
+      await makeService().flush();
+
+      expect(sent, hasLength(1));
+      expect(OfflineStore.pendingCount(), 2);
+      expect(OfflineStore.failedWrites(), isEmpty);
+    });
+  }
+
   test('a lost connection stops the run and keeps every write', () async {
     await queue('children', owner: 'user-a');
     await queue('classes', owner: 'user-a');

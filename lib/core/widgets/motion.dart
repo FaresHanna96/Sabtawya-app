@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart' show kTouchSlop;
 
-bool _reduceMotion(BuildContext context) =>
+import '../utils/haptics.dart';
+
+bool reduceMotion(BuildContext context) =>
     MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
 /// Fades and slides its child up on first build. Give list items their index so
@@ -22,7 +24,7 @@ class FadeSlideIn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_reduceMotion(context)) return child;
+    if (reduceMotion(context)) return child;
     final delay = Duration(milliseconds: 60 * index.clamp(0, 8));
     final total = duration + delay;
     final start = delay.inMilliseconds / total.inMilliseconds;
@@ -82,7 +84,12 @@ class _BounceState extends State<Bounce> {
       onPointerCancel: (_) => _set(false),
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onTap: widget.onTap,
+        onTap: widget.onTap == null
+            ? null
+            : () {
+                Haptics.tap();
+                widget.onTap!();
+              },
         child: AnimatedScale(
           scale: _down ? 0.96 : 1,
           duration: const Duration(milliseconds: 110),
@@ -120,7 +127,7 @@ class _PulseState extends State<Pulse> with SingleTickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_reduceMotion(context)) {
+    if (reduceMotion(context)) {
       _ctrl.stop();
     } else if (!_ctrl.isAnimating) {
       _ctrl.repeat(reverse: true);
@@ -163,7 +170,7 @@ class _FloatState extends State<Float> with SingleTickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_reduceMotion(context)) {
+    if (reduceMotion(context)) {
       _ctrl.stop();
     } else if (!_ctrl.isAnimating) {
       _ctrl.repeat(reverse: true);
@@ -205,4 +212,47 @@ List<Widget> staggerAll(List<Widget> children) {
           ? child
           : FadeSlideIn(index: n++, child: child),
   ];
+}
+
+/// For `Image.network(frameBuilder: fadeInFrame)`: the photo fades in over its
+/// placeholder instead of popping in. Cached images and "reduce motion" show
+/// at once.
+Widget fadeInFrame(
+  BuildContext context,
+  Widget child,
+  int? frame,
+  bool wasSynchronouslyLoaded,
+) {
+  if (wasSynchronouslyLoaded || reduceMotion(context)) return child;
+  return AnimatedOpacity(
+    opacity: frame == null ? 0 : 1,
+    duration: const Duration(milliseconds: 300),
+    curve: Curves.easeOut,
+    child: child,
+  );
+}
+
+/// A number that counts up (or down) to [value] whenever it changes.
+class AnimatedCount extends StatelessWidget {
+  const AnimatedCount({
+    super.key,
+    required this.value,
+    this.style,
+    this.duration = const Duration(milliseconds: 600),
+  });
+
+  final int value;
+  final TextStyle? style;
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reduceMotion(context)) return Text('$value', style: style);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: value.toDouble()),
+      duration: duration,
+      curve: Curves.easeOut,
+      builder: (_, v, __) => Text('${v.round()}', style: style),
+    );
+  }
 }

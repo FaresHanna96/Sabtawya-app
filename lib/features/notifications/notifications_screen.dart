@@ -5,6 +5,7 @@ import '../announcements/announcement_dialog.dart';
 import '../attendance/attendance_screen.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
@@ -203,6 +204,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _reload();
   }
 
+  /// The exact moment, then how long ago, so an old entry is not just
+  /// "3 days ago".
+  static String _when(AppNotification n) =>
+      '${AppDateUtils.formatDateTime(n.createdAt)} · '
+      '${AppDateUtils.sinceLabel(n.createdAt)}';
+
   Future<void> _markAll() async {
     try {
       await _repository.markAllRead();
@@ -267,9 +274,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemBuilder: (context, i) {
                 final n = items[i];
                 final (icon, color) = _look(n.kind);
-                return staggered(
-                    i,
-                    Card(
+                final card = Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       color: n.isRead ? null : color.withValues(alpha: 0.07),
                       child: ListTile(
@@ -297,14 +302,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                         : n.body,
                                   ),
                                   TextSpan(
-                                    text:
-                                        '\n${AppDateUtils.sinceLabel(n.createdAt)}',
+                                    text: '\n${_when(n)}',
                                   ),
                                 ]),
                                 style: const TextStyle(fontSize: 12),
                               )
                             : Text(
-                                '${n.body}\n${AppDateUtils.sinceLabel(n.createdAt)}',
+                                '${n.body}\n${_when(n)}',
                                 style: const TextStyle(fontSize: 12),
                               ),
                         isThreeLine: true,
@@ -318,12 +322,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 ? null
                                 : Icon(Icons.circle, size: 10, color: color),
                       ),
-                    ));
+                    );
+                // Swipe an unread one to mark it read; the row stays.
+                return staggered(
+                  i,
+                  n.isRead
+                      ? card
+                      : Dismissible(
+                          key: ValueKey('read-${n.id}'),
+                          confirmDismiss: (_) async {
+                            Haptics.select();
+                            try {
+                              await _repository.markRead(n.id);
+                            } catch (_) {}
+                            await _reload();
+                            return false;
+                          },
+                          background: const _ReadSwipe(
+                              AlignmentDirectional.centerStart),
+                          secondaryBackground:
+                              const _ReadSwipe(AlignmentDirectional.centerEnd),
+                          child: card,
+                        ),
+                );
               },
             );
           },
         ),
       ),
+    );
+  }
+}
+
+class _ReadSwipe extends StatelessWidget {
+  const _ReadSwipe(this.alignment);
+
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: alignment,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: AppColors.successTint,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Icon(Icons.done_all_rounded, color: AppColors.success),
     );
   }
 }

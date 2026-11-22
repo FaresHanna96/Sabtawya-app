@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
+import '../utils/haptics.dart';
 
 /// One class to pick from.
 class ClassFilterOption {
@@ -57,6 +58,7 @@ class ClassFilterChips extends StatelessWidget {
     // Every class ticked is the same as all of them.
     final next = picked.length == classes.length ? <String>{} : picked;
     if (next.length != selectedIds.length || !next.containsAll(selectedIds)) {
+      Haptics.select();
       onChanged(next);
     }
   }

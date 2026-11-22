@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/class_colors.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/child_changes.dart';
@@ -508,7 +509,11 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             gradient: LinearGradient(
               begin: AlignmentDirectional.topStart,
               end: AlignmentDirectional.bottomEnd,
-              colors: [tint.withValues(alpha: 0.22), Colors.white],
+              colors: [
+                tint.withValues(alpha: 0.28),
+                classAccent(child.classId).withValues(alpha: 0.12),
+                Colors.white,
+              ],
             ),
           ),
           padding: const EdgeInsets.all(18),
@@ -516,7 +521,11 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             children: [
               GestureDetector(
                 onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
-                child: ChildAvatar(child: child, size: 72),
+                child: ChildAvatar(
+                  child: child,
+                  size: 72,
+                  heroTag: 'child-${child.id}',
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -857,7 +866,7 @@ class _VisitSectionState extends State<_VisitSection> {
       lastDate: now,
       helpText: AppStrings.pickVisitDate,
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() {
       if (isPhone) {
         _phoneDate = picked;

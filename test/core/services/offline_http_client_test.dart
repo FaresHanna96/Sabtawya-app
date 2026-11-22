@@ -174,6 +174,32 @@ void main() {
     expect(OfflineStore.pendingCount(), 2);
   });
 
+  test('a delete on a column the kept list lacks leaves its rows alone',
+      () async {
+    await getChildren(); // rows carry id, class_id, full_name, is_active
+    online = false;
+
+    await client.delete(Uri.parse('$_base/children?mobile=eq.0100'));
+    expect(await getChildren(), hasLength(1));
+
+    await client.patch(
+      Uri.parse('$_base/children?mobile=eq.0100'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'full_name': 'Other'}),
+    );
+    expect((await getChildren()).single['full_name'], 'Anna');
+    expect(OfflineStore.pendingCount(), 2); // both are still queued
+  });
+
+  test('a write filtered by or() does not guess at the kept lists', () async {
+    await getChildren();
+    online = false;
+
+    await client.delete(Uri.parse('$_base/children?or=(id.eq.a,id.eq.b)'));
+    expect(await getChildren(), hasLength(1));
+    expect(OfflineStore.pendingCount(), 1);
+  });
+
   test('writes keep their order: later ones wait behind queued ones', () async {
     online = false;
     await client.post(

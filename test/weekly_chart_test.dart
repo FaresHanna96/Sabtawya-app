@@ -128,7 +128,7 @@ void main() {
     expect(find.text('67 من 148 مخدوم'), findsOneWidget);
     // 43% to 45%: two points, with both numbers.
     expect(
-      find.text('أعلى نقطتين من السبت اللي قبله (من 43% لـ 45%)'),
+      find.text('أعلى 2 بالمئة من السبت اللي قبله (من 43% لـ 45%)'),
       findsOneWidget,
     );
     await tester.tap(find.text('5/9'));

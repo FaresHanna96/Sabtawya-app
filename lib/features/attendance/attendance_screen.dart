@@ -637,7 +637,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   /// [classIds] empty is "كل الفصول".
   Future<void> _switchClass(Set<String> classIds) async {
-    if (!await _confirmDiscard()) return;
+    if (!await _confirmDiscard() || !mounted) return;
     setState(() {
       _classIds = classIds;
       // The new classes have their own sessions; keep the date if it exists.
@@ -647,7 +647,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _goToDate(DateTime date) async {
     if (_date != null && AppDateUtils.isSameDay(date, _date!)) return;
-    if (!await _confirmDiscard()) return;
+    if (!await _confirmDiscard() || !mounted) return;
     setState(() => _date = date);
     await _load();
   }
@@ -796,8 +796,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _queueDraft();
   }
 
-  /// Every child present (or cleared) in [only] one activity, or in all
-  /// four when null. A locked class stays as it is (unless the admin).
+  /// Every child shown (all of them unless a search narrows the list) present
+  /// or cleared in [only] one activity, or in all four when null. A locked class stays as it is (unless the admin).
   void _markAll(bool present, {AttendanceActivity? only}) {
     if (!_canEdit) return;
     HapticFeedback.mediumImpact();
@@ -806,7 +806,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _entries,
         present: present,
         only: only,
-        canEdit: (i) => _canEditSheet(_entrySheet[i]),
+        canEdit: (i) => _canEditSheet(_entrySheet[i]) && _visible(i),
       );
     });
     _queueDraft();
@@ -852,6 +852,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  /// The class a session belongs to, for naming it in an error.
+  String _classNameOfSession(String sessionId) {
+    for (final sheet in _sheets) {
+      if (sheet.session.id != sessionId) continue;
+      for (final c in _classes) {
+        if (c.classId == sheet.session.classId) return c.className;
+      }
+    }
+    return '';
+  }
+
   Future<void> _save() async {
     if (_sheets.isEmpty || !_canEdit) return;
 
@@ -868,14 +879,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       lists.$1.add(_entries[i]);
       lists.$2.add(_original[i]);
     }
-    final plans = <AttendanceSavePlan>[
+    final planned = <(String, AttendanceSavePlan)>[
       for (final e in bySession.entries)
-        AttendanceSavePlan.build(
-          sessionId: e.key,
-          entries: e.value.$1,
-          originals: e.value.$2,
+        (
+          e.key,
+          AttendanceSavePlan.build(
+            sessionId: e.key,
+            entries: e.value.$1,
+            originals: e.value.$2,
+          ),
         ),
-    ].where((plan) => !plan.isEmpty).toList();
+    ].where((p) => !p.$2.isEmpty).toList();
+    final plans = [for (final p in planned) p.$2];
     if (plans.isEmpty) {
       Ui.info(context, AppStrings.saved);
       return;
@@ -908,8 +923,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       () async {
         // Each class is its own session: save them side by side instead of
         // one after another (with every class shown, that was 8 waits).
-        await Future.wait(
-            [for (final plan in plans) _repository.saveEntries(plan)]);
+        // A class that fails must be named: the others are saved, and
+        // saving again only writes what is still missing.
+        final failed = <String>[];
+        Object? firstError;
+        await Future.wait([
+          for (final p in planned)
+            _repository.saveEntries(p.$2).catchError((Object e) {
+              firstError ??= e;
+              failed.add(_classNameOfSession(p.$1));
+            }),
+        ]);
+        if (firstError != null) {
+          if (planned.length == 1) throw firstError!;
+          throw AppFailure(
+            '${AppFailure.from(firstError!).message}\n'
+            '${AppStrings.saveFailedFor(failed)}',
+          );
+        }
         // Whole Saturday written: now tell the servants about children whose
         // absences reached an alert level (online only; never fails the save).
         if (!isOffline) {

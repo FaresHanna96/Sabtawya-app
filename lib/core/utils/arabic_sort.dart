@@ -16,6 +16,13 @@ class ArabicSort {
         .replaceAll(RegExp('[أإآٱ]'), 'ا')
         .replaceAll('ى', 'ي')
         .replaceAll('ة', 'ه')
+        // Persian forms that names carry (چوليا): same letter for search and
+        // order, so typing ج finds them.
+        .replaceAll('چ', 'ج')
+        .replaceAll('پ', 'ب')
+        .replaceAll('ڤ', 'ف')
+        .replaceAll('ک', 'ك')
+        .replaceAll('ی', 'ي')
         .replaceAll(RegExp(r'\s+'), ' ');
     return cleaned.toLowerCase();
   }

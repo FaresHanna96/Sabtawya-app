@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ota_update/ota_update.dart';
@@ -8,8 +10,10 @@ import '../../core/services/connectivity_service.dart';
 import '../../core/services/sync_service.dart';
 import '../../core/services/update_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
@@ -96,6 +100,7 @@ class _HomeShellState extends State<HomeShell>
 
   void _selectTab(int index) {
     if (index == _index) return;
+    Haptics.select();
     setState(() {
       _index = index;
       _opened.add(index);
@@ -284,7 +289,7 @@ class _HomeShellState extends State<HomeShell>
             NavigationDestination(
               icon: (i == 3 && pendingCount > 0)
                   ? Badge(
-                      label: Text('$pendingCount'),
+                      label: AnimatedCount(value: pendingCount),
                       child: Icon(tabs[i].icon),
                     )
                   : Icon(tabs[i].icon),
@@ -388,6 +393,10 @@ class HomePlaceholder extends StatelessWidget {
       );
 }
 
+/// Replaces the real download in tests.
+@visibleForTesting
+Stream<OtaEvent> Function(AppUpdate)? debugOtaStarter;
+
 /// "إصدار جديد متاح": "تحديث الآن" downloads this phone's APK inside the app,
 /// checks its SHA-256, and opens Android's install screen (the user taps
 /// Install once). Anything that goes wrong falls back to the download page.
@@ -412,9 +421,29 @@ mixin _InstallLogic<T extends StatefulWidget> on State<T> {
   int? _progress;
   String? _problem;
 
+  /// True when the problem can be fixed by trying again (not by the web page).
+  bool _canRetry = false;
+
+  StreamSubscription<OtaEvent>? _events;
+  Timer? _installerTimer;
+
+  /// How long the installer may stay open before the screen offers a retry:
+  /// cancelling Android's install prompt tells the app nothing.
+  static const _installerWait = Duration(seconds: 45);
+
+  /// What the button does: try again when that can help, else the web page.
+  void _onButton() => _problem != null && !_canRetry ? _openPage() : _start();
+
+  /// The button's label to match [_onButton].
+  String get _buttonLabel => _problem != null && !_canRetry
+      ? AppStrings.updateOpenPage
+      : AppStrings.updateNow;
+
   void _openPage() => launchUrl(_page, mode: LaunchMode.externalApplication);
 
   void _start() {
+    // A download is already running: a second tap must not start another.
+    if (_progress != null) return;
     final u = update;
     if (!u.canInstallInApp) {
       _openPage();
@@ -423,18 +452,20 @@ mixin _InstallLogic<T extends StatefulWidget> on State<T> {
     setState(() {
       _progress = 0;
       _problem = null;
+      _canRetry = false;
     });
     try {
-      OtaUpdate()
-          .execute(
+      _events?.cancel();
+      final stream = debugOtaStarter?.call(u) ??
+          OtaUpdate().execute(
             u.apkUrl!,
             destinationFilename: 'sabtawya-update.apk',
             sha256checksum: u.sha256,
-          )
-          .listen(
-            _onEvent,
-            onError: (Object _) => _fail(AppStrings.updateFailed),
           );
+      _events = stream.listen(
+        _onEvent,
+        onError: (Object _) => _fail(AppStrings.updateFailed),
+      );
     } catch (_) {
       _fail(AppStrings.updateFailed);
     }
@@ -448,21 +479,39 @@ mixin _InstallLogic<T extends StatefulWidget> on State<T> {
       case OtaStatus.INSTALLING:
       case OtaStatus.INSTALLATION_DONE:
         setState(() => _progress = 101);
+        _installerTimer?.cancel();
+        _installerTimer = Timer(_installerWait, () {
+          if (mounted && _progress == 101) {
+            _fail(AppStrings.updateNotFinished, retry: true);
+          }
+        });
+      case OtaStatus.ALREADY_RUNNING_ERROR:
+        // A download from before is still going: not a failure.
+        break;
       case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
-        _fail(AppStrings.updateNeedsPermission);
+        _fail(AppStrings.updateNeedsPermission, retry: true);
       case OtaStatus.CHECKSUM_ERROR:
-        _fail(AppStrings.updateBadFile);
+        _fail(AppStrings.updateBadFile, retry: true);
       default:
         _fail(AppStrings.updateFailed);
     }
   }
 
-  void _fail(String message) {
+  void _fail(String message, {bool retry = false}) {
     if (!mounted) return;
+    _installerTimer?.cancel();
     setState(() {
       _progress = null;
       _problem = message;
+      _canRetry = retry;
     });
+  }
+
+  @override
+  void dispose() {
+    _events?.cancel();
+    _installerTimer?.cancel();
+    super.dispose();
   }
 }
 
@@ -510,7 +559,7 @@ class _UpdateBannerState extends State<_UpdateBanner>
                 ),
                 if (p == null)
                   TextButton(
-                    onPressed: _problem != null ? _openPage : _start,
+                    onPressed: _onButton,
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.olive,
                       backgroundColor: Colors.white,
@@ -518,9 +567,7 @@ class _UpdateBannerState extends State<_UpdateBanner>
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                     ),
                     child: Text(
-                      _problem != null
-                          ? AppStrings.updateOpenPage
-                          : AppStrings.updateNow,
+                      _buttonLabel,
                       style: const TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w800),
                     ),
@@ -639,16 +686,14 @@ class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
                       ),
                     if (p == null)
                       FilledButton(
-                        onPressed: _problem != null ? _openPage : _start,
+                        onPressed: _onButton,
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.navyDark,
                           minimumSize: const Size(200, 48),
                         ),
                         child: Text(
-                          _problem != null
-                              ? AppStrings.updateOpenPage
-                              : AppStrings.updateNow,
+                          _buttonLabel,
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),

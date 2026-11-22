@@ -82,7 +82,7 @@ class _ImportChildrenScreenState extends State<ImportChildrenScreen> {
     try {
       final picked = await FileService.pickWorkbook();
       if (picked == null) {
-        setState(() => _busy = false);
+        if (mounted) setState(() => _busy = false);
         return;
       }
 

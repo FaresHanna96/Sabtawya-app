@@ -608,7 +608,7 @@ class _FilterChip extends StatelessWidget {
       label: '$label $count',
       excludeSemantics: true,
       child: Material(
-        color: selected ? color.withValues(alpha: 0.12) : Colors.transparent,
+        color: selected ? statusTint(color) : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
@@ -907,7 +907,7 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: statusTint(color, 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

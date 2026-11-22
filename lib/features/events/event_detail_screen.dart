@@ -207,7 +207,20 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.event.title),
+        title: Hero(
+          tag: 'event-title-${widget.event.id}',
+          child: Material(
+            type: MaterialType.transparency,
+            child: Text(
+              widget.event.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: AppStrings.parentMessages,

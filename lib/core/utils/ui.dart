@@ -8,6 +8,7 @@ import '../../state/session_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
 import 'app_failure.dart';
+import 'haptics.dart';
 
 /// Snackbars, confirmations, and the "run this and report the outcome" helper
 /// that every mutating action in the app funnels through.
@@ -44,6 +45,11 @@ class Ui {
     bool celebrate = false,
   }) {
     if (!context.mounted) return;
+    if (celebrate) {
+      Haptics.success();
+    } else if (color == AppColors.danger) {
+      Haptics.warn();
+    }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(

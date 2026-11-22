@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/class_colors.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/models/child.dart';
 import 'child_avatar.dart';
@@ -41,7 +43,7 @@ class ChildTile extends StatelessWidget {
       if (child.school != null) child.school!,
     ].join(' • ');
 
-    return Card(
+    final card = Card(
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
         child: Row(
@@ -54,9 +56,13 @@ class ChildTile extends StatelessWidget {
                     ? LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: child.gender == Gender.boy
-                            ? const [AppColors.sky, AppColors.navyLight]
-                            : const [AppColors.coral, AppColors.gold],
+                        // Gender first, then the class's own colour.
+                        colors: [
+                          child.gender == Gender.boy
+                              ? AppColors.sky
+                              : AppColors.coral,
+                          classAccent(child.classId),
+                        ],
                       )
                     : LinearGradient(
                         begin: Alignment.topLeft,
@@ -70,7 +76,7 @@ class ChildTile extends StatelessWidget {
                 onTap: onTap,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                leading: ChildAvatar(child: child),
+                leading: ChildAvatar(child: child, heroTag: 'child-${child.id}'),
                 title: Row(
                   children: [
                     Expanded(
@@ -133,5 +139,41 @@ class ChildTile extends StatelessWidget {
         ),
       ),
     );
+
+    // Swipe the row to call or message: the row springs back, the contact
+    // sheet opens.
+    if (onContact == null || !child.isActive) return card;
+    return Dismissible(
+      key: ValueKey('swipe-${child.id}'),
+      confirmDismiss: (_) async {
+        Haptics.select();
+        onContact!();
+        return false;
+      },
+      background: const _SwipeBackground(AlignmentDirectional.centerStart),
+      secondaryBackground:
+          const _SwipeBackground(AlignmentDirectional.centerEnd),
+      child: card,
+    );
   }
 }
+
+class _SwipeBackground extends StatelessWidget {
+  const _SwipeBackground(this.alignment);
+
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: AppColors.successTint,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Icon(Icons.call_rounded, color: AppColors.success),
+    );
+  }
+}
+

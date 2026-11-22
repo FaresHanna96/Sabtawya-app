@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/class_colors.dart';
 import 'motion.dart';
 
 /// Splits [items] into one group per class, in [classOrder] (the order the
@@ -31,6 +32,7 @@ class ClassGroupHeader extends StatelessWidget {
     required this.name,
     required this.count,
     this.trailing,
+    this.accent = AppColors.navy,
     this.padding = const EdgeInsets.fromLTRB(4, 12, 4, 8),
   });
 
@@ -39,6 +41,9 @@ class ClassGroupHeader extends StatelessWidget {
 
   /// Replaces the count on the end side when set (e.g. "حضر 8 من 12").
   final Widget? trailing;
+
+  /// The class's colour: the bar, the name and the count chip.
+  final Color accent;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -51,7 +56,7 @@ class ClassGroupHeader extends StatelessWidget {
             width: 4,
             height: 18,
             decoration: BoxDecoration(
-              color: AppColors.navy,
+              color: accent,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -73,7 +78,7 @@ class ClassGroupHeader extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
                 decoration: BoxDecoration(
-                  color: AppColors.navy.withValues(alpha: 0.08),
+                  color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -87,7 +92,7 @@ class ClassGroupHeader extends StatelessWidget {
               ),
           const SizedBox(width: 8),
           Expanded(
-            child: Divider(color: AppColors.navy.withValues(alpha: 0.12)),
+            child: Divider(color: accent.withValues(alpha: 0.18)),
           ),
         ],
       ),
@@ -166,6 +171,7 @@ class ClassGroupedList<T> extends StatelessWidget {
               ClassGroupHeader(
                 name: classNameOf(row.classId),
                 count: row.items.length,
+                accent: classAccent(row.classId),
               );
         }
         final item = row as _Item<T>;
@@ -175,7 +181,13 @@ class ClassGroupedList<T> extends StatelessWidget {
           // Only the first screenful slides in, so rows further down never
           // wait on a delay.
           child: animate && index < 12
-              ? FadeSlideIn(index: index, child: tile)
+              ? FadeSlideIn(
+                  // Keyed by the item, so rows that change with a filter or
+                  // search slide in again instead of swapping silently.
+                  key: ValueKey<Object?>(item.value),
+                  index: index,
+                  child: tile,
+                )
               : tile,
         );
       },

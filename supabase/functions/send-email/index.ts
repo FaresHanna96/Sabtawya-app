@@ -13,7 +13,7 @@ const CORS = {
 };
 
 interface Payload {
-  type: 'invite' | 'accepted' | 'rejected' | 'check_email' | 'check_domain';
+  type: 'invite' | 'accepted' | 'rejected' | 'check_domain';
   to?: string;
   name?: string;
   email?: string;
@@ -156,7 +156,12 @@ serve(async (req) => {
     return new Response('ok', { headers: CORS });
   }
 
-  const body = (await req.json()) as Payload;
+  let body: Payload;
+  try {
+    body = (await req.json()) as Payload;
+  } catch (_) {
+    return json({ error: 'bad request' }, 400);
+  }
 
   // Can this email's domain receive mail at all? Looks up its MX records,
   // so a made-up or misspelled domain is caught before the account is made.
@@ -175,26 +180,6 @@ serve(async (req) => {
       }
     }
     return new Response(JSON.stringify({ receivesMail, domain }), {
-      status: 200,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-
-  // Email existence check — uses service role to bypass RLS.
-  if (body.type === 'check_email') {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
-    const email = (body.email ?? '').trim().toLowerCase();
-    const { data } = await supabase
-      .from('profiles')
-      .select('id')
-      // ilike only to ignore case: escape its wildcards, or the "_" in
-      // "first_last@..." matches any character, and two matches read as none.
-      .ilike('email', email.replace(/[\\%_]/g, '\\$&'))
-      .maybeSingle();
-    return new Response(JSON.stringify({ exists: data !== null }), {
       status: 200,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });

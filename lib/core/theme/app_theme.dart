@@ -26,12 +26,23 @@ class AppColors {
   static const Color coralTint = Color(0xFFFCE9E3);
   static const Color skyTint = Color(0xFFE3F1F9);
 
+  static const Color successTint = Color(0xFFE3F3EA);
+  static const Color dangerTint = Color(0xFFFBE7E5);
+
   static const Color surface = Color(0xFFF7F7FB);
   static const Color card = Colors.white;
   static const Color success = Color(0xFF2E7D4F);
   static const Color warning = Color(0xFFB7791F);
   static const Color danger = Color(0xFFB3261E);
   static const Color muted = Color(0xFF6B7280);
+}
+
+/// The soft background that goes with a status colour: the dedicated tints
+/// for success and danger, a light wash of the colour for anything else.
+Color statusTint(Color color, [double alpha = 0.12]) {
+  if (color == AppColors.success) return AppColors.successTint;
+  if (color == AppColors.danger) return AppColors.dangerTint;
+  return color.withValues(alpha: alpha);
 }
 
 /// Direction-aware arrows.

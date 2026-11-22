@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/child.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
@@ -18,6 +19,7 @@ class ChildAvatar extends StatefulWidget {
     required this.child,
     this.size = 44,
     this.localPreview,
+    this.heroTag,
   });
 
   final Child child;
@@ -25,6 +27,10 @@ class ChildAvatar extends StatefulWidget {
 
   /// Bytes of a just-picked photo, shown before it has been uploaded.
   final Uint8List? localPreview;
+
+  /// When set, the avatar flies between screens (list row to profile).
+  /// Must be unique on its screen.
+  final Object? heroTag;
 
   @override
   State<ChildAvatar> createState() => _ChildAvatarState();
@@ -61,7 +67,7 @@ class _ChildAvatarState extends State<ChildAvatar> {
   Widget build(BuildContext context) {
     final preview = widget.localPreview;
 
-    return Container(
+    final avatar = Container(
       width: widget.size,
       height: widget.size,
       decoration: BoxDecoration(
@@ -97,6 +103,7 @@ class _ChildAvatarState extends State<ChildAvatar> {
                   width: widget.size,
                   height: widget.size,
                   cacheWidth: px,
+                  frameBuilder: fadeInFrame,
                   errorBuilder: (_, __, ___) => _placeholder(),
                   loadingBuilder: (context, child, progress) =>
                       progress == null ? child : _placeholder(),
@@ -104,6 +111,8 @@ class _ChildAvatarState extends State<ChildAvatar> {
               },
             ),
     );
+    final tag = widget.heroTag;
+    return tag == null ? avatar : Hero(tag: tag, child: avatar);
   }
 
   Widget _placeholder() => Icon(

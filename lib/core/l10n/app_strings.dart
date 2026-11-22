@@ -37,6 +37,8 @@ class AppStrings {
   static const points = 'نقطة';
   static const notes = 'ملاحظات';
   static const saved = 'تم الحفظ بنجاح';
+  static String saveFailedFor(List<String> classes) =>
+      'لم يُحفظ: ${classes.join('، ')}. الباقي اتحفظ، اضغط حفظ مرة أخرى.';
   static const somethingWentWrong = 'حدث خطأ غير متوقع';
   static const noPermission = 'ليس لديك صلاحية لهذا الإجراء';
   static const refresh = 'تحديث';
@@ -54,7 +56,8 @@ class AppStrings {
   static const resetPassword = 'استعادة كلمة المرور';
   static const resetPasswordHint =
       'أدخل بريدك الإلكتروني وسنرسل لك رابط استعادة كلمة المرور.';
-  static const resetLinkSent = 'تم إرسال رابط الاستعادة إلى بريدك الإلكتروني';
+  static const resetLinkSent =
+      'لو كان هذا البريد مسجلاً عندنا، وصله رابط الاستعادة';
   static const sendResetLink = 'إرسال الرابط';
   static const setNewPassword = 'تعيين كلمة مرور جديدة';
   static const newPassword = 'كلمة المرور الجديدة';
@@ -135,6 +138,7 @@ class AppStrings {
   static const totalPoints = 'إجمالي النقاط';
   static const nextAttendance = 'موعد الحضور القادم';
   static const lastAttendance = 'آخر سبت للحضور';
+  static const lastSaturdayRate = 'حضور آخر سبت';
   static String classRecordedOn(String day) => 'اتسجّل حضور $day';
   static String classNotRecordedOn(String day) => 'لم يُسجَّل حضور $day بعد';
   static const recordNow = 'سجّل الحضور';
@@ -426,20 +430,12 @@ class AppStrings {
   static String saturdayDetail(String date, int came, int of, int pct) =>
       'سبت $date: حضر $came من $of ($pct%)';
   static String attendedOn(String date) => 'حضروا سبت $date';
-  static String _points(int n) => n == 1
-      ? 'نقطة'
-      : n == 2
-          ? 'نقطتين'
-          : n <= 10
-              ? '$n نقاط'
-              : '$n نقطة';
-
   /// Percentage points from the Saturday before, with both numbers.
   static String pointsChange(int diff, int from, int to) => diff == 0
       ? 'زي السبت اللي قبله ($to%)'
       : diff > 0
-          ? 'أعلى ${_points(diff)} من السبت اللي قبله (من $from% لـ $to%)'
-          : 'أقل ${_points(-diff)} من السبت اللي قبله (من $from% لـ $to%)';
+          ? 'أعلى $diff بالمئة من السبت اللي قبله (من $from% لـ $to%)'
+          : 'أقل ${-diff} بالمئة من السبت اللي قبله (من $from% لـ $to%)';
   static String saturdaysMissed(List<String> dates) => dates.length == 1
       ? 'سبت ${dates.single} ما اتسجلش'
       : 'سبوت ${dates.join('، ')} ما اتسجلتش';
@@ -498,6 +494,8 @@ class AppStrings {
       'اسمح للتطبيق بتثبيت التحديثات من الإعدادات، ثم حاول مرة أخرى';
   static const updateBadFile = 'الملف لم يكتمل تحميله. حاول مرة أخرى';
   static const updateFailed = 'تعذر التحديث من داخل التطبيق';
+  static const updateNotFinished =
+      'لم يكتمل التثبيت. اضغط «تحديث الآن» لتحاول مرة أخرى';
   static const updateOpenPage = 'صفحة التحميل';
   static const checkForUpdates = 'التحقق من التحديثات';
   static const checkingForUpdates = 'جاري التحقق من التحديثات…';

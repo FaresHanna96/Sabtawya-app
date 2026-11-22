@@ -100,6 +100,7 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
         // The chart names its own Saturday; with nothing recorded yet the
         // last Saturday gets a small card instead.
         final hasChart = data.weeks.any((w) => w.recorded);
+        final lastWeek = WeeklyAttendance.headline(data.weeks);
         // Not a lazy ListView: it rebuilt each section as it scrolled back
         // into view, which replayed its entrance (after a delay) every time.
         return SingleChildScrollView(
@@ -132,10 +133,15 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
+                      // A servant has one class, so its count says nothing;
+                      // this is how the last finished Saturday went.
                       child: StatCard(
-                        label: AppStrings.myClasses,
-                        value: '${classes.length}',
-                        icon: Icons.menu_book_rounded,
+                        label: AppStrings.lastSaturdayRate,
+                        value: lastWeek == null
+                            ? '—'
+                            : '${lastWeek.percentage.round()}%',
+                        icon: Icons.how_to_reg_rounded,
+                        color: AppColors.success,
                       ),
                     ),
                   ],
