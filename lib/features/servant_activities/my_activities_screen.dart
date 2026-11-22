@@ -776,7 +776,7 @@ class MyAttendanceCard extends StatelessWidget {
 
   static const _activities = <(String, IconData, Color, String)>[
     ('sunday_school', AppIcons.sundaySchool, AppColors.success,
-        AppStrings.sundaySchoolShort),
+        AppStrings.chipService),
     ('servant_meeting', AppIcons.servantMeeting, AppColors.olive,
         AppStrings.servantMeetingShort),
     ('mass', AppIcons.mass, AppColors.gold, AppStrings.massShort),

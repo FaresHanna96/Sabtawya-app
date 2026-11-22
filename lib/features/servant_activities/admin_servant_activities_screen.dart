@@ -1335,7 +1335,7 @@ class ServantRow extends StatelessWidget {
                   for (final (icon, label, count) in [
                     (
                       AppIcons.sundaySchool,
-                      AppStrings.sundaySchoolShort,
+                      AppStrings.chipService,
                       summary.sundaySchoolCount
                     ),
                     (

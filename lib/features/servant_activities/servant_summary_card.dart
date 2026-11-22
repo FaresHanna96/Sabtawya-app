@@ -65,7 +65,7 @@ class ServantSummaryCard extends StatelessWidget {
       child: Column(
         children: [
           _row(
-            _attendance(AppStrings.sundaySchoolShort, sundaySchool,
+            _attendance(AppStrings.chipService, sundaySchool,
                 AppColors.success, AppIcons.sundaySchool),
             _attendance(AppStrings.servantMeetingShort, servantMeeting,
                 AppColors.success, AppIcons.servantMeeting),

@@ -402,7 +402,7 @@ class _AttendanceSessionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _ActivityToggle(
-                    label: AppStrings.sundaySchoolShort,
+                    label: AppStrings.chipService,
                     present: sundaySchoolPresent,
                     onTap: onToggleSundaySchool,
                   ),
