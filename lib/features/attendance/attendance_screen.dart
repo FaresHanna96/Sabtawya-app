@@ -21,10 +21,13 @@ import '../../core/widgets/skeleton.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/lesson_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import '../children/child_filters.dart';
+import 'attendance_draft.dart';
+import 'break_sheet.dart';
 
 /// Takes attendance for one class on one Saturday, or for every class at
 /// once ("كل الفصول"): one list grouped by class, each class still saved to
@@ -90,6 +93,68 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final Set<String> _flashed = <String>{};
   Timer? _flashTimer;
 
+  // ── finding a child ─────────────────────────────────────────────────────
+  final _search = TextEditingController();
+  String _query = '';
+
+  /// Only the children with no activity marked yet: who is left to do.
+  bool _onlyUnmarked = false;
+
+  /// One line per child instead of a card (remembered on this phone).
+  bool _compact = false;
+
+  // ── the bar that stays on top once the header scrolls away ──────────────
+  final _scroll = ScrollController();
+  final _headerKey = GlobalKey();
+  bool _sticky = false;
+
+  // ── unsaved marks kept on the phone ─────────────────────────────────────
+  static final _drafts = AttendanceDraft.instance;
+  Timer? _draftTimer;
+
+  /// Saturdays with no lesson (by yyyy-MM-dd): a holiday or a نشاط ترفيهي.
+  Map<String, LessonBreak> _breaks = const <String, LessonBreak>{};
+
+  LessonBreak? get _break =>
+      _date == null ? null : _breaks[AppDateUtils.toIsoDate(_date!)];
+
+  bool get _isBreakDay =>
+      _break != null || _sheets.any((s) => s.session.isBreak);
+
+  Future<void> _loadBreaks() async {
+    try {
+      final b = await const LessonRepository().breaks();
+      if (mounted) setState(() => _breaks = b);
+    } catch (_) {
+      // Without them there is just no "no lesson" warning.
+    }
+  }
+
+  /// The admin: this Saturday is a holiday, a نشاط ترفيهي, or a normal day.
+  Future<void> _setBreak() async {
+    final date = _date;
+    if (date == null) return;
+    final picked = await showBreakSheet(
+      context,
+      date: date,
+      current: _break,
+      hasRecords: _entries.any((e) => e.isRecorded),
+    );
+    if (picked == null || !mounted) return;
+    const repo = LessonRepository();
+    final ok = await Ui.runGuarded(
+      context,
+      () => picked.kind == null
+          ? repo.clearBreak(date)
+          : repo.setBreak(date, shift: picked.shift, kind: picked.kind),
+      successMessage: AppStrings.saved,
+    );
+    if (ok) {
+      await _loadBreaks();
+      await _load(quiet: true);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -105,11 +170,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             : {_classes.first.classId};
     _date = widget.initialDate;
     _load();
+    _scroll.addListener(_onScroll);
+    _drafts.compact().then((on) {
+      if (mounted && on) setState(() => _compact = true);
+    });
+    _loadBreaks();
   }
 
   @override
   void dispose() {
     _flashTimer?.cancel();
+    // Whatever was marked in the last moment is kept too.
+    if (_draftTimer?.isActive ?? false) unawaited(_writeDrafts());
+    _draftTimer?.cancel();
+    _search.dispose();
+    _scroll.dispose();
     final channel = _channel;
     if (channel != null) Db.client.removeChannel(channel);
     super.dispose();
@@ -150,7 +225,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (seenFirst) unawaited(_catchUp());
       seenFirst = true;
     });
-    unawaited(_loadServantNames());
+    // The names are the same for every Saturday: read them once.
+    if (_servantNames.isEmpty) unawaited(_loadServantNames());
   }
 
   Future<void> _loadServantNames() async {
@@ -265,11 +341,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool get _allClasses => _shownClassIds.length > 1;
 
   bool get _isLocked => !_allClasses && (_sheet?.session.isLocked ?? false);
+  /// A Saturday with no lesson is shown but never taken (the database
+  /// refuses it too); a locked one only by the admin.
   bool _canEditSheet(AttendanceSheet sheet) =>
-      !sheet.session.isLocked || _isAdmin;
+      !sheet.session.isBreak && (!sheet.session.isLocked || _isAdmin);
   bool get _canEdit => _sheets.any(_canEditSheet);
 
-  Future<void> _load() async {
+  /// [quiet] keeps the roster on screen while it reloads (after a save or a
+  /// lock), so the servant stays where they were instead of being sent back
+  /// to the top behind a loading placeholder.
+  Future<void> _load({bool quiet = false}) async {
     final year = _year;
     final classIds = _shownClassIds;
     if (classIds.isEmpty || year == null) {
@@ -278,7 +359,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     setState(() {
-      _loading = true;
+      if (!quiet) _loading = true;
       _error = null;
     });
 
@@ -331,8 +412,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _loading = false;
       });
       _watch();
+      if (!quiet) unawaited(_restoreDrafts());
     } catch (e) {
       if (!mounted) return;
+      // A quiet reload follows a save that already succeeded: keep the
+      // roster and just say the refresh failed.
+      if (quiet) {
+        Ui.error(context, e);
+        return;
+      }
       setState(() {
         _error = AppFailure.from(e).message;
         _loading = false;
@@ -395,13 +483,118 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<bool> _confirmDiscard() async {
     if (!_hasChanges) return true;
-    return Ui.confirm(
+    final yes = await Ui.confirm(
       context,
       title: AppStrings.unsavedChanges,
       message: AppStrings.unsavedChangesBody,
       confirmLabel: AppStrings.discard,
       destructive: true,
     );
+    if (yes) _clearDrafts();
+    return yes;
+  }
+
+  // ── unsaved marks ──────────────────────────────────────────────────────
+
+  /// Each session on screen with the indexes of its children.
+  Map<AttendanceSheet, List<int>> _indexesBySheet() {
+    final out = <AttendanceSheet, List<int>>{};
+    for (var i = 0; i < _entries.length; i++) {
+      (out[_entrySheet[i]] ??= []).add(i);
+    }
+    return out;
+  }
+
+  /// Keeps the marks a moment after the last tap (not on every tap).
+  void _queueDraft() {
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(milliseconds: 600), _writeDrafts);
+  }
+
+  Future<void> _writeDrafts() async {
+    if (_entries.length != _original.length) return;
+    for (final e in _indexesBySheet().entries) {
+      await _drafts.write(
+        e.key.session.id,
+        AttendanceDraft.changes(
+          [for (final i in e.value) _entries[i]],
+          [for (final i in e.value) _original[i]],
+        ),
+      );
+    }
+  }
+
+  void _clearDrafts() {
+    _draftTimer?.cancel();
+    for (final sheet in _sheets) {
+      unawaited(_drafts.clear(sheet.session.id));
+    }
+  }
+
+  /// Puts back marks taken here before the app closed, unless a co-servant
+  /// changed that child since; says so, with a way to drop them.
+  Future<void> _restoreDrafts() async {
+    final loaded = _sheets;
+    var restored = 0;
+    for (final e in _indexesBySheet().entries) {
+      final draft = await _drafts.read(e.key.session.id);
+      if (!mounted || !identical(_sheets, loaded)) return;
+      if (draft.isEmpty) continue;
+      restored += AttendanceDraft.restore(
+        draft,
+        [for (final i in e.value) _entries[i]],
+        [for (final i in e.value) _original[i]],
+        canEdit: (_) => _canEditSheet(e.key),
+      );
+    }
+    if (restored == 0 || !mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppStrings.draftRestored(restored)),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(
+          label: AppStrings.ignoreDraft,
+          onPressed: _dropDraft,
+        ),
+      ),
+    );
+  }
+
+  /// "تجاهل": back to the saved marks, and the draft is gone.
+  void _dropDraft() {
+    if (!mounted) return;
+    setState(() {
+      for (var i = 0; i < _entries.length && i < _original.length; i++) {
+        final from = _original[i];
+        _entries[i]
+          ..sundaySchool = from.sundaySchool
+          ..vespers = from.vespers
+          ..mass = from.mass
+          ..confession = from.confession;
+      }
+    });
+    _clearDrafts();
+  }
+
+  // ── finding a child, compact rows, the bar on top ───────────────────────
+
+  bool _visible(int i) {
+    final e = _entries[i];
+    if (_onlyUnmarked && e.isPresent) return false;
+    return _query.trim().isEmpty || e.child.matches(_query);
+  }
+
+  void _toggleCompact() {
+    setState(() => _compact = !_compact);
+    unawaited(_drafts.setCompact(_compact));
+  }
+
+  void _onScroll() {
+    final box = _headerKey.currentContext?.findRenderObject() as RenderBox?;
+    final height = (box != null && box.hasSize) ? box.size.height : 320.0;
+    final show = _scroll.hasClients && _scroll.offset > height;
+    if (show != _sticky) setState(() => _sticky = show);
   }
 
   void _toggle(AttendanceEntry entry, AttendanceActivity activity) {
@@ -420,22 +613,63 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           entry.confession = !entry.confession;
       }
     });
+    _queueDraft();
   }
 
-  void _markAll(bool present) {
+  /// Every child present (or cleared) in [only] one activity, or in all
+  /// four when null. A locked class stays as it is (unless the admin).
+  void _markAll(bool present, {AttendanceActivity? only}) {
     if (!_canEdit) return;
     HapticFeedback.mediumImpact();
     setState(() {
-      for (var i = 0; i < _entries.length; i++) {
-        // A locked class stays as it is (unless the admin).
-        if (!_canEditSheet(_entrySheet[i])) continue;
-        final entry = _entries[i];
-        entry.sundaySchool = present;
-        entry.vespers = present;
-        entry.mass = present;
-        entry.confession = present;
-      }
+      markAllEntries(
+        _entries,
+        present: present,
+        only: only,
+        canEdit: (i) => _canEditSheet(_entrySheet[i]),
+      );
     });
+    _queueDraft();
+  }
+
+  /// "تحضير الجميع": which activity, or all of them.
+  Future<void> _pickMarkAll() async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                AppStrings.markAllWhich,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.done_all, color: AppColors.success),
+              title: const Text(AppStrings.allActivities),
+              onTap: () => Navigator.of(sheet).pop(-1),
+            ),
+            for (final a in AttendanceActivity.values)
+              ListTile(
+                leading: Icon(a.icon, color: AppColors.navy),
+                title: Text(a.label),
+                onTap: () => Navigator.of(sheet).pop(a.index),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    _markAll(
+      true,
+      only: picked < 0 ? null : AttendanceActivity.values[picked],
+    );
   }
 
   Future<void> _save() async {
@@ -467,20 +701,42 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return;
     }
 
+    // Saving writes an absence for everyone left unticked, which breaks
+    // their runs (ملتزمين) and can send absence alerts: on a Saturday with no
+    // lesson, or with nobody ticked at all, ask first.
+    final editable = [
+      for (var i = 0; i < _entries.length; i++)
+        if (_canEditSheet(_entrySheet[i])) _entries[i],
+    ];
+    if (!mounted) return;
+    if (nobodyPresent(editable) &&
+        !await Ui.confirm(
+          context,
+          title: AppStrings.nobodyPresentTitle,
+          message: AppStrings.nobodyPresentBody(editable.length),
+          confirmLabel: AppStrings.saveAsAbsent,
+          destructive: true,
+        )) {
+      return;
+    }
+    if (!mounted) return;
+
     final isOffline = !ConnectivityService.instance.isOnline;
     setState(() => _saving = true);
     final ok = await Ui.runGuarded(
       context,
       () async {
-        for (final plan in plans) {
-          await _repository.saveEntries(plan);
-        }
+        // Each class is its own session: save them side by side instead of
+        // one after another (with every class shown, that was 8 waits).
+        await Future.wait(
+            [for (final plan in plans) _repository.saveEntries(plan)]);
         // Whole Saturday written: now tell the servants about children whose
         // absences reached an alert level (online only; never fails the save).
         if (!isOffline) {
-          for (final sessionId in bySession.keys) {
-            await _repository.checkAbsenceAlerts(sessionId);
-          }
+          await Future.wait([
+            for (final sessionId in bySession.keys)
+              _repository.checkAbsenceAlerts(sessionId),
+          ]);
         }
       },
       successMessage: isOffline
@@ -490,6 +746,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
+      // Saved (or queued to send): nothing left to keep on the side.
+      _draftTimer?.cancel();
+      for (final id in bySession.keys) {
+        unawaited(_drafts.clear(id));
+      }
       HapticFeedback.mediumImpact();
       if (!isOffline) Celebration.show(context);
       if (isOffline) {
@@ -499,30 +760,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _original = _entries.map((e) => e.clone()).toList();
         });
       } else {
-        // Reload so the scores come back from the database.
-        await _load();
+        // Reload so the scores come back from the database, in place.
+        await _load(quiet: true);
       }
     }
-  }
-
-  Future<void> _toggleLock() async {
-    final sheet = _sheet;
-    if (sheet == null) return;
-    final locking = !sheet.session.isLocked;
-
-    final confirmed = await Ui.confirm(
-      context,
-      title: locking ? AppStrings.lockSession : AppStrings.unlockSession,
-      message: locking ? AppStrings.sessionLockedBody : null,
-    );
-    if (!confirmed || !mounted) return;
-
-    final ok = await Ui.runGuarded(
-      context,
-      () => _repository.setLocked(sheet.session.id, locking),
-      successMessage: AppStrings.saved,
-    );
-    if (ok && mounted) await _load();
   }
 
   @override
@@ -539,7 +780,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         appBar: widget.showAppBar
             ? AppBar(
                 title: const Text(AppStrings.attendanceTitle),
-                actions: _appBarActions(),
               )
             : null,
         body: SafeArea(child: _body()),
@@ -553,18 +793,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
       ),
     );
-  }
-
-  List<Widget> _appBarActions() {
-    // Locking is per class: not offered while all classes are shown.
-    if (!_isAdmin || _sheet == null || _allClasses) return const <Widget>[];
-    return [
-      IconButton(
-        tooltip: _isLocked ? AppStrings.unlockSession : AppStrings.lockSession,
-        onPressed: _toggleLock,
-        icon: Icon(_isLocked ? Icons.lock_open : Icons.lock_outline),
-      ),
-    ];
   }
 
   Widget _body() {
@@ -608,22 +836,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     // Built lazily: with "كل الفصول" the roster is ~200 cards, and building
     // them all up front made the screen slow to open. Rows are: the header,
     // the locked banner, then per class an optional header and its cards.
+    // The search and "لم يُعلَّم" only narrow what is listed; saving still
+    // covers every child.
+    final shown = [
+      for (var i = 0; i < _entries.length; i++)
+        if (_visible(i)) i,
+    ];
     final rows = <Object>[
       #header,
       if (_isLocked) #locked,
-      if (_entries.isEmpty) #empty,
-      for (var i = 0; i < _entries.length; i++) ...[
-        if (_allClasses && (i == 0 || _entrySheet[i] != _entrySheet[i - 1]))
-          _entrySheet[i],
-        i,
+      if (_entries.isEmpty) #empty else if (shown.isEmpty) #nomatch,
+      for (var k = 0; k < shown.length; k++) ...[
+        if (_allClasses &&
+            (k == 0 || _entrySheet[shown[k]] != _entrySheet[shown[k - 1]]))
+          _entrySheet[shown[k]],
+        shown[k],
       ],
     ];
-    return ListView.builder(
+    final list = ListView.builder(
+      controller: _scroll,
       padding: const EdgeInsets.only(bottom: 96),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: rows.length,
       itemBuilder: (context, index) {
         final row = rows[index];
-        if (row == #header) return _header();
+        if (row == #header) {
+          return KeyedSubtree(key: _headerKey, child: _header());
+        }
         if (row == #locked) return _lockedBanner();
         if (row == #empty) {
           return const Padding(
@@ -635,21 +874,178 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
           );
         }
+        if (row == #nomatch) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: EmptyState(
+              icon: Icons.search_off_rounded,
+              title: AppStrings.noSearchMatch,
+              action: OutlinedButton.icon(
+                onPressed: () => setState(() {
+                  _search.clear();
+                  _query = '';
+                  _onlyUnmarked = false;
+                }),
+                icon: const Icon(Icons.filter_alt_off_outlined),
+                label: const Text(AppStrings.clearFilters),
+              ),
+            ),
+          );
+        }
         if (row is AttendanceSheet) return _classHeader(row);
         final i = row as int;
+        final highlight = _flashed.contains(_entries[i].child.id);
+        final enabled = _canEditSheet(_entrySheet[i]);
+        void onToggle(AttendanceActivity a) => _toggle(_entries[i], a);
+        if (_compact) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+            child: AttendanceEntryRow(
+              entry: _entries[i],
+              highlight: highlight,
+              enabled: enabled,
+              onToggle: onToggle,
+            ),
+          );
+        }
         return Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: staggered(
             i,
             AttendanceEntryCard(
               entry: _entries[i],
-              highlight: _flashed.contains(_entries[i].child.id),
-              enabled: _canEditSheet(_entrySheet[i]),
-              onToggle: (activity) => _toggle(_entries[i], activity),
+              highlight: highlight,
+              enabled: enabled,
+              onToggle: onToggle,
             ),
           ),
         );
       },
+    );
+
+    return Stack(
+      children: [
+        list,
+        // Once the header has scrolled away: the date and the count stay in
+        // sight, and a tap goes back up to the search and the buttons.
+        PositionedDirectional(
+          top: 0,
+          start: 0,
+          end: 0,
+          child: IgnorePointer(
+            ignoring: !_sticky,
+            child: AnimatedSlide(
+              offset: _sticky ? Offset.zero : const Offset(0, -1.2),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: _stickyBar(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stickyBar() {
+    final total = _entries.length;
+    final present = _entries.where((e) => e.sundaySchool).length;
+    return Material(
+      color: AppColors.card,
+      elevation: 3,
+      child: InkWell(
+        onTap: () => _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.event_rounded, size: 18, color: AppColors.navy),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _date == null ? '' : AppDateUtils.formatDayDate(_date!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                '${AppStrings.presentOf} $present ${AppStrings.ofWord} $total',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.success,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Tooltip(
+                message: AppStrings.backToTop,
+                child: Icon(Icons.keyboard_arrow_up_rounded,
+                    color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The search box, the compact switch and "لم يُعلَّم".
+  Widget _finder() {
+    final unmarked = _entries.where((e) => !e.isPresent).length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _search,
+                onChanged: (v) => setState(() => _query = v),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: AppStrings.attendanceSearchHint,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: AppStrings.clearSearch,
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() {
+                            _search.clear();
+                            _query = '';
+                          }),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: _compact ? AppStrings.fullView : AppStrings.compactView,
+              isSelected: _compact,
+              onPressed: _toggleCompact,
+              icon: const Icon(Icons.view_headline_rounded),
+              selectedIcon: const Icon(Icons.view_agenda_outlined),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: FilterChip(
+            label: Text(AppStrings.unmarkedChip(unmarked)),
+            selected: _onlyUnmarked,
+            onSelected: (on) => setState(() => _onlyUnmarked = on),
+          ),
+        ),
+      ],
     );
   }
 
@@ -659,7 +1055,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         .firstWhere((c) => c.classId == sheet.session.classId,
             orElse: () => _classes.first)
         .className;
-    final present = sheet.entries.where((e) => e.isPresent).length;
+    final present = sheet.entries.where((e) => e.sundaySchool).length;
     // The same header as every other list grouped by class, with this
     // class's lock and present count on the end.
     return ClassGroupHeader(
@@ -711,6 +1107,58 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
             const SizedBox(height: 10),
             _dateNavigator(),
+            if (_isBreakDay) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 4, 4),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _break?.kind == LessonBreakKind.activity
+                          ? Icons.celebration_rounded
+                          : Icons.beach_access_rounded,
+                      size: 18,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Text(
+                          AppStrings.breakDayBanner(
+                            (_break?.kind ?? LessonBreakKind.holiday).label,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.warning,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_isAdmin)
+                      TextButton(
+                        onPressed: _setBreak,
+                        child: const Text(AppStrings.change),
+                      ),
+                  ],
+                ),
+              ),
+            ] else if (_isAdmin && _date != null) ...[
+              const SizedBox(height: 6),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: _setBreak,
+                  icon: const Icon(Icons.beach_access_outlined, size: 18),
+                  label: const Text(AppStrings.markNoLesson),
+                ),
+              ),
+            ],
             if (sheet != null) ...[
               const SizedBox(height: 12),
               _progress(),
@@ -720,7 +1168,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   children: [
                     Expanded(
                       child: FilledButton.tonalIcon(
-                        onPressed: () => _markAll(true),
+                        onPressed: _pickMarkAll,
                         icon: const Icon(Icons.done_all, size: 18),
                         label: const Text(AppStrings.markAllPresent),
                       ),
@@ -738,6 +1186,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                   ],
                 ),
+              ],
+              if (_entries.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _finder(),
               ],
             ],
           ],
@@ -836,7 +1288,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   /// and the points as a smaller line.
   Widget _progress() {
     final total = _entries.length;
-    final present = _entries.where((e) => e.isPresent).length;
+    final present = _entries.where((e) => e.sundaySchool).length;
     final recorded = _entries.where((e) => e.isRecorded).length;
     final maxScore = _sheets.fold<int>(0, (sum, sh) => sum + sh.maxScore);
     final ratio = total == 0 ? 0.0 : present / total;
@@ -1031,7 +1483,165 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 }
 
-enum AttendanceActivity { sundaySchool, vespers, mass, confession }
+enum AttendanceActivity {
+  sundaySchool(AppStrings.sundaySchoolShort, AppIcons.sundaySchool),
+  vespers(AppStrings.vespersShort, AppIcons.vespers),
+  mass(AppStrings.massShort, AppIcons.mass),
+  confession(AppStrings.confessionShort, AppIcons.confession);
+
+  const AttendanceActivity(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+
+  bool on(AttendanceEntry e) => switch (this) {
+        AttendanceActivity.sundaySchool => e.sundaySchool,
+        AttendanceActivity.vespers => e.vespers,
+        AttendanceActivity.mass => e.mass,
+        AttendanceActivity.confession => e.confession,
+      };
+}
+
+/// Nobody among [entries] has any activity ticked (and there is someone).
+@visibleForTesting
+bool nobodyPresent(List<AttendanceEntry> entries) =>
+    entries.isNotEmpty && entries.every((e) => !e.isPresent);
+
+/// Sets [only] (or all four activities when null) to [present] for every
+/// entry [canEdit] allows.
+@visibleForTesting
+void markAllEntries(
+  List<AttendanceEntry> entries, {
+  required bool present,
+  AttendanceActivity? only,
+  required bool Function(int index) canEdit,
+}) {
+  for (var i = 0; i < entries.length; i++) {
+    if (!canEdit(i)) continue;
+    final e = entries[i];
+    if (only == null || only == AttendanceActivity.sundaySchool) {
+      e.sundaySchool = present;
+    }
+    if (only == null || only == AttendanceActivity.vespers) e.vespers = present;
+    if (only == null || only == AttendanceActivity.mass) e.mass = present;
+    if (only == null || only == AttendanceActivity.confession) {
+      e.confession = present;
+    }
+  }
+}
+
+/// One child on one line: the name, then the four activities as round
+/// buttons. About twice as many children fit on a screen as with the cards.
+@visibleForTesting
+class AttendanceEntryRow extends StatelessWidget {
+  const AttendanceEntryRow({
+    super.key,
+    required this.entry,
+    required this.enabled,
+    required this.onToggle,
+    this.highlight = false,
+  });
+
+  final AttendanceEntry entry;
+  final bool enabled;
+  final bool highlight;
+  final ValueChanged<AttendanceActivity> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: highlight ? AppColors.skyTint : AppColors.card,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 6, 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                entry.child.fullName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            for (final a in AttendanceActivity.values)
+              _RoundMark(
+                activity: a,
+                selected: a.on(entry),
+                enabled: enabled,
+                onTap: () => onToggle(a),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundMark extends StatelessWidget {
+  const _RoundMark({
+    required this.activity,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final AttendanceActivity activity;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const on = AppColors.success;
+    final off = AppColors.muted.withValues(alpha: enabled ? 0.55 : 0.25);
+    return Semantics(
+      button: true,
+      toggled: selected,
+      enabled: enabled,
+      label: activity.label,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: activity.label,
+        child: InkResponse(
+          onTap: enabled ? onTap : null,
+          radius: 22,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected
+                      ? on.withValues(alpha: 0.16)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: selected
+                        ? on.withValues(alpha: 0.6)
+                        : AppColors.muted.withValues(alpha: 0.25),
+                    width: 1.4,
+                  ),
+                ),
+                child: Icon(
+                  activity.icon,
+                  size: 17,
+                  color: selected ? on : off,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// One child's line: four toggles and the score they add up to.
 @visibleForTesting

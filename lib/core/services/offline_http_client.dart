@@ -47,6 +47,15 @@ class OfflineHttpClient extends http.BaseClient {
     'attendance_years',
   };
 
+  /// Writes that must reach the server now or fail: a lesson prep and its
+  /// files. Queued, the app said "sent" while the photos were still on the
+  /// phone, and the prep showed up without them (or with broken ones).
+  static const _neverQueueTables = <String>{
+    'servant_lesson_preps',
+    'servant_lesson_prep_photos',
+  };
+  static const _neverQueueBuckets = <String>{'servant-submissions'};
+
   static const _reserved = <String>{
     'select',
     'order',
@@ -73,10 +82,17 @@ class OfflineHttpClient extends http.BaseClient {
 
     if (path.contains('/rest/v1/') && !path.contains('/rest/v1/rpc/')) {
       if (method == 'GET' || method == 'HEAD') return _read(request);
+      if (_neverQueueTables.contains(_tableOf(path))) {
+        return _inner.send(request);
+      }
       return _write(request, _tableOf(path));
     }
     if (_isStorageUpload(path, method)) {
-      return _write(request, path.split('/storage/v1/object/').last);
+      final target = path.split('/storage/v1/object/').last;
+      if (_neverQueueBuckets.contains(target.split('/').first)) {
+        return _inner.send(request);
+      }
+      return _write(request, target);
     }
     return _inner.send(request);
   }

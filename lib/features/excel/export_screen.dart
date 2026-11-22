@@ -127,7 +127,8 @@ class _ExportScreenState extends State<ExportScreen> {
     }
   }
 
-  String? get _yearId => context.read<SessionController>().currentYear?.id;
+  AttendanceYear? get _year => context.read<SessionController>().currentYear;
+  String? get _yearId => _year?.id;
 
   Future<void> _exportChildren() => _export(
         name: '${AppStrings.exportChildren} - $_scopeLabel',
@@ -540,7 +541,10 @@ class _ExportScreenState extends State<ExportScreen> {
       name: AppStrings.exportServantYearly,
       build: () async {
         final results = await Future.wait([
-          _servantActivity.activitySummaries(),
+          _servantActivity.activitySummaries(
+            from: _year?.startDate,
+            to: _year?.endDate,
+          ),
           _servantActivity.sessionCountForYear(yearId),
         ]);
         final summaries = results[0] as List;

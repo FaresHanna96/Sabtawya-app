@@ -1872,6 +1872,484 @@ void main() {
       }
     });
   });
+
+  // The queries behind the servants' activity counts and the admin's
+  // optimistic attendance chips (ServantActivityRepository).
+  group('servant activity counts', () {
+    Future<Map<String, dynamic>> currentYear(_Who who) async {
+      final r = await _call(
+          'GET',
+          '/rest/v1/attendance_years?select=id,start_date,end_date'
+              '&is_current=eq.true&limit=1',
+          token: who.token);
+      return (r.rows.single as Map).cast<String, dynamic>();
+    }
+
+    dev('an admin\'s mark comes back as the saved row', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final year = await currentYear(admin);
+      // A day of the year with no confession mark yet, so nothing that was
+      // already there is touched.
+      final taken = await _call(
+          'GET',
+          '/rest/v1/servant_attendances?select=date'
+              '&servant_id=eq.${servant.id}&activity_type=eq.confession',
+          token: admin.token);
+      final used = {for (final x in taken.rows) x['date']};
+      var day = DateTime.parse(year['start_date'] as String);
+      String iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+      while (used.contains(iso(day))) {
+        day = day.add(const Duration(days: 1));
+      }
+      final date = iso(day);
+
+      final r = await _call('POST', '/rest/v1/servant_attendances',
+          token: admin.token,
+          prefer: 'return=representation',
+          body: {
+            'servant_id': servant.id,
+            'activity_type': 'confession',
+            'date': date,
+            'recorded_by': admin.id,
+          });
+      final id = r.rows.isEmpty ? null : (r.rows.single as Map)['id'];
+      try {
+        expect(r.status, 201, reason: '${r.body}');
+        final row = (r.rows.single as Map).cast<String, dynamic>();
+        expect(row['id'], isNotEmpty);
+        expect(row['servant_id'], servant.id);
+        expect(row['date'], date);
+      } finally {
+        if (id != null) {
+          await _call('DELETE', '/rest/v1/servant_attendances?id=eq.$id',
+              token: admin.token);
+        }
+      }
+    });
+
+    dev('a mark from last year is not counted in this year', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final year = await currentYear(admin);
+      final start = year['start_date'] as String;
+      final end = year['end_date'] as String;
+      // The day before the year starts: last year.
+      final before = DateTime.parse(start).subtract(const Duration(days: 1));
+      final old = '${before.year.toString().padLeft(4, '0')}-'
+          '${before.month.toString().padLeft(2, '0')}-'
+          '${before.day.toString().padLeft(2, '0')}';
+      final made = await _call('POST', '/rest/v1/servant_attendances',
+          token: admin.token,
+          prefer: 'return=representation',
+          body: {
+            'servant_id': servant.id,
+            'activity_type': 'mass',
+            'date': old,
+            'recorded_by': admin.id,
+          });
+      expect(made.ok, isTrue, reason: '${made.body}');
+      final id = (made.rows.single as Map)['id'];
+      try {
+        // The servant reads their own marks, as on «نشاطي».
+        final all = await _call(
+            'GET',
+            '/rest/v1/servant_attendances?select=activity_type,date'
+                '&servant_id=eq.${servant.id}',
+            token: servant.token);
+        final thisYear = await _call(
+            'GET',
+            '/rest/v1/servant_attendances?select=activity_type,date'
+                '&servant_id=eq.${servant.id}'
+                '&date=gte.$start&date=lte.$end',
+            token: servant.token);
+        expect(all.rows.map((x) => x['date']), contains(old));
+        expect(thisYear.rows.map((x) => x['date']), isNot(contains(old)));
+      } finally {
+        await _call('DELETE', '/rest/v1/servant_attendances?id=eq.$id',
+            token: admin.token);
+      }
+    });
+
+    dev('preps can be narrowed to the year by their Saturday', () async {
+      final admin = await _login('admin');
+      final year = await currentYear(admin);
+      final start = year['start_date'] as String;
+      final end = year['end_date'] as String;
+      final r = await _call(
+          'GET',
+          '/rest/v1/servant_lesson_preps?select=servant_id,status,'
+              'attendance_sessions!inner(session_date)'
+              '&attendance_sessions.session_date=gte.$start'
+              '&attendance_sessions.session_date=lte.$end',
+          token: admin.token);
+      expect(r.ok, isTrue, reason: '${r.body}');
+      for (final row in r.rows) {
+        final d = (row['attendance_sessions'] as Map)['session_date'] as String;
+        expect(d.compareTo(start) >= 0 && d.compareTo(end) <= 0, isTrue);
+      }
+    });
+  });
+
+  // A Saturday with no lesson (إجازة / نشاط ترفيهي): its kind, and that the
+  // runs behind ملتزمين and the absence alerts skip it even when attendance
+  // was saved that day (14 Nov 2026: one class saved with nobody ticked).
+  group('no-lesson Saturdays', () {
+    dev('a break is a holiday or an activity, nothing else', () async {
+      final admin = await _login('admin');
+      final r = await _call('POST', '/rest/v1/lesson_breaks',
+          token: admin.token,
+          body: {'break_date': '2031-01-04', 'kind': 'party'});
+      expect(r.ok, isFalse);
+      expect(r.code, '23514', reason: '${r.body}'); // check constraint
+    });
+
+    dev('a marked Saturday is flagged in every class, refused, not counted',
+        () async {
+      final admin = await _login('admin');
+      final year = (await _call(
+              'GET',
+              '/rest/v1/attendance_years?select=id&is_current=eq.true',
+              token: admin.token))
+          .rows
+          .single['id'];
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      // A past Saturday of this year that is not a break yet.
+      final breaks = {
+        for (final b in (await _call(
+                'GET', '/rest/v1/lesson_breaks?select=break_date',
+                token: admin.token))
+            .rows)
+          b['break_date'],
+      };
+      final sessions = (await _call(
+              'GET',
+              '/rest/v1/attendance_sessions?select=id,session_date,is_break'
+                  '&year_id=eq.$year&session_date=lte.$today'
+                  '&order=session_date.desc',
+              token: admin.token))
+          .rows;
+      final day = sessions
+          .map((s) => s['session_date'] as String)
+          .firstWhere((d) => !breaks.contains(d));
+      final thatDay = [
+        for (final s in sessions)
+          if (s['session_date'] == day) s['id'] as String,
+      ];
+      expect(thatDay, isNotEmpty);
+
+      Future<int> held() async => ((await _call(
+                  'GET',
+                  '/rest/v1/v_child_year_scores?select=sessions_total'
+                      '&year_id=eq.$year&limit=1',
+                  token: admin.token))
+              .rows
+              .single['sessions_total'] as num)
+          .toInt();
+      final heldBefore = await held();
+
+      final made = await _call('POST', '/rest/v1/lesson_breaks',
+          token: admin.token,
+          body: {'break_date': day, 'kind': 'holiday', 'shift': false});
+      expect(made.ok, isTrue, reason: '${made.body}');
+      try {
+        final flagged = await _call(
+            'GET',
+            '/rest/v1/attendance_sessions?select=is_break'
+                '&session_date=eq.$day',
+            token: admin.token);
+        expect(flagged.rows.every((r) => r['is_break'] == true), isTrue);
+
+        // Nothing new can be saved on it.
+        final child = (await _call('GET', '/rest/v1/children?select=id,class_id'
+                '&is_active=eq.true&limit=1',
+                token: admin.token))
+            .rows
+            .single;
+        final session = (await _call(
+                'GET',
+                '/rest/v1/attendance_sessions?select=id'
+                    '&session_date=eq.$day&class_id=eq.${child['class_id']}',
+                token: admin.token))
+            .rows
+            .single['id'];
+        final saved = await _call('POST', '/rest/v1/attendance_records',
+            token: admin.token,
+            prefer: 'resolution=merge-duplicates',
+            body: {
+              'session_id': session,
+              'child_id': child['id'],
+              'sunday_school': true,
+              'vespers': false,
+              'mass': false,
+              'confession': false,
+            });
+        expect(saved.ok, isFalse, reason: 'saved on a no-lesson day');
+
+        // One Saturday fewer held, for every percentage.
+        expect(await held(), heldBefore - 1);
+      } finally {
+        await _call('DELETE', '/rest/v1/lesson_breaks?break_date=eq.$day',
+            token: admin.token);
+        await _call(
+            'DELETE',
+            '/rest/v1/notifications?kind=eq.lesson_changed'
+                '&created_at=gte.$started',
+            token: admin.token);
+      }
+      final cleared = await _call(
+          'GET',
+          '/rest/v1/attendance_sessions?select=is_break&session_date=eq.$day',
+          token: admin.token);
+      expect(cleared.rows.every((r) => r['is_break'] == false), isTrue);
+      expect(await held(), heldBefore);
+    });
+
+    dev('the runs skip a Saturday marked as no lesson', () async {
+      final admin = await _login('admin');
+      final year = (await _call(
+              'GET',
+              '/rest/v1/attendance_years?select=id&is_current=eq.true',
+              token: admin.token))
+          .rows
+          .single['id'];
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final scores = (await _call(
+              'GET',
+              '/rest/v1/v_session_scores?select=class_id,child_id,'
+                  'session_date,score&year_id=eq.$year'
+                  '&session_date=lte.$today',
+              token: admin.token))
+          .rows;
+      final breaks = {
+        for (final b in (await _call(
+                'GET', '/rest/v1/lesson_breaks?select=break_date',
+                token: admin.token))
+            .rows)
+          b['break_date'],
+      };
+
+      // A class with two or more recorded Saturdays; its latest is marked.
+      final byClass = <String, Set<String>>{};
+      for (final s in scores) {
+        if (breaks.contains(s['session_date'])) continue;
+        (byClass[s['class_id'] as String] ??= {})
+            .add(s['session_date'] as String);
+      }
+      final entry = byClass.entries.firstWhere((e) => e.value.length >= 2);
+      final classId = entry.key;
+      final marked = (entry.value.toList()..sort()).last;
+
+      // The run as the view should count it, skipping [skip].
+      Map<String, int> expected(String? skip) {
+        final days = (byClass[classId]!.where((d) => d != skip).toList()
+              ..sort())
+            .reversed
+            .toList();
+        final present = <String, Set<String>>{};
+        for (final s in scores) {
+          if (s['class_id'] != classId || ((s['score'] as num?) ?? 0) <= 0) {
+            continue;
+          }
+          (present[s['child_id'] as String] ??= {})
+              .add(s['session_date'] as String);
+        }
+        final out = <String, int>{};
+        for (final s in scores) {
+          if (s['class_id'] != classId) continue;
+          final id = s['child_id'] as String;
+          var n = 0;
+          for (final d in days) {
+            if (!(present[id]?.contains(d) ?? false)) break;
+            n++;
+          }
+          out[id] = n;
+        }
+        return out;
+      }
+
+      Future<Map<String, int>> view() async => {
+            for (final r in (await _call(
+                    'GET',
+                    '/rest/v1/v_child_attendance_streak?select=child_id,'
+                        'present_streak&class_id=eq.$classId&year_id=eq.$year',
+                    token: admin.token))
+                .rows)
+              r['child_id'] as String: r['present_streak'] as int,
+          };
+
+      final before = await view();
+      for (final e in expected(null).entries) {
+        expect(before[e.key], e.value, reason: 'before, ${e.key}');
+      }
+
+      final made = await _call('POST', '/rest/v1/lesson_breaks',
+          token: admin.token,
+          body: {'break_date': marked, 'kind': 'activity', 'shift': false});
+      expect(made.ok, isTrue, reason: '${made.body}');
+      try {
+        final after = await view();
+        for (final e in expected(marked).entries) {
+          expect(after[e.key], e.value, reason: 'after, ${e.key}');
+        }
+      } finally {
+        await _call('DELETE', '/rest/v1/lesson_breaks?break_date=eq.$marked',
+            token: admin.token);
+        await _call(
+            'DELETE',
+            '/rest/v1/notifications?kind=eq.lesson_changed'
+                '&created_at=gte.$started',
+            token: admin.token);
+      }
+    });
+  });
+
+  // A servant fixes a prep after a comment and sends it back; the admin's
+  // per-servant totals are added up in the database.
+  group('lesson prep: resend and totals', () {
+    dev('only my own commented prep, with a file, goes back for review',
+        () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final general = await _login('general');
+
+      final mine = await _call('GET',
+          '/rest/v1/class_servants?select=class_id&servant_id=eq.${servant.id}',
+          token: admin.token);
+      final classId = mine.rows.first['class_id'];
+      final sessions = await _call(
+          'GET',
+          '/rest/v1/attendance_sessions?select=id&class_id=eq.$classId'
+              '&is_break=eq.false&order=session_date.desc&limit=40',
+          token: admin.token);
+      final prior = await _call(
+          'GET',
+          '/rest/v1/servant_lesson_preps?select=session_id'
+              '&servant_id=eq.${servant.id}',
+          token: admin.token);
+      final used = {for (final p in prior.rows) (p as Map)['session_id']};
+      final sessionId = sessions.rows
+          .map((s) => (s as Map)['id'])
+          .firstWhere((s) => !used.contains(s));
+
+      final made = await _call('POST', '/rest/v1/servant_lesson_preps',
+          token: servant.token,
+          body: {'servant_id': servant.id, 'session_id': sessionId},
+          prefer: 'return=representation');
+      expect(made.ok, isTrue, reason: '${made.body}');
+      final prepId = made.rows.single['id'] as String;
+
+      Future<_Reply> resend(_Who who) => _call(
+          'POST', '/rest/v1/rpc/resubmit_prep',
+          token: who.token, body: {'p_prep_id': prepId});
+
+      try {
+        // Still waiting: nothing to send back.
+        expect((await resend(servant)).ok, isFalse);
+
+        final reviewed = await _call(
+            'PATCH', '/rest/v1/servant_lesson_preps?id=eq.$prepId',
+            token: admin.token,
+            body: {'status': 'commented', 'admin_comment': 'زوّد صورة'});
+        expect(reviewed.ok, isTrue, reason: '${reviewed.body}');
+
+        // Commented but no file left: refused.
+        expect((await resend(servant)).ok, isFalse);
+
+        final file = await _call('POST', '/rest/v1/servant_lesson_prep_photos',
+            token: servant.token,
+            body: {'prep_id': prepId, 'storage_path': '$prepId/dev-test.jpg'});
+        expect(file.ok, isTrue, reason: '${file.body}');
+
+        // Somebody else's prep: refused.
+        final other = await resend(general);
+        expect(other.ok, isFalse);
+        expect(other.code, '42501');
+
+        final r = await resend(servant);
+        expect(r.ok, isTrue, reason: '${r.body}');
+
+        final now = await _call(
+            'GET',
+            '/rest/v1/servant_lesson_preps?select=status,admin_comment,reviewed_at'
+                '&id=eq.$prepId',
+            token: admin.token);
+        expect(now.rows.single['status'], 'pending');
+        expect(now.rows.single['admin_comment'], 'زوّد صورة'); // kept
+        expect(now.rows.single['reviewed_at'], isNull);
+
+        final told = await _call(
+            'GET',
+            '/rest/v1/notifications?select=id&kind=eq.prep_submitted'
+                '&ref_id=eq.$prepId&user_id=eq.${admin.id}',
+            token: admin.token);
+        expect(told.rows, isNotEmpty);
+      } finally {
+        await _call('DELETE', '/rest/v1/servant_lesson_preps?id=eq.$prepId',
+            token: admin.token);
+        for (final who in [admin, servant]) {
+          await _call(
+              'DELETE',
+              '/rest/v1/notifications?kind=in.(prep_submitted,prep_reviewed)'
+                  '&created_at=gte.$started',
+              token: who.token);
+        }
+      }
+    });
+
+    dev('the totals match the rows, and only an admin reads them', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final year = (await _call(
+              'GET',
+              '/rest/v1/attendance_years?select=start_date,end_date'
+                  '&is_current=eq.true',
+              token: admin.token))
+          .rows
+          .single as Map;
+      final from = year['start_date'] as String;
+      final to = year['end_date'] as String;
+
+      final refused = await _call(
+          'POST', '/rest/v1/rpc/servant_activity_summary',
+          token: servant.token, body: {'p_from': from, 'p_to': to});
+      expect(refused.ok, isFalse);
+
+      final r = await _call('POST', '/rest/v1/rpc/servant_activity_summary',
+          token: admin.token, body: {'p_from': from, 'p_to': to});
+      expect(r.ok, isTrue, reason: '${r.body}');
+      final row = (r.rows.firstWhere((x) => x['servant_id'] == servant.id)
+          as Map);
+
+      final marks = await _call(
+          'GET',
+          '/rest/v1/servant_attendances?select=activity_type'
+              '&servant_id=eq.${servant.id}&date=gte.$from&date=lte.$to',
+          token: admin.token);
+      int count(String type) =>
+          marks.rows.where((m) => m['activity_type'] == type).length;
+      expect(row['sunday_school'], count('sunday_school'));
+      expect(row['servant_meeting'], count('servant_meeting'));
+      expect(row['mass'], count('mass'));
+      expect(row['confession'], count('confession'));
+
+      final preps = await _call(
+          'GET',
+          '/rest/v1/servant_lesson_preps?select=status,'
+              'attendance_sessions!inner(session_date,is_break)'
+              '&servant_id=eq.${servant.id}'
+              '&attendance_sessions.session_date=gte.$from'
+              '&attendance_sessions.session_date=lte.$to'
+              '&attendance_sessions.is_break=eq.false',
+          token: admin.token);
+      expect(row['preps_total'], preps.rows.length);
+      expect(row['preps_pending'],
+          preps.rows.where((p) => p['status'] == 'pending').length);
+      expect(row['classes_count'], 1);
+    });
+  });
 }
 
 /// Uploads a tiny PDF to [bucket]/[path] as the holder of [token].

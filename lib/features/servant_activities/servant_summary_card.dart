@@ -66,15 +66,15 @@ class ServantSummaryCard extends StatelessWidget {
         children: [
           _row(
             _attendance(AppStrings.sundaySchoolShort, sundaySchool,
-                AppColors.success, Icons.church_outlined),
+                AppColors.success, AppIcons.sundaySchool),
             _attendance(AppStrings.servantMeetingShort, servantMeeting,
-                AppColors.success, Icons.groups_outlined),
+                AppColors.success, AppIcons.servantMeeting),
           ),
           _row(
             _attendance(AppStrings.mass, mass, AppColors.gold,
-                Icons.account_balance_outlined),
+                AppIcons.mass),
             _attendance(AppStrings.confession, confession, AppColors.coral,
-                Icons.volunteer_activism_outlined),
+                AppIcons.confession),
           ),
           _row(
             StatTile(

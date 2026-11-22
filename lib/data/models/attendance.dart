@@ -42,6 +42,14 @@ class AttendanceYear {
         maxPointsPerSession: asInt(map['max_points_per_session'], 20),
         isCurrent: asBool(map['is_current']),
       );
+
+  /// Whether [date]'s calendar day falls in this year (both ends included).
+  bool contains(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day);
+    return !d.isBefore(start) && !d.isAfter(end);
+  }
 }
 
 class AttendanceSession {
@@ -52,6 +60,7 @@ class AttendanceSession {
     required this.sessionDate,
     required this.isLocked,
     this.notes,
+    this.isBreak = false,
   });
 
   final String id;
@@ -61,6 +70,10 @@ class AttendanceSession {
   final bool isLocked;
   final String? notes;
 
+  /// No lesson that Saturday (إجازة / نشاط ترفيهي): shown, but not taken
+  /// and left out of every calculation.
+  final bool isBreak;
+
   factory AttendanceSession.fromMap(Map<String, dynamic> map) =>
       AttendanceSession(
         id: asText(map['id']),
@@ -69,6 +82,7 @@ class AttendanceSession {
         sessionDate: asDate(map['session_date']),
         isLocked: asBool(map['is_locked']),
         notes: asTextOrNull(map['notes']),
+        isBreak: asBool(map['is_break']),
       );
 }
 
@@ -398,6 +412,7 @@ class ChildSessionScore {
     required this.maxScore,
     this.updatedByName,
     this.updatedAt,
+    this.isBreak = false,
   });
 
   final String sessionId;
@@ -414,6 +429,9 @@ class ChildSessionScore {
   final int maxScore;
   final String? updatedByName;
   final DateTime? updatedAt;
+
+  /// Saved on a Saturday that turned out to have no lesson: kept, not counted.
+  final bool isBreak;
 
   bool get isPresent => sundaySchool || vespers || mass || confession;
 
@@ -433,5 +451,6 @@ class ChildSessionScore {
         maxScore: asInt(map['max_score'], 20),
         updatedByName: asTextOrNull(map['updated_by_name']),
         updatedAt: asDateOrNull(map['updated_at']),
+        isBreak: asBool(map['is_break']),
       );
 }

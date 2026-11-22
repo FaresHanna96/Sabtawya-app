@@ -4,21 +4,25 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/arabic_sort.dart';
+import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/servant_activity.dart';
 import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../data/services/excel_service.dart';
+import '../../data/supabase/db.dart';
 import '../../data/services/file_service.dart';
 import '../../state/session_controller.dart';
 import 'prep_review_sheet.dart';
 import 'preps_inbox_screen.dart';
-import 'servant_activities_report_screen.dart';
 import 'servant_activity_detail_screen.dart';
+import 'servant_marks.dart';
 
 /// Admin overview of all servants' activity stats.
 ///
@@ -29,14 +33,6 @@ class AdminServantActivitiesScreen extends StatelessWidget {
   const AdminServantActivitiesScreen({super.key, this.showAppBar = true});
 
   final bool showAppBar;
-
-  void _openReport(BuildContext context) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => const ServantActivitiesReportScreen(),
-      ),
-    );
-  }
 
   /// Asks yearly or this month, then shares the matching Excel report (the
   /// same files as the export screen).
@@ -76,7 +72,8 @@ class AdminServantActivitiesScreen extends StatelessWidget {
     if (monthly == null || !context.mounted) return;
 
     const repo = ServantActivityRepository();
-    final yearId = context.read<SessionController>().currentYear?.id;
+    final year = context.read<SessionController>().currentYear;
+    final yearId = year?.id;
     final name = monthly
         ? AppStrings.exportServantMonthly
         : AppStrings.exportServantYearly;
@@ -93,7 +90,10 @@ class AdminServantActivitiesScreen extends StatelessWidget {
           );
         }
       } else {
-        final summaries = await repo.activitySummaries();
+        final summaries = await repo.activitySummaries(
+          from: year?.startDate,
+          to: year?.endDate,
+        );
         final total =
             yearId == null ? 0 : await repo.sessionCountForYear(yearId);
         if (summaries.isNotEmpty) {
@@ -122,8 +122,8 @@ class AdminServantActivitiesScreen extends StatelessWidget {
 
   static const _tabBar = TabBar(
     tabs: [
-      Tab(text: 'الخدام'),
-      Tab(text: 'تسجيل الحضور'),
+      Tab(text: AppStrings.servantsTab),
+      Tab(text: AppStrings.servantAttendanceTab),
     ],
     indicatorColor: Colors.white,
     labelColor: Colors.white,
@@ -151,11 +151,6 @@ class AdminServantActivitiesScreen extends StatelessWidget {
                     icon: const Icon(Icons.ios_share),
                     onPressed: () => _export(context),
                   ),
-                  IconButton(
-                    tooltip: AppStrings.servantActivityReport,
-                    icon: const Icon(Icons.insert_chart_outlined),
-                    onPressed: () => _openReport(context),
-                  ),
                 ],
                 bottom: _tabBar,
               ),
@@ -174,12 +169,6 @@ class AdminServantActivitiesScreen extends StatelessWidget {
                         color: Colors.white,
                         icon: const Icon(Icons.ios_share),
                         onPressed: () => _export(context),
-                      ),
-                      IconButton(
-                        tooltip: AppStrings.servantActivityReport,
-                        color: Colors.white,
-                        icon: const Icon(Icons.insert_chart_outlined),
-                        onPressed: () => _openReport(context),
                       ),
                     ],
                   ),
@@ -211,10 +200,15 @@ class _SummaryTabState extends State<_SummaryTab>
   /// Typed into the search box above the servants.
   String _query = '';
 
+  ServantSort _sort = ServantSort.name;
+  bool _onlyPending = false;
+
   Future<_ScreenData> _load() async {
-    final yearId = context.read<SessionController>().currentYear?.id;
+    final year = context.read<SessionController>().currentYear;
+    final yearId = year?.id;
     final results = await Future.wait([
-      _repo.activitySummaries(),
+      // This year's counts, to match the base (this year's Saturdays).
+      _repo.activitySummaries(from: year?.startDate, to: year?.endDate),
       yearId != null ? _repo.sessionCountForYear(yearId) : Future.value(0),
     ]);
     return _ScreenData(
@@ -263,9 +257,15 @@ class _SummaryTabState extends State<_SummaryTab>
 
         final totalPending =
             data.summaries.fold(0, (s, e) => s + e.pendingPreps);
-        final shown = data.summaries
-            .where((s) => _matches(s.servantName, _query))
-            .toList();
+        final shown = sortServants(
+          [
+            for (final s in data.summaries)
+              if (_matches(s.servantName, _query)) s,
+          ],
+          _sort,
+          held: data.totalSessions,
+          onlyPending: _onlyPending,
+        );
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
@@ -283,15 +283,37 @@ class _SummaryTabState extends State<_SummaryTab>
                 ),
                 const SizedBox(height: 12),
                 _SearchBox(onChanged: (q) => setState(() => _query = q)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final s in ServantSort.values)
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(end: 6),
+                          child: ChoiceChip(
+                            label: Text(s.label),
+                            selected: _sort == s,
+                            onSelected: (_) => setState(() => _sort = s),
+                          ),
+                        ),
+                      FilterChip(
+                        label: const Text(AppStrings.onlyPendingPreps),
+                        selected: _onlyPending,
+                        onSelected: (on) => setState(() => _onlyPending = on),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
               ]);
             }
             final s = shown[index - 1];
             final card = Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _ServantCard(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ServantRow(
                 summary: s,
-                totalSessions: data.totalSessions,
+                held: data.totalSessions,
                 onTap: () => _openDetail(s),
               ),
             );
@@ -323,9 +345,11 @@ class _AttendanceTabState extends State<_AttendanceTab>
   List<DateTime> _sessionDates = [];
   List<Profile> _servants = [];
   DateTime? _selectedDate;
-  List<ServantAttendance> _attendances = [];
+
+  /// The marks of the Saturday shown; a tap flips one at once (see
+  /// [ServantMarks]) and only that chip waits for the server.
+  final _marks = ServantMarks();
   List<LessonPrep> _preps = [];
-  bool _toggling = false;
 
   /// Typed into the search box above the servants.
   String _query = '';
@@ -473,7 +497,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
         _sessionDates = dates;
         _servants = servants;
         _selectedDate = selected;
-        _attendances = att;
+        _marks.reset(att);
         _preps = preps;
         _loading = false;
       });
@@ -481,7 +505,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = AppFailure.from(e).message;
         _loading = false;
       });
     }
@@ -490,7 +514,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
   Future<void> _selectDate(DateTime date) async {
     setState(() {
       _selectedDate = date;
-      _attendances = [];
+      _marks.reset(const []);
       _preps = [];
       _loading = true;
     });
@@ -500,8 +524,10 @@ class _AttendanceTabState extends State<_AttendanceTab>
         _repo.allPrepsForDate(date),
       ]);
       if (!mounted) return;
+      // A later tap on another Saturday wins over this answer.
+      if (_selectedDate != date) return;
       setState(() {
-        _attendances = results[0] as List<ServantAttendance>;
+        _marks.reset(results[0] as List<ServantAttendance>);
         _preps = results[1] as List<LessonPrep>;
         _loading = false;
       });
@@ -537,40 +563,117 @@ class _AttendanceTabState extends State<_AttendanceTab>
     );
   }
 
-  ServantAttendance? _find(String servantId, String activityType) {
-    for (final a in _attendances) {
-      if (a.servantId == servantId && a.activityType == activityType) return a;
-    }
-    return null;
-  }
+  ServantAttendance? _find(String servantId, String activityType) =>
+      _marks.find(servantId, activityType);
 
-  Future<void> _toggle(
-    String servantId,
-    String activityType,
-  ) async {
-    if (_toggling || _selectedDate == null) return;
-    final existing = _find(servantId, activityType);
-    setState(() => _toggling = true);
+  /// Shows the change at once, then saves it; a refusal puts it back with
+  /// the error. Other chips stay usable meanwhile.
+  Future<void> _toggle(String servantId, String activityType) async {
+    final date = _selectedDate;
+    if (date == null) return;
+    MarkToggle? t;
+    setState(() {
+      t = _marks.begin(
+        servantId: servantId,
+        type: activityType,
+        date: date,
+        recordedBy: Db.userId ?? '',
+      );
+    });
+    final toggle = t;
+    if (toggle == null) return; // that chip is still saving
     try {
-      if (existing != null) {
-        await _repo.deleteAttendance(existing.id);
-        if (!mounted) return;
-        setState(() => _attendances.removeWhere((a) => a.id == existing.id));
-      } else {
-        await _repo.recordAttendance(
+      ServantAttendance? saved;
+      if (toggle.adding) {
+        saved = await _repo.recordAttendance(
           servantId: servantId,
           activityType: activityType,
-          date: _selectedDate!,
+          date: date,
         );
-        // Reload to get the new ID
-        final att = await _repo.servantAttendancesForDate(_selectedDate!);
-        if (!mounted) return;
-        setState(() => _attendances = att);
+      } else {
+        await _repo.deleteAttendance(toggle.row.id);
       }
+      if (!mounted || _selectedDate != date) return;
+      setState(() => _marks.succeed(toggle, saved));
     } catch (e) {
-      if (mounted) Ui.error(context, e);
-    } finally {
-      if (mounted) setState(() => _toggling = false);
+      if (!mounted) return;
+      if (_selectedDate == date) setState(() => _marks.fail(toggle));
+      Ui.error(context, e);
+    }
+  }
+
+  /// «الكل حضروا»: which activity, then everyone shown who has no mark in
+  /// it yet gets one, in one request, on screen at once.
+  Future<void> _markAll() async {
+    final date = _selectedDate;
+    if (date == null) return;
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                AppStrings.markAllWhich,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+            ),
+            for (final (t, icon, label) in const [
+              ('sunday_school', AppIcons.sundaySchool, AppStrings.chipService),
+              ('servant_meeting', AppIcons.servantMeeting,
+                  AppStrings.chipMeeting),
+              ('mass', AppIcons.mass, AppStrings.massShort),
+              ('confession', AppIcons.confession, AppStrings.confessionShort),
+            ])
+              ListTile(
+                leading: Icon(icon, color: AppColors.navy),
+                title: Text(label),
+                onTap: () => Navigator.of(sheet).pop(t),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (type == null || !mounted) return;
+
+    late final List<MarkToggle> toggles;
+    setState(() {
+      toggles = _marks.beginAll(
+        servantIds: [for (final s in _shownServants) s.id],
+        type: type,
+        date: date,
+        recordedBy: Db.userId ?? '',
+      );
+    });
+    if (toggles.isEmpty) return;
+    try {
+      final saved = await _repo.recordAttendanceMany(
+        servantIds: [for (final t in toggles) t.servantId],
+        activityType: type,
+        date: date,
+      );
+      if (!mounted || _selectedDate != date) return;
+      final byServant = {for (final a in saved) a.servantId: a};
+      setState(() {
+        for (final t in toggles) {
+          _marks.succeed(t, byServant[t.servantId]);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      if (_selectedDate == date) {
+        setState(() {
+          for (final t in toggles) {
+            _marks.fail(t);
+          }
+        });
+      }
+      Ui.error(context, e);
     }
   }
 
@@ -589,21 +692,8 @@ class _AttendanceTabState extends State<_AttendanceTab>
   Widget build(BuildContext context) {
     super.build(context);
 
-    if (_loading && _servants.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            TextButton(onPressed: _load, child: const Text(AppStrings.retry)),
-          ],
-        ),
-      );
-    }
+    if (_loading && _servants.isEmpty) return const SkeletonList();
+    if (_error != null) return ErrorView(message: _error!, onRetry: _load);
 
     return Column(
       children: [
@@ -675,7 +765,21 @@ class _AttendanceTabState extends State<_AttendanceTab>
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: _SearchBox(onChanged: (q) => setState(() => _query = q)),
+          child: Row(
+            children: [
+              Expanded(
+                child: _SearchBox(onChanged: (q) => setState(() => _query = q)),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: _selectedDate == null || _servants.isEmpty
+                    ? null
+                    : _markAll,
+                icon: const Icon(Icons.done_all, size: 18),
+                label: const Text(AppStrings.allServantsCame),
+              ),
+            ],
+          ),
         ),
         const Divider(height: 1, thickness: 0.5),
         // Servant list
@@ -710,7 +814,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
                       confessionPresent: conf != null,
                       prep: prep,
                       lessonPrepManual: lp != null,
-                      disabled: _toggling,
+                      busy: (type) => _marks.isBusy(servant.id, type),
                       onToggleSunday: () =>
                           _toggle(servant.id, 'sunday_school'),
                       onToggleMeeting: () =>
@@ -740,7 +844,7 @@ class _BulkServantRow extends StatelessWidget {
     required this.confessionPresent,
     required this.prep,
     required this.lessonPrepManual,
-    required this.disabled,
+    required this.busy,
     required this.onToggleSunday,
     required this.onToggleMeeting,
     required this.onToggleMass,
@@ -756,7 +860,9 @@ class _BulkServantRow extends StatelessWidget {
   final bool confessionPresent;
   final LessonPrep? prep;
   final bool lessonPrepManual;
-  final bool disabled;
+
+  /// The chip of this activity type is being saved.
+  final bool Function(String type) busy;
   final VoidCallback onToggleSunday;
   final VoidCallback onToggleMeeting;
   final VoidCallback onToggleMass;
@@ -768,88 +874,121 @@ class _BulkServantRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: onDetail,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Row 1: avatar + name + arrow
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.navy.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 6, 8, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Row 1: avatar + name + arrow. Only this row opens the servant's
+            // page, so a near miss on a chip below never navigates away.
+            InkWell(
+              onTap: onDetail,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.navy.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.person_outline,
+                          size: 16, color: AppColors.navy),
                     ),
-                    child: const Icon(Icons.person_outline,
-                        size: 16, color: AppColors.navy),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      servant.fullName,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        servant.fullName,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  const Icon(AppIcons.forward,
-                      size: 18, color: AppColors.muted),
-                ],
+                    const Icon(AppIcons.forward,
+                        size: 18, color: AppColors.muted),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              // Row 2: chips
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _PrepChip(
-                      prep: prep,
-                      manualPresent: lessonPrepManual,
-                      disabled: disabled,
-                      onTap: onPrep),
-                  _Toggle(
-                    label: 'خدمة',
-                    icon: Icons.church_outlined,
-                    present: sundaySchoolPresent,
-                    disabled: disabled,
-                    onTap: onToggleSunday,
-                  ),
-                  _Toggle(
-                    label: 'اجتماع',
-                    icon: Icons.groups_outlined,
-                    present: servantMeetingPresent,
-                    disabled: disabled,
-                    onTap: onToggleMeeting,
-                  ),
-                  _Toggle(
-                    label: AppStrings.massShort,
-                    icon: Icons.brightness_high_outlined,
-                    present: massPresent,
-                    disabled: disabled,
-                    onTap: onToggleMass,
-                  ),
-                  _Toggle(
-                    label: AppStrings.confessionShort,
-                    icon: Icons.volunteer_activism_outlined,
-                    present: confessionPresent,
-                    disabled: disabled,
-                    onTap: onToggleConfession,
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 6),
+            // Row 2: chips, each a full-size touch target.
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _PrepChip(
+                    prep: prep,
+                    manualPresent: lessonPrepManual,
+                    disabled: busy('lesson_prep'),
+                    onTap: onPrep),
+                _Toggle(
+                  label: AppStrings.chipService,
+                  icon: AppIcons.sundaySchool,
+                  present: sundaySchoolPresent,
+                  disabled: busy('sunday_school'),
+                  onTap: onToggleSunday,
+                ),
+                _Toggle(
+                  label: AppStrings.chipMeeting,
+                  icon: AppIcons.servantMeeting,
+                  present: servantMeetingPresent,
+                  disabled: busy('servant_meeting'),
+                  onTap: onToggleMeeting,
+                ),
+                _Toggle(
+                  label: AppStrings.massShort,
+                  icon: AppIcons.mass,
+                  present: massPresent,
+                  disabled: busy('mass'),
+                  onTap: onToggleMass,
+                ),
+                _Toggle(
+                  label: AppStrings.confessionShort,
+                  icon: AppIcons.confession,
+                  present: confessionPresent,
+                  disabled: busy('confession'),
+                  onTap: onToggleConfession,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// How the تحضير chip looks: the prep's review status at a glance, so the
+/// admin sees which ones still wait for them.
+@visibleForTesting
+({Color color, IconData icon, String status}) prepChipLook(
+  LessonPrep? prep, {
+  required bool manualPresent,
+}) {
+  if (prep != null) {
+    // The same look as everywhere else a prep's status shows.
+    return (
+      color: prepStatusColor(prep.status),
+      icon: prepStatusIcon(prep.status),
+      status: prepStatusLabel(prep.status),
+    );
+  }
+  if (manualPresent) {
+    return (
+      color: AppColors.success,
+      icon: Icons.check_circle_outline,
+      status: AppStrings.prepMarkedByHand,
+    );
+  }
+  return (
+    color: AppColors.muted,
+    icon: Icons.assignment_outlined,
+    status: AppStrings.prepNotSent,
+  );
 }
 
 class _PrepChip extends StatelessWidget {
@@ -867,44 +1006,46 @@ class _PrepChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasSubmission = prep != null;
-    final isActive = hasSubmission || manualPresent;
-    final color = isActive ? AppColors.success : AppColors.muted;
-    return GestureDetector(
-      onTap: disabled ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: isActive ? 0.12 : 0.07),
+    final look = prepChipLook(prep, manualPresent: manualPresent);
+    final active = prep != null || manualPresent;
+    final color = look.color;
+    return Tooltip(
+      message: look.status,
+      child: Semantics(
+        button: true,
+        label: '${AppStrings.chipPrep}: ${look.status}',
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: disabled ? null : onTap,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: color.withValues(alpha: isActive ? 0.5 : 0.25),
-            width: 1.2,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              hasSubmission
-                  ? Icons.check_circle
-                  : isActive
-                      ? Icons.check_circle_outline
-                      : Icons.assignment_outlined,
-              size: 14,
-              color: color,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'تحضير',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            constraints: const BoxConstraints(minHeight: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: active ? 0.12 : 0.07),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withValues(alpha: active ? 0.5 : 0.25),
+                width: 1.2,
               ),
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(look.icon, size: 14, color: color),
+                const SizedBox(width: 4),
+                Text(
+                  AppStrings.chipPrep,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -929,32 +1070,41 @@ class _Toggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = present ? AppColors.success : AppColors.muted;
-    return GestureDetector(
-      onTap: disabled ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: present ? 0.12 : 0.07),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: color.withValues(alpha: present ? 0.5 : 0.25), width: 1.2),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              present ? Icons.check_circle : icon,
-              size: 14,
-              color: color,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: color),
-            ),
-          ],
+    return Semantics(
+      button: true,
+      toggled: present,
+      label: label,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: disabled ? null : onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minHeight: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: present ? 0.12 : 0.07),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: color.withValues(alpha: present ? 0.5 : 0.25),
+                width: 1.2),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                present ? Icons.check_circle : icon,
+                size: 14,
+                color: color,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: color),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -997,17 +1147,17 @@ class _StatsHeader extends StatelessWidget {
           _HeaderStat(
               icon: Icons.people_outline,
               value: '$totalServants',
-              label: 'خادم'),
+              label: AppStrings.statServants),
           const _Divider(),
           _HeaderStat(
               icon: Icons.calendar_month_outlined,
               value: '$totalSessions',
-              label: 'جلسة'),
+              label: AppStrings.statSaturdays),
           const _Divider(),
           _HeaderStat(
             icon: Icons.hourglass_empty_outlined,
             value: '$totalPending',
-            label: 'قيد المراجعة',
+            label: AppStrings.prepPending,
             accent: totalPending > 0 ? AppColors.warning : Colors.white70,
             onTap: onPendingTap,
           ),
@@ -1072,122 +1222,163 @@ class _Divider extends StatelessWidget {
 
 // ============================================================== servant card
 
-class _ServantCard extends StatelessWidget {
-  const _ServantCard({
+/// How the servants are ordered on «الخدام».
+enum ServantSort {
+  name(AppStrings.sortServantName),
+  lowest(AppStrings.sortServantLowest),
+  pending(AppStrings.sortServantPending);
+
+  const ServantSort(this.label);
+
+  final String label;
+}
+
+/// [list] in [sort] order; with [onlyPending], only those with a prep
+/// waiting for review. "Lowest" is the average over the four activities of
+/// [held] Saturdays; names break ties.
+@visibleForTesting
+List<ServantActivitySummary> sortServants(
+  List<ServantActivitySummary> list,
+  ServantSort sort, {
+  required int held,
+  bool onlyPending = false,
+}) {
+  final out = [
+    for (final s in list)
+      if (!onlyPending || s.pendingPreps > 0) s,
+  ];
+  int byName(ServantActivitySummary a, ServantActivitySummary b) =>
+      ArabicSort.compare(a.servantName, b.servantName);
+  out.sort(switch (sort) {
+    ServantSort.name => byName,
+    ServantSort.lowest => (a, b) {
+        final c =
+            (a.averageRate(held) ?? 0).compareTo(b.averageRate(held) ?? 0);
+        return c != 0 ? c : byName(a, b);
+      },
+    ServantSort.pending => (a, b) {
+        final c = b.pendingPreps.compareTo(a.pendingPreps);
+        return c != 0 ? c : byName(a, b);
+      },
+  });
+  return out;
+}
+
+/// One servant on one compact row: the name, the preps ("تحضير 5/8" and
+/// what waits for review), and the four activities as percentages.
+@visibleForTesting
+class ServantRow extends StatelessWidget {
+  const ServantRow({
+    super.key,
     required this.summary,
-    required this.totalSessions,
+    required this.held,
     required this.onTap,
   });
 
   final ServantActivitySummary summary;
-  final int totalSessions;
+
+  /// Saturdays held so far this year.
+  final int held;
   final VoidCallback onTap;
-
-  double _pctValue(int count) =>
-      totalSessions > 0 ? (count / totalSessions).clamp(0.0, 1.0) : 0.0;
-
-  String _pctLabel(int count) =>
-      totalSessions > 0 ? '${(count / totalSessions * 100).round()}%' : '-';
 
   @override
   Widget build(BuildContext context) {
-    final hasPending = summary.pendingPreps > 0;
-
+    final expected = summary.expectedPreps(held);
+    final prepColor = expected == null || expected == 0
+        ? AppColors.navy
+        : _level(summary.totalPreps / expected);
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.navy.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.person_outline,
-                        size: 20, color: AppColors.navy),
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       summary.servantName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700),
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                  if (hasPending)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${summary.pendingPreps} ${AppStrings.prepPending}',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.warning,
-                            fontWeight: FontWeight.w600),
-                      ),
+                  _Pill(
+                    text: expected == null
+                        ? AppStrings.prepCount(summary.totalPreps)
+                        : AppStrings.prepRate(summary.totalPreps, expected),
+                    color: prepColor,
+                    icon: Icons.assignment_outlined,
+                  ),
+                  if (summary.pendingPreps > 0) ...[
+                    const SizedBox(width: 4),
+                    _Pill(
+                      text: '${summary.pendingPreps}',
+                      color: AppColors.warning,
+                      icon: Icons.hourglass_top_rounded,
                     ),
-                  const SizedBox(width: 4),
+                  ],
                   const Icon(AppIcons.forward,
                       size: 18, color: AppColors.muted),
                 ],
               ),
-              const SizedBox(height: 12),
-              _SmallChip(
-                icon: Icons.assignment_outlined,
-                label: AppStrings.lessonPrep,
-                value: '${summary.totalPreps}',
-                color: AppColors.navy,
-              ),
-              const SizedBox(height: 10),
-              const Divider(height: 1, thickness: 0.5),
-              const SizedBox(height: 10),
-              _AttendanceBar(
-                icon: Icons.church_outlined,
-                label: AppStrings.sundaySchoolShort,
-                count: summary.sundaySchoolCount,
-                pctLabel: _pctLabel(summary.sundaySchoolCount),
-                progress: _pctValue(summary.sundaySchoolCount),
-                color: AppColors.success,
-              ),
               const SizedBox(height: 8),
-              _AttendanceBar(
-                icon: Icons.groups_outlined,
-                label: AppStrings.servantMeetingShort,
-                count: summary.servantMeetingCount,
-                pctLabel: _pctLabel(summary.servantMeetingCount),
-                progress: _pctValue(summary.servantMeetingCount),
-                color: AppColors.olive,
-              ),
-              const SizedBox(height: 8),
-              _AttendanceBar(
-                icon: Icons.brightness_high_outlined,
-                label: AppStrings.massShort,
-                count: summary.massCount,
-                pctLabel: _pctLabel(summary.massCount),
-                progress: _pctValue(summary.massCount),
-                color: AppColors.navy,
-              ),
-              const SizedBox(height: 8),
-              _AttendanceBar(
-                icon: Icons.volunteer_activism_outlined,
-                label: AppStrings.confessionShort,
-                count: summary.confessionCount,
-                pctLabel: _pctLabel(summary.confessionCount),
-                progress: _pctValue(summary.confessionCount),
-                color: AppColors.muted,
+              Row(
+                children: [
+                  for (final (icon, label, count) in [
+                    (
+                      AppIcons.sundaySchool,
+                      AppStrings.sundaySchoolShort,
+                      summary.sundaySchoolCount
+                    ),
+                    (
+                      AppIcons.servantMeeting,
+                      AppStrings.servantMeetingShort,
+                      summary.servantMeetingCount
+                    ),
+                    (AppIcons.mass, AppStrings.massShort, summary.massCount),
+                    (
+                      AppIcons.confession,
+                      AppStrings.confessionShort,
+                      summary.confessionCount
+                    ),
+                  ])
+                    Expanded(
+                      child: Tooltip(
+                        message: '$label: $count/$held',
+                        child: Row(
+                          children: [
+                            Icon(icon,
+                                size: 15,
+                                color: held == 0
+                                    ? AppColors.muted
+                                    : _level(count / held)),
+                            const SizedBox(width: 3),
+                            Text(
+                              held == 0
+                                  ? '-'
+                                  : '${(count / held * 100).round()}%',
+                              textDirection: TextDirection.ltr,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: held == 0
+                                    ? AppColors.muted
+                                    : _level(count / held),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -1195,88 +1386,41 @@ class _ServantCard extends StatelessWidget {
       ),
     );
   }
+
+  static Color _level(double ratio) => ratio >= 0.75
+      ? AppColors.success
+      : ratio >= 0.5
+          ? AppColors.warning
+          : AppColors.danger;
 }
 
-class _AttendanceBar extends StatelessWidget {
-  const _AttendanceBar({
-    required this.icon,
-    required this.label,
-    required this.count,
-    required this.pctLabel,
-    required this.progress,
-    required this.color,
-  });
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.color, required this.icon});
 
-  final IconData icon;
-  final String label;
-  final int count;
-  final String pctLabel;
-  final double progress;
+  final String text;
   final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: 4),
-            Text(label, style: TextStyle(fontSize: 12, color: color)),
-            const Spacer(),
-            Text(
-              '$count  ·  $pctLabel',
-              style: TextStyle(
-                  fontSize: 12, color: color, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 5,
-            backgroundColor: color.withValues(alpha: 0.12),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SmallChip extends StatelessWidget {
-  const _SmallChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
   final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Text(
-            '$label: $value',
+            text,
             style: TextStyle(
-                fontSize: 12, color: color, fontWeight: FontWeight.w600),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -1286,9 +1430,9 @@ class _SmallChip extends StatelessWidget {
 
 /// Case- and space-insensitive "contains" for the servant search.
 bool _matches(String name, String query) {
-  final q = query.trim();
+  final q = ArabicSort.key(query).replaceAll(' ', '');
   if (q.isEmpty) return true;
-  return name.replaceAll(' ', '').contains(q.replaceAll(' ', ''));
+  return ArabicSort.key(name).replaceAll(' ', '').contains(q);
 }
 
 /// Search field above the servant lists.

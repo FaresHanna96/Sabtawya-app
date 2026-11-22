@@ -13,7 +13,6 @@ import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
-import '../classes/class_detail_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
@@ -38,24 +37,23 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<_ServantDashboard>>();
 
-  /// The class scores and the Saturday-by-Saturday attendance. Both come
-  /// through row level security, so they cover the servant's classes only.
-  /// صحة فصلي moved to the Classes tab.
   /// Counts the loads: the birthdays, missing-info and lesson cards load on
   /// their own, and fetch again whenever it changes.
   int _loads = 0;
 
+  /// The Saturday-by-Saturday attendance (through row level security, so
+  /// the servant's classes only) and the whole service's totals. The classes
+  /// themselves are in the «فصلي» tab, not repeated here.
   Future<_ServantDashboard> _load() async {
     _loads++;
     final yearId = context.read<SessionController>().currentYear?.id;
     if (yearId == null) return const _ServantDashboard();
-    final (scores, weeks, service) = await (
-      _reports.classScores(yearId),
+    final (weeks, service) = await (
       _reports.weeklyAttendance(yearId),
       // The whole service's %, to compare the class with (totals only).
       _reports.serviceWeeklyAttendance(yearId),
     ).wait;
-    return _ServantDashboard(scores: scores, weeks: weeks, service: service);
+    return _ServantDashboard(weeks: weeks, service: service);
   }
 
   Future<void> _reload() =>
@@ -99,9 +97,8 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
       key: _sectionKey,
       load: _load,
       builder: (context, data, reload) {
-        final scores = data.scores;
         // The chart names its own Saturday; with nothing recorded yet the
-        // last Saturday stays with the classes.
+        // last Saturday gets a small card instead.
         final hasChart = data.weeks.any((w) => w.recorded);
         // Not a lazy ListView: it rebuilt each section as it scrolled back
         // into view, which replayed its entrance (after a delay) every time.
@@ -225,44 +222,15 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              FadeSlideIn(
-                index: 6,
-                child: SectionCard(
-                  title: AppStrings.myClasses,
-                  icon: Icons.menu_book_rounded,
-                  accent: AppColors.olive,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (!hasChart) ...[
-                        lastSaturday,
-                        const Divider(height: 16),
-                      ],
-                      // Each class with its attendance; its health score is
-                      // in the Classes tab.
-                      for (final item in classes)
-                        _ClassRow(
-                          overview: item,
-                          score: _scoreOf(scores, item.classId),
-                          onTap: () =>
-                              _push(ClassDetailScreen(classId: item.classId)),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+              // With nothing recorded yet there is no chart to name the
+              // Saturday, so the last one keeps a small card of its own.
+              if (!hasChart)
+                FadeSlideIn(index: 5, child: SectionCard(child: lastSaturday)),
             ],
           ),
         );
       },
     );
-  }
-
-  static ClassYearScore? _scoreOf(List<ClassYearScore> scores, String classId) {
-    for (final score in scores) {
-      if (score.classId == classId) return score;
-    }
-    return null;
   }
 
   /// The Saturday being recorded. Every class shares one calendar, so the
@@ -281,66 +249,14 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
 /// What the servant home loads in one go.
 class _ServantDashboard {
   const _ServantDashboard({
-    this.scores = const <ClassYearScore>[],
     this.weeks = const <WeeklyAttendance>[],
     this.service = const <DateTime, double>{},
   });
 
-  final List<ClassYearScore> scores;
   final List<WeeklyAttendance> weeks;
 
   /// The whole service's % per Saturday; empty when it could not be read.
   final Map<DateTime, double> service;
-}
-
-class _ClassRow extends StatelessWidget {
-  const _ClassRow({
-    required this.overview,
-    required this.score,
-    required this.onTap,
-  });
-
-  final ClassOverview overview;
-  final ClassYearScore? score;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    overview.className,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${overview.activeChildren} ${AppStrings.childrenTitle}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                ),
-                const Icon(AppIcons.forward, color: AppColors.muted, size: 20),
-              ],
-            ),
-            if (score != null) ...[
-              const SizedBox(height: 8),
-              PercentageBar(percentage: score!.percentage),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _WelcomeBanner extends StatelessWidget {

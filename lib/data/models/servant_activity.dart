@@ -163,6 +163,8 @@ class ServantActivitySummary {
     required this.servantMeetingCount,
     required this.massCount,
     required this.confessionCount,
+    this.acceptedPreps = 0,
+    this.classesCount = 0,
   });
 
   final String servantId;
@@ -173,4 +175,34 @@ class ServantActivitySummary {
   final int servantMeetingCount;
   final int massCount;
   final int confessionCount;
+  final int acceptedPreps;
+
+  /// Classes served: one for a class servant, none for a خادم عام.
+  final int classesCount;
+
+  /// A row of `servant_activity_summary`.
+  factory ServantActivitySummary.fromMap(Map<String, dynamic> map) =>
+      ServantActivitySummary(
+        servantId: asText(map['servant_id']),
+        servantName: asText(map['servant_name']),
+        totalPreps: asInt(map['preps_total']),
+        pendingPreps: asInt(map['preps_pending']),
+        acceptedPreps: asInt(map['preps_accepted']),
+        sundaySchoolCount: asInt(map['sunday_school']),
+        servantMeetingCount: asInt(map['servant_meeting']),
+        massCount: asInt(map['mass']),
+        confessionCount: asInt(map['confession']),
+        classesCount: asInt(map['classes_count']),
+      );
+
+  /// Share of [held] Saturdays for each activity, averaged (0..1): the
+  /// "lowest attendance first" order. Null with nothing held yet.
+  double? averageRate(int held) => held <= 0
+      ? null
+      : (sundaySchoolCount + servantMeetingCount + massCount + confessionCount) /
+          (4 * held);
+
+  /// Preps sent out of [held] Saturdays: a class servant prepares every
+  /// Saturday; a خادم عام (no class) has no expected number.
+  int? expectedPreps(int held) => classesCount > 0 ? held : null;
 }

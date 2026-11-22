@@ -104,6 +104,9 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
+    // Fully on screen, not just reached at the bottom edge.
+    await tester.ensureVisible(find.text(AppStrings.checkForUpdates));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(AppStrings.checkForUpdates));
     await tester.pump(const Duration(milliseconds: 300));
     expect(opened.single.id, MoreCatalog.updatesId);

@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/file_fallback.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/image_viewer.dart';
@@ -348,10 +349,18 @@ String prepStatusLabel(String status) => switch (status) {
       _ => AppStrings.prepPending,
     };
 
+/// One look per status in every screen: waiting is orange (something to
+/// do), a comment is sky (read it), accepted is green.
 Color prepStatusColor(String status) => switch (status) {
       'accepted' => AppColors.success,
-      'commented' => AppColors.warning,
-      _ => AppColors.muted,
+      'commented' => AppColors.sky,
+      _ => AppColors.warning,
+    };
+
+IconData prepStatusIcon(String status) => switch (status) {
+      'accepted' => Icons.check_circle_rounded,
+      'commented' => Icons.chat_bubble_rounded,
+      _ => Icons.hourglass_top_rounded,
     };
 
 class _StorageImage extends StatefulWidget {
@@ -400,7 +409,12 @@ class _StorageImageState extends State<_StorageImage> {
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(_url!, fit: BoxFit.contain),
+              child: Image.network(
+                _url!,
+                fit: BoxFit.contain,
+                // A PDF stored under a picture's name: offer to open it.
+                errorBuilder: (_, __, ___) => FileFallbackCard(url: _url),
+              ),
             ),
           ),
           // Hint that the picture opens full screen.

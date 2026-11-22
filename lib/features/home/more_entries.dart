@@ -18,6 +18,7 @@ import '../excel/export_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../lessons/lesson_schedule_screen.dart';
 import '../messages/message_templates_screen.dart';
+import '../prayers/prayers_screen.dart';
 import '../reports/reports_screen.dart';
 import '../servants/servant_assignments_screen.dart';
 import '../servants/servant_directory_screen.dart';
@@ -177,6 +178,16 @@ class MoreCatalog {
       group: MoreGroup.service,
       open: () => const LessonScheduleScreen(),
       keywords: const ['دروس', 'درس', 'منهج'],
+    ),
+    // Said before and after the lesson, by every servant.
+    MoreEntry(
+      id: 'prayers',
+      icon: Icons.auto_stories_rounded,
+      title: AppStrings.prayersTitle,
+      color: AppColors.coral,
+      group: MoreGroup.service,
+      open: () => const PrayersScreen(),
+      keywords: const ['صلاة', 'صلوات', 'قبل الخدمة', 'بعد الخدمة'],
     ),
     MoreEntry(
       id: 'calendar',

@@ -22,6 +22,7 @@ import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'change_history_card.dart';
+import 'child_attendance_log.dart';
 import 'child_avatar.dart';
 import 'child_location_card.dart';
 import 'contact_cards.dart';
@@ -31,17 +32,6 @@ import 'health_notes_card.dart';
 import 'location_sheet.dart';
 import 'missing_info.dart';
 import 'missing_info_banner.dart';
-
-/// Which attendance rows the history section shows.
-enum _PresenceFilter {
-  all(AppStrings.all),
-  present(AppStrings.presentOnly),
-  absent(AppStrings.absentOnly);
-
-  const _PresenceFilter(this.label);
-
-  final String label;
-}
 
 /// Everything known about one child: personal, parent, and church details plus
 /// the attendance history and scores derived from them.
@@ -63,10 +53,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<_ProfileData>>();
 
-  /// Null means every month in the attendance year.
-  DateTime? _monthFilter;
-  _PresenceFilter _presenceFilter = _PresenceFilter.all;
-
   Future<_ProfileData> _load() async {
     // Read before the first await, while the context is certainly mounted.
     final yearId = context.read<SessionController>().currentYear?.id;
@@ -76,21 +62,21 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       throw AppFailure('لم يتم العثور على المخدوم');
     }
 
-    // The six reads below do not depend on each other: run them side by side
+    // The reads below do not depend on each other: run them side by side
     // instead of one after another (the profile waited for each in turn).
-    final (classOverview, yearReport, monthly, history, lastActivity, logs, changes) =
-        await (
+    final (
+      classOverview,
+      yearReport,
+      history,
+      lastActivity,
+      logs,
+      changes,
+      classSessions,
+    ) = await (
       _classes.overviewById(child.classId),
       yearId == null
           ? Future.value(null)
           : _reports.childYear(childId: child.id, yearId: yearId),
-      yearId == null
-          ? Future.value(const <ChildMonthlyReport>[])
-          : _reports.childMonthly(
-              yearId: yearId,
-              childId: child.id,
-              onlyActive: false,
-            ),
       _attendance.childHistory(childId: child.id, yearId: yearId),
       _reports.lastActivity(child.id),
       _children.visitLogs(child.id),
@@ -98,14 +84,27 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       _children
           .changeHistory(child.id)
           .catchError((Object _) => const <ChildChange>[]),
+      // The class's Saturdays, so one nobody recorded still shows in the log.
+      yearId == null
+          ? Future.value(const <AttendanceSession>[])
+          : _attendance
+              .sessionsForClasses(classIds: [child.classId], yearId: yearId)
+              .catchError((Object _) => const <AttendanceSession>[]),
     ).wait;
 
     return _ProfileData(
       child: child,
       className: classOverview?.className ?? AppStrings.unknown,
       yearReport: yearReport,
-      monthly: monthly,
       history: history,
+      sessionDates: [
+        for (final s in classSessions)
+          if (!s.isBreak) s.sessionDate,
+      ],
+      breakDates: {
+        for (final s in classSessions)
+          if (s.isBreak) s.sessionDate,
+      },
       lastActivity: lastActivity,
       visitLogs: logs,
       changes: changes,
@@ -252,13 +251,18 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                 ),
               ),
               if (child.location != null || canEdit) const SizedBox(height: 12),
-              if (data.yearReport != null) ...[
-                FadeSlideIn(
-                  index: 2,
-                  child: _summary(data.yearReport!, data.monthly, data.history),
+              // ملخص الحضور with every Saturday under it, in one card.
+              FadeSlideIn(
+                index: 2,
+                child: ChildAttendanceLog(
+                  history: data.history,
+                  sessionDates: data.sessionDates,
+                  breakDates: data.breakDates,
+                  lastActivity: data.lastActivity,
+                  points: data.yearReport?.points,
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 16),
               SectionCard(
                 title: AppStrings.personalInfo,
                 collapsible: true,
@@ -437,14 +441,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   onUndo: canEdit ? _undoChange : null,
                 ),
               ],
-              const SizedBox(height: 16),
-              _lastActivityCard(data.lastActivity),
-              if (data.monthly.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _monthlyCard(data.monthly),
-              ],
-              const SizedBox(height: 16),
-              _historyCard(data),
               const SizedBox(height: 20),
               if (canEdit) _actions(child, data.className, isAdmin),
               const SizedBox(height: 24),
@@ -495,17 +491,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   /// One tap to call the child, the mother or the father (whichever numbers
   /// exist). Hidden when there is no number at all.
   Widget _contactBar(Child child) {
-    String? clean(String? v) => (v ?? '').trim().isEmpty ? null : v!.trim();
-    final people = <ContactPerson>[
-      if (clean(child.mobile) != null)
-        ContactPerson(AppStrings.callChild, clean(child.mobile)!),
-      if (clean(child.motherMobile) != null)
-        ContactPerson(AppStrings.callMother, clean(child.motherMobile)!),
-      if (clean(child.fatherMobile) != null)
-        ContactPerson(AppStrings.callFather, clean(child.fatherMobile)!),
-    ];
     return ContactCards(
-      people: people,
+      people: ContactPerson.forChild(child),
       childName: child.fullName,
       servantName: context.read<SessionController>().displayName,
     );
@@ -580,236 +567,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _summary(
-    ChildYearReport report,
-    List<ChildMonthlyReport> monthly,
-    List<ChildSessionScore> history,
-  ) {
-    // Sessions held so far: only those dated today or earlier, never the
-    // whole year, so the percentages reflect what has actually happened.
-    final today = DateTime.now();
-    final cutoff = DateTime(today.year, today.month, today.day);
-    final past = history.where((h) => !h.sessionDate.isAfter(cutoff)).toList();
-    final held = past.isNotEmpty
-        ? past.length
-        : monthly
-            .where((r) =>
-                r.monthStart.year < today.year ||
-                (r.monthStart.year == today.year &&
-                    r.monthStart.month <= today.month))
-            .fold(0, (sum, r) => sum + r.sessionsTotal);
-    final attended = past.isNotEmpty
-        ? past.where((h) => h.isPresent).length
-        : report.sessionsAttended;
-    final pct = held > 0 ? attended / held * 100 : report.percentage;
-
-    return SectionCard(
-      title: AppStrings.attendanceSummary,
-      icon: Icons.fact_check_rounded,
-      accent: AppColors.sky,
-      child: Column(
-        children: [
-          PercentageBar(
-            percentage: pct,
-            label: AppStrings.averageAttendance,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: StatTile(
-                  label: AppStrings.totalPoints,
-                  value: '${report.points}',
-                  color: AppColors.olive,
-                  icon: Icons.star_rounded,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: StatTile(
-                  label: AppStrings.attendedSessions,
-                  value: '$attended/${held > 0 ? held : report.sessionsTotal}',
-                  color: AppColors.navy,
-                  icon: Icons.event_available_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _activityTile(
-                  AppStrings.sundaySchoolShort,
-                  past.where((h) => h.sundaySchool).length,
-                  held,
-                  Icons.church_outlined,
-                  AppColors.success,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _activityTile(
-                  AppStrings.vespers,
-                  past.where((h) => h.vespers).length,
-                  held,
-                  Icons.nights_stay_outlined,
-                  AppColors.sky,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _activityTile(
-                  AppStrings.mass,
-                  past.where((h) => h.mass).length,
-                  held,
-                  Icons.account_balance_outlined,
-                  AppColors.gold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _activityTile(
-                  AppStrings.confession,
-                  past.where((h) => h.confession).length,
-                  held,
-                  Icons.volunteer_activism_outlined,
-                  AppColors.coral,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// One activity's attendance on its own: count out of the sessions held.
-  Widget _activityTile(
-    String label,
-    int count,
-    int held,
-    IconData icon,
-    Color color,
-  ) {
-    final pct = held > 0 ? ' (${(count / held * 100).round()}%)' : '';
-    return StatTile(
-      label: '$label$pct',
-      value: '$count/$held',
-      color: color,
-      icon: icon,
-    );
-  }
-
-  Widget _monthlyCard(List<ChildMonthlyReport> unsorted) {
-    // Oldest month first (the year's first month on top), whatever order the
-    // rows arrived in.
-    final monthly = [...unsorted]
-      ..sort((a, b) => a.monthStart.compareTo(b.monthStart));
-    return SectionCard(
-      title: AppStrings.monthlyBreakdown,
-      icon: Icons.calendar_view_month_rounded,
-      accent: AppColors.olive,
-      child: Column(
-        children: monthly.map((row) {
-          final isFiltered = _monthFilter != null &&
-              _monthFilter!.year == row.monthStart.year &&
-              _monthFilter!.month == row.monthStart.month;
-          return InkWell(
-            // Tapping a month scopes the history list below to it.
-            onTap: () => setState(
-              () => _monthFilter = isFiltered ? null : row.monthStart,
-            ),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-              decoration: BoxDecoration(
-                color: isFiltered
-                    ? AppColors.navy.withValues(alpha: 0.06)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      AppDateUtils.formatMonth(row.monthStart),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            isFiltered ? FontWeight.w800 : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${row.sessionsAttended}/${row.sessionsTotal}',
-                    textDirection: TextDirection.ltr,
-                    style:
-                        const TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                  const SizedBox(width: 10),
-                  ScoreChip(
-                    score: row.points,
-                    maxScore: row.maxPoints,
-                    compact: true,
-                    showMax: false,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  /// The last Saturday the child did each activity, newest information first.
-  Widget _lastActivityCard(ChildLastActivity? activity) {
-    return SectionCard(
-      title: AppStrings.lastActivityTitle,
-      icon: Icons.bolt_rounded,
-      accent: AppColors.gold,
-      child: Column(
-        children: [
-          _lastActivityRow(
-            AppStrings.sundaySchoolShort,
-            activity?.lastSundaySchool,
-            Icons.menu_book_outlined,
-          ),
-          _lastActivityRow(
-            AppStrings.vespersShort,
-            activity?.lastVespers,
-            Icons.nights_stay_outlined,
-          ),
-          _lastActivityRow(
-            AppStrings.massShort,
-            activity?.lastMass,
-            Icons.church_outlined,
-          ),
-          _lastActivityRow(
-            AppStrings.confessionShort,
-            activity?.lastConfession,
-            Icons.volunteer_activism_outlined,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _lastActivityRow(String label, DateTime? date, IconData icon) {
-    return InfoRow(
-      label: label,
-      value: date == null
-          ? AppStrings.neverAttended
-          : '${AppDateUtils.formatDate(date)} • ${AppDateUtils.sinceLabel(date)}',
-      icon: icon,
     );
   }
 
@@ -976,172 +733,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  Widget _historyCard(_ProfileData data) {
-    final months = <DateTime>{
-      for (final row in data.history)
-        DateTime(row.sessionDate.year, row.sessionDate.month),
-    }.toList()
-      ..sort((a, b) => a.compareTo(b));
-
-    final visible = data.history.where((row) {
-      if (_monthFilter != null &&
-          (row.sessionDate.year != _monthFilter!.year ||
-              row.sessionDate.month != _monthFilter!.month)) {
-        return false;
-      }
-      return switch (_presenceFilter) {
-        _PresenceFilter.all => true,
-        _PresenceFilter.present => row.isPresent,
-        _PresenceFilter.absent => !row.isPresent,
-      };
-    }).toList();
-
-    final isNarrowing =
-        _monthFilter != null || _presenceFilter != _PresenceFilter.all;
-
-    return SectionCard(
-      title: AppStrings.attendanceHistory,
-      icon: Icons.history_rounded,
-      accent: AppColors.navyLight,
-      trailing: isNarrowing
-          ? IconButton(
-              tooltip: AppStrings.clearFilters,
-              visualDensity: VisualDensity.compact,
-              onPressed: () => setState(() {
-                _monthFilter = null;
-                _presenceFilter = _PresenceFilter.all;
-              }),
-              icon: const Icon(Icons.filter_alt_off_outlined, size: 20),
-            )
-          : null,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (months.isNotEmpty) ...[
-            DropdownButtonFormField<DateTime?>(
-              initialValue: _monthFilter,
-              isDense: true,
-              decoration: const InputDecoration(
-                labelText: AppStrings.month,
-                prefixIcon: Icon(Icons.calendar_month_outlined),
-              ),
-              items: <DropdownMenuItem<DateTime?>>[
-                const DropdownMenuItem<DateTime?>(
-                  value: null,
-                  child: Text(AppStrings.allMonths),
-                ),
-                ...months.map(
-                  (month) => DropdownMenuItem<DateTime?>(
-                    value: month,
-                    child: Text(AppDateUtils.formatMonth(month)),
-                  ),
-                ),
-              ],
-              onChanged: (value) => setState(() => _monthFilter = value),
-            ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _PresenceFilter.values
-                    .map(
-                      (option) => Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: ChoiceChip(
-                          label: Text(option.label),
-                          selected: _presenceFilter == option,
-                          onSelected: (_) =>
-                              setState(() => _presenceFilter = option),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Divider(color: AppColors.muted.withValues(alpha: 0.2)),
-          ],
-          if (visible.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                AppStrings.noData,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.muted),
-              ),
-            )
-          else
-            ...visible.map(_historyRow),
-          if (visible.isNotEmpty && isNarrowing) ...[
-            const SizedBox(height: 8),
-            Text(
-              '${AppStrings.showingOf} ${visible.length} / ${data.history.length}',
-              style: const TextStyle(fontSize: 12, color: AppColors.muted),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _historyRow(ChildSessionScore row) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppDateUtils.formatDayDate(row.sessionDate),
-                  style: const TextStyle(fontSize: 13),
-                ),
-                const SizedBox(height: 3),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    _flag(AppStrings.sundaySchoolShort, row.sundaySchool),
-                    _flag(AppStrings.vespersShort, row.vespers),
-                    _flag(AppStrings.massShort, row.mass),
-                    _flag(AppStrings.confessionShort, row.confession),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          ScoreChip(score: row.score, maxScore: row.maxScore, compact: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _flag(String label, bool present) {
-    final color = present ? AppColors.success : AppColors.muted;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(present ? Icons.check : Icons.close, size: 11, color: color),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _actions(Child child, String className, bool isAdmin) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1188,18 +779,24 @@ class _ProfileData {
     required this.child,
     required this.className,
     required this.yearReport,
-    required this.monthly,
     required this.history,
     required this.lastActivity,
     required this.visitLogs,
+    this.sessionDates = const <DateTime>[],
+    this.breakDates = const <DateTime>{},
     this.changes = const <ChildChange>[],
   });
 
   final Child child;
   final String className;
   final ChildYearReport? yearReport;
-  final List<ChildMonthlyReport> monthly;
   final List<ChildSessionScore> history;
+
+  /// The class's Saturdays this year, recorded or not.
+  final List<DateTime> sessionDates;
+
+  /// Its Saturdays with no lesson (إجازة / نشاط ترفيهي).
+  final Set<DateTime> breakDates;
   final ChildLastActivity? lastActivity;
   final List<ChildVisitLog> visitLogs;
   final List<ChildChange> changes;

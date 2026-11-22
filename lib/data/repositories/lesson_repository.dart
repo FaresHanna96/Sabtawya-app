@@ -1,5 +1,6 @@
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_failure.dart';
 import '../models/lesson.dart';
 import '../models/parsers.dart';
@@ -8,6 +9,30 @@ import '../supabase/db.dart';
 
 /// The weekly lesson programme. It is small and static, so it is read whole;
 /// the offline layer keeps the last copy for use without a connection.
+/// Why a Saturday has no lesson.
+enum LessonBreakKind {
+  holiday('holiday', AppStrings.breakHoliday),
+  activity('activity', AppStrings.breakActivity);
+
+  const LessonBreakKind(this.wire, this.label);
+
+  final String wire;
+  final String label;
+
+  static LessonBreakKind fromWire(Object? v) =>
+      v == 'activity' ? LessonBreakKind.activity : LessonBreakKind.holiday;
+}
+
+/// A Saturday with no lesson.
+class LessonBreak {
+  const LessonBreak({required this.kind, required this.shift});
+
+  final LessonBreakKind kind;
+
+  /// The later lessons move a week (postponed), or keep their dates.
+  final bool shift;
+}
+
 class LessonRepository {
   const LessonRepository();
 
@@ -30,6 +55,34 @@ class LessonRepository {
           asText(row['break_date']): asBool(row['shift'], true),
       };
       return LessonProgramme(lessons, extras, breaks);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The Saturdays with no lesson, by yyyy-MM-dd: why (a holiday or a نشاط
+  /// ترفيهي) and whether the later lessons move a week. Attendance is not
+  /// taken on them.
+  Future<Map<String, LessonBreak>> breaks() async {
+    try {
+      List<Map<String, dynamic>> data;
+      try {
+        data = rows(await Db.client
+            .from(Db.tLessonBreaks)
+            .select('break_date, shift, kind'));
+      } catch (_) {
+        // A database from before the kind column: every break a holiday.
+        data = rows(await Db.client
+            .from(Db.tLessonBreaks)
+            .select('break_date, shift'));
+      }
+      return {
+        for (final row in data)
+          asText(row['break_date']): LessonBreak(
+            kind: LessonBreakKind.fromWire(row['kind']),
+            shift: asBool(row['shift'], true),
+          ),
+      };
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -76,11 +129,16 @@ class LessonRepository {
 
   /// أمين الخدمة: no lesson on [saturday]. [shift] postpones it (later lessons
   /// move a week); otherwise it is cancelled (later lessons keep their dates).
-  Future<void> setBreak(DateTime saturday, {required bool shift}) async {
+  Future<void> setBreak(
+    DateTime saturday, {
+    required bool shift,
+    LessonBreakKind? kind,
+  }) async {
     try {
       await Db.client.from(Db.tLessonBreaks).upsert(<String, dynamic>{
         'break_date': LessonProgramme.keyOf(saturday),
         'shift': shift,
+        if (kind != null) 'kind': kind.wire,
       }, onConflict: 'break_date');
     } catch (e) {
       throw AppFailure.from(e);

@@ -10,7 +10,9 @@ import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
+import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
+import '../attendance/attendance_screen.dart';
 import 'class_detail_screen.dart';
 import 'class_health_tab.dart';
 import 'class_form_screen.dart';
@@ -40,7 +42,9 @@ class _ClassesScreenState extends State<ClassesScreen>
     with SingleTickerProviderStateMixin {
   static const _repository = ClassRepository();
 
-  final _sectionKey = GlobalKey<AsyncSectionState<List<ClassOverview>>>();
+  static const _reports = ReportRepository();
+
+  final _sectionKey = GlobalKey<AsyncSectionState<_ClassesData>>();
 
   /// The list, and متابعة الفصول (moved here from the home page).
   late final TabController _tabs = TabController(length: 2, vsync: this)
@@ -57,21 +61,51 @@ class _ClassesScreenState extends State<ClassesScreen>
     super.dispose();
   }
 
-  Future<List<ClassOverview>> _load() =>
-      _repository.overview(includeInactive: _includeArchived);
+  /// The classes, and whether each took this week's attendance (that part
+  /// is best effort: without it the cards just do not say).
+  Future<_ClassesData> _load() async {
+    final yearId = context.read<SessionController>().currentYear?.id;
+    final saturday = AppDateUtils.lastSaturday(DateTime.now());
+    final (classes, recorded) = await (
+      _repository.overview(includeInactive: _includeArchived),
+      yearId == null
+          ? Future.value(const <String, bool>{})
+          : _reports
+              .recordedOn(yearId: yearId, date: saturday)
+              .catchError((Object _) => const <String, bool>{}),
+    ).wait;
+    return _ClassesData(classes, recorded, saturday);
+  }
+
+  /// This class's attendance for [date], then back to the list.
+  Future<void> _record(String classId, DateTime date) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => AttendanceScreen(
+          showAppBar: true,
+          initialClassId: classId,
+          initialDate: date,
+        ),
+      ),
+    );
+  }
 
   Future<void> _reload() async {
     await _sectionKey.currentState?.reload();
     if (mounted) await context.read<SessionController>().refreshClasses();
   }
 
+  /// Reloads on the way back only when something was saved meanwhile (every
+  /// save marks the data changed), so just looking at a class costs nothing.
   Future<void> _open(ClassOverview overview) async {
+    final session = context.read<SessionController>();
+    final before = session.dataVersion;
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => ClassDetailScreen(classId: overview.classId),
       ),
     );
-    await _reload();
+    if (mounted && session.dataVersion != before) await _reload();
   }
 
   Future<void> _add() async {
@@ -117,24 +151,15 @@ class _ClassesScreenState extends State<ClassesScreen>
       mine: session.myClasses,
     );
 
-    final list = Column(
-      children: [
-        // When embedded as a tab there is no AppBar to hold the toggle.
-        if (isAdmin && !widget.showAppBar)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: FilterChip(
-                label: const Text(AppStrings.showInactive),
-                avatar: const Icon(Icons.inventory_2_outlined, size: 16),
-                selected: _includeArchived,
-                onSelected: _toggleArchived,
-              ),
-            ),
-          ),
-        Expanded(child: _buildList(isAdmin, isGeneralServant)),
-      ],
+    final list = _buildList(isAdmin, isGeneralServant);
+
+    // Archived classes: an icon on the tab strip, not a row of its own.
+    final archiveToggle = IconButton(
+      tooltip: AppStrings.showInactive,
+      isSelected: _includeArchived,
+      icon: const Icon(Icons.inventory_2_outlined),
+      selectedIcon: const Icon(Icons.inventory_2),
+      onPressed: () => _toggleArchived(!_includeArchived),
     );
 
     // Each page keeps its state (and its loaded data) while the other shows.
@@ -160,14 +185,7 @@ class _ClassesScreenState extends State<ClassesScreen>
               title: Text(
                   everyClass ? AppStrings.classesTitle : AppStrings.myClasses),
               actions: [
-                if (isAdmin && _tabs.index == 0)
-                  IconButton(
-                    tooltip: AppStrings.showInactive,
-                    isSelected: _includeArchived,
-                    icon: const Icon(Icons.inventory_2_outlined),
-                    selectedIcon: const Icon(Icons.inventory_2),
-                    onPressed: () => _toggleArchived(!_includeArchived),
-                  ),
+                if (isAdmin && _tabs.index == 0) archiveToggle,
               ],
               bottom: tabBar,
             )
@@ -180,7 +198,16 @@ class _ClassesScreenState extends State<ClassesScreen>
                   Material(
                     color: Theme.of(context).appBarTheme.backgroundColor ??
                         Theme.of(context).colorScheme.primary,
-                    child: tabBar,
+                    child: Row(
+                      children: [
+                        Expanded(child: tabBar),
+                        if (isAdmin && _tabs.index == 0)
+                          IconTheme(
+                            data: const IconThemeData(color: Colors.white),
+                            child: archiveToggle,
+                          ),
+                      ],
+                    ),
                   ),
                   Expanded(child: pages),
                 ],
@@ -198,11 +225,12 @@ class _ClassesScreenState extends State<ClassesScreen>
   }
 
   Widget _buildList(bool isAdmin, bool isGeneralServant) {
-    return AsyncSection<List<ClassOverview>>(
+    return AsyncSection<_ClassesData>(
       loading: const SkeletonList(),
       key: _sectionKey,
       load: _load,
-      builder: (context, classes, reload) {
+      builder: (context, data, reload) {
+        final classes = data.classes;
         if (classes.isEmpty) {
           return ListView(
             children: [
@@ -235,7 +263,10 @@ class _ClassesScreenState extends State<ClassesScreen>
             index: index,
             child: _ClassCard(
               overview: classes[index],
-              accent: _palette[index % _palette.length],
+              accent: _accentFor(classes[index].classId),
+              saturday: data.saturday,
+              recorded: data.recorded[classes[index].classId],
+              onRecord: () => _record(classes[index].classId, data.saturday),
               onTap: () => _open(classes[index]),
             ),
           ),
@@ -267,6 +298,33 @@ class _KeepAliveState extends State<_KeepAlive>
   }
 }
 
+/// A class keeps its colour whatever else is listed (archived classes shown
+/// or not): it comes from the class id, not from the row it sits on.
+Color _accentFor(String classId) =>
+    _palette[classColourIndex(classId, _palette.length)];
+
+/// A stable index in 0..[count) for [classId] (the same on every run).
+@visibleForTesting
+int classColourIndex(String classId, int count) {
+  var h = 0;
+  for (final c in classId.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return h % count;
+}
+
+/// The list and this week's attendance status per class.
+class _ClassesData {
+  const _ClassesData(this.classes, this.recorded, this.saturday);
+
+  final List<ClassOverview> classes;
+
+  /// Class id -> attendance taken for [saturday]; absent when the class has
+  /// no session that day.
+  final Map<String, bool> recorded;
+  final DateTime saturday;
+}
+
 const _palette = <Color>[
   AppColors.navyLight,
   AppColors.olive,
@@ -280,11 +338,19 @@ class _ClassCard extends StatelessWidget {
   const _ClassCard({
     required this.overview,
     required this.accent,
+    required this.saturday,
+    required this.recorded,
+    required this.onRecord,
     required this.onTap,
   });
 
   final Color accent;
   final ClassOverview overview;
+  final DateTime saturday;
+
+  /// Attendance taken for [saturday]; null when the class did not meet then.
+  final bool? recorded;
+  final VoidCallback onRecord;
   final VoidCallback onTap;
 
   @override
@@ -370,7 +436,15 @@ class _ClassCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (overview.lastSessionDate != null) ...[
+                  if (recorded != null && overview.isActive) ...[
+                    const SizedBox(height: 10),
+                    ClassSaturdayStatus(
+                      recorded: recorded!,
+                      day: '${saturday.day} '
+                          '${AppDateUtils.monthName(saturday.month)}',
+                      onRecord: onRecord,
+                    ),
+                  ] else if (overview.lastSessionDate != null) ...[
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -396,6 +470,68 @@ class _ClassCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "اتسجّل حضور 21 نوفمبر", or "لم يُسجَّل بعد" with a button to do it.
+@visibleForTesting
+class ClassSaturdayStatus extends StatelessWidget {
+  const ClassSaturdayStatus({
+    super.key,
+    required this.recorded,
+    required this.day,
+    required this.onRecord,
+  });
+
+  final bool recorded;
+  final String day;
+  final VoidCallback onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = recorded ? AppColors.success : AppColors.warning;
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 4, 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            recorded
+                ? Icons.check_circle_rounded
+                : Icons.pending_actions_rounded,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              recorded
+                  ? AppStrings.classRecordedOn(day)
+                  : AppStrings.classNotRecordedOn(day),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+          if (!recorded)
+            TextButton(
+              onPressed: onRecord,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                minimumSize: const Size(0, 40),
+              ),
+              child: const Text(AppStrings.recordNow),
+            )
+          else
+            const SizedBox(height: 40),
+        ],
       ),
     );
   }

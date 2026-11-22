@@ -13,6 +13,7 @@ import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'lesson_prep_screen.dart';
+import 'prep_review_sheet.dart';
 import 'servant_summary_card.dart';
 
 class MyActivitiesScreen extends StatefulWidget {
@@ -34,30 +35,54 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
   Future<_ActivitiesData> _load() async {
     final session = context.read<SessionController>();
     final classIds = session.myClasses.map((c) => c.classId).toList();
-    final yearId = session.currentYear?.id;
+    final year = session.currentYear;
+    if (year == null) {
+      return const _ActivitiesData(
+        sessions: [],
+        preps: [],
+        marks: [],
+        sundaySchool: 0,
+        servantMeeting: 0,
+        mass: 0,
+        confession: 0,
+      );
+    }
 
-    final results = await Future.wait([
-      _repo.sessionsForClasses(classIds, yearId: yearId),
-      _repo.myLessonPreps(),
-      // Only this servant's own records: the database allows no others.
-      _repo.attendancesForServant(Db.userId!, 'sunday_school'),
-      _repo.attendancesForServant(Db.userId!, 'servant_meeting'),
-      _repo.attendancesForServant(Db.userId!, 'mass'),
-      _repo.attendancesForServant(Db.userId!, 'confession'),
-    ]);
+    final (sessions, preps, marks) = await (
+      _repo.sessionsForClasses(classIds, yearId: year.id),
+      // Status and Saturday only; a prep's page loads its files.
+      _repo.myPrepsSummary(),
+      // This servant's own marks of this year, in one query: the counts
+      // (the percentages divide by this year's Saturdays) and «حضوري».
+      _repo.marksForServant(
+        servantId: Db.userId!,
+        from: year.startDate,
+        to: year.endDate,
+      ),
+    ).wait;
+    final counts = ServantActivityRepository.countByType(
+      [for (final m in marks) {'activity_type': m.activityType}],
+    );
 
     return _ActivitiesData(
-      sessions: results[0] as List<AttendanceSession>,
-      preps: results[1] as List<LessonPrep>,
-      sundaySchool: (results[2] as List).length,
-      servantMeeting: (results[3] as List).length,
-      mass: (results[4] as List).length,
-      confession: (results[5] as List).length,
+      sessions: sessions,
+      preps: [
+        for (final p in preps)
+          if (year.contains(p.sessionDate)) p,
+      ],
+      marks: marks,
+      sundaySchool: counts['sunday_school'] ?? 0,
+      servantMeeting: counts['servant_meeting'] ?? 0,
+      mass: counts['mass'] ?? 0,
+      confession: counts['confession'] ?? 0,
     );
   }
 
   /// "عرض الكل" under the upcoming Saturdays.
   bool _showAllUpcoming = false;
+
+  /// "عرض الكل" under the past Saturdays (newest three otherwise).
+  bool _showAllPast = false;
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
@@ -112,19 +137,16 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                 .length;
             final total = held.length;
 
-            // Next Saturday first (the one to prepare), then the past ones
-            // oldest first, then the rest of the year folded to three.
-            final next = data.sessions
-                .where((s) => !s.sessionDate.isBefore(today))
-                .toList()
-              ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
-            final current = next.isEmpty ? null : next.first;
-            final later =
-                next.length > 1 ? next.sublist(1) : <AttendanceSession>[];
-            final past = held
-                .where((s) => current == null || s.id != current.id)
-                .toList()
-              ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
+            final g = PrepGroups.of(
+              data.sessions,
+              hasPrep: (id) => data.prepFor(id) != null,
+              today: today,
+            );
+            final current = g.current;
+            final missed = g.missed;
+            final past = g.past;
+            final later = g.later;
+            final pastShown = _showAllPast ? past : past.take(3).toList();
             final laterShown =
                 _showAllUpcoming ? later : later.take(3).toList();
 
@@ -148,6 +170,17 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
               children: [
+                // The one thing to do this week, first.
+                if (current != null) ...[
+                  FadeSlideIn(
+                    child: PrepTodoCard(
+                      date: current.sessionDate,
+                      prep: data.prepFor(current.id),
+                      onOpen: () => _openSession(current),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 FadeSlideIn(
                   child: ServantSummaryCard(
                     sundaySchool: data.sundaySchool,
@@ -160,6 +193,14 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     heldSessions: held.map((s) => s.sessionDate).toSet().length,
                   ),
                 ),
+                const SizedBox(height: 12),
+                MyAttendanceCard(
+                  held: [
+                    for (final d in {for (final s in held) s.sessionDate})
+                      d,
+                  ],
+                  marks: data.marks,
+                ),
                 const SizedBox(height: 16),
                 FadeSlideIn(
                   index: 1,
@@ -170,12 +211,12 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (current != null) ...[
-                  const _GroupTitle(
-                    icon: Icons.event_rounded,
-                    text: AppStrings.nextSaturdayTitle,
+                if (missed.isNotEmpty) ...[
+                  _GroupTitle(
+                    icon: Icons.error_outline_rounded,
+                    text: '${AppStrings.missedPrepsTitle} (${missed.length})',
                   ),
-                  card(current, highlight: true),
+                  for (final s in missed) card(s),
                   const SizedBox(height: 10),
                 ],
                 if (past.isNotEmpty) ...[
@@ -183,7 +224,22 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     icon: Icons.history_rounded,
                     text: '${AppStrings.pastSaturdays} (${past.length})',
                   ),
-                  for (final s in past) card(s),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: Column(
+                      children: [for (final s in pastShown) card(s)],
+                    ),
+                  ),
+                  if (past.length > 3)
+                    TextButton(
+                      onPressed: () =>
+                          setState(() => _showAllPast = !_showAllPast),
+                      child: Text(
+                        _showAllPast ? AppStrings.showLess : AppStrings.showAll,
+                      ),
+                    ),
                   const SizedBox(height: 10),
                 ],
                 if (later.isNotEmpty) ...[
@@ -518,13 +574,22 @@ class _SessionCard extends StatelessWidget {
                 ],
               ),
             ),
+            if (prep?.isShared ?? false)
+              const Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Tooltip(
+                  message: AppStrings.prepSharedAsExample,
+                  child: Icon(Icons.star_rounded,
+                      size: 18, color: AppColors.gold),
+                ),
+              ),
             if (prep?.adminComment != null && prep!.adminComment!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 4),
                 child: Icon(
-                  Icons.comment_outlined,
+                  Icons.chat_bubble_rounded,
                   size: 15,
-                  color: AppColors.warning,
+                  color: AppColors.sky,
                 ),
               ),
             const Padding(
@@ -537,23 +602,11 @@ class _SessionCard extends StatelessWidget {
     );
   }
 
-  static String _statusLabel(String status) => switch (status) {
-        'accepted' => AppStrings.prepAccepted,
-        'commented' => AppStrings.prepCommented,
-        _ => AppStrings.prepPending,
-      };
+  static String _statusLabel(String status) => prepStatusLabel(status);
 
-  static IconData _statusIcon(String status) => switch (status) {
-        'accepted' => Icons.check_circle_outline,
-        'commented' => Icons.comment_outlined,
-        _ => Icons.hourglass_empty_outlined,
-      };
+  static IconData _statusIcon(String status) => prepStatusIcon(status);
 
-  static Color _statusColor(String status) => switch (status) {
-        'accepted' => AppColors.success,
-        'commented' => AppColors.warning,
-        _ => AppColors.muted,
-      };
+  static Color _statusColor(String status) => prepStatusColor(status);
 }
 
 // ---------------------------------------------------------------------------
@@ -562,6 +615,7 @@ class _ActivitiesData {
   const _ActivitiesData({
     required this.sessions,
     required this.preps,
+    required this.marks,
     required this.sundaySchool,
     required this.servantMeeting,
     required this.mass,
@@ -570,6 +624,9 @@ class _ActivitiesData {
 
   final List<AttendanceSession> sessions;
   final List<LessonPrep> preps;
+
+  /// This servant's own marks this year (for «حضوري»).
+  final List<ServantAttendance> marks;
   final int sundaySchool;
   final int servantMeeting;
   final int mass;
@@ -580,5 +637,263 @@ class _ActivitiesData {
       if (p.sessionId == sessionId) return p;
     }
     return null;
+  }
+}
+
+/// A servant's Saturdays in the order «نشاطي» shows them: the next one (to
+/// prepare), past ones with no prep sent (a to-do), the other past ones
+/// newest first, then the rest of the year.
+class PrepGroups {
+  const PrepGroups({
+    required this.current,
+    required this.missed,
+    required this.past,
+    required this.later,
+  });
+
+  final AttendanceSession? current;
+  final List<AttendanceSession> missed;
+  final List<AttendanceSession> past;
+  final List<AttendanceSession> later;
+
+  factory PrepGroups.of(
+    List<AttendanceSession> sessions, {
+    required bool Function(String sessionId) hasPrep,
+    required DateTime today,
+  }) {
+    final day = DateTime(today.year, today.month, today.day);
+    final next = sessions.where((s) => !s.sessionDate.isBefore(day)).toList()
+      ..sort((a, b) => a.sessionDate.compareTo(b.sessionDate));
+    final current = next.isEmpty ? null : next.first;
+    final earlier = sessions
+        .where((s) => s.sessionDate.isBefore(day) && s.id != current?.id)
+        .toList()
+      ..sort((a, b) => b.sessionDate.compareTo(a.sessionDate));
+    return PrepGroups(
+      current: current,
+      missed: [
+        for (final s in earlier)
+          if (!hasPrep(s.id)) s,
+      ],
+      past: [
+        for (final s in earlier)
+          if (hasPrep(s.id)) s,
+      ],
+      later: next.length > 1 ? next.sublist(1) : const [],
+    );
+  }
+}
+
+/// The week's to-do: next Saturday's prep, sent or not, with one big button.
+@visibleForTesting
+class PrepTodoCard extends StatelessWidget {
+  const PrepTodoCard({
+    super.key,
+    required this.date,
+    required this.prep,
+    required this.onOpen,
+  });
+
+  final DateTime date;
+  final LessonPrep? prep;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final sent = prep != null;
+    final color = sent ? prepStatusColor(prep!.status) : AppColors.coral;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                sent ? prepStatusIcon(prep!.status) : Icons.assignment_late,
+                color: color,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      AppStrings.prepTodoTitle,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '${AppDateUtils.formatDayDate(date)} · '
+                      '${sent ? prepStatusLabel(prep!.status) : AppStrings.prepTodoNotSent}',
+                      style: TextStyle(fontSize: 12.5, color: color),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          sent
+              ? OutlinedButton(
+                  onPressed: onOpen,
+                  child: Text(
+                    prep!.isCommented
+                        ? AppStrings.prepResend
+                        : AppStrings.lessonPrepTitle,
+                  ),
+                )
+              : FilledButton.icon(
+                  onPressed: onOpen,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  icon: const Icon(Icons.upload_rounded),
+                  label: const Text(AppStrings.prepTodoUpload),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
+/// «حضوري»: this servant's own Saturdays, month by month (newest first),
+/// four small icons each, so "which Saturdays did I miss?" has an answer.
+@visibleForTesting
+class MyAttendanceCard extends StatelessWidget {
+  const MyAttendanceCard({super.key, required this.held, required this.marks});
+
+  /// The Saturdays held so far.
+  final List<DateTime> held;
+  final List<ServantAttendance> marks;
+
+  static const _activities = <(String, IconData, Color, String)>[
+    ('sunday_school', AppIcons.sundaySchool, AppColors.success,
+        AppStrings.sundaySchoolShort),
+    ('servant_meeting', AppIcons.servantMeeting, AppColors.olive,
+        AppStrings.servantMeetingShort),
+    ('mass', AppIcons.mass, AppColors.gold, AppStrings.massShort),
+    ('confession', AppIcons.confession, AppColors.coral,
+        AppStrings.confessionShort),
+  ];
+
+  static String _day(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
+  @override
+  Widget build(BuildContext context) {
+    final byDay = <String, Set<String>>{};
+    for (final m in marks) {
+      (byDay[_day(m.date)] ??= {}).add(m.activityType);
+    }
+    final days = [...held]..sort((a, b) => b.compareTo(a));
+    final came = days.where((d) => (byDay[_day(d)] ?? const {}).isNotEmpty);
+
+    return SectionCard(
+      title: AppStrings.myAttendanceTitle,
+      icon: Icons.event_available_rounded,
+      accent: AppColors.success,
+      collapsible: true,
+      initiallyExpanded: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            AppStrings.myAttendanceOf(came.length, days.length),
+            style: const TextStyle(fontSize: 13, color: AppColors.muted),
+          ),
+          const SizedBox(height: 6),
+          // The key, once.
+          Wrap(
+            spacing: 10,
+            children: [
+              for (final a in _activities)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(a.$2, size: 14, color: a.$3),
+                    const SizedBox(width: 3),
+                    Text(a.$4,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.muted)),
+                  ],
+                ),
+            ],
+          ),
+          const Divider(height: 16),
+          for (final d in days)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 96,
+                    child: Text(
+                      '${d.day} ${AppDateUtils.monthName(d.month)}',
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  for (final a in _activities)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 6),
+                      child: _Dot(
+                        icon: a.$2,
+                        color: a.$3,
+                        on: byDay[_day(d)]?.contains(a.$1) ?? false,
+                        label: a.$4,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot({
+    required this.icon,
+    required this.color,
+    required this.on,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color color;
+  final bool on;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: label,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: on ? color.withValues(alpha: 0.16) : Colors.transparent,
+          border: Border.all(
+            color: on
+                ? color.withValues(alpha: 0.5)
+                : AppColors.muted.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 15,
+          color: on ? color : AppColors.muted.withValues(alpha: 0.35),
+        ),
+      ),
+    );
   }
 }

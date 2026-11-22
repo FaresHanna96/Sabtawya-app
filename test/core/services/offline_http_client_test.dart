@@ -81,6 +81,50 @@ void main() {
     expect(getChildren, throwsA(isA<http.ClientException>()));
   });
 
+  test('a lesson prep and its files are never queued: offline they fail',
+      () async {
+    online = false;
+    // The prep row.
+    await expectLater(
+      client.post(
+        Uri.parse('$_base/servant_lesson_preps'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'session_id': 's1'}),
+      ),
+      throwsA(isA<http.ClientException>()),
+    );
+    // Its file rows.
+    await expectLater(
+      client.post(
+        Uri.parse('$_base/servant_lesson_prep_photos'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'prep_id': 'p1', 'storage_path': 'p1/1.jpg'}),
+      ),
+      throwsA(isA<http.ClientException>()),
+    );
+    // The file itself.
+    await expectLater(
+      client.post(
+        Uri.parse('https://example.supabase.co/storage/v1/object/'
+            'servant-submissions/p1/1.jpg'),
+        body: [0xFF, 0xD8, 0xFF],
+      ),
+      throwsA(isA<http.ClientException>()),
+    );
+    expect(OfflineStore.pendingCount(), 0);
+  });
+
+  test('other uploads (a child photo) still queue offline', () async {
+    online = false;
+    final r = await client.post(
+      Uri.parse('https://example.supabase.co/storage/v1/object/'
+          'child-photos/c1/1.jpg'),
+      body: [0xFF, 0xD8, 0xFF],
+    );
+    expect(r.statusCode, 200);
+    expect(OfflineStore.pendingCount(), 1);
+  });
+
   test('an insert made offline is queued, gets an id and shows up at once',
       () async {
     await getChildren();

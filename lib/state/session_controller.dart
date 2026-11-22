@@ -180,9 +180,12 @@ class SessionController extends ChangeNotifier {
     if (_status != SessionStatus.ready) return;
     final token = _loadToken;
     try {
-      final profile = await _auth.currentProfile();
-      final classes = await _classes.overview();
-      final year = await _attendance.currentYear();
+      // Independent reads: side by side, not one after another.
+      final (profile, classes, year) = await (
+        _auth.currentProfile(),
+        _classes.overview(),
+        _attendance.currentYear(),
+      ).wait;
       if (token != _loadToken || _status != SessionStatus.ready) return;
       if (profile == null) {
         _profile = profile;

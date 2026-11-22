@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/whatsapp.dart';
 import '../../core/widgets/round_action_button.dart';
 import '../../core/widgets/whatsapp_icon.dart';
+import '../../data/models/child.dart';
 
 /// One person to reach: who they are to the child (الأم، الأب، المخدوم) and
 /// their number as it is stored.
@@ -14,6 +15,20 @@ class ContactPerson {
 
   final String label;
   final String number;
+
+  /// The child, the mother and the father, each with a number; someone with
+  /// no number is left out.
+  static List<ContactPerson> forChild(Child child) {
+    String? clean(String? v) => (v ?? '').trim().isEmpty ? null : v!.trim();
+    return [
+      if (clean(child.mobile) != null)
+        ContactPerson(AppStrings.callChild, clean(child.mobile)!),
+      if (clean(child.motherMobile) != null)
+        ContactPerson(AppStrings.callMother, clean(child.motherMobile)!),
+      if (clean(child.fatherMobile) != null)
+        ContactPerson(AppStrings.callFather, clean(child.fatherMobile)!),
+    ];
+  }
 }
 
 /// The quick contacts at the top of a child's page: one card with a row per

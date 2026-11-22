@@ -12,6 +12,7 @@ import '../../data/models/school_class.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../state/session_controller.dart';
 import '../excel/import_children_screen.dart';
+import 'child_contact_sheet.dart';
 import 'child_filters.dart';
 import 'child_form_screen.dart';
 import 'child_profile_screen.dart';
@@ -46,11 +47,11 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
     super.dispose();
   }
 
-  // Inactive children are fetched whenever the toggle is on; the filter then
-  // narrows in memory so chip taps stay instant.
+  // Inactive children are fetched only while the toggle is on; the filter
+  // then narrows in memory so the other chips stay instant.
   Future<List<Child>> _load() async {
     final all = await _repository.all(
-      includeInactive: true,
+      includeInactive: _filter.includeInactive,
       // One class: let the database narrow it. Several: narrow here.
       classId: _classFilter.length == 1 ? _classFilter.first : null,
     );
@@ -84,14 +85,14 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
     if (imported == true) await _reload();
   }
 
-  Future<void> _openProfile(Child child) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => ChildProfileScreen(childId: child.id),
-      ),
-    );
-    await _reload();
-  }
+  /// No reload on the way back: an edit made there goes through
+  /// `Ui.runGuarded`, which marks the data changed, and the list reloads on
+  /// that by itself. Just looking at a profile no longer refetches everyone.
+  Future<void> _openProfile(Child child) => Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => ChildProfileScreen(childId: child.id),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +137,13 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                   // Only offer boys / girls when the list holds both.
                   showGender: all.any((c) => c.gender == Gender.boy) &&
                       all.any((c) => c.gender == Gender.girl),
-                  onChanged: (next) => setState(() => _filter = next),
+                  onChanged: (next) {
+                    final refetch =
+                        next.includeInactive != _filter.includeInactive;
+                    setState(() => _filter = next);
+                    // Turning inactive children on needs them fetched.
+                    if (refetch) _reload();
+                  },
                 ),
                 Expanded(
                   child: visible.isEmpty
@@ -152,8 +159,24 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                                   : AppStrings.noData,
                               body: all.isEmpty
                                   ? AppStrings.noChildrenBody
-                                  : AppStrings.clearFilters,
-                              action: null,
+                                  : null,
+                              // Filters hid everyone: one tap shows them again.
+                              action: all.isEmpty
+                                  ? null
+                                  : OutlinedButton.icon(
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        final refetch =
+                                            _filter.includeInactive;
+                                        setState(() =>
+                                            _filter = const ChildFilter());
+                                        if (refetch) _reload();
+                                      },
+                                      icon: const Icon(
+                                          Icons.filter_alt_off_outlined),
+                                      label:
+                                          const Text(AppStrings.clearFilters),
+                                    ),
                             ),
                           ],
                         )
@@ -175,8 +198,8 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
     );
   }
 
-  /// Classes as the same tidy grid as the reports screen (year columns,
-  /// boys / girls rows), so every class is visible without swiping.
+  /// The one-line class picker every list uses ("كل الفصول ▾"), which opens
+  /// the classes in a sheet.
   Widget _classFilterRow(List<ClassOverview> classes) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -214,6 +237,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
         // The header already names the class.
         className: grouped ? null : _classNameOf(classes, child.classId),
         onTap: () => _openProfile(child),
+        onContact: () => showChildContactSheet(context, child),
       ),
     );
   }

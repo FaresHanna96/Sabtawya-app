@@ -135,6 +135,9 @@ class AppStrings {
   static const totalPoints = 'إجمالي النقاط';
   static const nextAttendance = 'موعد الحضور القادم';
   static const lastAttendance = 'آخر سبت للحضور';
+  static String classRecordedOn(String day) => 'اتسجّل حضور $day';
+  static String classNotRecordedOn(String day) => 'لم يُسجَّل حضور $day بعد';
+  static const recordNow = 'سجّل الحضور';
   static const noUpcomingSession = 'لا توجد جلسة قادمة';
   static const noAttendanceYet = 'لم يُسجَّل حضور بعد';
   static const noBirthdaysToday = 'لا توجد أعياد ميلاد اليوم';
@@ -357,6 +360,7 @@ class AppStrings {
   static const childDeactivated = 'تم إلغاء تنشيط المخدوم';
   static const childActivated = 'تم تنشيط المخدوم';
   static const showInactive = 'إظهار غير النشطين';
+  static const inactiveChip = 'غير النشطين';
   static const createdAt = 'تاريخ الإضافة';
   static const updatedAt = 'آخر تحديث';
   static const visitsSection = 'الافتقادات';
@@ -536,6 +540,29 @@ class AppStrings {
   static const allMonths = 'كل الشهور';
   static const presentOnly = 'الحاضرون فقط';
   static const absentOnly = 'الغائبون فقط';
+
+  // A child's attendance log (profile), one month at a time.
+  static const logPresent = 'حضر';
+  static const logAbsent = 'غاب';
+  static const logNotRecorded = 'لم يُسجَّل';
+  static String logAttendedOf(int attended, int held) =>
+      'حضر $attended من $held';
+  static String logPoints(int points) => '$points نقطة';
+  static String logUnrecorded(int n) =>
+      n == 1 ? 'سبت لم يُسجَّل' : '$n سبوت لم تُسجَّل';
+  static const attendanceLogEmpty = 'لا توجد سبوت في هذه السنة بعد';
+  static const logNoMatch = 'لا توجد سبوت بهذا الاختيار';
+  static const logNoLesson = 'لا يوجد درس';
+  static String logNoLessonCount(int n) =>
+      n == 1 ? 'سبت بلا درس' : '$n سبوت بلا درس';
+  static String logSaturdays(int n) => n == 1
+      ? 'سبت واحد'
+      : n == 2
+          ? 'سبتان'
+          : n <= 10
+              ? '$n سبوت'
+              : '$n سبت';
+  static String logLastTime(String since) => 'آخر مرة $since';
   static const recordedOnly = 'تم تسجيلهم';
   static const notRecordedOnly = 'لم يتم تسجيلهم';
   static const showingOf = 'عرض';
@@ -592,6 +619,40 @@ class AppStrings {
   static const unlockSession = 'إعادة فتح الجلسة';
   static const markAllPresent = 'تحضير الجميع';
   static const clearAll = 'مسح الكل';
+
+  // The attendance roster: finding a child, compact rows, unsaved marks.
+  static const attendanceSearchHint = 'ابحث باسم المخدوم';
+  static String unmarkedChip(int n) => 'لم يُعلَّم ($n)';
+  static const compactView = 'عرض مختصر';
+  static const fullView = 'عرض كامل';
+  static const markAllWhich = 'الكل حضروا في:';
+  static const allActivities = 'كل الأنشطة';
+  static String draftRestored(int n) => n == 1
+      ? 'رجّعنا علامات مخدوم ما اتحفظتش'
+      : 'رجّعنا علامات $n مخدوم ما اتحفظتش';
+  static const ignoreDraft = 'تجاهل';
+  static const noSearchMatch = 'لا يوجد مخدوم بهذا البحث';
+  static const backToTop = 'إلى أعلى';
+
+  // A Saturday with no lesson, or a save with nobody ticked.
+  static String breakDayBanner(String reason) =>
+      'هذا السبت $reason: لا يوجد درس ولا يُسجَّل حضور.';
+  static const breakHoliday = 'إجازة';
+  static const breakActivity = 'نشاط ترفيهي';
+  static const breakNone = 'يوم درس عادي';
+  static const markNoLesson = 'إجازة / نشاط ترفيهي';
+  static const breakSheetTitle = 'هل يوجد درس هذا السبت؟';
+  static const breakShift = 'تأجيل الدروس أسبوعاً';
+  static const breakShiftHint =
+      'الدروس بعد هذا السبت تتحرك أسبوعاً. اقفلها لو الدرس اتلغى فقط.';
+  static const breakHasRecords =
+      'اتسجّل حضور هذا اليوم بالفعل: لن يُحسب في الملتزمين ولا الغياب.';
+  static const change = 'تغيير';
+  static const nobodyPresentTitle = 'لم تعلّم أي مخدوم';
+  static String nobodyPresentBody(int n) =>
+      'الحفظ الآن يسجّل الـ $n مخدوم كلهم غياب. لو اليوم لم يكن فيه درس '
+      'فلا تحفظ.';
+  static const saveAsAbsent = 'سجّلهم غياب';
   static const attendanceSaved = 'تم تسجيل الحضور';
   static const attendanceSavedOffline =
       'تم الحفظ محلياً • سيتم المزامنة عند عودة الاتصال';
@@ -601,6 +662,13 @@ class AppStrings {
   static const syncingNow = 'جارٍ المزامنة...';
   static const lessonOfWeek = 'درس هذا الأسبوع';
   static const lessonSchedule = 'برنامج الدروس';
+
+  // صلوات (المزيد): the servants' prayers before and after the lesson.
+  static const prayersTitle = 'صلوات';
+  static const prayerCopied = 'تم نسخ الصلاة';
+  static const textBigger = 'تكبير الخط';
+  static const textSmaller = 'تصغير الخط';
+  static const copy = 'نسخ';
   static const noLessonThisWeek = 'لا يوجد درس في هذا الأسبوع';
   static const page = 'ص';
   static const pulpit = 'المنبر';
@@ -784,6 +852,28 @@ class AppStrings {
   static const prepPending = 'قيد المراجعة';
   static const prepAccepted = 'مقبول';
   static const prepCommented = 'يوجد تعليق';
+
+  // نشاط الخدام (admin): the tabs and the chips on each servant's row.
+  static const servantsTab = 'الخدام';
+  static const servantAttendanceTab = 'حضور الخدام';
+  static const chipService = 'خدمة';
+  static const chipMeeting = 'اجتماع';
+  static const chipPrep = 'تحضير';
+  static const statServants = 'خادم';
+  static const statSaturdays = 'سبت';
+  static const sortServantName = 'الاسم';
+  static const sortServantLowest = 'الأقل حضوراً';
+  static const sortServantPending = 'قيد المراجعة';
+  static const onlyPendingPreps = 'عندهم تحضير قيد المراجعة';
+  static const allServantsCame = 'الكل حضروا';
+  static String prepRate(int sent, int held) => 'تحضير $sent/$held';
+  static String prepCount(int sent) => 'تحضير $sent';
+  static const reportTotalServants = 'إجمالي الخدام';
+  static const reportYearSaturdays = 'سبوت السنة حتى الآن';
+  static const reportServantDetails = 'تفاصيل الخدام';
+  static const prepNotSent = 'لم يُرسل تحضير';
+  static const missedPrepsTitle = 'لم يُرسل تحضيرها';
+  static const prepMarkedByHand = 'تحضير مسجّل يدوياً';
   static const acceptPrep = 'قبول';
   static const addComment = 'تعليقات';
   static const noLessonPreps = 'لا توجد تحضيرات مرفوعة';
@@ -794,6 +884,7 @@ class AppStrings {
   static const pickPhotos = 'اختيار صور';
   static const pickPdf = 'اختيار PDF';
   static const pdfFile = 'ملف PDF';
+  static const openFile = 'افتح الملف';
   static const pickAPdfFile = 'اختر ملف بصيغة PDF';
   static const photosSelected = 'صور مختارة';
   static const submittedSuccessfully = 'تم رفع التحضير بنجاح';
@@ -803,6 +894,28 @@ class AppStrings {
   static const noPhotosSelected = 'يجب اختيار صورة أو ملف PDF واحد على الأقل';
   static const lessonPrepTitle = 'تحضير الدرس';
   static const alreadySubmitted = 'تم الرفع';
+
+  // The prep page: fixing after a comment, sending back, uploading.
+  static const adminCommentTitle = 'تعليق أمين الخدمة';
+  static const prepFixHint = 'عدّل الملفات حسب التعليق ثم أرسل للمراجعة تاني';
+  static const prepResend = 'أرسل للمراجعة تاني';
+  static const prepResent = 'اتبعت التحضير للمراجعة من جديد';
+  static const prepUploadAdded = 'ارفع الملفات المضافة';
+  static const prepAddFilesHint = 'أضف صور التحضير أو ملف PDF';
+  static const prepNewFiles = 'جديد';
+  static const prepSharedAsExample = 'تمت مشاركته كمثال للخدام';
+  static const prepSharedShort = 'مثال';
+  static const prepTodoTitle = 'تحضير السبت القادم';
+  static const prepTodoNotSent = 'لم يُرسل بعد';
+  static const prepTodoUpload = 'ارفع التحضير';
+  static const myAttendanceTitle = 'حضوري';
+  static String myAttendanceOf(int came, int held) => 'حضرت $came من $held';
+  static const removeFileTitle = 'حذف هذا الملف من التحضير؟';
+  static const couldNotLoad = 'تعذّر التحميل';
+  static const uploadNeedsInternet = 'رفع التحضير يحتاج إنترنت. حاول تاني لما يرجع الاتصال.';
+  static String uploadingProgress(int done, int total) => 'رفع $done من $total';
+  static String uploadFailedSome(int n) =>
+      n == 1 ? 'لم يُرفع ملف واحد — حاول تاني' : 'لم يُرفع $n ملفات — حاول تاني';
   static const pendingPreps = 'تحضيرات قيد المراجعة';
 
   // -------------------------------------------------------------- competitions

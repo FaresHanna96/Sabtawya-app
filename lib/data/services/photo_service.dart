@@ -8,9 +8,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/offline_store.dart';
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/file_kind.dart';
 import '../supabase/db.dart';
 import 'web_pdf_picker_stub.dart'
     if (dart.library.js_interop) 'web_pdf_picker_web.dart';
+import 'web_photo_picker_stub.dart'
+    if (dart.library.js_interop) 'web_photo_picker_web.dart';
 
 /// Photos stored in a private bucket: children, and class patron saints.
 ///
@@ -31,6 +34,9 @@ class PhotoService {
 
   static final ImagePicker _picker = ImagePicker();
 
+  /// Keeps paths of files uploaded in the same millisecond apart.
+  static int _seq = 0;
+
   /// Picks and downsizes an image. Returns null when the user cancels.
   static Future<XFile?> pick({required bool fromCamera}) async {
     try {
@@ -46,9 +52,19 @@ class PhotoService {
     }
   }
 
-  /// Picks multiple images from the gallery. Returns an empty list on cancel.
-  static Future<List<XFile>> pickMultiple() async {
+  /// Picks multiple images from the gallery (or, with [camera], takes one).
+  /// Returns an empty list on cancel.
+  ///
+  /// In the browser the photos are shrunk one at a time (see
+  /// [pickPhotosInBrowser]): image_picker shrank them all at once, which on an
+  /// iPhone could run out of memory and reload the page.
+  static Future<List<XFile>> pickMultiple({bool camera = false}) async {
     try {
+      if (kIsWeb) return await pickPhotosInBrowser(camera: camera);
+      if (camera) {
+        final one = await pick(fromCamera: true);
+        return one == null ? const <XFile>[] : <XFile>[one];
+      }
       return await _picker.pickMultiImage(
         maxWidth: 1024,
         maxHeight: 1024,
@@ -87,6 +103,9 @@ class PhotoService {
       return XFile.fromData(
         Uint8List.fromList(bytes),
         name: file.name,
+        // On Android / iOS the name above is ignored and the XFile's name
+        // comes from its path; without one, every PDF went up as ".jpg".
+        path: file.path ?? file.name,
         mimeType: 'application/pdf',
       );
     } catch (e) {
@@ -108,14 +127,23 @@ class PhotoService {
   }) async {
     try {
       final bytes = await file.readAsBytes();
-      final extension = _extensionOf(file.name);
-      final path =
-          '$ownerId/${DateTime.now().millisecondsSinceEpoch}.$extension';
+      // The content decides, not the name: a PDF picked as a "photo" came in
+      // as ".jpg" and was then drawn as a broken picture everywhere.
+      final kind = FileKind.of(bytes);
+      final extension = kind == FileKind.unknown
+          ? _extensionOf(file.name)
+          : kind.extension;
+      final mime =
+          kind == FileKind.unknown ? _mimeOf(extension) : kind.mimeType;
+      // Files uploaded side by side get a counter too, so two in the same
+      // millisecond never share a path.
+      final path = '$ownerId/${DateTime.now().millisecondsSinceEpoch}'
+          '${_seq++}.$extension';
 
       await Db.client.storage.from(bucket).uploadBinary(
             path,
             Uint8List.fromList(bytes),
-            fileOptions: FileOptions(contentType: _mimeOf(extension)),
+            fileOptions: FileOptions(contentType: mime),
           );
       return path;
     } catch (e) {

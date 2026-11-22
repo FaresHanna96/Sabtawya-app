@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/arabic_sort.dart';
 import '../../data/models/child.dart';
 
 enum ChildSort {
@@ -66,7 +67,8 @@ class ChildFilter {
 
     result.sort((a, b) {
       final comparison = switch (sort) {
-        ChildSort.name => a.fullName.compareTo(b.fullName),
+        // In Arabic alphabet order, letter variants together.
+        ChildSort.name => ArabicSort.compare(a.fullName, b.fullName),
         // Children with no birth date sort last either way.
         ChildSort.age => _compareNullableInt(a.ageYears, b.ageYears),
       };
@@ -133,28 +135,32 @@ class ChildFilterBar extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
+              // Gender, then the inactive switch as a labelled chip (an eye
+              // icon alone did not say what it does).
               Expanded(
-                child: !showGender
-                    ? const SizedBox.shrink()
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _genderChip(null, AppStrings.all),
-                            _genderChip(Gender.boy, AppStrings.boys),
-                            _genderChip(Gender.girl, AppStrings.girls),
-                          ],
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (showGender) ...[
+                        _genderChip(null, AppStrings.all),
+                        _genderChip(Gender.boy, AppStrings.boys),
+                        _genderChip(Gender.girl, AppStrings.girls),
+                      ],
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: FilterChip(
+                          label: const Text(AppStrings.inactiveChip),
+                          tooltip: AppStrings.showInactive,
+                          selected: filter.includeInactive,
+                          onSelected: (on) => onChanged(
+                            filter.copyWith(includeInactive: on),
+                          ),
                         ),
                       ),
-              ),
-              IconButton(
-                tooltip: AppStrings.showInactive,
-                isSelected: filter.includeInactive,
-                onPressed: () => onChanged(
-                  filter.copyWith(includeInactive: !filter.includeInactive),
+                    ],
+                  ),
                 ),
-                icon: const Icon(Icons.visibility_off_outlined),
-                selectedIcon: const Icon(Icons.visibility),
               ),
               PopupMenuButton<ChildSort>(
                 tooltip: AppStrings.sortBy,

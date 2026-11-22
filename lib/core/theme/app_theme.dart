@@ -47,6 +47,15 @@ class AppIcons {
 
   /// "Previous": points right in Arabic.
   static const IconData back = Icons.chevron_left;
+
+  // The four activities of a Saturday, one icon each everywhere.
+  static const IconData sundaySchool = Icons.menu_book_rounded;
+  static const IconData vespers = Icons.nights_stay_rounded;
+  static const IconData mass = Icons.church_rounded;
+  static const IconData confession = Icons.record_voice_over_rounded;
+
+  /// The servants' own meeting (اجتماع الخدام).
+  static const IconData servantMeeting = Icons.groups_rounded;
 }
 
 /// Shared gradients used across the app.

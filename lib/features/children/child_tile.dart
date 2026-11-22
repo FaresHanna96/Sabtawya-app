@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/models/child.dart';
 import 'child_avatar.dart';
 import 'child_filters.dart';
+import 'contact_cards.dart';
 
 /// One child in a list. Shared by the children directory and class details so
 /// both read identically.
@@ -15,6 +17,7 @@ class ChildTile extends StatelessWidget {
     required this.onTap,
     this.className,
     this.presentStreak = 0,
+    this.onContact,
   });
 
   final Child child;
@@ -23,6 +26,10 @@ class ChildTile extends StatelessWidget {
 
   /// Saturdays attended in a row; a flame shows from 3 up.
   final int presentStreak;
+
+  /// Opens call / WhatsApp for the child and parents. When given and the
+  /// child has a number, a phone button replaces the arrow.
+  final VoidCallback? onContact;
 
   @override
   Widget build(BuildContext context) {
@@ -109,9 +116,17 @@ class ChildTile extends StatelessWidget {
                               fontSize: 12, color: AppColors.muted),
                         ),
                       ),
-                trailing: child.isActive
-                    ? const Icon(AppIcons.forward, color: AppColors.muted)
-                    : const StatusBadge(isActive: false),
+                trailing: !child.isActive
+                    ? const StatusBadge(isActive: false)
+                    : onContact != null &&
+                            ContactPerson.forChild(child).isNotEmpty
+                        ? IconButton.filledTonal(
+                            tooltip: AppStrings.call,
+                            onPressed: onContact,
+                            icon: const Icon(Icons.call_rounded,
+                                color: AppColors.success),
+                          )
+                        : const Icon(AppIcons.forward, color: AppColors.muted),
               ),
             ),
           ],

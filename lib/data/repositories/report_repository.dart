@@ -245,6 +245,28 @@ class ReportRepository {
     }
   }
 
+  /// For the Saturday [date]: each class that meets that day (through row
+  /// level security, the caller's classes) and whether its attendance was
+  /// taken. A class with no session that day is not in the map.
+  Future<Map<String, bool>> recordedOn({
+    required String yearId,
+    required DateTime date,
+  }) async {
+    try {
+      final data = await Db.client
+          .from(Db.vClassSessionSummary)
+          .select('class_id, recorded_count')
+          .eq('year_id', yearId)
+          .eq('session_date', _iso(date));
+      return {
+        for (final r in rows(data))
+          asText(r['class_id']): asInt(r['recorded_count']) > 0,
+      };
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// The whole service's attendance % per Saturday over the same 12 weeks,
   /// for a servant to compare their class with. Totals only (a database
   /// function), so a servant learns nothing about another class. Empty when

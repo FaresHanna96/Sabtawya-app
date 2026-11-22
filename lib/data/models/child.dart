@@ -1,5 +1,6 @@
 import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/arabic_sort.dart';
 import '../../core/utils/map_location.dart';
 import 'parsers.dart';
 
@@ -307,16 +308,28 @@ class Child {
         isActive: true,
       );
 
+  /// Whether [query] is found in the child's name, code, mobile, parents,
+  /// father of confession or school. Letter variants match each other
+  /// (أ إ آ / ا, ة / ه, ى / ي) and diacritics are ignored, so "احمد" finds
+  /// "أحمد"; mobiles also match with or without the leading 0 / spaces.
   bool matches(String query) {
-    final q = query.trim().toLowerCase();
+    final q = ArabicSort.key(query);
     if (q.isEmpty) return true;
-    return fullName.toLowerCase().contains(q) ||
-        (code?.toLowerCase().contains(q) ?? false) ||
-        (mobile?.contains(q) ?? false) ||
-        (motherName?.toLowerCase().contains(q) ?? false) ||
-        (fatherName?.toLowerCase().contains(q) ?? false) ||
-        (confessionFather?.toLowerCase().contains(q) ?? false) ||
-        (school?.toLowerCase().contains(q) ?? false);
+    bool has(String? text) =>
+        text != null && ArabicSort.key(text).contains(q);
+    final digits = query.replaceAll(RegExp(r'\D'), '');
+    bool phone(String? number) =>
+        digits.length >= 3 &&
+        number != null &&
+        number.replaceAll(RegExp(r'\D'), '').contains(digits);
+    return has(fullName) ||
+        has(code) ||
+        phone(mobile) ||
+        has(mobile) ||
+        has(motherName) ||
+        has(fatherName) ||
+        has(confessionFather) ||
+        has(school);
   }
 }
 

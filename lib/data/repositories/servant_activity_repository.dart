@@ -2,6 +2,7 @@ import '../models/attendance.dart';
 import '../models/profile.dart';
 import '../models/servant_activity.dart';
 import '../supabase/db.dart';
+import '../services/photo_service.dart';
 import '../../core/utils/app_failure.dart';
 
 /// Servant self-reporting (lesson prep) and admin-recorded attendance.
@@ -65,6 +66,69 @@ class ServantActivityRepository {
     }
   }
 
+  /// Saves several uploaded files on [prepId] in one request (it was one
+  /// request per photo).
+  Future<void> addPrepPhotos({
+    required String prepId,
+    required List<String> storagePaths,
+  }) async {
+    if (storagePaths.isEmpty) return;
+    try {
+      await Db.client.from(Db.tServantLessonPrepPhotos).insert([
+        for (final path in storagePaths)
+          <String, dynamic>{'prep_id': prepId, 'storage_path': path},
+      ]);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Removes one file from the servant's own prep (the row, then the file).
+  Future<void> removePrepPhoto(LessonPrepPhoto photo) async {
+    try {
+      await Db.client
+          .from(Db.tServantLessonPrepPhotos)
+          .delete()
+          .eq('id', photo.id);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+    // The row is what the screens read; a file left behind is harmless.
+    try {
+      await PhotoService.remove(
+        bucket: Db.bucketServantSubmissions,
+        path: photo.storagePath,
+      );
+    } catch (_) {}
+  }
+
+  /// Sends the servant's own commented prep back for review.
+  Future<void> resubmitPrep(String prepId) async {
+    try {
+      await Db.client.rpc('resubmit_prep', params: {'p_prep_id': prepId});
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The servant's own preps for the list in «تحضيراتي»: the Saturday, the
+  /// status and whether it was shared, without the files (a prep's page
+  /// loads those).
+  Future<List<LessonPrep>> myPrepsSummary() async {
+    try {
+      final data = await Db.client
+          .from(Db.tServantLessonPreps)
+          .select('id, servant_id, session_id, status, admin_comment, '
+              'reviewed_at, created_at, shared_at, '
+              'attendance_sessions!inner(session_date, classes(name))')
+          .eq('servant_id', Db.userId!)
+          .order('created_at', ascending: false);
+      return rows(data).map(LessonPrep.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Sessions for the given class IDs in the given year, oldest first.
   Future<List<AttendanceSession>> sessionsForClasses(
     List<String> classIds, {
@@ -75,7 +139,9 @@ class ServantActivityRepository {
       var query = Db.client
           .from(Db.tAttendanceSessions)
           .select('id, year_id, class_id, session_date, is_locked, notes')
-          .inFilter('class_id', classIds);
+          .inFilter('class_id', classIds)
+          // No lesson, no prep and nothing to count.
+          .eq('is_break', false);
       if (yearId != null) query = query.eq('year_id', yearId);
       final data = await query.order('session_date', ascending: true);
       return rows(data).map(AttendanceSession.fromMap).toList();
@@ -190,36 +256,134 @@ class ServantActivityRepository {
 
   // ------------------------------------------------- attendance (admin only)
 
-  /// All attendance records for [servantId] filtered by [activityType].
+  /// Attendance records for [servantId] filtered by [activityType], newest
+  /// first. Give [from] / [to] (inclusive) to keep one year only: the
+  /// percentages divide by that year's Saturdays, so older years must not
+  /// be counted in.
   Future<List<ServantAttendance>> attendancesForServant(
     String servantId,
-    String activityType,
-  ) async {
+    String activityType, {
+    DateTime? from,
+    DateTime? to,
+  }) async {
     try {
-      final data = await Db.client
+      var query = Db.client
           .from(Db.tServantAttendances)
           .select()
           .eq('servant_id', servantId)
-          .eq('activity_type', activityType)
-          .order('date', ascending: false);
+          .eq('activity_type', activityType);
+      if (from != null) query = query.gte('date', isoDate(from));
+      if (to != null) query = query.lte('date', isoDate(to));
+      final data = await query.order('date', ascending: false);
       return rows(data).map(ServantAttendance.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
   }
 
-  Future<void> recordAttendance({
+  /// How many times [servantId] was marked in each activity between [from]
+  /// and [to] (inclusive), in one query: activity type -> count.
+  Future<Map<String, int>> activityCounts({
+    required String servantId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    try {
+      final data = await Db.client
+          .from(Db.tServantAttendances)
+          .select('activity_type')
+          .eq('servant_id', servantId)
+          .gte('date', isoDate(from))
+          .lte('date', isoDate(to));
+      return countByType(rows(data));
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Every mark of [servantId] between [from] and [to] (inclusive), oldest
+  /// first: for "حضوري" (which Saturdays) and the counts, in one query.
+  Future<List<ServantAttendance>> marksForServant({
+    required String servantId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    try {
+      final data = await Db.client
+          .from(Db.tServantAttendances)
+          .select('id, servant_id, activity_type, date, recorded_by')
+          .eq('servant_id', servantId)
+          .gte('date', isoDate(from))
+          .lte('date', isoDate(to))
+          .order('date');
+      return rows(data).map(ServantAttendance.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Counts rows per `activity_type`.
+  static Map<String, int> countByType(Iterable<Map<String, dynamic>> rows) {
+    final out = <String, int>{};
+    for (final r in rows) {
+      final type = r['activity_type']?.toString();
+      if (type == null || type.isEmpty) continue;
+      out[type] = (out[type] ?? 0) + 1;
+    }
+    return out;
+  }
+
+  /// yyyy-MM-dd of [d]'s calendar day (no time zone shift).
+  static String isoDate(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Marks [servantId] present in [activityType] on [date] and returns the
+  /// new row, so the caller can show it without reloading the whole day.
+  Future<ServantAttendance> recordAttendance({
     required String servantId,
     required String activityType,
     required DateTime date,
   }) async {
     try {
-      await Db.client.from(Db.tServantAttendances).insert(<String, dynamic>{
-        'servant_id': servantId,
-        'activity_type': activityType,
-        'date': date.toIso8601String().substring(0, 10),
-        'recorded_by': Db.userId,
-      });
+      final data = await Db.client
+          .from(Db.tServantAttendances)
+          .insert(<String, dynamic>{
+            'servant_id': servantId,
+            'activity_type': activityType,
+            'date': isoDate(date),
+            'recorded_by': Db.userId,
+          })
+          .select()
+          .single();
+      return ServantAttendance.fromMap(data);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Marks every one of [servantIds] present in [activityType] on [date] in
+  /// one request, and returns the new rows («الكل حضروا»).
+  Future<List<ServantAttendance>> recordAttendanceMany({
+    required List<String> servantIds,
+    required String activityType,
+    required DateTime date,
+  }) async {
+    if (servantIds.isEmpty) return const [];
+    try {
+      final data = await Db.client
+          .from(Db.tServantAttendances)
+          .insert([
+            for (final id in servantIds)
+              <String, dynamic>{
+                'servant_id': id,
+                'activity_type': activityType,
+                'date': isoDate(date),
+                'recorded_by': Db.userId,
+              },
+          ])
+          .select();
+      return rows(data).map(ServantAttendance.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -245,6 +409,7 @@ class ServantActivityRepository {
           .from(Db.tAttendanceSessions)
           .select('session_date')
           .eq('year_id', yearId)
+          .eq('is_break', false)
           .order('session_date', ascending: true);
       final seen = <String>{};
       final dates = <DateTime>[];
@@ -300,21 +465,29 @@ class ServantActivityRepository {
     }
   }
 
-  /// Returns total attendance session count for a year (all classes).
+  /// How many Saturdays of [yearId] were already held: one per date, however
+  /// many classes met that day. A servant is marked once per Saturday, so
+  /// this is the base of every servant percentage.
   Future<int> sessionCountForYear(String yearId) async {
     try {
       final data = await Db.client
           .from(Db.tAttendanceSessions)
-          .select('id')
+          .select('session_date')
           .eq('year_id', yearId)
+          .eq('is_break', false)
           // Only sessions already held, so percentages are "so far".
-          .lte('session_date',
-              DateTime.now().toIso8601String().substring(0, 10));
-      return rows(data).length;
+          .lte('session_date', isoDate(DateTime.now()));
+      return distinctDates(rows(data));
     } catch (e) {
       throw AppFailure.from(e);
     }
   }
+
+  /// The number of different `session_date` values in [rows].
+  static int distinctDates(Iterable<Map<String, dynamic>> rows) =>
+      {for (final r in rows) r['session_date']?.toString()}
+          .whereType<String>()
+          .length;
 
   /// Per-servant attendance + prep counts for a specific calendar month.
   Future<List<ServantMonthlyReport>> servantMonthlyReport({
@@ -343,6 +516,7 @@ class ServantActivityRepository {
       final sessionData = await Db.client
           .from(Db.tAttendanceSessions)
           .select('id')
+          .eq('is_break', false)
           .gte('session_date', from)
           .lte('session_date', to);
       final sessionIds =
@@ -410,24 +584,65 @@ class ServantActivityRepository {
     }
   }
 
-  Future<List<ServantActivitySummary>> activitySummaries() async {
-    try {
-      // Load ALL servant profiles so servants with zero activity still appear
-      final profileData = await Db.client
-          .from(Db.tProfiles)
-          .select('id, full_name, role')
-          .order('full_name');
+  /// Every servant with their activity counts. Give [from] / [to] to count
+  /// one year only (attendance by its date, preps by their Saturday), which
+  /// the percentages need: they divide by that year's Saturdays.
+  Future<List<ServantActivitySummary>> activitySummaries({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    // Added up in the database (servant_activity_summary) when it can be;
+    // the rows are only downloaded and added up here as a fallback (a
+    // database without the function yet).
+    if (from != null && to != null) {
+      try {
+        final data = await Db.client.rpc('servant_activity_summary', params: {
+          'p_from': isoDate(from),
+          'p_to': isoDate(to),
+        });
+        return rows(data).map(ServantActivitySummary.fromMap).toList();
+      } catch (_) {
+        // Fall through to the rows.
+      }
+    }
+    return _summariesFromRows(from: from, to: to);
+  }
 
-      // Load all preps grouped by servant
-      final prepData = await Db.client.from(Db.tServantLessonPreps).select(
+  Future<List<ServantActivitySummary>> _summariesFromRows({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      // The three reads do not depend on each other.
+      var prepQuery = Db.client.from(Db.tServantLessonPreps).select(
             'servant_id, status, '
+            'attendance_sessions!inner(session_date), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
           );
-
-      // Load all attendance records
-      final attendanceData = await Db.client
+      if (from != null) {
+        prepQuery =
+            prepQuery.gte('attendance_sessions.session_date', isoDate(from));
+      }
+      if (to != null) {
+        prepQuery =
+            prepQuery.lte('attendance_sessions.session_date', isoDate(to));
+      }
+      var attendanceQuery = Db.client
           .from(Db.tServantAttendances)
           .select('servant_id, activity_type');
+      if (from != null) {
+        attendanceQuery = attendanceQuery.gte('date', isoDate(from));
+      }
+      if (to != null) attendanceQuery = attendanceQuery.lte('date', isoDate(to));
+
+      final (profileData, prepData, attendanceData) = await (
+        // ALL servant profiles, so servants with zero activity still appear.
+        Db.client.from(Db.tProfiles).select('id, full_name, role').order(
+              'full_name',
+            ),
+        prepQuery,
+        attendanceQuery,
+      ).wait;
 
       final prepRows = rows(prepData);
       final attendanceRows = rows(attendanceData);

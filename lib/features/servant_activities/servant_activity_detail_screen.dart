@@ -1,19 +1,19 @@
 import '../../core/widgets/image_viewer.dart';
 import 'package:flutter/material.dart';
 
+import 'prep_review_sheet.dart';
 import 'servant_summary_card.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/file_fallback.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
-import '../../data/models/attendance.dart';
 import '../../data/models/servant_activity.dart';
-import '../../data/repositories/class_repository.dart';
 import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
@@ -38,22 +38,34 @@ class ServantActivityDetailScreen extends StatefulWidget {
 class _ServantActivityDetailScreenState
     extends State<ServantActivityDetailScreen> {
   static const _repo = ServantActivityRepository();
-  static const _classRepo = ClassRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<_DetailData>>();
 
   Future<_DetailData> _load() async {
-    final yearId = context.read<SessionController>().currentYear?.id;
-    final assignments = await _classRepo.classesOfServant(widget.servantId);
-    final classIds = assignments.map((a) => a.classId).toList();
+    final year = context.read<SessionController>().currentYear;
+    final yearId = year?.id;
+
+    // This year only: the summary divides by this year's Saturdays.
+    Future<List<ServantAttendance>> marks(String type) =>
+        _repo.attendancesForServant(
+          widget.servantId,
+          type,
+          from: year?.startDate,
+          to: year?.endDate,
+        );
 
     final results = await Future.wait([
       _repo.prepsForServant(widget.servantId),
-      _repo.attendancesForServant(widget.servantId, 'sunday_school'),
-      _repo.attendancesForServant(widget.servantId, 'servant_meeting'),
-      _repo.attendancesForServant(widget.servantId, 'mass'),
-      _repo.attendancesForServant(widget.servantId, 'confession'),
-      _repo.sessionsForClasses(classIds, yearId: yearId),
+      marks('sunday_school'),
+      marks('servant_meeting'),
+      marks('mass'),
+      marks('confession'),
+      // One row per Saturday of the year (no-lesson days left out): a
+      // servant is marked per date, so a class servant and a خادم عام (no
+      // class) get the same list.
+      yearId == null
+          ? Future.value(const <DateTime>[])
+          : _repo.sessionDatesForYear(yearId),
     ]);
     return _DetailData(
       preps: results[0] as List<LessonPrep>,
@@ -61,8 +73,73 @@ class _ServantActivityDetailScreenState
       servantMeeting: results[2] as List<ServantAttendance>,
       mass: results[3] as List<ServantAttendance>,
       confession: results[4] as List<ServantAttendance>,
-      sessions: results[5] as List<AttendanceSession>,
+      dates: _heldNewestFirst(results[5] as List<DateTime>),
     );
+  }
+
+  /// Saturdays already held, the latest first.
+  static List<DateTime> _heldNewestFirst(List<DateTime> dates) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return [
+      for (final d in dates)
+        if (!d.isAfter(today)) d,
+    ]..sort((a, b) => b.compareTo(a));
+  }
+
+  /// Marks being saved, by "date|type": only that chip waits.
+  final _saving = <String>{};
+
+  /// Shows the change at once and saves it; a refusal puts it back.
+  Future<void> _toggle(_DetailData data, DateTime date, String type) async {
+    final key = '${_DetailData._key(date)}|$type';
+    if (!_saving.add(key)) return;
+    final list = data.listFor(type);
+    final existing = data.findIn(list, date);
+    final placeholder = ServantAttendance(
+      id: '',
+      servantId: widget.servantId,
+      activityType: type,
+      date: date,
+      recordedBy: '',
+    );
+    setState(() {
+      if (existing != null) {
+        list.remove(existing);
+      } else {
+        list.add(placeholder);
+      }
+    });
+    try {
+      if (existing != null) {
+        await _repo.deleteAttendance(existing.id);
+      } else {
+        final saved = await _repo.recordAttendance(
+          servantId: widget.servantId,
+          activityType: type,
+          date: date,
+        );
+        if (mounted) {
+          setState(() {
+            final i = list.indexOf(placeholder);
+            if (i >= 0) list[i] = saved;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          if (existing != null) {
+            list.add(existing);
+          } else {
+            list.remove(placeholder);
+          }
+        });
+        Ui.error(context, e);
+      }
+    } finally {
+      _saving.remove(key);
+    }
   }
 
   Future<void> _reload() =>
@@ -90,48 +167,21 @@ class _ServantActivityDetailScreenState
     );
   }
 
-  Future<void> _toggleAttendance(
-    AttendanceSession session,
-    String activityType,
-    ServantAttendance? existing,
-  ) async {
-    if (existing != null) {
-      final ok = await Ui.runGuarded(
-        context,
-        () => _repo.deleteAttendance(existing.id),
-        successMessage: AppStrings.saved,
-      );
-      if (ok) await _reload();
-    } else {
-      final ok = await Ui.runGuarded(
-        context,
-        () => _repo.recordAttendance(
-          servantId: widget.servantId,
-          activityType: activityType,
-          date: session.sessionDate,
-        ),
-        successMessage: AppStrings.saved,
-      );
-      if (ok) await _reload();
-    }
-  }
-
   Widget _summary(_DetailData data) {
-    // Only sessions already held (one per date, whatever the class count).
-    final now = DateTime.now();
-    final cutoff = DateTime(now.year, now.month, now.day);
-    final held = data.sessions
-        .where((x) => !x.sessionDate.isAfter(cutoff))
-        .map((x) => x.sessionDate)
-        .toSet()
-        .length;
+    // The Saturdays already held (one per date).
+    final held = data.dates.length;
+    // The list below keeps every prep; the counts are this year's only.
+    final year = context.read<SessionController>().currentYear;
+    final preps = year == null
+        ? data.preps
+        : data.preps.where((p) => year.contains(p.sessionDate)).toList();
     return ServantSummaryCard(
       sundaySchool: data.sundaySchool.length,
       servantMeeting: data.servantMeeting.length,
       mass: data.mass.length,
       confession: data.confession.length,
-      preps: data.preps.length,
-      pendingPreps: data.preps.where((p) => p.status == 'pending').length,
+      preps: preps.length,
+      pendingPreps: preps.where((p) => p.isPending).length,
       heldSessions: held,
     );
   }
@@ -170,7 +220,7 @@ class _ServantActivityDetailScreenState
                 // ------------------------------------------ Attendance sessions
                 _SectionHeader(title: AppStrings.attendanceTitle),
                 const SizedBox(height: 8),
-                if (data.sessions.isEmpty)
+                if (data.dates.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text(
@@ -183,44 +233,26 @@ class _ServantActivityDetailScreenState
                     ),
                   )
                 else
-                  ...data.sessions.map((session) {
-                    final sundayRec = data.sundaySchoolFor(session.sessionDate);
-                    final meetingRec =
-                        data.servantMeetingFor(session.sessionDate);
-                    final massRec = data.massFor(session.sessionDate);
-                    final confessionRec =
-                        data.confessionFor(session.sessionDate);
-                    return Padding(
+                  for (final date in data.dates)
+                    Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _AttendanceSessionCard(
-                        session: session,
-                        sundaySchoolPresent: sundayRec != null,
-                        servantMeetingPresent: meetingRec != null,
-                        massPresent: massRec != null,
-                        confessionPresent: confessionRec != null,
-                        onToggleSundaySchool: () => _toggleAttendance(
-                          session,
-                          'sunday_school',
-                          sundayRec,
-                        ),
-                        onToggleServantMeeting: () => _toggleAttendance(
-                          session,
-                          'servant_meeting',
-                          meetingRec,
-                        ),
-                        onToggleMass: () => _toggleAttendance(
-                          session,
-                          'mass',
-                          massRec,
-                        ),
-                        onToggleConfession: () => _toggleAttendance(
-                          session,
-                          'confession',
-                          confessionRec,
-                        ),
+                        date: date,
+                        sundaySchoolPresent:
+                            data.sundaySchoolFor(date) != null,
+                        servantMeetingPresent:
+                            data.servantMeetingFor(date) != null,
+                        massPresent: data.massFor(date) != null,
+                        confessionPresent: data.confessionFor(date) != null,
+                        onToggleSundaySchool: () =>
+                            _toggle(data, date, 'sunday_school'),
+                        onToggleServantMeeting: () =>
+                            _toggle(data, date, 'servant_meeting'),
+                        onToggleMass: () => _toggle(data, date, 'mass'),
+                        onToggleConfession: () =>
+                            _toggle(data, date, 'confession'),
                       ),
-                    );
-                  }),
+                    ),
               ],
             );
           },
@@ -299,30 +331,18 @@ class _PrepRow extends StatelessWidget {
     );
   }
 
-  static String _statusLabel(String status) => switch (status) {
-        'accepted' => AppStrings.prepAccepted,
-        'commented' => AppStrings.prepCommented,
-        _ => AppStrings.prepPending,
-      };
+  static String _statusLabel(String status) => prepStatusLabel(status);
 
-  static IconData _statusIcon(String status) => switch (status) {
-        'accepted' => Icons.check_circle_outline,
-        'commented' => Icons.comment_outlined,
-        _ => Icons.hourglass_empty_outlined,
-      };
+  static IconData _statusIcon(String status) => prepStatusIcon(status);
 
-  static Color _statusColor(String status) => switch (status) {
-        'accepted' => AppColors.success,
-        'commented' => AppColors.warning,
-        _ => AppColors.muted,
-      };
+  static Color _statusColor(String status) => prepStatusColor(status);
 }
 
 // ---------------------------------------------------------------------------
 
 class _AttendanceSessionCard extends StatelessWidget {
   const _AttendanceSessionCard({
-    required this.session,
+    required this.date,
     required this.sundaySchoolPresent,
     required this.servantMeetingPresent,
     required this.massPresent,
@@ -333,7 +353,7 @@ class _AttendanceSessionCard extends StatelessWidget {
     required this.onToggleConfession,
   });
 
-  final AttendanceSession session;
+  final DateTime date;
   final bool sundaySchoolPresent;
   final bool servantMeetingPresent;
   final bool massPresent;
@@ -369,7 +389,7 @@ class _AttendanceSessionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  AppDateUtils.formatDayDate(session.sessionDate),
+                  AppDateUtils.formatDayDate(date),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -635,17 +655,9 @@ class _ReviewSheetState extends State<_ReviewSheet> {
     await widget.onReview(status, comment);
   }
 
-  static String _statusLabel(String status) => switch (status) {
-        'accepted' => AppStrings.prepAccepted,
-        'commented' => AppStrings.prepCommented,
-        _ => AppStrings.prepPending,
-      };
+  static String _statusLabel(String status) => prepStatusLabel(status);
 
-  static Color _statusColor(String status) => switch (status) {
-        'accepted' => AppColors.success,
-        'commented' => AppColors.warning,
-        _ => AppColors.muted,
-      };
+  static Color _statusColor(String status) => prepStatusColor(status);
 }
 
 // ---------------------------------------------------------------------------
@@ -699,7 +711,12 @@ class _StorageImageState extends State<_StorageImage> {
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(_url!, fit: BoxFit.contain),
+              child: Image.network(
+                _url!,
+                fit: BoxFit.contain,
+                // A PDF stored under a picture's name: offer to open it.
+                errorBuilder: (_, __, ___) => FileFallbackCard(url: _url),
+              ),
             ),
           ),
           // Hint that the picture opens full screen.
@@ -725,7 +742,7 @@ class _DetailData {
     required this.servantMeeting,
     required this.mass,
     required this.confession,
-    required this.sessions,
+    required this.dates,
   });
 
   final List<LessonPrep> preps;
@@ -733,7 +750,18 @@ class _DetailData {
   final List<ServantAttendance> servantMeeting;
   final List<ServantAttendance> mass;
   final List<ServantAttendance> confession;
-  final List<AttendanceSession> sessions;
+  /// The Saturdays held so far, the latest first (one per date).
+  final List<DateTime> dates;
+
+  List<ServantAttendance> listFor(String type) => switch (type) {
+        'sunday_school' => sundaySchool,
+        'servant_meeting' => servantMeeting,
+        'mass' => mass,
+        _ => confession,
+      };
+
+  ServantAttendance? findIn(List<ServantAttendance> list, DateTime date) =>
+      _find(list, date);
 
   ServantAttendance? sundaySchoolFor(DateTime date) =>
       _find(sundaySchool, date);

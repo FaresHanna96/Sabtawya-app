@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'file_fallback.dart';
 
 /// Opens [url] full screen on a dark background. Pinch to zoom, drag to move
 /// around, double-tap to zoom in and out, tap the X (or swipe back) to close.
@@ -76,10 +77,14 @@ class _ImageViewerState extends State<_ImageViewer> {
                                   color: Colors.white,
                                 ),
                               ),
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.broken_image_outlined,
-                      color: Colors.white54,
-                      size: 64,
+                    // Not a picture (a PDF saved under a picture's name):
+                    // offer to open it instead of a broken icon.
+                    errorBuilder: (_, __, ___) => Center(
+                      child: FileFallbackCard(
+                        url: widget.url,
+                        width: 160,
+                        height: 120,
+                      ),
                     ),
                   ),
                 ),
