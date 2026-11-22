@@ -622,7 +622,6 @@ class AppStrings {
 
   // The attendance roster: finding a child, compact rows, unsaved marks.
   static const attendanceSearchHint = 'ابحث باسم المخدوم';
-  static String unmarkedChip(int n) => 'لم يُعلَّم ($n)';
   static const compactView = 'عرض مختصر';
   static const fullView = 'عرض كامل';
   static const markAllWhich = 'الكل حضروا في:';
@@ -976,8 +975,8 @@ class AppStrings {
   static const reservedSaved = 'تم الحجز';
   static const reservationCancelled = 'تم إلغاء الحجز';
   static const reservedUnpaidStatus = 'حاجز (لم يدفع)';
-  static const bookShort = 'حجز';
-  static const bookedShort = 'محجوز';
+  static const bookShort = 'حجز الرحلة';
+  static const bookedShort = 'تم حجز الرحلة';
   static const bookedPaidShort = 'دفع';
   static const pickEvent = 'اختر النشاط';
   static const bookingPaidNote = 'دفع بالفعل: الدفع من شاشة النشاط';

@@ -100,9 +100,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final _search = TextEditingController();
   String _query = '';
 
-  /// Only the children with no activity marked yet: who is left to do.
-  bool _onlyUnmarked = false;
-
   /// One line per child instead of a card (remembered on this phone).
   bool _compact = false;
 
@@ -172,14 +169,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       final list = await _events.upcomingEvents();
       if (!mounted || list.isEmpty) return;
-      setState(() {
-        _upcoming = list;
-        _bookingEvent = list.first;
-      });
-      await _loadBooking();
+      setState(() => _upcoming = list);
+      _syncBooking();
     } catch (_) {
       // Without them there is just no booking button.
     }
+  }
+
+  /// The upcoming events that are not already past on the Saturday on
+  /// screen: a trip on 28 Nov cannot be booked from the 12 Dec list.
+  List<Event> get _bookable {
+    final today = AppDateUtils.dateOnly(DateTime.now());
+    var from = _date == null ? today : AppDateUtils.dateOnly(_date!);
+    if (from.isBefore(today)) from = today;
+    return [
+      for (final e in _upcoming)
+        if (!AppDateUtils.dateOnly(e.eventDate).isBefore(from)) e,
+    ];
+  }
+
+  /// Keeps the event being booked among [_bookable] (none: the booking bar and
+  /// buttons go away).
+  void _syncBooking() {
+    final list = _bookable;
+    final keep = list.where((e) => e.id == _bookingEvent?.id);
+    final next = keep.isNotEmpty ? keep.first : (list.isEmpty ? null : list.first);
+    if (next?.id == _bookingEvent?.id) return;
+    setState(() {
+      _bookingEvent = next;
+      _booking = const <String, ChildEventBalance>{};
+    });
+    if (next != null) unawaited(_loadBooking());
   }
 
   Future<void> _loadBooking() async {
@@ -209,7 +229,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
               ),
             ),
-            for (final e in _upcoming)
+            for (final e in _bookable)
               ListTile(
                 selected: e.id == _bookingEvent?.id,
                 leading: const Icon(Icons.celebration_rounded, size: 20),
@@ -260,7 +280,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final event = _bookingEvent!;
     final booked =
         _entries.where((e) => _booking[e.child.id]?.isBooked ?? false).length;
-    final canPick = _upcoming.length > 1;
+    final canPick = _bookable.length > 1;
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 4),
       decoration: BoxDecoration(
@@ -569,6 +589,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _loading = false;
       });
       _watch();
+      _syncBooking();
       if (_bookingEvent != null) unawaited(_loadBooking());
       if (!quiet) unawaited(_restoreDrafts());
     } catch (e) {
@@ -739,7 +760,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   bool _visible(int i) {
     final e = _entries[i];
-    if (_onlyUnmarked && e.isPresent) return false;
     return _query.trim().isEmpty || e.child.matches(_query);
   }
 
@@ -994,7 +1014,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     // Built lazily: with "كل الفصول" the roster is ~200 cards, and building
     // them all up front made the screen slow to open. Rows are: the header,
     // the locked banner, then per class an optional header and its cards.
-    // The search and "لم يُعلَّم" only narrow what is listed; saving still
+    // The search and "لم يُسجَّل حضورهم" only narrow what is listed; saving still
     // covers every child.
     final shown = [
       for (var i = 0; i < _entries.length; i++)
@@ -1042,7 +1062,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 onPressed: () => setState(() {
                   _search.clear();
                   _query = '';
-                  _onlyUnmarked = false;
                 }),
                 icon: const Icon(Icons.filter_alt_off_outlined),
                 label: const Text(AppStrings.clearFilters),
@@ -1161,9 +1180,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  /// The search box, the compact switch and "لم يُعلَّم".
+  /// The search box, the compact switch and "لم يُسجَّل حضورهم".
   Widget _finder() {
-    final unmarked = _entries.where((e) => !e.isPresent).length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1200,15 +1218,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               selectedIcon: const Icon(Icons.view_agenda_outlined),
             ),
           ],
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: FilterChip(
-            label: Text(AppStrings.unmarkedChip(unmarked)),
-            selected: _onlyUnmarked,
-            onSelected: (on) => setState(() => _onlyUnmarked = on),
-          ),
         ),
       ],
     );
