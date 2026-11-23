@@ -68,7 +68,8 @@ class PrepReviewSheet extends StatefulWidget {
 }
 
 class _PrepReviewSheetState extends State<PrepReviewSheet> {
-  final _commentController = TextEditingController();
+  late final _commentController =
+      TextEditingController(text: widget.prep.adminComment ?? '');
   int _photoPage = 0;
 
   static const _lessons = LessonRepository();
@@ -222,6 +223,23 @@ class _PrepReviewSheetState extends State<PrepReviewSheet> {
                   ),
               ],
             ),
+            // The comment already left on this prep.
+            if (prep.adminComment != null &&
+                prep.adminComment!.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.sky.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  prep.adminComment!,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
             if (prep.photos.isNotEmpty) ...[
               const SizedBox(height: 16),
               SizedBox(

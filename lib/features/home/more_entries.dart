@@ -17,7 +17,6 @@ import '../events/events_screen.dart';
 import '../excel/export_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../lessons/lesson_schedule_screen.dart';
-import '../messages/message_templates_screen.dart';
 import '../prayers/prayers_screen.dart';
 import '../reports/reports_screen.dart';
 import '../servants/servant_assignments_screen.dart';
@@ -266,21 +265,11 @@ class MoreCatalog {
     MoreEntry(
       id: 'announcements',
       icon: Icons.campaign_outlined,
-      title: AppStrings.announcementsTitle,
+      title: AppStrings.announcementsMoreTitle,
       color: AppColors.maroon,
       group: MoreGroup.admin,
       open: () => const AnnouncementsScreen(),
       keywords: const ['اعلان', 'اعلانات'],
-      roles: _adminOnly,
-    ),
-    MoreEntry(
-      id: 'messageTemplates',
-      icon: Icons.chat_outlined,
-      title: AppStrings.messageTemplates,
-      color: AppColors.maroon,
-      group: MoreGroup.admin,
-      open: () => const MessageTemplatesScreen(),
-      keywords: const ['رسائل', 'رسالة', 'واتساب'],
       roles: _adminOnly,
     ),
     MoreEntry(

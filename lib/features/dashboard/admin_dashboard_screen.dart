@@ -156,7 +156,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       child: StatCard(
                         label: AppStrings.totalPoints,
                         value: '${stats.totalPoints}',
-                        icon: Icons.star_outline,
+                        icon: Icons.emoji_events_outlined,
                         color: AppColors.gold,
                       ),
                     ),

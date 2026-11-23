@@ -1110,6 +1110,7 @@ class AppStrings {
 
   // ── Announcements ──────────────────────────────────────────────────────────
   static const announcementsTitle = 'الإعلانات';
+  static const announcementsMoreTitle = 'رسائل وأخبار للخدام';
   static const newAnnouncement = 'إعلان جديد';
   static const noAnnouncements = 'لا توجد إعلانات';
   static const noAnnouncementsBody =
