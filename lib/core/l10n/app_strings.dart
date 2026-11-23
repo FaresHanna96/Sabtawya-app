@@ -144,7 +144,9 @@ class AppStrings {
   static const recordNow = 'سجّل الحضور';
   static const classNeedsServant = 'محتاج خادم';
   static const prepSentLine = 'التحضير اتبعت';
-  static const healthShort = 'صحة';
+  static const healthShort = 'صحة الفصل';
+  static String healthChipTooltip(int score) =>
+      'صحة الفصل $score من 100: من حضور الأطفال وتسجيل الحضور والتحضير والافتقاد';
   static const noUpcomingSession = 'لا توجد جلسة قادمة';
   static const noAttendanceYet = 'لم يُسجَّل حضور بعد';
   static const noBirthdaysToday = 'لا توجد أعياد ميلاد اليوم';

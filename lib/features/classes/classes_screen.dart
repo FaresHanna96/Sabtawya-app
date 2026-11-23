@@ -475,16 +475,21 @@ class ClassCard extends StatelessWidget {
                                   color: AppColors.maroon,
                                 ),
                               ),
+                            // Under the name, where the words have room.
+                            if (overview.isActive &&
+                                facts.score != null &&
+                                facts.level != null) ...[
+                              const SizedBox(height: 6),
+                              HealthScoreChip(
+                                score: facts.score!,
+                                level: facts.level!,
+                              ),
+                            ],
                           ],
                         ),
                       ),
                       if (!overview.isActive)
-                        const StatusBadge(isActive: false)
-                      else if (facts.score != null && facts.level != null)
-                        HealthScoreChip(
-                          score: facts.score!,
-                          level: facts.level!,
-                        ),
+                        const StatusBadge(isActive: false),
                       const Icon(AppIcons.forward, color: AppColors.muted),
                     ],
                   ),
@@ -573,42 +578,61 @@ class HealthScoreChip extends StatelessWidget {
   final int score;
   final HealthLevel level;
 
+  /// A face for each level, so the colour is not the only signal.
+  static IconData iconOf(HealthLevel level) => switch (level) {
+        HealthLevel.green => Icons.sentiment_satisfied_alt_rounded,
+        HealthLevel.amber => Icons.visibility_outlined,
+        HealthLevel.red => Icons.volunteer_activism_outlined,
+      };
+
   @override
   Widget build(BuildContext context) {
     final color = ClassHealthSection.colorOf(level);
-    return Semantics(
-      label: '${AppStrings.healthShort} $score',
-      excludeSemantics: true,
-      child: Container(
-        margin: const EdgeInsetsDirectional.only(end: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: statusTint(color),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              '$score',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: color,
+    // In words first («محتاجين دعم»), as متابعة الفصول says it; the score
+    // out of 100 stays beside it, smaller, for whoever wants the number.
+    final label = ClassHealthSection.labelOf(level);
+    return Tooltip(
+      message: AppStrings.healthChipTooltip(score),
+      child: Semantics(
+        label: '${AppStrings.healthShort}: $label، $score/100',
+        excludeSemantics: true,
+        child: Container(
+          padding: const EdgeInsetsDirectional.fromSTEB(8, 3, 10, 3),
+          decoration: BoxDecoration(
+            color: statusTint(color),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(iconOf(level), size: 15, color: color),
+              const SizedBox(width: 5),
+              // Shrinks a little rather than overflow next to a long name.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 3),
-            Text(
-              AppStrings.healthShort,
-              style: TextStyle(fontSize: 11, color: color),
-            ),
-          ],
+              const SizedBox(width: 5),
+              Text(
+                '$score/100',
+                textDirection: TextDirection.ltr,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: color.withValues(alpha: 0.75),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

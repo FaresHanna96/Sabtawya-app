@@ -153,9 +153,29 @@ void main() {
         const ClassCardFacts(score: 78, level: HealthLevel.amber),
       );
       expect(find.byType(HealthScoreChip), findsOneWidget);
-      expect(find.text('78'), findsOneWidget);
-      expect(find.text(AppStrings.healthShort), findsOneWidget);
+      // Said in words, the number out of 100 beside it.
+      expect(find.text(AppStrings.healthToFollow), findsOneWidget);
+      expect(find.text('78/100'), findsOneWidget);
+      expect(find.byIcon(HealthScoreChip.iconOf(HealthLevel.amber)),
+          findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
+
+    for (final (level, words) in [
+      (HealthLevel.green, AppStrings.healthGood),
+      (HealthLevel.amber, AppStrings.healthToFollow),
+      (HealthLevel.red, AppStrings.healthNeedsSupport),
+    ]) {
+      testWidgets('$level reads «$words» and fits the card', (tester) async {
+        await _pump(
+          tester,
+          _class(),
+          ClassCardFacts(score: 38, level: level),
+        );
+        expect(find.text(words), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('recorded: who came and the percentage', (tester) async {
       await _pump(
