@@ -14,6 +14,7 @@ import '../../core/services/connectivity_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
@@ -29,7 +30,9 @@ import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import '../events/event_detail_screen.dart' show showChildPaymentSheet;
 import '../children/child_filters.dart';
+import '../children/child_profile_screen.dart';
 import 'attendance_draft.dart';
+import 'attendance_swipe.dart';
 import 'break_sheet.dart';
 
 /// Takes attendance for one class on one Saturday, or for every class at
@@ -841,6 +844,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _queueDraft();
   }
 
+  /// One child present at all four activities, or with every mark cleared
+  /// (the swipe). Kept as a draft like any tap; nothing is saved yet.
+  void _setAllMarks(AttendanceEntry entry, bool present) {
+    final i = _entries.indexOf(entry);
+    if (i < 0 || !_canEditSheet(_entrySheet[i])) return;
+    setState(() => setEntryMarks(entry, present: present));
+    _queueDraft();
+  }
+
+  /// The child's profile from a long press on their line.
+  Future<void> _openProfile(AttendanceEntry entry) async {
+    Haptics.tap();
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ChildProfileScreen(childId: entry.child.id),
+      ),
+    );
+  }
+
   /// Every child shown (all of them unless a search narrows the list) present
   /// or cleared in [only] one activity, or in all four when null. A locked class stays as it is (unless the admin).
   void _markAll(bool present, {AttendanceActivity? only}) {
@@ -1158,31 +1180,41 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final booking = _bookingOf(_entries[i]);
         final VoidCallback? onBook =
             booking == null ? null : () => _toggleBooking(_entries[i]);
+        // Swipe the line: present at everything, or cleared; long press for
+        // the child's profile.
+        Widget swipe(Widget line) => AttendanceSwipe(
+              id: '${_entrySheet[i].session.id}-${_entries[i].child.id}',
+              enabled: enabled,
+              onAllPresent: () => _setAllMarks(_entries[i], true),
+              onClear: () => _setAllMarks(_entries[i], false),
+              onLongPress: () => _openProfile(_entries[i]),
+              child: line,
+            );
         if (_compact) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-            child: AttendanceEntryRow(
+            child: swipe(AttendanceEntryRow(
               entry: _entries[i],
               highlight: highlight,
               enabled: enabled,
               onToggle: onToggle,
               booking: booking,
               onBook: onBook,
-            ),
+            )),
           );
         }
         return Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: staggered(
             i,
-            AttendanceEntryCard(
+            swipe(AttendanceEntryCard(
               entry: _entries[i],
               highlight: highlight,
               enabled: enabled,
               onToggle: onToggle,
               booking: booking,
               onBook: onBook,
-            ),
+            )),
           ),
         );
       },
@@ -1871,6 +1903,16 @@ enum AttendanceActivity {
         AttendanceActivity.mass => e.mass,
         AttendanceActivity.confession => e.confession,
       };
+}
+
+/// Sets all four activities of [entry] to [present] (the swipe on a line).
+@visibleForTesting
+void setEntryMarks(AttendanceEntry entry, {required bool present}) {
+  entry
+    ..sundaySchool = present
+    ..vespers = present
+    ..mass = present
+    ..confession = present;
 }
 
 /// Nobody among [entries] has any activity ticked (and there is someone).
