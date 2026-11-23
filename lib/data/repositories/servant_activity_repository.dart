@@ -3,6 +3,8 @@ import '../models/profile.dart';
 import '../models/servant_activity.dart';
 import '../supabase/db.dart';
 import '../services/photo_service.dart';
+import '../models/parsers.dart';
+import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/app_failure.dart';
 
 /// Servant self-reporting (lesson prep) and admin-recorded attendance.
@@ -445,6 +447,33 @@ class ServantActivityRepository {
           .select(_prepSelect)
           .inFilter('session_id', sessionIds);
       return rows(data).map(LessonPrep.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The classes that have a lesson prep for their session on [date], any
+  /// status. Preps are readable by the admin (all) and their own servant, so
+  /// for anyone else this is not the whole picture: the class cards ask it
+  /// for the admin only.
+  Future<Set<String>> classesWithPrepOn(DateTime date) async {
+    try {
+      final sessions = rows(await Db.client
+          .from(Db.tAttendanceSessions)
+          .select('id, class_id')
+          .eq('session_date', AppDateUtils.toIsoDate(date)));
+      if (sessions.isEmpty) return const {};
+      final classOf = {
+        for (final s in sessions) asText(s['id']): asText(s['class_id']),
+      };
+      final preps = rows(await Db.client
+          .from(Db.tServantLessonPreps)
+          .select('session_id')
+          .inFilter('session_id', classOf.keys.toList()));
+      return {
+        for (final p in preps)
+          if (classOf[asText(p['session_id'])] case final classId?) classId,
+      };
     } catch (e) {
       throw AppFailure.from(e);
     }

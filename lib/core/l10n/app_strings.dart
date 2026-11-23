@@ -142,6 +142,9 @@ class AppStrings {
   static String classRecordedOn(String day) => 'اتسجّل حضور $day';
   static String classNotRecordedOn(String day) => 'لم يُسجَّل حضور $day بعد';
   static const recordNow = 'سجّل الحضور';
+  static const classNeedsServant = 'محتاج خادم';
+  static const prepSentLine = 'التحضير اتبعت';
+  static const healthShort = 'صحة';
   static const noUpcomingSession = 'لا توجد جلسة قادمة';
   static const noAttendanceYet = 'لم يُسجَّل حضور بعد';
   static const noBirthdaysToday = 'لا توجد أعياد ميلاد اليوم';

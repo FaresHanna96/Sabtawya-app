@@ -267,6 +267,34 @@ class ReportRepository {
     }
   }
 
+  /// For the Saturday [date]: each class that meets that day (through row
+  /// level security, the caller's classes) with who came, out of its active
+  /// children, and whether it was recorded. The same read as [recordedOn],
+  /// with the numbers the class cards show.
+  Future<Map<String, ClassWeek>> classWeekOn({
+    required String yearId,
+    required DateTime date,
+  }) async {
+    try {
+      final data = await Db.client
+          .from(Db.vClassSessionSummary)
+          .select('class_id, present_count, active_children, recorded_count')
+          .eq('year_id', yearId)
+          .eq('session_date', _iso(date));
+      return {
+        for (final r in rows(data))
+          asText(r['class_id']): ClassWeek(
+            classId: asText(r['class_id']),
+            present: asInt(r['present_count']),
+            children: asInt(r['active_children']),
+            recorded: asInt(r['recorded_count']) > 0,
+          ),
+      };
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// The whole service's attendance % per Saturday over the same 12 weeks,
   /// for a servant to compare their class with. Totals only (a database
   /// function), so a servant learns nothing about another class. Empty when

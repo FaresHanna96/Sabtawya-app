@@ -9,11 +9,17 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
+import '../../data/models/class_health.dart';
+import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/class_repository.dart';
+import '../../data/repositories/lesson_repository.dart';
 import '../../data/repositories/report_repository.dart';
+import '../../data/repositories/servant_activity_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
+import '../dashboard/class_health_section.dart';
+import '../dashboard/weekly_attendance_chart.dart';
 import 'class_detail_screen.dart';
 import 'class_health_tab.dart';
 import 'class_form_screen.dart';
@@ -64,20 +70,58 @@ class _ClassesScreenState extends State<ClassesScreen>
     super.dispose();
   }
 
-  /// The classes, and whether each took this week's attendance (that part
-  /// is best effort: without it the cards just do not say).
+  /// The classes, then for each what its card says beyond the counts: this
+  /// Saturday's attendance, the health score, and (the admin) whether a prep
+  /// was sent. Those parts are best effort: one that fails just leaves its
+  /// line off the cards.
   Future<_ClassesData> _load() async {
-    final yearId = context.read<SessionController>().currentYear?.id;
+    final session = context.read<SessionController>();
+    final yearId = session.currentYear?.id;
+    final isAdmin = session.isAdmin;
     final saturday = AppDateUtils.lastSaturday(DateTime.now());
-    final (classes, recorded) = await (
+    final (classes, weeks, health, preps, breaks) = await (
       _repository.overview(includeInactive: _includeArchived),
       yearId == null
-          ? Future.value(const <String, bool>{})
+          ? Future.value(const <String, ClassWeek>{})
           : _reports
-              .recordedOn(yearId: yearId, date: saturday)
-              .catchError((Object _) => const <String, bool>{}),
+              .classWeekOn(yearId: yearId, date: saturday)
+              .catchError((Object _) => const <String, ClassWeek>{}),
+      yearId == null
+          ? Future.value(const <ClassHealth>[])
+          : _loadHealth(yearId).catchError((Object _) => const <ClassHealth>[]),
+      // Preps are visible to the admin only (and to their own servant).
+      isAdmin
+          ? const ServantActivityRepository()
+              .classesWithPrepOn(saturday)
+              .then<Set<String>?>((s) => s)
+              .catchError((Object _) => null)
+          : Future<Set<String>?>.value(null),
+      const LessonRepository()
+          .breaks()
+          .catchError((Object _) => const <String, LessonBreak>{}),
     ).wait;
-    return _ClassesData(classes, recorded, saturday);
+    return _ClassesData(
+      classes: classes,
+      saturday: saturday,
+      facts: classCardFacts(
+        weeks: weeks,
+        health: health,
+        prepClasses: preps,
+        noLesson: breaks.containsKey(AppDateUtils.toIsoDate(saturday)),
+      ),
+    );
+  }
+
+  /// The same score as متابعة الفصول: the health rows with the year's
+  /// attendance % joined in.
+  static Future<List<ClassHealth>> _loadHealth(String yearId) async {
+    final (health, scores) = await (
+      _reports.classHealth(yearId),
+      _reports.classScores(yearId),
+    ).wait;
+    return ClassHealth.joinAttendance(health, {
+      for (final s in scores) s.classId: s.percentage,
+    });
   }
 
   /// This class's attendance for [date], then back to the list.
@@ -264,11 +308,12 @@ class _ClassesScreenState extends State<ClassesScreen>
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) => FadeSlideIn(
             index: index,
-            child: _ClassCard(
+            child: ClassCard(
               overview: classes[index],
               accent: classAccent(classes[index].classId),
               saturday: data.saturday,
-              recorded: data.recorded[classes[index].classId],
+              facts:
+                  data.facts[classes[index].classId] ?? const ClassCardFacts(),
               onRecord: () => _record(classes[index].classId, data.saturday),
               onTap: () => _open(classes[index]),
             ),
@@ -301,24 +346,72 @@ class _KeepAliveState extends State<_KeepAlive>
   }
 }
 
-/// The list and this week's attendance status per class.
+/// The list, the Saturday the cards are about, and what each card says
+/// beyond the counts (class id -> facts).
 class _ClassesData {
-  const _ClassesData(this.classes, this.recorded, this.saturday);
+  const _ClassesData({
+    required this.classes,
+    required this.saturday,
+    required this.facts,
+  });
 
   final List<ClassOverview> classes;
-
-  /// Class id -> attendance taken for [saturday]; absent when the class has
-  /// no session that day.
-  final Map<String, bool> recorded;
   final DateTime saturday;
+  final Map<String, ClassCardFacts> facts;
 }
 
-class _ClassCard extends StatelessWidget {
-  const _ClassCard({
+/// What one class card shows beyond the class's own counts. Every part may
+/// be unknown (null): its line is then left off the card.
+class ClassCardFacts {
+  const ClassCardFacts({this.week, this.score, this.level, this.prepSent});
+
+  /// This Saturday's session; null when the class did not meet then.
+  final ClassWeek? week;
+
+  /// The health score (0-100) and its colour, as in متابعة الفصول.
+  final int? score;
+  final HealthLevel? level;
+
+  /// A lesson prep was sent for this Saturday; null when not known (not the
+  /// admin, a day with no lesson, or the class did not meet).
+  final bool? prepSent;
+}
+
+/// Puts the loaded parts together per class. [prepClasses] null means the
+/// preps could not be read (or are not the caller's to read); [noLesson]
+/// marks a Saturday with no lesson, when no prep is expected.
+@visibleForTesting
+Map<String, ClassCardFacts> classCardFacts({
+  required Map<String, ClassWeek> weeks,
+  required List<ClassHealth> health,
+  required Set<String>? prepClasses,
+  required bool noLesson,
+}) {
+  final byHealth = {for (final h in health) h.classId: h};
+  final ids = {...weeks.keys, ...byHealth.keys};
+  return {
+    for (final id in ids)
+      id: ClassCardFacts(
+        week: weeks[id],
+        score: byHealth[id]?.score,
+        level: byHealth[id]?.level,
+        prepSent: prepClasses == null || noLesson || weeks[id] == null
+            ? null
+            : prepClasses.contains(id),
+      ),
+  };
+}
+
+/// One class: who it is, how many children and servants, its health, and
+/// how this Saturday went (attendance taken, who came, prep sent).
+@visibleForTesting
+class ClassCard extends StatelessWidget {
+  const ClassCard({
+    super.key,
     required this.overview,
     required this.accent,
     required this.saturday,
-    required this.recorded,
+    required this.facts,
     required this.onRecord,
     required this.onTap,
   });
@@ -326,14 +419,16 @@ class _ClassCard extends StatelessWidget {
   final Color accent;
   final ClassOverview overview;
   final DateTime saturday;
-
-  /// Attendance taken for [saturday]; null when the class did not meet then.
-  final bool? recorded;
+  final ClassCardFacts facts;
   final VoidCallback onRecord;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final week = facts.week;
+    // Boys and girls only say something in a mixed class.
+    final mixed = overview.boysCount > 0 && overview.girlsCount > 0;
+    final noServant = overview.isActive && overview.servantsCount == 0;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -384,7 +479,12 @@ class _ClassCard extends StatelessWidget {
                         ),
                       ),
                       if (!overview.isActive)
-                        const StatusBadge(isActive: false),
+                        const StatusBadge(isActive: false)
+                      else if (facts.score != null && facts.level != null)
+                        HealthScoreChip(
+                          score: facts.score!,
+                          level: facts.level!,
+                        ),
                       const Icon(AppIcons.forward, color: AppColors.muted),
                     ],
                   ),
@@ -396,33 +496,44 @@ class _ClassCard extends StatelessWidget {
                         value: '${overview.activeChildren}',
                         label: AppStrings.pillChildren,
                       ),
-                      _Pill(
-                        icon: Icons.boy,
-                        value: '${overview.boysCount}',
-                        label: AppStrings.boys,
-                        color: AppColors.navyLight,
-                      ),
-                      _Pill(
-                        icon: Icons.girl,
-                        value: '${overview.girlsCount}',
-                        label: AppStrings.girls,
-                        color: AppColors.olive,
-                      ),
-                      _Pill(
-                        icon: Icons.volunteer_activism_outlined,
-                        value: '${overview.servantsCount}',
-                        label: AppStrings.pillServants,
-                      ),
+                      if (mixed) ...[
+                        _Pill(
+                          icon: Icons.boy,
+                          value: '${overview.boysCount}',
+                          label: AppStrings.boys,
+                          color: AppColors.navyLight,
+                        ),
+                        _Pill(
+                          icon: Icons.girl,
+                          value: '${overview.girlsCount}',
+                          label: AppStrings.girls,
+                          color: AppColors.olive,
+                        ),
+                      ],
+                      if (noServant)
+                        const Expanded(child: _NeedsServant())
+                      else
+                        _Pill(
+                          icon: Icons.volunteer_activism_outlined,
+                          value: '${overview.servantsCount}',
+                          label: AppStrings.pillServants,
+                        ),
                     ],
                   ),
-                  if (recorded != null && overview.isActive) ...[
+                  if (week != null && overview.isActive) ...[
                     const SizedBox(height: 10),
                     ClassSaturdayStatus(
-                      recorded: recorded!,
+                      recorded: week.recorded,
                       day: '${saturday.day} '
                           '${AppDateUtils.monthName(saturday.month)}',
+                      present: week.present,
+                      children: week.children,
                       onRecord: onRecord,
                     ),
+                    if (facts.prepSent != null) ...[
+                      const SizedBox(height: 6),
+                      _PrepLine(sent: facts.prepSent!),
+                    ],
                   ] else if (overview.lastSessionDate != null) ...[
                     const SizedBox(height: 10),
                     Row(
@@ -454,7 +565,118 @@ class _ClassCard extends StatelessWidget {
   }
 }
 
-/// "اتسجّل حضور 21 نوفمبر", or "لم يُسجَّل بعد" with a button to do it.
+/// "● 78 صحة" in the colour of the class's health level.
+@visibleForTesting
+class HealthScoreChip extends StatelessWidget {
+  const HealthScoreChip({super.key, required this.score, required this.level});
+
+  final int score;
+  final HealthLevel level;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = ClassHealthSection.colorOf(level);
+    return Semantics(
+      label: '${AppStrings.healthShort} $score',
+      excludeSemantics: true,
+      child: Container(
+        margin: const EdgeInsetsDirectional.only(end: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: statusTint(color),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              '$score',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              AppStrings.healthShort,
+              style: TextStyle(fontSize: 11, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// In place of the servants count when a class has none.
+class _NeedsServant extends StatelessWidget {
+  const _NeedsServant();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Icon(Icons.person_off_outlined, size: 16, color: AppColors.danger),
+        SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            AppStrings.classNeedsServant,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.danger,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "التحضير اتبعت" / "لم يُرسل تحضير" for this Saturday.
+class _PrepLine extends StatelessWidget {
+  const _PrepLine({required this.sent});
+
+  final bool sent;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = sent ? AppColors.success : AppColors.muted;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 10),
+      child: Row(
+        children: [
+          Icon(
+            sent ? Icons.menu_book_rounded : Icons.menu_book_outlined,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            sent ? AppStrings.prepSentLine : AppStrings.prepNotSent,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: sent ? FontWeight.w700 : FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "اتسجّل حضور 21 نوفمبر" with who came ("حضر 8 من 10", 80%), or
+/// "لم يُسجَّل بعد" with a button to do it.
 @visibleForTesting
 class ClassSaturdayStatus extends StatelessWidget {
   const ClassSaturdayStatus({
@@ -462,15 +684,86 @@ class ClassSaturdayStatus extends StatelessWidget {
     required this.recorded,
     required this.day,
     required this.onRecord,
+    this.present,
+    this.children,
   });
 
   final bool recorded;
   final String day;
   final VoidCallback onRecord;
 
+  /// Who came out of the class's active children; shown once recorded.
+  final int? present;
+  final int? children;
+
   @override
   Widget build(BuildContext context) {
     final color = recorded ? AppColors.success : AppColors.warning;
+    final total = children ?? 0;
+    if (recorded && present != null && total > 0) {
+      final pct = present! / total * 100;
+      final level = WeeklyAttendanceChart.levelColor(pct);
+      return Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.check_circle_rounded, size: 18, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    AppStrings.classRecordedOn(day),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // "8/10 • 80%": who came out of the class, then the share.
+                Text(
+                  '$present/$total',
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.muted,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${pct.round()}%',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: level,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: (pct / 100).clamp(0.0, 1.0),
+                minHeight: 4,
+                backgroundColor: AppColors.navy.withValues(alpha: 0.08),
+                valueColor: AlwaysStoppedAnimation(level),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 4, 4),
       decoration: BoxDecoration(
