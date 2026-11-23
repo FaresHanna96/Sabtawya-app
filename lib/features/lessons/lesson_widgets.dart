@@ -23,11 +23,8 @@ List<int> gradesFor(SessionController session) {
 }
 
 /// The first Saturday on or after today.
-DateTime upcomingSaturday([DateTime? from]) {
-  final today = from ?? DateTime.now();
-  final day = DateTime(today.year, today.month, today.day);
-  return day.add(Duration(days: (DateTime.saturday - day.weekday) % 7));
-}
+DateTime upcomingSaturday([DateTime? from]) =>
+    AppDateUtils.nextSaturday(from);
 
 /// Where the programme starts (the first session day of the Coptic year); the
 /// lessons count weekly from it.

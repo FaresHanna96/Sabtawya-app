@@ -219,7 +219,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                             classOf: (s) => s.classId,
                             classOrder: [for (final c in classes) c.classId],
                             classNameOf: (id) =>
-                                _classNameOf(classes, id) ?? '',
+                                classes.nameOf(id) ?? '',
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                             itemBuilder: (context, summary, _) => _SummaryTile(
                               summary: summary,
@@ -243,12 +243,6 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   bool _severalClasses(List<ClassOverview> classes) =>
       _classIds.length > 1 || (_classIds.isEmpty && classes.length > 1);
 
-  static String? _classNameOf(List<ClassOverview> classes, String classId) {
-    for (final c in classes) {
-      if (c.classId == classId) return c.className;
-    }
-    return null;
-  }
 
   Widget _controls(List<ClassOverview> classes) {
     return Padding(

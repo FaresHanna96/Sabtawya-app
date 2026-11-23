@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -595,7 +596,7 @@ class _ServantCard extends StatelessWidget {
                     icon: const Icon(Icons.call_rounded, size: 20),
                     color: AppColors.success,
                     onPressed: () =>
-                        launchUrl(Uri(scheme: 'tel', path: mobile)),
+                        callNumber(mobile),
                   ),
                 // The same ready check-in message as the servants contact list.
                 if (WhatsApp.normalise(mobile) != null)

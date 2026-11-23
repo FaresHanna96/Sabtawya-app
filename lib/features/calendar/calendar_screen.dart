@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -126,7 +126,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             tooltip: AppStrings.call,
             icon: const Icon(Icons.call_rounded, size: 20),
             color: AppColors.success,
-            onPressed: () => launchUrl(Uri(scheme: 'tel', path: number)),
+            onPressed: () => callNumber(number),
           ),
       ],
     );

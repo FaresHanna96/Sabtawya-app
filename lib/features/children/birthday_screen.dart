@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/motion.dart';
 import '../../core/l10n/app_strings.dart';
@@ -27,13 +27,22 @@ import 'child_profile_screen.dart';
 ///
 /// Defaults to the current month. Multiple months can be selected.
 class BirthdayScreen extends StatefulWidget {
-  const BirthdayScreen({super.key});
+  const BirthdayScreen({super.key, this.initialClassIds = const <String>{}});
+
+  /// Opened from a class page: only that class to begin with (empty = all).
+  final Set<String> initialClassIds;
 
   @override
   State<BirthdayScreen> createState() => _BirthdayScreenState();
 }
 
 class _BirthdayScreenState extends State<BirthdayScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _classFilter = {...widget.initialClassIds};
+  }
+
   static const _repository = ChildRepository();
 
   static const _servantRepository = ServantRepository();
@@ -107,7 +116,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
           role: p.role,
           mobile: p.mobile,
           className: p.classIds
-              .map((id) => _classNameOf(classes, id))
+              .map((id) => classes.nameOf(id))
               .whereType<String>()
               .join('، '),
         ),
@@ -287,7 +296,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                       classOf: (p) =>
                           p.classIds.isEmpty ? '' : p.classIds.first,
                       classOrder: [for (final c in classes) c.classId],
-                      classNameOf: (id) => _classNameOf(classes, id) ?? '',
+                      classNameOf: (id) => classes.nameOf(id) ?? '',
                       leading: _Summary(
                         count: visible.length,
                         todayCount: todayCount,
@@ -321,7 +330,7 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
                             person: person,
                             showMonth: grouped,
                             className: person.classIds
-                                .map((id) => _classNameOf(classes, id))
+                                .map((id) => classes.nameOf(id))
                                 .whereType<String>()
                                 .join('، '),
                             onTap: person.childId == null
@@ -406,12 +415,6 @@ class _BirthdayScreenState extends State<BirthdayScreen> {
     return birth.month == now.month && birth.day == now.day;
   }
 
-  static String? _classNameOf(List<ClassOverview> classes, String classId) {
-    for (final item in classes) {
-      if (item.classId == classId) return item.className;
-    }
-    return null;
-  }
 }
 
 // --------------------------------------------------------------- month selector
@@ -808,8 +811,7 @@ class _BirthdayTile extends StatelessWidget {
                   tooltip: AppStrings.call,
                   icon: const Icon(Icons.call_rounded, size: 20),
                   color: AppColors.success,
-                  onPressed: () => launchUrl(
-                    Uri(scheme: 'tel', path: person.mobile!.trim()),
+                  onPressed: () => callNumber(person.mobile!.trim(),
                   ),
                 ),
               if (onTap != null)

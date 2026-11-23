@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../core/utils/phone.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -164,8 +164,7 @@ class AppSearchDelegate extends SearchDelegate<void> {
                           tooltip: AppStrings.call,
                           icon: const Icon(Icons.call_rounded),
                           color: AppColors.success,
-                          onPressed: () => launchUrl(
-                              Uri(scheme: 'tel', path: s.mobile!.trim())),
+                          onPressed: () => callNumber(s.mobile!.trim()),
                         ),
                 ),
             ],

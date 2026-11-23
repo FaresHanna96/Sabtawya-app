@@ -75,6 +75,7 @@ class ChildBadge {
 /// Points a badge adds to the game points (not to the attendance reports).
 const int kBadgeBonus = 10;
 
+
 /// One line of a class's ranking.
 class LeaderboardRow {
   const LeaderboardRow({

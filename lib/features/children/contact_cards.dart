@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
@@ -162,7 +163,7 @@ class _ContactRow extends StatelessWidget {
             tooltip: '${AppStrings.call}: ${person.label}',
             color: AppColors.success,
             onTap: () =>
-                launchUrl(Uri(scheme: 'tel', path: person.number.trim())),
+                callNumber(person.number.trim()),
             child: const Icon(Icons.call_rounded,
                 size: 24, color: AppColors.success),
           ),

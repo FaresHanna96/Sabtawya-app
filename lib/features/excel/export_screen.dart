@@ -89,10 +89,7 @@ class _ExportScreenState extends State<ExportScreen> {
       context.read<SessionController>().myClasses;
 
   String _classNameOf(String classId) {
-    for (final item in _classes) {
-      if (item.classId == classId) return item.className;
-    }
-    return AppStrings.unknown;
+    return _classes.nameOf(classId) ?? AppStrings.unknown;
   }
 
   /// For file names and the tiles: الكل, or the ticked classes' names.

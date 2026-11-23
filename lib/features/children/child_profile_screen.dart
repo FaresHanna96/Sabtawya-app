@@ -29,7 +29,7 @@ import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import '../badges/child_badges_card.dart';
-import '../badges/class_leaderboard.dart';
+import '../badges/class_order_screen.dart';
 import '../competitions/competition_detail_screen.dart';
 import '../events/event_detail_screen.dart';
 import '../dashboard/weekly_attendance_chart.dart';
@@ -178,7 +178,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   Future<void> _openRanking(Child child, String className) =>
       Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => ClassLeaderboardScreen(
+          builder: (_) => ClassOrderScreen(
             classId: child.classId,
             className: className,
             highlightChildId: child.id,

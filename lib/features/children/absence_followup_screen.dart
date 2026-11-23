@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -25,7 +26,10 @@ import 'follow_up_call.dart';
 /// class, worst first, with a call button and "تم الافتقاد", which records a
 /// phone or home visit in the child's visit history.
 class AbsenceFollowUpScreen extends StatefulWidget {
-  const AbsenceFollowUpScreen({super.key});
+  const AbsenceFollowUpScreen({super.key, this.initialClassIds = const <String>{}});
+
+  /// Opened from a class page: only that class to begin with (empty = all).
+  final Set<String> initialClassIds;
 
   /// Whether a run of [run] Saturdays belongs to chip [n]: each chip holds
   /// only its own number, the last one holds that number and more.
@@ -36,6 +40,12 @@ class AbsenceFollowUpScreen extends StatefulWidget {
 }
 
 class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _classIds = {...widget.initialClassIds};
+  }
+
   static const _reports = ReportRepository();
   static const _children = ChildRepository();
 
@@ -52,10 +62,35 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
       _reports.streaks(yearId: yearId, minAbsent: 2, minPresent: 999),
       _children.all(includeInactive: false),
     ).wait;
-    return _Data(
+    final data = _Data(
       streaks.where((s) => s.absentStreak >= 2).toList(),
       {for (final c in children) c.id: c},
     );
+    _openOnBusiestChip(data.streaks);
+    return data;
+  }
+
+  bool _picked = false;
+
+  /// Opened for one class (from its page): start on the chip holding most of
+  /// that class's children instead of an empty or near-empty one.
+  void _openOnBusiestChip(List<ChildStreak> streaks) {
+    if (_picked || widget.initialClassIds.isEmpty) return;
+    _picked = true;
+    var best = _min;
+    var bestCount = -1;
+    for (final n in const [2, 3, 4]) {
+      final count = streaks
+          .where((s) =>
+              AbsenceFollowUpScreen.inChip(s.absentStreak, n) &&
+              widget.initialClassIds.contains(s.classId))
+          .length;
+      if (count > bestCount) {
+        best = n;
+        bestCount = count;
+      }
+    }
+    _min = best;
   }
 
   Future<void> _reload() =>
@@ -363,7 +398,7 @@ class _AbsenceTile extends StatelessWidget {
                   tooltip: AppStrings.call,
                   icon: const Icon(Icons.call_rounded, size: 20),
                   color: AppColors.success,
-                  onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
+                  onPressed: () => callNumber(phone),
                 ),
               if (whatsapp != null)
                 IconButton(

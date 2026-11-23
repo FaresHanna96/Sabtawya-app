@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
@@ -217,7 +218,7 @@ class _Line extends StatelessWidget {
               IconButton(
                 tooltip: AppStrings.call,
                 icon: const Icon(Icons.call_rounded, color: AppColors.success),
-                onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
+                onPressed: () => callNumber(phone),
               ),
             if (number != null)
               IconButton(

@@ -125,7 +125,7 @@ class AppStrings {
   static const classesNav = 'الفصول';
   static const childrenNav = 'المخدومين';
   static const attendanceNav = 'الحضور';
-  static const reportsNav = 'تقرير الطايو';
+  static const reportsNav = 'ابطال الطايو';
   static const more = 'المزيد';
   static const servantsNav = 'الخدام';
   static const settings = 'الإعدادات';
@@ -141,6 +141,7 @@ class AppStrings {
   static const lastSaturdayRate = 'حضور آخر سبت';
   static String classRecordedOn(String day) => 'اتسجّل حضور $day';
   static String classNotRecordedOn(String day) => 'لم يُسجَّل حضور $day بعد';
+  static String classWeekAttendance(String day) => 'حضور سبت $day';
   static const recordNow = 'سجّل الحضور';
   static const classNeedsServant = 'محتاج خادم';
   static const prepSentLine = 'التحضير اتبعت';
@@ -282,12 +283,26 @@ class AppStrings {
   static const servantOneClass = 'الخادم يُعيَّن على فصل واحد فقط.';
   static const deleteInvite = 'حذف الدعوة';
   static const noServants = 'لا يوجد خدام';
+  static const noServantsHint = 'لا يوجد خدام في هذا الفصل بعد. أمين الخدمة هو من يعيّن الخدام.';
+  static const classFollowUp = 'متابعة الفصل';
+  static String pointsOf(int n) => '$n نقطة';
+  static const followAbsent = 'غياب متكرر';
+  static const followBirthdays = 'أعياد الشهر';
+  static const followMissing = 'بيانات ناقصة';
+  static String chipCommitted(int n) => 'أبطال الالتزام $n';
+  static const championsTitle = 'أبطال الالتزام';
+  static const tierCommitted = 'ملتزم';
+  static const tierGold = 'ملتزم ذهبي';
+  static String absentFor(int n) => 'غاب $n';
+  static const actionHistory = 'السجل';
+  static const actionMessage = 'رسالة';
+  static const actionContacts = 'جهات الاتصال';
   static const servantNameRequired = 'اسم الخادم مطلوب';
 
   // ------------------------------------------------------------- assignments
   static const assignmentsTitle = 'تعيين الخدام';
   static const assignServant = 'تعيين خادم';
-  static const committedStreak = 'ملتزمين';
+  static const committedStreak = 'أبطال الالتزام';
   static const committedStreakHint =
       '4 سبوت ورا بعض = وسام «ملتزم»، و16 = «ملتزم ذهبي». شجّعهم!';
   static const committedTierNear = 'على الطريق';
@@ -819,7 +834,7 @@ class AppStrings {
   static const breakShiftHint =
       'الدروس بعد هذا السبت تتحرك أسبوعاً. اقفلها لو الدرس اتلغى فقط.';
   static const breakHasRecords =
-      'اتسجّل حضور هذا اليوم بالفعل: لن يُحسب في الملتزمين ولا الغياب.';
+      'اتسجّل حضور هذا اليوم بالفعل: لن يُحسب في أبطال الالتزام ولا الغياب.';
   static const change = 'تغيير';
   static const nobodyPresentTitle = 'لم تعلّم أي مخدوم';
   static String nobodyPresentBody(int n) =>
@@ -946,7 +961,7 @@ class AppStrings {
   static const maxPoints = 'الحد الأقصى للنقاط';
 
   // ----------------------------------------------------------------- reports
-  static const reportsTitle = 'تقرير الطايو';
+  static const reportsTitle = 'ابطال الطايو';
   static const classReport = 'تقرير الفصل';
   static const childReport = 'تقرير المخدوم';
   static const monthlyReport = 'التقرير الشهري';

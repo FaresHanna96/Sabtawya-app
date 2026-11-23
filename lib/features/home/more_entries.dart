@@ -7,10 +7,10 @@ import '../activity_log/activity_log_screen.dart';
 import '../announcements/announcements_screen.dart';
 import '../attendance/attendance_history_screen.dart';
 import '../attendance/attendance_years_screen.dart';
+import '../badges/champions_entry_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../children/absence_followup_screen.dart';
 import '../children/birthday_screen.dart';
-import '../children/committed_children_screen.dart';
 import '../children/missing_info_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
@@ -137,8 +137,8 @@ class MoreCatalog {
       title: AppStrings.committedStreak,
       color: AppColors.success,
       group: MoreGroup.reports,
-      open: () => const CommittedChildrenScreen(),
-      keywords: const ['مواظبة', 'حضور متتالي', 'وسام', 'أوسمة', 'ملتزم'],
+      open: () => const ChampionsEntryScreen(),
+      keywords: const ['مواظبة', 'حضور متتالي', 'وسام', 'أوسمة', 'ملتزم', 'ملتزمين', 'أبطال'],
     ),
     MoreEntry(
       id: 'attendanceHistory',

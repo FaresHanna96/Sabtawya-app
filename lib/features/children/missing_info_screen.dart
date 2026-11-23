@@ -23,7 +23,10 @@ import 'missing_info.dart';
 /// what to look for, tap a child to fill it in, or ask the family on WhatsApp.
 /// A servant sees their own classes only (row level security), an admin all.
 class MissingInfoScreen extends StatefulWidget {
-  const MissingInfoScreen({super.key});
+  const MissingInfoScreen({super.key, this.initialClassIds = const <String>{}});
+
+  /// Opened from a class page: only that class to begin with (empty = all).
+  final Set<String> initialClassIds;
 
   @override
   State<MissingInfoScreen> createState() => _MissingInfoScreenState();
@@ -46,6 +49,7 @@ class _MissingInfoScreenState extends State<MissingInfoScreen> {
   @override
   void initState() {
     super.initState();
+    _classIds = {...widget.initialClassIds};
     _load();
   }
 

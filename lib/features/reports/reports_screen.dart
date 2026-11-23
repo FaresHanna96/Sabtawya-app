@@ -12,6 +12,7 @@ import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/class_group_header.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/reports.dart';
+import '../../data/models/school_class.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../data/services/excel_service.dart';
 import '../../data/services/file_service.dart';
@@ -46,6 +47,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   /// The month chip tapped on the monthly tab.
   DateTime? _selectedMonth;
+
+  /// The class / period filters are folded into one row until opened.
+  bool _filtersOpen = false;
+
+  /// Name search and sort on the children rankings.
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _hasPeriod => _filterFrom != null || _filterTo != null;
+  bool get _hasFilters => _classIds.isNotEmpty || _hasPeriod;
 
   /// The data the screen is showing, kept so the export button writes the same
   /// numbers the user sees.
@@ -306,9 +323,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              if (classes.length > 1)
+              _filterBar(classes),
+              if (_filtersOpen && classes.length > 1)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                   child: ClassFilterChips(
                     classes: classes
                         .map((c) =>
@@ -350,7 +368,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 builder: (context, child) => Visibility(
                                   // Period picker: overall and class tabs
                                   // only (activity counts the whole year).
-                                  visible: tabs.index < 2,
+                                  visible: _filtersOpen && tabs.index < 2,
                                   maintainState: true,
                                   child: child!,
                                 ),
@@ -459,22 +477,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         title: AppStrings.noData,
       );
     }
-
-    return _rankedList<_ChildScore>(
-      rows: scores,
-      classOf: (r) => r.classId,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      tile: (r, rank, showClass) => _scoreTile(
-        childId: r.childId,
-        childName: r.childName,
-        className: showClass ? r.className : null,
-        attended: r.sessionsAttended,
-        total: r.sessionsTotal,
-        points: r.points,
-        maxPoints: r.maxPoints,
-        rank: rank,
-      ),
-    );
+    return _standings(scores, topPadding: 12);
   }
 
   List<_ClassScore> _classScores(_ReportsData data) {
@@ -612,21 +615,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
         Expanded(
-          child: _rankedList<ChildMonthlyReport>(
-            rows: visible,
-            classOf: (r) => r.classId,
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-            tile: (r, rank, showClass) => _scoreTile(
-              childId: r.childId,
-              childName: r.childName,
-              className: showClass ? r.className : null,
-              attended: r.sessionsAttended,
-              total: r.sessionsTotal,
-              points: r.points,
-              maxPoints: r.maxPoints,
-              rank: rank,
-            ),
-          ),
+          child: visible.isEmpty
+              ? const EmptyState(
+                  icon: Icons.calendar_view_month_outlined,
+                  title: AppStrings.noData,
+                )
+              : _standings(
+                  [
+                    for (final r in visible)
+                      _ChildScore(
+                        childId: r.childId,
+                        childName: r.childName,
+                        classId: r.classId,
+                        className: r.className,
+                        points: r.points,
+                        maxPoints: r.maxPoints,
+                        sessionsAttended: r.sessionsAttended,
+                        sessionsTotal: r.sessionsTotal,
+                      ),
+                  ],
+                  topPadding: 4,
+                ),
         ),
       ],
     );
@@ -638,20 +647,127 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return _classIds.length > 1 || (_classIds.isEmpty && mine.length > 1);
   }
 
-  /// A ranking, best first. With several classes: a section per class, the
-  /// rank restarting at 1 in each; otherwise one ranking for everyone.
-  Widget _rankedList<T>({
-    required List<T> rows,
-    required String Function(T row) classOf,
-    required Widget Function(T row, int rank, bool showClass) tile,
-    required EdgeInsetsGeometry padding,
-  }) {
-    final classes = context.read<SessionController>().myClasses;
+  /// The folded filter row: what is chosen, one tap to open or clear it.
+  Widget _filterBar(List<ClassOverview> classes) {
+    String iso(DateTime d) => AppDateUtils.toIsoDate(d);
+    final parts = <String>[
+      if (_classIds.isNotEmpty)
+        ClassFilterChips.labelFor(
+          [
+            for (final c in classes)
+              ClassFilterOption(id: c.classId, name: c.className),
+          ],
+          _classIds,
+        ),
+      if (_hasPeriod)
+        '${_filterFrom == null ? '' : iso(_filterFrom!)} ← '
+            '${_filterTo == null ? '' : iso(_filterTo!)}',
+    ];
+    final active = _hasFilters;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Material(
+        color: active ? AppColors.navyTint : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => setState(() => _filtersOpen = !_filtersOpen),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: active ? AppColors.navyLight : const Color(0xFFE2E4EC),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.tune_rounded,
+                  size: 20,
+                  color: active ? AppColors.navy : AppColors.muted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    active ? parts.join(' • ') : AppStrings.filters,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: active ? AppColors.navy : AppColors.muted,
+                    ),
+                  ),
+                ),
+                if (active)
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _classIds = <String>{};
+                        _granularity = null;
+                        _filterFrom = null;
+                        _filterTo = null;
+                      });
+                      _loadRange();
+                      _reload();
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6),
+                      child: Icon(Icons.close_rounded, size: 18),
+                    ),
+                  ),
+                Icon(
+                  _filtersOpen
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.muted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A children ranking: totals, search and sort, a podium for the top three,
+  /// then a card per child. The rank always comes from the whole ranking, so
+  /// searching never renumbers anyone.
+  Widget _standings(List<_ChildScore> all, {required double topPadding}) {
     final grouped = _severalClasses;
-    return ClassGroupedList<T>(
-      items: rows,
+    final sorted = [...all]..sort(
+        (a, b) => b.points != a.points
+            ? b.points.compareTo(a.points)
+            : b.sessionsAttended.compareTo(a.sessionsAttended),
+      );
+
+    final rankOf = <String, int>{};
+    final counters = <String, int>{};
+    for (final r in sorted) {
+      final key = grouped ? r.classId : '';
+      rankOf[r.childId] = counters[key] = (counters[key] ?? 0) + 1;
+    }
+
+    final q = _query.trim();
+    final searching = q.isNotEmpty;
+    final shown = searching
+        ? sorted.where((r) => r.childName.contains(q)).toList()
+        : sorted;
+
+    // The podium only for one overall ranking, not while searching.
+    final podium = !grouped && !searching && sorted.length >= 3
+        ? sorted.take(3).toList()
+        : const <_ChildScore>[];
+    final rest = podium.isEmpty ? shown : shown.skip(3).toList();
+
+    final points = all.fold<int>(0, (a, r) => a + r.points);
+
+    final classes = context.read<SessionController>().myClasses;
+    return ClassGroupedList<_ChildScore>(
+      items: rest,
       grouped: grouped,
-      classOf: classOf,
+      classOf: (r) => r.classId,
       classOrder: [for (final c in classes) c.classId],
       classNameOf: (id) {
         for (final c in classes) {
@@ -659,48 +775,157 @@ class _ReportsScreenState extends State<ReportsScreen> {
         }
         return '';
       },
-      padding: padding,
+      padding: EdgeInsets.fromLTRB(16, topPadding, 16, 32),
       animate: false,
-      // The header names the class, so the row does not repeat it.
-      itemBuilder: (context, row, i) => tile(row, i + 1, !grouped),
+      leading: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _StatTile(
+                icon: Icons.groups_rounded,
+                value: '${all.length}',
+                label: AppStrings.childrenTitle,
+                color: AppColors.navy,
+              ),
+              const SizedBox(width: 8),
+              _StatTile(
+                icon: Icons.trending_up_rounded,
+                value: all.isEmpty ? '0' : (points / all.length).toStringAsFixed(1),
+                label: AppStrings.avgMark,
+                color: AppColors.olive,
+              ),
+              const SizedBox(width: 8),
+              _StatTile(
+                icon: Icons.stars_rounded,
+                value: '$points',
+                label: AppStrings.totalPoints,
+                color: AppColors.gold,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _searchCtrl,
+            onChanged: (v) => setState(() => _query = v),
+            decoration: InputDecoration(
+              hintText: AppStrings.search,
+              isDense: true,
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: searching
+                  ? IconButton(
+                      tooltip: AppStrings.clearSearch,
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        setState(() => _query = '');
+                      },
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (podium.isNotEmpty) ...[
+            _Podium(top: podium, onOpen: _openChild),
+            const SizedBox(height: 12),
+          ],
+          if (shown.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Text(
+                  AppStrings.noResults,
+                  style: TextStyle(color: AppColors.muted),
+                ),
+              ),
+            ),
+        ],
+      ),
+      itemBuilder: (context, r, _) => _scoreCard(
+        r,
+        rankOf[r.childId] ?? 0,
+        showClass: !grouped,
+      ),
     );
   }
 
-  Widget _scoreTile({
-    required String childId,
-    required String childName,
-    required String? className,
-    required int attended,
-    required int total,
-    required int points,
-    required int maxPoints,
-    required int rank,
-  }) {
+  void _openChild(String childId) => Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => ChildProfileScreen(childId: childId),
+        ),
+      );
+
+  Widget _scoreCard(_ChildScore r, int rank, {required bool showClass}) {
+    final ratio = r.maxPoints > 0 ? r.points / r.maxPoints * 100 : 0.0;
+    final color = _pctColor(ratio);
     return Card(
       margin: EdgeInsets.zero,
-      child: ListTile(
-        onTap: () => Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(
-            builder: (_) => ChildProfileScreen(childId: childId),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _openChild(r.childId),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              _RankBadge(rank: rank),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r.childName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (showClass) r.className,
+                        '${r.sessionsAttended}/${r.sessionsTotal} '
+                            '${AppStrings.attendedSessions}',
+                      ].join(' • '),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (ratio / 100).clamp(0.0, 1.0),
+                        minHeight: 5,
+                        color: color,
+                        backgroundColor: color.withValues(alpha: 0.12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${r.points}',
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.readable(color),
+                    ),
+                  ),
+                  const Text(
+                    'نقطة',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        leading: _RankBadge(rank: rank),
-        title: Text(
-          childName,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          [
-            if (className != null) className,
-            '$attended/$total ${AppStrings.attendedSessions}',
-          ].join(' • '),
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: ScoreChip(
-          score: points,
-          maxScore: maxPoints,
-          compact: true,
-          showMax: false,
         ),
       ),
     );
@@ -959,6 +1184,161 @@ class _RankBadge extends StatelessWidget {
           fontSize: 13,
           fontWeight: FontWeight.w800,
           color: AppColors.readable(_color),
+        ),
+      ),
+    );
+  }
+}
+
+/// Attendance colour: green from 75 %, amber from 50 %, red below.
+Color _pctColor(double pct) => pct >= 75
+    ? AppColors.success
+    : pct >= 50
+        ? AppColors.warning
+        : AppColors.danger;
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: AppColors.readable(color)),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.readable(color),
+              ),
+            ),
+            FittedBox(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: AppColors.muted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The three best children: 2nd, 1st, 3rd, the winner in the middle on the
+/// tallest step.
+class _Podium extends StatelessWidget {
+  const _Podium({required this.top, required this.onOpen});
+
+  final List<_ChildScore> top;
+  final void Function(String childId) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    // Left to right regardless of the page direction: 2, 1, 3.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _step(1, 78),
+          const SizedBox(width: 8),
+          _step(0, 104),
+          const SizedBox(width: 8),
+          _step(2, 62),
+        ],
+      ),
+    );
+  }
+
+  Widget _step(int i, double height) {
+    final r = top[i];
+    final color = switch (i) {
+      0 => AppColors.gold,
+      1 => AppColors.navyLight,
+      _ => AppColors.olive,
+    };
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onOpen(r.childId),
+        child: Column(
+          children: [
+            Icon(
+              i == 0 ? Icons.emoji_events_rounded : Icons.workspace_premium,
+              color: color,
+              size: i == 0 ? 34 : 28,
+            ),
+            const SizedBox(height: 4),
+            Directionality(
+              textDirection: TextDirection.rtl,
+              child: Text(
+                r.childName,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              height: height,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.16),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(12)),
+                border: Border(top: BorderSide(color: color, width: 3)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${i + 1}',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.readable(color),
+                    ),
+                  ),
+                  Text(
+                    '${r.points}',
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.readable(color),
+                    ),
+                  ),
+                  const Text(
+                    'نقطة',
+                    style: TextStyle(fontSize: 10, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

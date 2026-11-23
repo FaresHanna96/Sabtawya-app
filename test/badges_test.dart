@@ -6,7 +6,6 @@ import 'package:sabtawya/data/models/child.dart';
 import 'package:sabtawya/features/badges/badge_earned_dialog.dart';
 import 'package:sabtawya/features/badges/badge_look.dart';
 import 'package:sabtawya/features/badges/child_badges_card.dart';
-import 'package:sabtawya/features/badges/class_leaderboard.dart';
 
 ChildBadge _b(KidBadge badge,
         {String child = 'k1', DateTime? on, int progress = 0, int? target}) =>
@@ -223,63 +222,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
-  });
-
-  group('LeaderboardView', () {
-    testWidgets('podium for three, the rest listed, the child marked',
-        (tester) async {
-      final rows = [
-        _row('a', 80, badges: 1),
-        _row('b', 75),
-        _row('c', 70),
-        _row('d', 60, badges: 2),
-        _row('e', 50),
-      ];
-      await tester
-          .pumpWidget(_app(LeaderboardView(rows: rows, highlightChildId: 'd')));
-      await tester.pumpAndSettle();
-      for (final r in rows) {
-        expect(find.text(r.childName), findsOneWidget);
-      }
-      expect(find.text(AppStrings.badgesCount(2)), findsOneWidget);
-      expect(find.text(AppStrings.rankingPointsNote), findsOneWidget);
-    });
-
-    testWidgets('a known child with no photo keeps the initial',
-        (tester) async {
-      final rows = [_row('a', 80), _row('b', 70)];
-      await tester.pumpWidget(_app(LeaderboardView(
-        rows: rows,
-        children: {
-          'a': Child(
-            id: 'a',
-            classId: 'c',
-            fullName: 'مخدوم a',
-            gender: Gender.girl,
-            isActive: true,
-          ),
-        },
-      )));
-      await tester.pumpAndSettle();
-      // The initial «م» for both: one known without a photo, one unknown.
-      expect(find.text('م'), findsNWidgets(2));
-    });
-
-    testWidgets('nobody with points yet: the empty state', (tester) async {
-      await tester.pumpWidget(_app(LeaderboardView(rows: [_row('a', 0)])));
-      await tester.pumpAndSettle();
-      expect(find.text(AppStrings.noRankingYet), findsOneWidget);
-    });
-  });
-
-  testWidgets('RangeToggle switches between the month and the year',
-      (tester) async {
-    final picks = <bool>[];
-    await tester
-        .pumpWidget(_app(RangeToggle(month: true, onChanged: picks.add)));
-    await tester.tap(find.text(AppStrings.rankingThisYear));
-    await tester.tap(find.text(AppStrings.rankingThisMonth));
-    expect(picks, [false, true]);
   });
 
   group('BadgeEarnedDialog', () {

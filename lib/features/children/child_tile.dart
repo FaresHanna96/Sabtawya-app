@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/class_colors.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/motion.dart';
 import '../../data/models/child.dart';
 import 'child_avatar.dart';
 import 'child_filters.dart';
@@ -19,6 +20,7 @@ class ChildTile extends StatelessWidget {
     required this.onTap,
     this.className,
     this.presentStreak = 0,
+    this.absentStreak = 0,
     this.onContact,
   });
 
@@ -28,6 +30,9 @@ class ChildTile extends StatelessWidget {
 
   /// Saturdays attended in a row; a flame shows from 3 up.
   final int presentStreak;
+
+  /// Saturdays missed in a row; a «غاب N» pill shows from 2 up.
+  final int absentStreak;
 
   /// Opens call / WhatsApp for the child and parents. When given and the
   /// child has a number, a phone button replaces the arrow.
@@ -93,8 +98,17 @@ class ChildTile extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.local_fire_department_rounded,
-                              size: 16, color: AppColors.coral),
+                          presentStreak >= 5
+                              ? const Pulse(
+                                  child: Icon(
+                                      Icons.local_fire_department_rounded,
+                                      size: 16,
+                                      color: AppColors.coral),
+                                )
+                              : const Icon(
+                                  Icons.local_fire_department_rounded,
+                                  size: 16,
+                                  color: AppColors.coral),
                           Text(
                             '$presentStreak',
                             style: const TextStyle(
@@ -104,6 +118,25 @@ class ChildTile extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                    if (absentStreak >= 2 && child.isActive) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.coral.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          AppStrings.absentFor(absentStreak),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.coralText,
+                          ),
+                        ),
                       ),
                     ],
                     const SizedBox(width: 6),

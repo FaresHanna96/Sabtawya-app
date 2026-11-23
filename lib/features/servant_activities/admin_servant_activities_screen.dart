@@ -28,7 +28,6 @@ import 'servant_activity_detail_screen.dart';
 import 'servant_marks.dart';
 import 'servant_day_widgets.dart';
 import 'servant_covers.dart';
-import 'servant_follow_up_card.dart';
 import 'servant_year.dart';
 import '../attendance/attendance_swipe.dart';
 
@@ -321,38 +320,13 @@ class _SummaryTabState extends State<_SummaryTab>
           itemCount: shown.length + 1,
           itemBuilder: (context, index) {
             if (index == 0) {
-              final y = data.year;
-              final follow = y == null
-                  ? const <ServantFollowUpEntry>[]
-                  : [
-                      for (final f in y.followUps(
-                          [for (final s in data.summaries) s.servantId]))
-                        ServantFollowUpEntry(
-                          followUp: f,
-                          name: data.nameOf(f.servantId),
-                          mobile: data.people[f.servantId]?.mobile,
-                          className: data.classOf[f.servantId],
-                        ),
-                    ];
               return Column(children: [
-                // One card: the numbers on top, «محتاج متابعة» under them.
                 FadeSlideIn(
                   child: _StatsHeader(
                     totalServants: data.summaries.length,
                     totalSessions: data.totalSessions,
                     totalPending: totalPending,
                     onPendingTap: _openPreps,
-                    below: follow.isEmpty
-                        ? null
-                        : ServantFollowUpCard(
-                            embedded: true,
-                            entries: follow,
-                            senderName:
-                                context.read<SessionController>().displayName,
-                            onOpen: (e) => _openDetail(data.summaries
-                                .firstWhere((s) =>
-                                    s.servantId == e.followUp.servantId)),
-                          ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1245,11 +1219,7 @@ class _StatsHeader extends StatelessWidget {
     required this.totalSessions,
     required this.totalPending,
     this.onPendingTap,
-    this.below,
   });
-
-  /// Shown under the numbers in the same card («محتاج متابعة»).
-  final Widget? below;
 
   final int totalServants;
   final int totalSessions;
@@ -1258,13 +1228,11 @@ class _StatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stats = Container(
+    return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.navy,
-        borderRadius: below == null
-            ? BorderRadius.circular(18)
-            : const BorderRadius.vertical(top: Radius.circular(18)),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: [
@@ -1286,16 +1254,6 @@ class _StatsHeader extends StatelessWidget {
             onTap: onPendingTap,
           ),
         ],
-      ),
-    );
-    if (below == null) return stats;
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [stats, below!],
       ),
     );
   }

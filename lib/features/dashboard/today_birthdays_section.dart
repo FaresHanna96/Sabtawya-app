@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
@@ -370,7 +370,7 @@ class _ServantBirthdayRow extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             tooltip: hasPhone ? AppStrings.call : AppStrings.noPhoneNumber,
             onPressed: hasPhone
-                ? () => launchUrl(Uri(scheme: 'tel', path: servant.mobile!))
+                ? () => callNumber(servant.mobile!)
                 : null,
           ),
         ],
@@ -400,7 +400,7 @@ class _GroupedBirthdays extends StatelessWidget {
     final widgets = <Widget>[];
     var first = true;
     for (final entry in grouped.entries) {
-      final className = _classNameOf(entry.key) ?? entry.key;
+      final className = classes.nameOf(entry.key) ?? entry.key;
       widgets.add(
         Padding(
           padding: EdgeInsets.only(top: first ? 0 : 12, bottom: 4),
@@ -427,12 +427,6 @@ class _GroupedBirthdays extends StatelessWidget {
     );
   }
 
-  String? _classNameOf(String classId) {
-    for (final item in classes) {
-      if (item.classId == classId) return item.className;
-    }
-    return null;
-  }
 }
 
 // --------------------------------------------------------------- flat view
@@ -508,7 +502,7 @@ class _BirthdayRow extends StatelessWidget {
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: AppStrings.call,
               onPressed: () =>
-                  launchUrl(Uri(scheme: 'tel', path: child.mobile!)),
+                  callNumber(child.mobile!),
             ),
         ],
       ),

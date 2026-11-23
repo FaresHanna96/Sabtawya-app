@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/app_strings.dart';
@@ -29,8 +30,17 @@ class ClassServantsCard extends StatelessWidget {
   /// «إضافة خادم» (the admin); no button when null.
   final VoidCallback? onAdd;
 
+  /// Your own row first, the rest in the order given.
+  List<ClassServant> get _ordered => [
+        for (final s in servants)
+          if (s.servantId == currentUserId) s,
+        for (final s in servants)
+          if (s.servantId != currentUserId) s,
+      ];
+
   @override
   Widget build(BuildContext context) {
+    final ordered = _ordered;
     final count = servants.isEmpty ? null : _CountBadge(count: servants.length);
     final add = onAdd == null
         ? null
@@ -56,24 +66,24 @@ class ClassServantsCard extends StatelessWidget {
             ),
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
       child: servants.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                AppStrings.noServants,
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
+                onAdd == null ? AppStrings.noServantsHint : AppStrings.noServants,
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
               ),
             )
           : Column(
               children: [
-                for (var i = 0; i < servants.length; i++) ...[
+                for (var i = 0; i < ordered.length; i++) ...[
                   if (i > 0)
                     Divider(
                       height: 1,
                       color: AppColors.navy.withValues(alpha: 0.07),
                     ),
                   ServantRow(
-                    servant: servants[i],
-                    isMe: servants[i].servantId == currentUserId,
+                    servant: ordered[i],
+                    isMe: ordered[i].servantId == currentUserId,
                   ),
                 ],
               ],
@@ -218,7 +228,7 @@ class ServantRow extends StatelessWidget {
                 size: 42,
                 tooltip: '${AppStrings.call}: ${servant.servantName}',
                 color: AppColors.success,
-                onTap: () => launchUrl(Uri(scheme: 'tel', path: mobile)),
+                onTap: () => callNumber(mobile),
                 child: const Icon(Icons.call_rounded,
                     size: 21, color: AppColors.success),
               ),

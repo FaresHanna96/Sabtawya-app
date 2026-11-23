@@ -171,3 +171,13 @@ class PromotionMove {
         children: asInt(map['children']),
       );
 }
+
+extension ClassOverviewLookup on List<ClassOverview> {
+  /// The name of the class [classId], or null when it is not in the list.
+  String? nameOf(String classId) {
+    for (final c in this) {
+      if (c.classId == classId) return c.className;
+    }
+    return null;
+  }
+}

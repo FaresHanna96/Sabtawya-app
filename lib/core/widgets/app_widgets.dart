@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/phone.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -940,7 +941,7 @@ class _CallButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       tooltip: AppStrings.call,
-      onPressed: () => launchUrl(Uri(scheme: 'tel', path: number)),
+      onPressed: () => callNumber(number),
     );
   }
 }

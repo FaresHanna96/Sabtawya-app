@@ -138,7 +138,7 @@ void main() {
     await tester.pumpWidget(_app(const []));
     await tester.pumpAndSettle();
 
-    expect(find.text('لا يوجد خدام'), findsOneWidget);
+    expect(find.text(AppStrings.noServantsHint), findsOneWidget);
     expect(find.byType(ServantRow), findsNothing);
   });
 
@@ -162,7 +162,7 @@ void main() {
       await tester.pumpWidget(_app(const []));
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.person_add_alt_1_rounded), findsNothing);
-      expect(find.text(AppStrings.noServants), findsOneWidget);
+      expect(find.text(AppStrings.noServantsHint), findsOneWidget);
     });
 
     testWidgets('an empty class: only the icon in the title row',

@@ -100,6 +100,13 @@ class AppDateUtils {
     return date.subtract(Duration(days: diff));
   }
 
+  /// The first Saturday on or after [from] (today when omitted).
+  static DateTime nextSaturday([DateTime? from]) {
+    final date = dateOnly(from ?? DateTime.now());
+    return DateTime(date.year, date.month,
+        date.day + (DateTime.saturday - date.weekday) % 7);
+  }
+
   static String formatPercentage(num value) => '${value.toStringAsFixed(1)}%';
 
   /// Whether someone born on [birth] has their birthday on [day]. A 29 February

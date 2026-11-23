@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../messages/parent_messages_screen.dart';
 import '../../core/l10n/app_strings.dart';
@@ -685,7 +685,7 @@ class _BalanceRow extends StatelessWidget {
                   constraints:
                       const BoxConstraints(minWidth: 36, minHeight: 36),
                   tooltip: AppStrings.call,
-                  onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone!)),
+                  onPressed: () => callNumber(phone!),
                 ),
               const SizedBox(width: 8),
               const Icon(AppIcons.forward, size: 18, color: AppColors.muted),

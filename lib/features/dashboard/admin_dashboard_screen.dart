@@ -17,7 +17,6 @@ import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
 import 'home_numbers_card.dart';
-import 'needs_attention_card.dart';
 import 'quick_action_grid.dart';
 import 'weekly_attendance_chart.dart';
 import 'today_birthdays_section.dart';
@@ -132,15 +131,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              FadeSlideIn(
-                index: 2,
-                child: NeedsAttentionCard(
-                  isAdmin: session.isAdmin,
-                  yearId: session.currentYear?.id,
-                  reloadToken: _loads,
-                  onOpen: _push,
-                ),
-              ),
               FadeSlideIn(
                 index: 3,
                 child: TodayBirthdaysSection(

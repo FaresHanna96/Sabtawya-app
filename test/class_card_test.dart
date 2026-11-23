@@ -177,18 +177,20 @@ void main() {
       });
     }
 
-    testWidgets('recorded: who came and the percentage', (tester) async {
+    testWidgets('recorded: nothing more to say on the card', (tester) async {
       await _pump(
         tester,
         _class(),
         ClassCardFacts(week: _week('c1'), prepSent: true),
       );
-      expect(
-          find.text(AppStrings.classRecordedOn('21 نوفمبر')), findsOneWidget);
-      expect(find.text('8/10'), findsOneWidget);
-      expect(find.text('80%'), findsOneWidget);
+      // No «اتسجّل حضور» wording: the numbers say it.
+      expect(find.text(AppStrings.classRecordedOn('21 نوفمبر')), findsNothing);
+      // The numbers are on the class page, not on the card.
+      expect(find.text('8/10'), findsNothing);
+      expect(find.text('80%'), findsNothing);
       expect(tester.takeException(), isNull);
-      expect(find.text(AppStrings.prepSentLine), findsOneWidget);
+      // The prep line is not on the card any more.
+      expect(find.text(AppStrings.prepSentLine), findsNothing);
       expect(find.text(AppStrings.recordNow), findsNothing);
     });
 
@@ -203,7 +205,7 @@ void main() {
         ),
         onRecord: () => recorded++,
       );
-      expect(find.text(AppStrings.prepNotSent), findsOneWidget);
+      expect(find.text(AppStrings.prepNotSent), findsNothing);
       await tester.tap(find.text(AppStrings.recordNow));
       expect(recorded, 1);
     });

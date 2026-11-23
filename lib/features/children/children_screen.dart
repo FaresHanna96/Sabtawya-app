@@ -229,23 +229,17 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
       grouped: grouped,
       classOf: (c) => c.classId,
       classOrder: [for (final c in classes) c.classId],
-      classNameOf: (id) => _classNameOf(classes, id) ?? '',
+      classNameOf: (id) => classes.nameOf(id) ?? '',
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
       spacing: 10,
       itemBuilder: (context, child, _) => ChildTile(
         child: child,
         // The header already names the class.
-        className: grouped ? null : _classNameOf(classes, child.classId),
+        className: grouped ? null : classes.nameOf(child.classId),
         onTap: () => _openProfile(child),
         onContact: () => showChildContactSheet(context, child),
       ),
     );
   }
 
-  static String? _classNameOf(List<ClassOverview> classes, String classId) {
-    for (final item in classes) {
-      if (item.classId == classId) return item.className;
-    }
-    return null;
-  }
 }

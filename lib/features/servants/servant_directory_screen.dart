@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/phone.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -182,7 +183,7 @@ class ServantContactCard extends StatelessWidget {
                 tooltip: AppStrings.call,
                 icon: const Icon(Icons.call_rounded, size: 22),
                 color: AppColors.success,
-                onPressed: () => launchUrl(Uri(scheme: 'tel', path: mobile)),
+                onPressed: () => callNumber(mobile),
               ),
               if (whatsapp != null)
                 IconButton(
