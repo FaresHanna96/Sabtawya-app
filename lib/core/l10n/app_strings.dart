@@ -1045,7 +1045,7 @@ class AppStrings {
   static const prepCommented = 'يوجد تعليق';
 
   // نشاط الخدام (admin): the tabs and the chips on each servant's row.
-  static const servantsTab = 'الخدام';
+  static const servantsTab = 'ملخص الخدام';
   static const servantAttendanceTab = 'حضور الخدام';
   static const chipService = 'خدمة';
   static const chipMeeting = 'اجتماع';
