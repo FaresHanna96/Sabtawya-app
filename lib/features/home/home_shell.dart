@@ -61,6 +61,47 @@ class _HomeShellState extends State<HomeShell>
   /// A newer APK on the site (Android), shown as a banner until dismissed.
   AppUpdate? _update;
 
+  /// The saves waiting to be sent at the last look, and a moment of
+  /// «اتزامن كل حاجة» once they have all gone.
+  SyncService? _sync;
+  int _lastPending = 0;
+  bool _justSynced = false;
+  Timer? _syncedTimer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final sync = context.read<SyncService>();
+    if (!identical(sync, _sync)) {
+      _sync?.removeListener(_onSync);
+      _sync = sync..addListener(_onSync);
+      _lastPending = sync.pendingCount;
+    }
+  }
+
+  void _onSync() {
+    final sync = _sync;
+    if (sync == null || !mounted) return;
+    final now = sync.pendingCount;
+    if (syncJustFinished(
+      before: _lastPending,
+      after: now,
+      failed: sync.failedCount,
+      online: ConnectivityService.instance.isOnline,
+    )) {
+      setState(() => _justSynced = true);
+      _syncedTimer?.cancel();
+      _syncedTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (mounted) setState(() => _justSynced = false);
+      });
+    } else if (now > 0 && _justSynced) {
+      // New saves queued meanwhile: the usual banner takes over.
+      _syncedTimer?.cancel();
+      setState(() => _justSynced = false);
+    }
+    _lastPending = now;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -136,6 +177,8 @@ class _HomeShellState extends State<HomeShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _sync?.removeListener(_onSync);
+    _syncedTimer?.cancel();
     _tabFade.dispose();
     super.dispose();
   }
@@ -316,7 +359,9 @@ class _HomeShellState extends State<HomeShell>
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
             child: (isOnline && pendingCount == 0 && sync.failedCount == 0)
-                ? const SizedBox(width: double.infinity)
+                ? (_justSynced
+                    ? const SyncedBanner()
+                    : const SizedBox(width: double.infinity))
                 : _OfflineBanner(
                     isOnline: isOnline,
                     pendingCount: pendingCount,
@@ -355,7 +400,12 @@ class _HomeShellState extends State<HomeShell>
                         _opened.contains(i)
                             ? TickerMode(
                                 enabled: i == _index,
-                                child: tabBody(i, tab.child),
+                                // A hidden tab's heroes must not fly in from
+                                // where nobody can see them.
+                                child: HeroMode(
+                                  enabled: i == _index,
+                                  child: tabBody(i, tab.child),
+                                ),
                               )
                             : const SizedBox.shrink(),
                     ],
@@ -412,9 +462,13 @@ class AttendanceTabIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pendingCount > 0) {
-      return Badge(
-        label: AnimatedCount(value: pendingCount),
-        child: Icon(icon),
+      // A save queued offline makes the count pop once.
+      return PopOnIncrease(
+        value: pendingCount,
+        child: Badge(
+          label: AnimatedCount(value: pendingCount),
+          child: Icon(icon),
+        ),
       );
     }
     return Badge(
@@ -438,6 +492,47 @@ class _Tab {
   final IconData icon;
   final IconData selectedIcon;
   final Widget child;
+}
+
+/// The saves waiting to be sent have all gone: online, none refused.
+@visibleForTesting
+bool syncJustFinished({
+  required int before,
+  required int after,
+  required int failed,
+  required bool online,
+}) =>
+    before > 0 && after == 0 && failed == 0 && online;
+
+/// «اتزامن كل حاجة ✓» for a moment, where the offline banner was.
+@visibleForTesting
+class SyncedBanner extends StatelessWidget {
+  const SyncedBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.success.withValues(alpha: 0.92),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: const Row(
+        children: [
+          Icon(Icons.cloud_done_rounded, size: 16, color: Colors.white),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              AppStrings.syncedAll,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _OfflineBanner extends StatelessWidget {

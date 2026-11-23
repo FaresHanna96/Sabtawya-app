@@ -70,48 +70,11 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
       for (final a in data.assignments) a.servantId: a.className,
     };
 
-    final servantId = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                '${AppStrings.assignServant} — ${target.name}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-            ...available.map(
-              (servant) {
-                final fromClass = currentClass[servant.id];
-                return ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(servant.fullName),
-                  subtitle: fromClass != null
-                      ? Text(
-                          '${AppStrings.currentClass}: $fromClass',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.warningText,
-                          ),
-                        )
-                      : servant.email == null
-                          ? null
-                          : Text(servant.email!),
-                  trailing: fromClass != null
-                      ? const Icon(Icons.swap_horiz,
-                          size: 18, color: AppColors.muted)
-                      : null,
-                  onTap: () => Navigator.of(context).pop(servant.id),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+    final servantId = await pickServantForClass(
+      context,
+      className: target.name,
+      available: available,
+      currentClass: currentClass,
     );
     if (servantId == null || !mounted) return;
 
@@ -235,4 +198,107 @@ class _AssignmentsData {
   final List<SchoolClass> classes;
   final List<ClassServant> assignments;
   final List<Profile> servants;
+}
+
+/// The servants who can be given to [className], one tap each. A servant
+/// already in another class says so ([currentClass]: id -> class name), as
+/// choosing them moves them. Returns the chosen servant's id.
+Future<String?> pickServantForClass(
+  BuildContext context, {
+  required String className,
+  required List<Profile> available,
+  required Map<String, String> currentClass,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              '${AppStrings.assignServant} — $className',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          ...available.map(
+            (servant) {
+              final fromClass = currentClass[servant.id];
+              return ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(servant.fullName),
+                subtitle: fromClass != null
+                    ? Text(
+                        '${AppStrings.currentClass}: $fromClass',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.warningText,
+                        ),
+                      )
+                    : servant.email == null
+                        ? null
+                        : Text(servant.email!),
+                trailing: fromClass != null
+                    ? const Icon(Icons.swap_horiz,
+                        size: 18, color: AppColors.muted)
+                    : null,
+                onTap: () => Navigator.of(context).pop(servant.id),
+              );
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// The admin adds a servant to one class (the class page's «إضافة خادم»):
+/// loads who can be added, asks, assigns. True when one was assigned.
+Future<bool> addServantToClass(
+  BuildContext context, {
+  required String classId,
+  required String className,
+}) async {
+  const classes = ClassRepository();
+  const servants = ServantRepository();
+  final List<Profile> all;
+  final List<ClassServant> assignments;
+  try {
+    (all, assignments) = await (
+      servants.servants(includeInactive: false),
+      classes.allAssignments(),
+    ).wait;
+  } catch (e) {
+    if (context.mounted) Ui.error(context, e);
+    return false;
+  }
+  if (!context.mounted) return false;
+  final inClass = {
+    for (final a in assignments)
+      if (a.classId == classId) a.servantId,
+  };
+  final available = all.where((s) => !inClass.contains(s.id)).toList();
+  if (available.isEmpty) {
+    Ui.info(context, AppStrings.noServantToAssign);
+    return false;
+  }
+  final currentClass = {
+    for (final a in assignments) a.servantId: a.className,
+  };
+  final servantId = await pickServantForClass(
+    context,
+    className: className,
+    available: available,
+    currentClass: currentClass,
+  );
+  if (servantId == null || !context.mounted) return false;
+  return Ui.runGuarded(
+    context,
+    () => classes.assignServant(classId: classId, servantId: servantId),
+    successMessage: currentClass.containsKey(servantId)
+        ? AppStrings.servantMoved
+        : AppStrings.servantAssigned,
+  );
 }

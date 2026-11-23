@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sabtawya/core/l10n/app_strings.dart';
 import 'package:sabtawya/core/widgets/whatsapp_icon.dart';
 import 'package:sabtawya/data/models/profile.dart';
 import 'package:sabtawya/features/classes/class_servants_card.dart';
@@ -20,12 +21,17 @@ ClassServant _servant(
       servantMobile: mobile,
     );
 
-Widget _app(List<ClassServant> servants, {String? me}) => MaterialApp(
+Widget _app(List<ClassServant> servants, {String? me, VoidCallback? onAdd}) =>
+    MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
           child: Directionality(
             textDirection: TextDirection.rtl,
-            child: ClassServantsCard(servants: servants, currentUserId: me),
+            child: ClassServantsCard(
+              servants: servants,
+              currentUserId: me,
+              onAdd: onAdd,
+            ),
           ),
         ),
       ),
@@ -149,5 +155,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('«إضافة خادم»', () {
+    testWidgets('not offered without onAdd (not the admin)', (tester) async {
+      await tester.pumpWidget(_app(const []));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.person_add_alt_1_rounded), findsNothing);
+      expect(find.text(AppStrings.noServants), findsOneWidget);
+    });
+
+    testWidgets('an empty class offers it in the title and the empty line',
+        (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_app(const [], onAdd: () => taps++));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.person_add_alt_1_rounded), findsNWidgets(2));
+      await tester.tap(find.text(AppStrings.addServant));
+      expect(taps, 1);
+      await tester.tap(find.byTooltip(AppStrings.addServant));
+      expect(taps, 2);
+    });
+
+    testWidgets('a class with servants: the button beside the count',
+        (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_app(
+        [_servant('1', 'ناهد يسرى شوقى')],
+        onAdd: () => taps++,
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('1'), findsOneWidget);
+      expect(find.byIcon(Icons.person_add_alt_1_rounded), findsOneWidget);
+      await tester.tap(find.byTooltip(AppStrings.addServant));
+      expect(taps, 1);
+    });
   });
 }

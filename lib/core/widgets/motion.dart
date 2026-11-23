@@ -150,6 +150,58 @@ class _PulseState extends State<Pulse> with SingleTickerProviderStateMixin {
   }
 }
 
+/// Pops its child once (a quick grow and settle) whenever [value] goes up,
+/// so a badge whose count rises catches the eye. A drop, or the first
+/// build, does nothing; "reduce motion" turns it off.
+class PopOnIncrease extends StatefulWidget {
+  const PopOnIncrease({super.key, required this.value, required this.child});
+
+  final int value;
+  final Widget child;
+
+  @override
+  State<PopOnIncrease> createState() => _PopOnIncreaseState();
+}
+
+class _PopOnIncreaseState extends State<PopOnIncrease>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+  );
+
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(
+      tween:
+          Tween(begin: 1.0, end: 1.3).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 35,
+    ),
+    TweenSequenceItem(
+      tween: Tween(begin: 1.3, end: 1.0)
+          .chain(CurveTween(curve: Curves.elasticOut)),
+      weight: 65,
+    ),
+  ]).animate(_ctrl);
+
+  @override
+  void didUpdateWidget(PopOnIncrease old) {
+    super.didUpdateWidget(old);
+    if (widget.value > old.value && !reduceMotion(context)) {
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      ScaleTransition(scale: _scale, child: widget.child);
+}
+
 /// Floats its child up and down a few pixels.
 class Float extends StatefulWidget {
   const Float({super.key, required this.child, this.distance = 6});

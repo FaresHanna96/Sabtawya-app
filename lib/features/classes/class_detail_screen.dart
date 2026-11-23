@@ -25,6 +25,7 @@ import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
 import '../children/child_tile.dart';
 import '../children/contacts_export_screen.dart';
+import '../servants/servant_assignments_screen.dart' show addServantToClass;
 import 'class_form_screen.dart';
 import 'class_servants_card.dart';
 import 'patron_avatar.dart';
@@ -302,7 +303,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       child: _actions(),
                     ),
                     const SizedBox(height: 12),
-                    FadeSlideIn(index: 3, child: _servants(data.servants)),
+                    FadeSlideIn(
+                        index: 3, child: _servants(data.servants, overview)),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -441,7 +443,11 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       accent: AppColors.gold,
       child: Row(
         children: [
-          PatronAvatar(photoPath: overview.patronPhotoPath, size: 64),
+          // Flies in from the class's card in the list.
+          Hero(
+            tag: patronHeroTag(overview.classId),
+            child: PatronAvatar(photoPath: overview.patronPhotoPath, size: 64),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -517,10 +523,31 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     );
   }
 
-  Widget _servants(List<ClassServant> servants) => ClassServantsCard(
-        servants: servants,
-        currentUserId: context.read<SessionController>().profile?.id,
-      );
+  Widget _servants(List<ClassServant> servants, ClassOverview overview) {
+    final session = context.read<SessionController>();
+    return ClassServantsCard(
+      servants: servants,
+      currentUserId: session.profile?.id,
+      // Only the admin assigns servants (the policies enforce it too).
+      onAdd: session.isAdmin && overview.isActive
+          ? () => _addServant(overview)
+          : null,
+    );
+  }
+
+  /// «إضافة خادم»: pick a servant for this class, then refresh the page and
+  /// the session's classes (a moved servant's own list changes).
+  Future<void> _addServant(ClassOverview overview) async {
+    final added = await addServantToClass(
+      context,
+      classId: overview.classId,
+      className: overview.className,
+    );
+    if (!added || !mounted) return;
+    await _reload();
+    if (mounted) await context.read<SessionController>().refreshClasses();
+    if (mounted) context.read<SessionController>().markChanged();
+  }
 }
 
 enum _ClassAction { message, edit, archive, delete }

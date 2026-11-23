@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/app_strings.dart';
+import '../../core/widgets/motion.dart';
 import '../../core/services/app_badge_stub.dart'
     if (dart.library.js_interop) '../../core/services/app_badge_web.dart';
 import '../../core/services/push_service.dart';
@@ -62,13 +63,17 @@ class _NotificationsBellState extends State<NotificationsBell> {
     return IconButton(
       tooltip: AppStrings.notificationsTitle,
       onPressed: _open,
-      icon: Badge(
-        isLabelVisible: _count > 0,
-        label: Text('$_count'),
-        child: Icon(
-          _count > 0
-              ? Icons.notifications_active_rounded
-              : Icons.notifications_none_rounded,
+      // A new notice makes the bell pop once.
+      icon: PopOnIncrease(
+        value: _count,
+        child: Badge(
+          isLabelVisible: _count > 0,
+          label: Text('$_count'),
+          child: Icon(
+            _count > 0
+                ? Icons.notifications_active_rounded
+                : Icons.notifications_none_rounded,
+          ),
         ),
       ),
     );

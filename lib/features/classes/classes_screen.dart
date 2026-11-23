@@ -452,8 +452,12 @@ class ClassCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      PatronAvatar(
-                          photoPath: overview.patronPhotoPath, size: 42),
+                      // Flies into the class page when the card is opened.
+                      Hero(
+                        tag: patronHeroTag(overview.classId),
+                        child: PatronAvatar(
+                            photoPath: overview.patronPhotoPath, size: 42),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

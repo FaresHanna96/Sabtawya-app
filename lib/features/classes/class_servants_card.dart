@@ -18,6 +18,7 @@ class ClassServantsCard extends StatelessWidget {
     super.key,
     required this.servants,
     this.currentUserId,
+    this.onAdd,
   });
 
   final List<ClassServant> servants;
@@ -25,21 +26,61 @@ class ClassServantsCard extends StatelessWidget {
   /// The signed-in person, to mark their own row.
   final String? currentUserId;
 
+  /// «إضافة خادم» (the admin); no button when null.
+  final VoidCallback? onAdd;
+
   @override
   Widget build(BuildContext context) {
+    final count = servants.isEmpty ? null : _CountBadge(count: servants.length);
+    final add = onAdd == null
+        ? null
+        : IconButton.filledTonal(
+            tooltip: AppStrings.addServant,
+            onPressed: onAdd,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+          );
     return SectionCard(
       title: AppStrings.assignedServants,
       icon: Icons.volunteer_activism_rounded,
       accent: AppColors.olive,
-      trailing: servants.isEmpty ? null : _CountBadge(count: servants.length),
+      trailing: count == null && add == null
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (count != null) count,
+                if (count != null && add != null) const SizedBox(width: 6),
+                if (add != null) add,
+              ],
+            ),
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
       child: servants.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text(
-                AppStrings.noServants,
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
-              ),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: onAdd == null
+                  ? const Text(
+                      AppStrings.noServants,
+                      style: TextStyle(fontSize: 13, color: AppColors.muted),
+                    )
+                  // An empty class: say so, and offer the fix right there.
+                  : Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            AppStrings.noServants,
+                            style:
+                                TextStyle(fontSize: 13, color: AppColors.muted),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: onAdd,
+                          icon: const Icon(Icons.person_add_alt_1_rounded,
+                              size: 18),
+                          label: const Text(AppStrings.addServant),
+                        ),
+                      ],
+                    ),
             )
           : Column(
               children: [

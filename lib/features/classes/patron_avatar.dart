@@ -7,6 +7,10 @@ import '../../core/widgets/motion.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 
+/// The shared [Hero] tag of a class's patron picture: the card in the list
+/// and the class page use it, so the picture flies from one to the other.
+String patronHeroTag(String classId) => 'class-patron-$classId';
+
 /// The picture of a class patron saint, falling back to an icon.
 ///
 /// The bucket is private, so the image comes through a signed URL that

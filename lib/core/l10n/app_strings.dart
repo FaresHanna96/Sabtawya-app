@@ -641,6 +641,8 @@ class AppStrings {
   static const previousSaturday = 'السبت اللي قبله';
   static const nextSaturday = 'السبت اللي بعده';
 
+  static const syncedAll = 'تمام، كل اللي سجّلته اتبعت ✓';
+
   // ── the welcome tour
   static const tourMenu = 'جولة في التطبيق';
   static const tourSkip = 'تخطي';
