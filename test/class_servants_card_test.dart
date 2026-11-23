@@ -165,16 +165,17 @@ void main() {
       expect(find.text(AppStrings.noServants), findsOneWidget);
     });
 
-    testWidgets('an empty class offers it in the title and the empty line',
+    testWidgets('an empty class: only the icon in the title row',
         (tester) async {
       var taps = 0;
       await tester.pumpWidget(_app(const [], onAdd: () => taps++));
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.person_add_alt_1_rounded), findsNWidgets(2));
-      await tester.tap(find.text(AppStrings.addServant));
-      expect(taps, 1);
+      expect(find.byIcon(Icons.person_add_alt_1_rounded), findsOneWidget);
+      expect(find.text(AppStrings.addServant), findsNothing,
+          reason: 'no text button on the empty line');
+      expect(find.text(AppStrings.noServants), findsOneWidget);
       await tester.tap(find.byTooltip(AppStrings.addServant));
-      expect(taps, 2);
+      expect(taps, 1);
     });
 
     testWidgets('a class with servants: the button beside the count',

@@ -56,31 +56,12 @@ class ClassServantsCard extends StatelessWidget {
             ),
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
       child: servants.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: onAdd == null
-                  ? const Text(
-                      AppStrings.noServants,
-                      style: TextStyle(fontSize: 13, color: AppColors.muted),
-                    )
-                  // An empty class: say so, and offer the fix right there.
-                  : Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            AppStrings.noServants,
-                            style:
-                                TextStyle(fontSize: 13, color: AppColors.muted),
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: onAdd,
-                          icon: const Icon(Icons.person_add_alt_1_rounded,
-                              size: 18),
-                          label: const Text(AppStrings.addServant),
-                        ),
-                      ],
-                    ),
+          ? const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                AppStrings.noServants,
+                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
             )
           : Column(
               children: [
