@@ -10,8 +10,6 @@ import 'package:sabtawya/data/models/school_class.dart';
 import 'package:sabtawya/features/attendance/attendance_screen.dart';
 import 'package:sabtawya/features/classes/classes_screen.dart';
 import 'package:sabtawya/features/dashboard/home_numbers_card.dart';
-import 'package:sabtawya/features/dashboard/needs_attention_card.dart';
-import 'package:sabtawya/features/home/more_entries.dart';
 
 final _year = AttendanceYear(
   id: 'y',
@@ -76,15 +74,6 @@ final widgets = <String, Widget Function()>{
       onTap: () {}),
   'numbers': () => const HomeNumbersCard(
       children: 80, classes: 8, servants: 12, admins: 2, boys: 40, girls: 40),
-  'attention': () => NeedsAttentionCard(
-      isAdmin: true,
-      yearId: 'y',
-      load: () async => const {
-            MoreCount.absence: 77,
-            MoreCount.missingInfo: 80,
-            MoreCount.pendingPreps: 3
-          },
-      onOpen: (_) async {}),
 };
 
 void main() {

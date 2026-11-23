@@ -154,8 +154,8 @@ class AppStrings {
   static const futureSession = 'سبت لم يأتِ بعد';
   static const showUpcoming = 'السبوت القادمة';
   static const averageAttendance = 'متوسط الحضور';
-  static const recentActivity = 'آخر النشاطات';
-  static const activityLogTitle = 'سجل النشاط';
+  static const recentActivity = 'آخر التحديثات';
+  static const activityLogTitle = 'سجل التعديلات';
   static const logFilters = 'تصفية';
   static const logClear = 'مسح التصفية';
   static const logByServant = 'الخادم';
@@ -891,7 +891,7 @@ class AppStrings {
   static const upcomingSaturdays = 'باقي السنة';
   static const prepMissing = 'لم يُرفع التحضير';
   static const searchServantHint = 'ابحث باسم الخادم';
-  static const servantDirectory = 'الخدام';
+  static const servantDirectory = 'دليل الخدام';
   static const noServantMobile = 'لا يوجد رقم';
   static const callerIdTitle = 'اسم المتصل';
   static const callerIdSwitch = 'إظهار اسم المتصل من المخدومين';
@@ -1027,10 +1027,10 @@ class AppStrings {
 
   // -------------------------------------------------------- servant activities
   static const myActivities = 'تحضيراتي';
-  static const activitiesNav = 'نشاط الخدام';
+  static const activitiesNav = 'التحضير والحضور';
   static const exportServantMonthly = 'تقرير شهري - الخدام';
   static const exportServantYearly = 'تقرير سنوي - الخدام';
-  static const servantActivities = 'نشاطات الخدام';
+  static const servantActivities = 'حضور وتحضير الخدام';
   static const servantActivityReport = 'تقرير نشاطات الخدام';
   static const lessonPrep = 'تحضير الدرس';
   static const sundaySchoolAttendance = 'حضور مدارس الأحد';

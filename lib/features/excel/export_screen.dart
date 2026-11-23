@@ -444,11 +444,6 @@ class _ExportScreenState extends State<ExportScreen> {
         },
       );
 
-  Future<void> _exportTemplate() => _export(
-        name: AppStrings.downloadTemplate,
-        build: () async => ExcelService.childrenTemplate(),
-      );
-
   /// نشاط الخدام الشهري: pick the month (this one first chosen), from the
   /// start of the attendance year up to now; it used to be this month only.
   Future<void> _exportServantMonthly() async {
@@ -651,19 +646,6 @@ class _ExportScreenState extends State<ExportScreen> {
                   ],
                 ),
               ),
-            const SizedBox(height: 16),
-            SectionCard(
-              title: AppStrings.importTitle,
-              icon: Icons.upload_file_rounded,
-              accent: AppColors.sky,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: _ExportTile(
-                icon: Icons.download_outlined,
-                title: AppStrings.downloadTemplate,
-                subtitle: AppStrings.pickFileHint,
-                onTap: _busy ? null : _exportTemplate,
-              ),
-            ),
           ]),
         ),
       ),

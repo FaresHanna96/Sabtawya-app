@@ -16,7 +16,6 @@ import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
-import '../servant_activities/my_activities_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
 import 'missing_info_section.dart';
@@ -169,18 +168,7 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                 index: 4,
                 child: QuickActionGrid(
                   actions: [
-                    QuickAction(
-                      Icons.fact_check_rounded,
-                      AppStrings.attendanceTitle,
-                      AppColors.success,
-                      () => _push(const AttendanceScreen(showAppBar: true)),
-                    ),
-                    QuickAction(
-                      Icons.assignment_rounded,
-                      AppStrings.myActivities,
-                      AppColors.navy,
-                      () => _push(const MyActivitiesScreen(showAppBar: true)),
-                    ),
+                    // Attendance and «تحضيراتي» are bottom tabs already.
                     QuickAction(
                       Icons.person_add_alt_1_rounded,
                       AppStrings.addChild,

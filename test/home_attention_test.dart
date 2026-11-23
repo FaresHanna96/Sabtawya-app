@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sabtawya/core/l10n/app_strings.dart';
 import 'package:sabtawya/features/dashboard/home_numbers_card.dart';
-import 'package:sabtawya/features/dashboard/needs_attention_card.dart';
-import 'package:sabtawya/features/home/more_entries.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child, {double width = 360}) =>
     tester.pumpWidget(MaterialApp(
@@ -17,102 +15,7 @@ Future<void> _pump(WidgetTester tester, Widget child, {double width = 360}) =>
       ),
     ));
 
-const _all = {
-  MoreCount.absence: 77,
-  MoreCount.missingInfo: 80,
-  MoreCount.pendingPreps: 3,
-  MoreCount.invites: 1,
-  MoreCount.birthdays: 2,
-};
-
 void main() {
-  group('attentionItems', () {
-    test('the admin sees all four, in order, with their counts', () {
-      final items = attentionItems(_all, isAdmin: true);
-      expect(items.map((i) => i.entry.id),
-          ['absence', 'missingInfo', 'preps', 'servants']);
-      expect(items.map((i) => i.count), [77, 80, 3, 1]);
-    });
-
-    test('a general servant gets no preps or join requests', () {
-      final items = attentionItems(_all, isAdmin: false);
-      expect(items.map((i) => i.entry.id), ['absence', 'missingInfo']);
-    });
-
-    test('zero and missing counts are left out', () {
-      final items = attentionItems(
-        {MoreCount.absence: 0, MoreCount.pendingPreps: 2},
-        isAdmin: true,
-      );
-      expect(items.map((i) => i.entry.id), ['preps']);
-    });
-
-    test('birthdays are not an attention line', () {
-      final items = attentionItems({MoreCount.birthdays: 4}, isAdmin: true);
-      expect(items, isEmpty);
-    });
-  });
-
-  group('NeedsAttentionCard', () {
-    testWidgets('lists what waits and opens it on tap', (tester) async {
-      Widget? opened;
-      await _pump(
-        tester,
-        NeedsAttentionCard(
-          isAdmin: true,
-          yearId: 'y',
-          load: () async => const {
-            MoreCount.absence: 5,
-            MoreCount.pendingPreps: 2,
-          },
-          onOpen: (screen) async => opened = screen,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text(AppStrings.needsAttention), findsOneWidget);
-      expect(find.text(AppStrings.absenceFollowUp), findsOneWidget);
-      expect(find.text('5'), findsOneWidget);
-      expect(find.text(AppStrings.prepsInboxTitle), findsOneWidget);
-      expect(find.text('2'), findsOneWidget);
-      expect(find.text(AppStrings.missingInfoTitle), findsNothing);
-
-      final preps =
-          MoreCatalog.all.firstWhere((e) => e.id == 'preps').open!();
-      await tester.tap(find.text(AppStrings.prepsInboxTitle));
-      await tester.pump();
-      expect(opened.runtimeType, preps.runtimeType);
-    });
-
-    testWidgets('nothing waiting: no card at all', (tester) async {
-      await _pump(
-        tester,
-        NeedsAttentionCard(
-          isAdmin: true,
-          yearId: 'y',
-          load: () async => const {},
-          onOpen: (_) async {},
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text(AppStrings.needsAttention), findsNothing);
-    });
-
-    testWidgets('a failed load shows no card', (tester) async {
-      await _pump(
-        tester,
-        NeedsAttentionCard(
-          isAdmin: true,
-          yearId: 'y',
-          load: () async => throw Exception('offline'),
-          onOpen: (_) async {},
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text(AppStrings.needsAttention), findsNothing);
-    });
-  });
-
   group('HomeNumbersCard', () {
     testWidgets('shows the four numbers and the boys/girls split',
         (tester) async {

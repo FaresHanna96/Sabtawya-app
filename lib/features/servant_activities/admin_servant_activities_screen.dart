@@ -208,7 +208,6 @@ class _SummaryTabState extends State<_SummaryTab>
   String _query = '';
 
   ServantSort _sort = ServantSort.name;
-  bool _onlyPending = false;
 
   Future<_ScreenData> _load() async {
     final year = context.read<SessionController>().currentYear;
@@ -312,7 +311,6 @@ class _SummaryTabState extends State<_SummaryTab>
           ],
           _sort,
           held: data.totalSessions,
-          onlyPending: _onlyPending,
         );
 
         return ListView.builder(
@@ -345,11 +343,6 @@ class _SummaryTabState extends State<_SummaryTab>
                             onSelected: (_) => setState(() => _sort = s),
                           ),
                         ),
-                      FilterChip(
-                        label: const Text(AppStrings.onlyPendingPreps),
-                        selected: _onlyPending,
-                        onSelected: (on) => setState(() => _onlyPending = on),
-                      ),
                     ],
                   ),
                 ),

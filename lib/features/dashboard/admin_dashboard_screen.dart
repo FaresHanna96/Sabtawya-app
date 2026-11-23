@@ -13,7 +13,6 @@ import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
-import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
 import 'home_numbers_card.dart';
@@ -282,27 +281,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final canEditChildren = !context.read<SessionController>().isGeneralServant;
     return QuickActionGrid(
       actions: [
-        QuickAction(
-          Icons.fact_check_rounded,
-          AppStrings.attendanceTitle,
-          AppColors.success,
-          () => _push(const AttendanceScreen(showAppBar: true)),
-        ),
-        if (canEditChildren) ...[
+        // Attendance is a bottom tab and the import is in Children and
+        // المزيد, so they are not repeated here.
+        if (canEditChildren)
           QuickAction(
             Icons.person_add_alt_1_rounded,
             AppStrings.addChild,
             AppColors.navy,
             () => _push(const ChildFormScreen()),
           ),
-          // Short label: the full one is cut off in a quarter-width tile.
-          QuickAction(
-            Icons.upload_file_rounded,
-            AppStrings.importExcelShort,
-            AppColors.olive,
-            () => _push(const ImportChildrenScreen()),
-          ),
-        ],
         QuickAction(
           Icons.calendar_month_rounded,
           AppStrings.calendarTitle,

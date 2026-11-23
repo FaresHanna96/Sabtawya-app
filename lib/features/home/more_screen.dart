@@ -391,13 +391,6 @@ class _ProfileHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onLogout != null)
-                  IconButton(
-                    tooltip: AppStrings.logout,
-                    color: Colors.white,
-                    icon: const Icon(Icons.logout_rounded),
-                    onPressed: onLogout,
-                  ),
               ],
             ),
           ),

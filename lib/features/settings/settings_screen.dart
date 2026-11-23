@@ -10,7 +10,6 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import '../auth/change_password_screen.dart';
-import '../profile/my_profile_screen.dart';
 import 'absence_alert_tile.dart';
 import 'caller_id_tile.dart';
 
@@ -179,17 +178,6 @@ class SettingsScreen extends StatelessWidget {
               accent: AppColors.maroon,
               child: Column(
                 children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.person_outline),
-                    title: const Text(AppStrings.myData),
-                    trailing: const Icon(AppIcons.forward),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const MyProfileScreen(),
-                      ),
-                    ),
-                  ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.lock_outline),
