@@ -14,18 +14,24 @@ import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/badges.dart';
 import '../../data/models/child.dart';
+import '../../data/models/competition.dart';
+import '../../data/models/event.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/class_repository.dart';
+import '../../data/repositories/competition_repository.dart';
+import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import '../badges/child_badges_card.dart';
 import '../badges/class_leaderboard.dart';
+import '../competitions/competition_detail_screen.dart';
+import '../events/event_detail_screen.dart';
 import '../dashboard/weekly_attendance_chart.dart';
 import 'change_history_card.dart';
 import 'child_attendance_log.dart';
@@ -38,6 +44,7 @@ import 'health_notes_card.dart';
 import 'location_sheet.dart';
 import 'missing_info.dart';
 import 'missing_info_banner.dart';
+import 'profile/child_activities_cards.dart';
 import 'profile/profile_status.dart';
 
 /// Everything known about one child: personal, parent, and church details plus
@@ -58,17 +65,38 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
   static const _classes = ClassRepository();
   static const _badges = BadgeRepository();
+  static const _events = EventRepository();
+  static const _competitions = CompetitionRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<_ProfileData>>();
 
   Future<_ProfileData> _load() async {
     // Read before the first await, while the context is certainly mounted.
-    final yearId = context.read<SessionController>().currentYear?.id;
+    final session = context.read<SessionController>();
+    final year = session.currentYear;
+    final yearId = year?.id;
+    final canSeeCompetitions = session.isAdmin || session.isGeneralServant;
 
     final child = await _children.byId(widget.childId);
     if (child == null) {
       throw AppFailure('لم يتم العثور على المخدوم');
     }
+
+    // Trips and competitions: extras on نظرة عامة, left out when they fail.
+    // Started first so they run alongside the reads below.
+    final extras = (
+      (
+        _events.listEvents(),
+        _events.childBalances(child.id),
+      ).wait.catchError(
+          (Object _) => (const <Event>[], const <ChildEventBalance>[])),
+      // Only the admin and the general servant can read marks.
+      canSeeCompetitions
+          ? _competitions
+              .childMarks(child.id)
+              .catchError((Object _) => const <(Competition, int)>[])
+          : Future.value(const <(Competition, int)>[]),
+    ).wait;
 
     // The reads below do not depend on each other: run them side by side
     // instead of one after another (the profile waited for each in turn).
@@ -116,6 +144,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               .then<List<LeaderboardRow>?>((r) => r)
               .catchError((Object _) => null),
     ).wait;
+    final ((events, balances), marks) = await extras;
 
     return _ProfileData(
       child: child,
@@ -135,6 +164,13 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       changes: changes,
       badges: badges,
       ranking: ranking,
+      trips: ChildTrip.of(
+        events: events,
+        balances: balances,
+        today: DateTime.now(),
+        year: year,
+      ),
+      competitionMarks: ChildCompetitionsCard.forYear(marks, year),
     );
   }
 
@@ -149,6 +185,23 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           ),
         ),
       );
+
+  /// A trip's own screen (payments, bookings); back here, the card reloads.
+  Future<void> _openEvent(Event event) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => EventDetailScreen(event: event)),
+    );
+    if (mounted) await _reload();
+  }
+
+  Future<void> _openCompetition(Competition competition) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => CompetitionDetailScreen(competition: competition),
+      ),
+    );
+    if (mounted) await _reload();
+  }
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
@@ -388,6 +441,17 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                         showPoints: false,
                         detailInSheet: true,
                       ),
+                    if (data.trips.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      ChildTripsCard(trips: data.trips, onOpen: _openEvent),
+                    ],
+                    if (data.competitionMarks.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      ChildCompetitionsCard(
+                        marks: data.competitionMarks,
+                        onOpen: _openCompetition,
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     Builder(
                       builder: (context) => _lastFollowUp(
@@ -1048,7 +1112,15 @@ class _ProfileData {
     this.changes = const <ChildChange>[],
     this.badges,
     this.ranking,
+    this.trips = const <ChildTrip>[],
+    this.competitionMarks = const <(Competition, int)>[],
   });
+
+  /// This year's trips worth showing (booked, or still to come).
+  final List<ChildTrip> trips;
+
+  /// This year's competition marks, newest first (admin / general only).
+  final List<(Competition, int)> competitionMarks;
 
   /// The six badges this year; null when they could not be read.
   final List<ChildBadge>? badges;

@@ -7,8 +7,11 @@ import '../../core/utils/haptics.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/badges.dart';
+import '../../data/models/child.dart';
 import '../../data/repositories/badge_repository.dart';
+import '../../data/repositories/child_repository.dart';
 import '../../state/session_controller.dart';
+import '../children/child_avatar.dart';
 
 const _medals = [Color(0xFFF2C46D), Color(0xFFD7DCE5), Color(0xFFE0A77A)];
 
@@ -34,17 +37,29 @@ class ClassLeaderboardScreen extends StatefulWidget {
 
 class _ClassLeaderboardScreenState extends State<ClassLeaderboardScreen> {
   static const _repo = BadgeRepository();
+  static const _childrenRepo = ChildRepository();
   bool _month = true;
 
-  Future<List<LeaderboardRow>> _load() async {
+  /// The class's children, for their photos; read once, not per toggle.
+  late final Future<Map<String, Child>> _children = _childrenRepo
+      .byClass(widget.classId)
+      .then((list) => {for (final c in list) c.id: c})
+      .catchError((Object _) => const <String, Child>{});
+
+  Future<(List<LeaderboardRow>, Map<String, Child>)> _load() async {
     final yearId = context.read<SessionController>().currentYear?.id;
-    if (yearId == null) return const [];
+    if (yearId == null) {
+      return (const <LeaderboardRow>[], const <String, Child>{});
+    }
     final now = DateTime.now();
-    return _repo.leaderboard(
-      yearId: yearId,
-      classId: widget.classId,
-      from: _month ? DateTime(now.year, now.month) : null,
-    );
+    return (
+      _repo.leaderboard(
+        yearId: yearId,
+        classId: widget.classId,
+        from: _month ? DateTime(now.year, now.month) : null,
+      ),
+      _children,
+    ).wait;
   }
 
   @override
@@ -66,11 +81,12 @@ class _ClassLeaderboardScreenState extends State<ClassLeaderboardScreen> {
               ),
             ),
             Expanded(
-              child: AsyncSection<List<LeaderboardRow>>(
+              child: AsyncSection<(List<LeaderboardRow>, Map<String, Child>)>(
                 key: ValueKey(_month),
                 load: _load,
-                builder: (context, rows, reload) => LeaderboardView(
-                  rows: rows,
+                builder: (context, data, reload) => LeaderboardView(
+                  rows: data.$1,
+                  children: data.$2,
                   highlightChildId: widget.highlightChildId,
                 ),
               ),
@@ -143,9 +159,17 @@ class RangeToggle extends StatelessWidget {
 /// The ranking itself: podium, then the rest, the opened child marked.
 @visibleForTesting
 class LeaderboardView extends StatelessWidget {
-  const LeaderboardView({super.key, required this.rows, this.highlightChildId});
+  const LeaderboardView({
+    super.key,
+    required this.rows,
+    this.children = const {},
+    this.highlightChildId,
+  });
 
   final List<LeaderboardRow> rows;
+
+  /// The class's children by id: a child with a photo shows it.
+  final Map<String, Child> children;
   final String? highlightChildId;
 
   @override
@@ -168,7 +192,7 @@ class LeaderboardView extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        _Podium(rows: top),
+        _Podium(rows: top, children: children),
         const SizedBox(height: 16),
         for (var i = 0; i < rest.length; i++)
           Padding(
@@ -176,6 +200,7 @@ class LeaderboardView extends StatelessWidget {
             child: _RankLine(
               rank: LeaderboardRow.rankOf(rows, rest[i].childId) ?? i + 4,
               row: rest[i],
+              child: children[rest[i].childId],
               highlight: rest[i].childId == highlightChildId,
             ),
           ),
@@ -191,9 +216,10 @@ class LeaderboardView extends StatelessWidget {
 }
 
 class _Podium extends StatelessWidget {
-  const _Podium({required this.rows});
+  const _Podium({required this.rows, required this.children});
 
   final List<LeaderboardRow> rows;
+  final Map<String, Child> children;
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +240,7 @@ class _Podium extends StatelessWidget {
                 children: [
                   _Initial(
                     name: row.childName,
+                    child: children[row.childId],
                     size: place == 1 ? 62 : 50,
                     ring: _medals[place - 1],
                   ),
@@ -272,14 +299,32 @@ class _Podium extends StatelessWidget {
 }
 
 class _Initial extends StatelessWidget {
-  const _Initial({required this.name, required this.size, this.ring});
+  const _Initial({
+    required this.name,
+    required this.size,
+    this.ring,
+    this.child,
+  });
 
   final String name;
   final double size;
   final Color? ring;
 
+  /// The child, when known: their photo replaces the initial.
+  final Child? child;
+
   @override
   Widget build(BuildContext context) {
+    final c = child;
+    if (c != null && c.hasPhoto) {
+      return Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(ring == null ? 0 : 3),
+        decoration: BoxDecoration(shape: BoxShape.circle, color: ring),
+        child: ChildAvatar(child: c, size: size - (ring == null ? 0 : 6)),
+      );
+    }
     final t = name.trim();
     return Container(
       width: size,
@@ -306,11 +351,13 @@ class _RankLine extends StatelessWidget {
   const _RankLine({
     required this.rank,
     required this.row,
+    this.child,
     this.highlight = false,
   });
 
   final int rank;
   final LeaderboardRow row;
+  final Child? child;
   final bool highlight;
 
   @override
@@ -342,7 +389,7 @@ class _RankLine extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _Initial(name: row.childName, size: 38),
+          _Initial(name: row.childName, child: child, size: 38),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

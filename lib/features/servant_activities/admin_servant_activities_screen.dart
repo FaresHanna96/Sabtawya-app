@@ -10,6 +10,8 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
+import '../../core/widgets/celebration.dart';
+import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/servant_activity.dart';
@@ -25,6 +27,9 @@ import 'preps_inbox_screen.dart';
 import 'servant_activity_detail_screen.dart';
 import 'servant_marks.dart';
 import 'servant_day_widgets.dart';
+import 'servant_covers.dart';
+import 'servant_follow_up_card.dart';
+import 'servant_year.dart';
 import '../attendance/attendance_swipe.dart';
 
 /// Admin overview of all servants' activity stats.
@@ -209,14 +214,55 @@ class _SummaryTabState extends State<_SummaryTab>
   Future<_ScreenData> _load() async {
     final year = context.read<SessionController>().currentYear;
     final yearId = year?.id;
+    final today = DateTime.now();
     final results = await Future.wait([
       // This year's counts, to match the base (this year's Saturdays).
       _repo.activitySummaries(from: year?.startDate, to: year?.endDate),
       yearId != null ? _repo.sessionCountForYear(yearId) : Future.value(0),
     ]);
+    final summaries = results[0] as List<ServantActivitySummary>;
+    // The follow-up card and the trends: best effort, the list stands
+    // without them.
+    ServantYear? servantYear;
+    var people = const <String, Profile>{};
+    var classOf = const <String, String>{};
+    if (year != null && yearId != null) {
+      try {
+        final extra = await Future.wait([
+          _repo.sessionDatesForYear(yearId),
+          _repo.attendancesBetween(from: year.startDate, to: today),
+          _repo.recentPreps(limit: 1000),
+          const ServantRepository().servants(includeInactive: false),
+          const ClassRepository().allAssignments(),
+        ]);
+        servantYear = ServantYear(
+          heldSaturdays: extra[0] as List<DateTime>,
+          marks: extra[1] as List<ServantAttendance>,
+          preps: [
+            for (final p in extra[2] as List<LessonPrep>)
+              if (!p.sessionDate.isBefore(year.startDate)) p,
+          ],
+          today: today,
+          classServantIds: {
+            for (final s in summaries)
+              if (s.classesCount > 0) s.servantId,
+          },
+        );
+        people = {for (final p in extra[3] as List<Profile>) p.id: p};
+        classOf = {
+          for (final a in extra[4] as List<ClassServant>)
+            a.servantId: a.className,
+        };
+      } catch (_) {
+        servantYear = null;
+      }
+    }
     return _ScreenData(
-      summaries: results[0] as List<ServantActivitySummary>,
+      summaries: summaries,
       totalSessions: results[1] as int,
+      year: servantYear,
+      people: people,
+      classOf: classOf,
     );
   }
 
@@ -275,13 +321,38 @@ class _SummaryTabState extends State<_SummaryTab>
           itemCount: shown.length + 1,
           itemBuilder: (context, index) {
             if (index == 0) {
+              final y = data.year;
+              final follow = y == null
+                  ? const <ServantFollowUpEntry>[]
+                  : [
+                      for (final f in y.followUps(
+                          [for (final s in data.summaries) s.servantId]))
+                        ServantFollowUpEntry(
+                          followUp: f,
+                          name: data.nameOf(f.servantId),
+                          mobile: data.people[f.servantId]?.mobile,
+                          className: data.classOf[f.servantId],
+                        ),
+                    ];
               return Column(children: [
+                // One card: the numbers on top, «محتاج متابعة» under them.
                 FadeSlideIn(
                   child: _StatsHeader(
                     totalServants: data.summaries.length,
                     totalSessions: data.totalSessions,
                     totalPending: totalPending,
                     onPendingTap: _openPreps,
+                    below: follow.isEmpty
+                        ? null
+                        : ServantFollowUpCard(
+                            embedded: true,
+                            entries: follow,
+                            senderName:
+                                context.read<SessionController>().displayName,
+                            onOpen: (e) => _openDetail(data.summaries
+                                .firstWhere((s) =>
+                                    s.servantId == e.followUp.servantId)),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -317,6 +388,7 @@ class _SummaryTabState extends State<_SummaryTab>
               child: ServantRow(
                 summary: s,
                 held: data.totalSessions,
+                trend: data.year?.trend(s.servantId),
                 onTap: () => _openDetail(s),
               ),
             );
@@ -360,6 +432,18 @@ class _AttendanceTabState extends State<_AttendanceTab>
   /// The class each servant serves (servant id -> class name); a general
   /// servant has none.
   Map<String, String> _classOf = const {};
+
+  /// Servant id -> the id of the class they serve.
+  Map<String, String> _classIdOf = const {};
+
+  /// The classes picked in the filter; empty is every servant.
+  Set<String> _classFilter = const {};
+
+  /// The Saturday whose «everyone marked» was already celebrated.
+  DateTime? _celebrated;
+
+  /// «مين غطّى؟» records on the selected Saturday.
+  List<ServantSubstitute> _subs = const [];
 
   final _dateScrollController = ScrollController();
 
@@ -431,8 +515,38 @@ class _AttendanceTabState extends State<_AttendanceTab>
     return _sessionDates.indexWhere((d) => AppDateUtils.toIsoDate(d) == iso);
   }
 
-  List<Profile> get _shownServants =>
-      _servants.where((s) => _matches(s.fullName, _query)).toList();
+  List<Profile> get _shownServants {
+    final order = {
+      for (final (i, c) in context.read<SessionController>().myClasses.indexed)
+        c.classId: i,
+    };
+    return orderServantsByClass(
+      [
+        for (final s in _servants)
+          if (_matches(s.fullName, _query) &&
+              (_classFilter.isEmpty || _classFilter.contains(_classIdOf[s.id])))
+            s,
+      ],
+      classIdOf: _classIdOf,
+      classOrder: order,
+    );
+  }
+
+  /// Confetti once a Saturday has every servant shown marked.
+  void _maybeCelebrate() {
+    final date = _selectedDate;
+    if (date == null || _celebrated == date || !mounted) return;
+    final shown = _shownServants;
+    final p = ServantDayProgress.of(
+      servantIds: [for (final s in shown) s.id],
+      isMarked: (id, type) => _find(id, type) != null,
+      preps: _preps,
+    );
+    if (p.total > 0 && p.marked == p.total) {
+      _celebrated = date;
+      Celebration.show(context);
+    }
+  }
 
   /// All Saturdays in a sheet, newest first; tapping one selects it.
   Future<void> _pickDate() async {
@@ -492,30 +606,34 @@ class _AttendanceTabState extends State<_AttendanceTab>
       ]);
       final dates = results[0] as List<DateTime>;
       final servants = results[1] as List<Profile>;
-      final classOf = {
-        for (final a in results[2] as List<ClassServant>)
-          a.servantId: a.className,
-      };
+      final assignments = results[2] as List<ClassServant>;
+      final classOf = {for (final a in assignments) a.servantId: a.className};
+      final classIdOf = {for (final a in assignments) a.servantId: a.classId};
       // Default to the date closest to today (current week)
       final selected = dates.isNotEmpty ? _nearestDate(dates) : null;
       List<ServantAttendance> att = [];
       List<LessonPrep> preps = [];
+      List<ServantSubstitute> subs = const [];
       if (selected != null) {
         final results = await Future.wait([
           _repo.servantAttendancesForDate(selected),
           _repo.allPrepsForDate(selected),
+          _subsOn(selected),
         ]);
         att = results[0] as List<ServantAttendance>;
         preps = results[1] as List<LessonPrep>;
+        subs = results[2] as List<ServantSubstitute>;
       }
       if (!mounted) return;
       setState(() {
         _sessionDates = dates;
         _servants = servants;
         _classOf = classOf;
+        _classIdOf = classIdOf;
         _selectedDate = selected;
         _marks.reset(att);
         _preps = preps;
+        _subs = subs;
         _loading = false;
       });
       _scrollToSelectedDate();
@@ -533,12 +651,14 @@ class _AttendanceTabState extends State<_AttendanceTab>
       _selectedDate = date;
       _marks.reset(const []);
       _preps = [];
+      _subs = const [];
       _loading = true;
     });
     try {
       final results = await Future.wait([
         _repo.servantAttendancesForDate(date),
         _repo.allPrepsForDate(date),
+        _subsOn(date),
       ]);
       if (!mounted) return;
       // A later tap on another Saturday wins over this answer.
@@ -546,6 +666,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
       setState(() {
         _marks.reset(results[0] as List<ServantAttendance>);
         _preps = results[1] as List<LessonPrep>;
+        _subs = results[2] as List<ServantSubstitute>;
         _loading = false;
       });
     } catch (e) {
@@ -553,6 +674,139 @@ class _AttendanceTabState extends State<_AttendanceTab>
       setState(() => _loading = false);
       if (mounted) Ui.error(context, e);
     }
+  }
+
+  /// Best effort: the page works without the substitutes table.
+  Future<List<ServantSubstitute>> _subsOn(DateTime date) => _repo
+      .substitutesOn(date)
+      .catchError((Object _) => const <ServantSubstitute>[]);
+
+  String _nameOf(String id) {
+    for (final s in _servants) {
+      if (s.id == id) return s.fullName;
+    }
+    return '';
+  }
+
+  /// Marks and substitutes again after a substitute is saved or undone.
+  Future<void> _refreshDay(DateTime date) async {
+    final results = await Future.wait([
+      _repo.servantAttendancesForDate(date),
+      _subsOn(date),
+    ]);
+    if (!mounted || _selectedDate != date) return;
+    setState(() {
+      _marks.reset(results[0] as List<ServantAttendance>);
+      _subs = results[1] as List<ServantSubstitute>;
+    });
+  }
+
+  /// «مين غطّى؟»: pick who covered [absent]'s class; they get «خدمة».
+  Future<void> _pickSubstitute(Profile absent) async {
+    final date = _selectedDate;
+    final classId = _classIdOf[absent.id];
+    if (date == null || classId == null) return;
+    final candidates = orderServantsByClass(
+      [
+        for (final s in _servants)
+          if (s.id != absent.id) s
+      ],
+      classIdOf: _classIdOf,
+      classOrder: const {},
+    );
+    final picked = await showModalBottomSheet<Profile>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(
+                  AppStrings.pickSubstitute,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final s in candidates)
+                      ListTile(
+                        leading: const Icon(Icons.person_outline, size: 20),
+                        title: Text(s.fullName),
+                        subtitle: Text(
+                          _classOf[s.id] ?? AppStrings.generalServantShort,
+                        ),
+                        onTap: () => Navigator.of(context).pop(s),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final ok = await Ui.runGuarded(
+      context,
+      () => _repo.recordSubstitute(
+        date: date,
+        classId: classId,
+        absentServantId: absent.id,
+        substituteServantId: picked.id,
+      ),
+      successMessage: AppStrings.substituteSaved,
+    );
+    if (ok) await _refreshDay(date);
+  }
+
+  Future<void> _removeSubstitute(ServantSubstitute sub) async {
+    final date = _selectedDate;
+    if (date == null) return;
+    final ok = await Ui.runGuarded(
+      context,
+      () => _repo.removeSubstitute(sub.id),
+    );
+    if (ok) await _refreshDay(date);
+  }
+
+  /// Under a row: who covered them (with undo), whom they covered, or
+  /// «مين غطّى؟» for a class servant with no «خدمة».
+  Widget? _coverFooter(Profile servant) {
+    final coveredBy = [
+      for (final s in _subs)
+        if (s.absentServantId == servant.id) s,
+    ];
+    final covering = [
+      for (final s in _subs)
+        if (s.substituteServantId == servant.id) s,
+    ];
+    final canAsk = coveredBy.isEmpty &&
+        _classIdOf[servant.id] != null &&
+        _find(servant.id, 'sunday_school') == null;
+    if (coveredBy.isEmpty && covering.isEmpty && !canAsk) return null;
+    return ServantCoverFooter(
+      coveredBy: [
+        for (final s in coveredBy)
+          (
+            name: _nameOf(s.substituteServantId),
+            onRemove: () => _removeSubstitute(s)
+          ),
+      ],
+      coveredFor: [for (final s in covering) _nameOf(s.absentServantId)],
+      onAsk: canAsk ? () => _pickSubstitute(servant) : null,
+    );
   }
 
   LessonPrep? _findPrep(String servantId) {
@@ -612,6 +866,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
       }
       if (!mounted || _selectedDate != date) return;
       setState(() => _marks.succeed(toggle, saved));
+      if (toggle.adding) _maybeCelebrate();
     } catch (e) {
       if (!mounted) return;
       if (_selectedDate == date) setState(() => _marks.fail(toggle));
@@ -693,6 +948,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
           _marks.succeed(t, byServant[t.servantId]);
         }
       });
+      _maybeCelebrate();
     } catch (e) {
       if (!mounted) return;
       if (_selectedDate == date) {
@@ -799,10 +1055,22 @@ class _AttendanceTabState extends State<_AttendanceTab>
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
             child: ServantDayProgressLine(
               progress: ServantDayProgress.of(
-                servantIds: [for (final s in _servants) s.id],
+                servantIds: [for (final s in _shownServants) s.id],
                 isMarked: (id, type) => _find(id, type) != null,
                 preps: _preps,
               ),
+            ),
+          ),
+        if (context.read<SessionController>().myClasses.length > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: ClassFilterChips(
+              classes: [
+                for (final c in context.read<SessionController>().myClasses)
+                  ClassFilterOption(id: c.classId, name: c.className),
+              ],
+              selectedIds: _classFilter,
+              onChanged: (ids) => setState(() => _classFilter = ids),
             ),
           ),
         Padding(
@@ -817,73 +1085,97 @@ class _AttendanceTabState extends State<_AttendanceTab>
         // Servant list
         if (_loading) const LinearProgressIndicator(minHeight: 2),
         Expanded(
-          child: _servants.isEmpty
-              ? ListView(children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-                  const EmptyState(
-                    icon: Icons.people_outline,
-                    title: AppStrings.noServants,
-                    body: AppStrings.noLessonPrepsBody,
-                  ),
-                ])
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                  itemCount: _shownServants.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final servant = _shownServants[index];
-                    final ss = _find(servant.id, 'sunday_school');
-                    final sm = _find(servant.id, 'servant_meeting');
-                    final mass = _find(servant.id, 'mass');
-                    final conf = _find(servant.id, 'confession');
-                    final prep = _findPrep(servant.id);
-                    final lp = _find(servant.id, 'lesson_prep');
-                    final look = prepChipLook(prep, manualPresent: lp != null);
-                    ServantSlot slot(String type, String label, IconData icon,
-                            ServantAttendance? mark) =>
-                        ServantSlot(
-                          label: label,
-                          icon: mark != null ? Icons.check_rounded : icon,
-                          color: AppColors.success,
-                          on: mark != null,
-                          busy: _marks.isBusy(servant.id, type),
-                          onTap: () => _toggle(servant.id, type),
-                        );
-                    return AttendanceSwipe(
-                      id: '${_selectedDate?.toIso8601String()}-${servant.id}',
-                      enabled: _selectedDate != null,
-                      onAllPresent: () => _setAll(servant.id, true),
-                      onClear: () => _setAll(servant.id, false),
-                      onLongPress: () => _openDetail(servant),
-                      child: ServantDayRow(
-                        name: servant.fullName,
-                        className: _classOf[servant.id],
-                        onOpen: () => _openDetail(servant),
-                        slots: [
-                          ServantSlot(
-                            label: AppStrings.chipPrep,
-                            icon: look.icon,
-                            color: look.color,
-                            on: prep != null || lp != null,
-                            busy: _marks.isBusy(servant.id, 'lesson_prep'),
-                            semantics: '${AppStrings.chipPrep}: ${look.status}',
-                            onTap: prep != null
-                                ? () => _reviewPrep(prep)
-                                : () => _toggle(servant.id, 'lesson_prep'),
-                          ),
-                          slot('sunday_school', AppStrings.chipService,
-                              AppIcons.sundaySchool, ss),
-                          slot('servant_meeting', AppStrings.chipMeeting,
-                              AppIcons.servantMeeting, sm),
-                          slot('mass', AppStrings.massShort, AppIcons.mass,
-                              mass),
-                          slot('confession', AppStrings.confessionShort,
-                              AppIcons.confession, conf),
-                        ],
+          // The list slides in when the Saturday changes (still with
+          // "reduce motion").
+          child: AnimatedSwitcher(
+            duration: MediaQuery.of(context).disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 260),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween(
+                  begin: const Offset(0.06, 0),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(_selectedDate),
+              child: _servants.isEmpty
+                  ? ListView(children: [
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.1),
+                      const EmptyState(
+                        icon: Icons.people_outline,
+                        title: AppStrings.noServants,
+                        body: AppStrings.noLessonPrepsBody,
                       ),
-                    );
-                  },
-                ),
+                    ])
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                      itemCount: _shownServants.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final servant = _shownServants[index];
+                        final ss = _find(servant.id, 'sunday_school');
+                        final sm = _find(servant.id, 'servant_meeting');
+                        final mass = _find(servant.id, 'mass');
+                        final conf = _find(servant.id, 'confession');
+                        final prep = _findPrep(servant.id);
+                        final lp = _find(servant.id, 'lesson_prep');
+                        final look =
+                            prepChipLook(prep, manualPresent: lp != null);
+                        ServantSlot slot(String type, String label,
+                                IconData icon, ServantAttendance? mark) =>
+                            ServantSlot(
+                              label: label,
+                              icon: mark != null ? Icons.check_rounded : icon,
+                              color: AppColors.success,
+                              on: mark != null,
+                              busy: _marks.isBusy(servant.id, type),
+                              onTap: () => _toggle(servant.id, type),
+                            );
+                        return AttendanceSwipe(
+                          id: '${_selectedDate?.toIso8601String()}-${servant.id}',
+                          enabled: _selectedDate != null,
+                          onAllPresent: () => _setAll(servant.id, true),
+                          onClear: () => _setAll(servant.id, false),
+                          onLongPress: () => _openDetail(servant),
+                          child: ServantDayRow(
+                            name: servant.fullName,
+                            className: _classOf[servant.id],
+                            footer: _coverFooter(servant),
+                            onOpen: () => _openDetail(servant),
+                            slots: [
+                              ServantSlot(
+                                label: AppStrings.chipPrep,
+                                icon: look.icon,
+                                color: look.color,
+                                on: prep != null || lp != null,
+                                busy: _marks.isBusy(servant.id, 'lesson_prep'),
+                                semantics:
+                                    '${AppStrings.chipPrep}: ${look.status}',
+                                onTap: prep != null
+                                    ? () => _reviewPrep(prep)
+                                    : () => _toggle(servant.id, 'lesson_prep'),
+                              ),
+                              slot('sunday_school', AppStrings.chipService,
+                                  AppIcons.sundaySchool, ss),
+                              slot('servant_meeting', AppStrings.chipMeeting,
+                                  AppIcons.servantMeeting, sm),
+                              slot('mass', AppStrings.massShort, AppIcons.mass,
+                                  mass),
+                              slot('confession', AppStrings.confessionShort,
+                                  AppIcons.confession, conf),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
         ),
       ],
     );
@@ -922,9 +1214,27 @@ class _AttendanceTabState extends State<_AttendanceTab>
 // ================================================================ shared data
 
 class _ScreenData {
-  const _ScreenData({required this.summaries, required this.totalSessions});
+  const _ScreenData({
+    required this.summaries,
+    required this.totalSessions,
+    this.year,
+    this.people = const {},
+    this.classOf = const {},
+  });
   final List<ServantActivitySummary> summaries;
   final int totalSessions;
+
+  /// The year's marks and preps (follow-up, trends); null when not loaded.
+  final ServantYear? year;
+  final Map<String, Profile> people;
+  final Map<String, String> classOf;
+
+  String nameOf(String servantId) {
+    for (final s in summaries) {
+      if (s.servantId == servantId) return s.servantName;
+    }
+    return people[servantId]?.fullName ?? '';
+  }
 }
 
 // ================================================================ stats header
@@ -935,7 +1245,11 @@ class _StatsHeader extends StatelessWidget {
     required this.totalSessions,
     required this.totalPending,
     this.onPendingTap,
+    this.below,
   });
+
+  /// Shown under the numbers in the same card («محتاج متابعة»).
+  final Widget? below;
 
   final int totalServants;
   final int totalSessions;
@@ -944,11 +1258,13 @@ class _StatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final stats = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.navy,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: below == null
+            ? BorderRadius.circular(18)
+            : const BorderRadius.vertical(top: Radius.circular(18)),
       ),
       child: Row(
         children: [
@@ -970,6 +1286,16 @@ class _StatsHeader extends StatelessWidget {
             onTap: onPendingTap,
           ),
         ],
+      ),
+    );
+    if (below == null) return stats;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [stats, below!],
       ),
     );
   }
@@ -1075,6 +1401,25 @@ List<ServantActivitySummary> sortServants(
   return out;
 }
 
+/// «حضور الخدام» order: by the order of their class, general servants (no
+/// class) last; names within.
+@visibleForTesting
+List<Profile> orderServantsByClass(
+  List<Profile> servants, {
+  required Map<String, String> classIdOf,
+  required Map<String, int> classOrder,
+}) {
+  int rank(Profile p) {
+    final c = classIdOf[p.id];
+    return c == null ? 1 << 20 : (classOrder[c] ?? (1 << 19));
+  }
+
+  return [...servants]..sort((a, b) {
+      final r = rank(a).compareTo(rank(b));
+      return r != 0 ? r : ArabicSort.compare(a.fullName, b.fullName);
+    });
+}
+
 /// One servant on one compact row: the name, the preps ("تحضير 5/8" and
 /// what waits for review), and the four activities as percentages.
 @visibleForTesting
@@ -1084,6 +1429,7 @@ class ServantRow extends StatelessWidget {
     required this.summary,
     required this.held,
     required this.onTap,
+    this.trend,
   });
 
   final ServantActivitySummary summary;
@@ -1091,6 +1437,10 @@ class ServantRow extends StatelessWidget {
   /// Saturdays held so far this year.
   final int held;
   final VoidCallback onTap;
+
+  /// This month's attendance against last month's, in points; an arrow
+  /// shows from ±10.
+  final double? trend;
 
   @override
   Widget build(BuildContext context) {
@@ -1121,6 +1471,8 @@ class ServantRow extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (trend != null && trend!.abs() >= 10)
+                    TrendArrow(points: trend!),
                   _Pill(
                     text: expected == null
                         ? AppStrings.prepCount(summary.totalPreps)
@@ -1182,7 +1534,7 @@ class ServantRow extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                                 color: held == 0
                                     ? AppColors.muted
-                                    : _level(count / held),
+                                    : AppColors.readable(_level(count / held)),
                               ),
                             ),
                           ],
@@ -1203,6 +1555,46 @@ class ServantRow extends StatelessWidget {
       : ratio >= 0.5
           ? AppColors.warning
           : AppColors.danger;
+}
+
+/// ↑ / ↓ with the points, against last month.
+@visibleForTesting
+class TrendArrow extends StatelessWidget {
+  const TrendArrow({super.key, required this.points});
+
+  final double points;
+
+  @override
+  Widget build(BuildContext context) {
+    final up = points > 0;
+    final color = up ? AppColors.success : AppColors.danger;
+    final n = points.abs().round();
+    return Tooltip(
+      message: up ? AppStrings.trendUp(n) : AppStrings.trendDown(n),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(end: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              up ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+              size: 16,
+              color: color,
+            ),
+            const SizedBox(width: 2),
+            Text(
+              '$n',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: AppColors.readable(color),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Pill extends StatelessWidget {

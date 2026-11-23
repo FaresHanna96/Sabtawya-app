@@ -13,11 +13,17 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
+import '../../data/models/profile.dart';
 import '../../data/models/servant_activity.dart';
+import '../../data/repositories/class_repository.dart';
+import '../../data/repositories/servant_repository.dart';
 import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
+import 'servant_badges.dart';
+import 'servant_covers.dart';
+import 'servant_year.dart';
 
 /// Admin view of one servant's activities: lesson preps + two attendance types.
 class ServantActivityDetailScreen extends StatefulWidget {
@@ -41,9 +47,42 @@ class _ServantActivityDetailScreenState
 
   final _sectionKey = GlobalKey<AsyncSectionState<_DetailData>>();
 
+  /// The data last shown, for the «تقرير الشهر» action.
+  _DetailData? _shown;
+
+  /// Whether they serve a class (preps expected) and their mobile; best
+  /// effort, the page works without them.
+  Future<(bool, String?, Map<String, String>)> _servantInfo() async {
+    try {
+      final r = await Future.wait([
+        const ClassRepository().classesOfServant(widget.servantId),
+        const ServantRepository().servants(),
+      ]);
+      final classes = r[0] as List;
+      final me = (r[1] as List<Profile>)
+          .where((p) => p.id == widget.servantId)
+          .firstOrNull;
+      return (
+        classes.isNotEmpty,
+        me?.mobile,
+        {for (final p in r[1] as List<Profile>) p.id: p.fullName},
+      );
+    } catch (_) {
+      return (false, null, const <String, String>{});
+    }
+  }
+
   Future<_DetailData> _load() async {
     final year = context.read<SessionController>().currentYear;
     final yearId = year?.id;
+    final info = _servantInfo();
+    final subs = _repo
+        .substitutesForServant(
+          widget.servantId,
+          from: year?.startDate,
+          to: year?.endDate,
+        )
+        .catchError((Object _) => const <ServantSubstitute>[]);
 
     // This year only: the summary divides by this year's Saturdays.
     Future<List<ServantAttendance>> marks(String type) =>
@@ -74,6 +113,10 @@ class _ServantActivityDetailScreenState
       mass: results[3] as List<ServantAttendance>,
       confession: results[4] as List<ServantAttendance>,
       dates: _heldNewestFirst(results[5] as List<DateTime>),
+      isClassServant: (await info).$1,
+      mobile: (await info).$2,
+      names: (await info).$3,
+      subs: await subs,
     );
   }
 
@@ -167,6 +210,48 @@ class _ServantActivityDetailScreenState
     );
   }
 
+  ServantYear _year(_DetailData data) => ServantYear(
+        heldSaturdays: data.dates,
+        marks: [
+          ...data.sundaySchool,
+          ...data.servantMeeting,
+          ...data.mass,
+          ...data.confession,
+        ],
+        preps: data.preps,
+        today: DateTime.now(),
+        classServantIds: {if (data.isClassServant) widget.servantId},
+      );
+
+  void _openReport() {
+    final data = _shown;
+    if (data == null) return;
+    final year = _year(data);
+    final now = DateTime.now();
+    ServantMonthReport report(DateTime month) {
+      final preps = data.preps
+          .where((p) =>
+              p.sessionDate.year == month.year &&
+              p.sessionDate.month == month.month)
+          .toList();
+      return ServantMonthReport.of(
+        year,
+        widget.servantId,
+        month,
+        prepsSent: preps.length,
+        prepsAccepted: preps.where((p) => p.isAccepted).length,
+      );
+    }
+
+    showServantReportSheet(
+      context,
+      servantName: widget.servantName,
+      mobile: data.mobile,
+      thisMonth: report(DateTime(now.year, now.month)),
+      lastMonth: report(DateTime(now.year, now.month - 1)),
+    );
+  }
+
   Widget _summary(_DetailData data) {
     // The Saturdays already held (one per date).
     final held = data.dates.length;
@@ -189,17 +274,39 @@ class _ServantActivityDetailScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.servantName)),
+      appBar: AppBar(
+        title: Text(widget.servantName),
+        actions: [
+          IconButton(
+            tooltip: AppStrings.monthReportTitle,
+            icon: const Icon(Icons.summarize_outlined),
+            onPressed: _openReport,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: AsyncSection<_DetailData>(
           key: _sectionKey,
           load: _load,
           builder: (context, data, reload) {
+            _shown = data;
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
               children: [
                 _summary(data),
                 const SizedBox(height: 12),
+                ServantBadgesCard(
+                  badges: _year(data).badges(widget.servantId),
+                ),
+                const SizedBox(height: 12),
+                if (data.subs.isNotEmpty) ...[
+                  ServantCoversCard(
+                    servantId: widget.servantId,
+                    subs: data.subs,
+                    nameOf: (id) => data.names[id] ?? '',
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 // ------------------------------------------------- Lesson Prep
                 _SectionHeader(title: AppStrings.lessonPrep),
                 const SizedBox(height: 8),
@@ -238,8 +345,7 @@ class _ServantActivityDetailScreenState
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _AttendanceSessionCard(
                         date: date,
-                        sundaySchoolPresent:
-                            data.sundaySchoolFor(date) != null,
+                        sundaySchoolPresent: data.sundaySchoolFor(date) != null,
                         servantMeetingPresent:
                             data.servantMeetingFor(date) != null,
                         massPresent: data.massFor(date) != null,
@@ -743,13 +849,24 @@ class _DetailData {
     required this.mass,
     required this.confession,
     required this.dates,
+    this.isClassServant = false,
+    this.mobile,
+    this.names = const {},
+    this.subs = const [],
   });
+
+  final Map<String, String> names;
+  final List<ServantSubstitute> subs;
+
+  final bool isClassServant;
+  final String? mobile;
 
   final List<LessonPrep> preps;
   final List<ServantAttendance> sundaySchool;
   final List<ServantAttendance> servantMeeting;
   final List<ServantAttendance> mass;
   final List<ServantAttendance> confession;
+
   /// The Saturdays held so far, the latest first (one per date).
   final List<DateTime> dates;
 

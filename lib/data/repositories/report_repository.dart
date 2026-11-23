@@ -331,26 +331,6 @@ class ReportRepository {
     }
   }
 
-  /// Children ranked by points earned so far, highest first: المميزون.
-  Future<List<ChildCommitment>> topChildren({
-    required String yearId,
-    String? classId,
-    int limit = 20,
-  }) async {
-    try {
-      var query =
-          Db.client.from(Db.vChildCommitment).select().eq('year_id', yearId);
-      if (classId != null) query = query.eq('class_id', classId);
-      final data = await query
-          .order('points', ascending: false)
-          .order('current_streak', ascending: false)
-          .limit(limit);
-      return rows(data).map(ChildCommitment.fromMap).toList();
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
   /// Children with a run of absences or a run of attendance worth noticing,
   /// for the current year. Row level security limits it to the caller's
   /// classes, so a servant only ever sees their own children.
@@ -387,32 +367,6 @@ class ReportRepository {
       final list = rows(data).map(ChildTrend.fromMap).toList()
         ..sort((a, b) => b.drop.compareTo(a.drop));
       return list;
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  /// Children who keep showing up: الملتزمون.
-  ///
-  /// Ordered by the unbroken run of Saturdays first and the overall rate
-  /// second, so steady attendance outranks a child who scored highly once.
-  Future<List<ChildCommitment>> committedChildren({
-    required String yearId,
-    String? classId,
-    double minRate = 80,
-    int limit = 20,
-  }) async {
-    try {
-      var query =
-          Db.client.from(Db.vChildCommitment).select().eq('year_id', yearId);
-      if (classId != null) query = query.eq('class_id', classId);
-      final data = await query
-          .gte('attendance_percentage', minRate)
-          .order('current_streak', ascending: false)
-          .order('attendance_percentage', ascending: false)
-          .order('points', ascending: false)
-          .limit(limit);
-      return rows(data).map(ChildCommitment.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }

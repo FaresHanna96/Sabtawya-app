@@ -8,21 +8,27 @@ import '../../core/widgets/async_section.dart';
 import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/class_group_header.dart';
 import '../../core/widgets/skeleton.dart';
+import '../../data/models/badges.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
+import '../badges/badge_look.dart';
 import 'child_profile_screen.dart';
 
-/// ملتزمين: children who came 3, 4 or 5+ Saturdays in a row, grouped by
-/// class, longest run first. The counterpart of متابعة الغياب, under المزيد.
+/// ملتزمين: the streak badges and the children on a run, in one place.
+/// Three tiers: على الطريق (3 in a row, one short of the badge), ملتزم (4–15,
+/// the «ملتزم» badge) and ملتزم ذهبي (16+). Grouped by class, longest run
+/// first. The counterpart of متابعة الغياب, under المزيد.
 class CommittedChildrenScreen extends StatefulWidget {
   const CommittedChildrenScreen({super.key});
 
-  /// The run-length choices; the last one means "or more".
-  static const thresholds = [3, 4, 5];
+  /// Where each tier starts: 3 (one short of «ملتزم»), 4 (the «ملتزم»
+  /// badge) and 16 (the «ملتزم ذهبي» badge). A tier runs up to the next.
+  static const thresholds = [3, 4, 16];
 
-  /// Children whose run is exactly [min] (or [min] and more for the last
-  /// threshold), in [classIds] (empty = all), longest run first, then by name.
+  /// Children whose run is in the tier starting at [min] (from [min] up to
+  /// the next tier; the last one has no end), in [classIds] (empty = all),
+  /// longest run first, then by name.
   static List<ChildStreak> filter(
     List<ChildStreak> streaks, {
     required int min,
@@ -30,15 +36,29 @@ class CommittedChildrenScreen extends StatefulWidget {
   }) =>
       streaks
           .where((s) =>
-              (min >= thresholds.last
-                  ? s.presentStreak >= min
-                  : s.presentStreak == min) &&
+              s.presentStreak >= min &&
+              s.presentStreak < _tierEnd(min) &&
               (classIds.isEmpty || classIds.contains(s.classId)))
           .toList()
         ..sort((a, b) {
           final byRun = b.presentStreak.compareTo(a.presentStreak);
           return byRun != 0 ? byRun : a.childName.compareTo(b.childName);
         });
+
+  /// What the run is still short of: the «ملتزم» badge at 3, «ملتزم ذهبي»
+  /// from 4 to 15; null once it is gold.
+  static String? nextGoal(int run) {
+    if (run < 4) return AppStrings.oneLeftForCommitted;
+    if (run < 16) return AppStrings.leftForGold(16 - run);
+    return null;
+  }
+
+  static int _tierEnd(int min) {
+    for (final t in thresholds) {
+      if (t > min) return t;
+    }
+    return 1 << 30;
+  }
 
   @override
   State<CommittedChildrenScreen> createState() =>
@@ -76,7 +96,6 @@ class _CommittedChildrenScreenState extends State<CommittedChildrenScreen> {
                 min: _min, classIds: _classIds);
             final several = _classIds.length > 1 ||
                 (_classIds.isEmpty && classes.length > 1);
-            final last = CommittedChildrenScreen.thresholds.last;
 
             return Column(
               children: [
@@ -89,7 +108,7 @@ class _CommittedChildrenScreenState extends State<CommittedChildrenScreen> {
                           const SizedBox(width: 6),
                         Expanded(
                           child: _ThresholdChip(
-                            label: n == last ? '$n+' : '$n',
+                            tier: n,
                             count: CommittedChildrenScreen.filter(streaks,
                                     min: n, classIds: _classIds)
                                 .length,
@@ -169,13 +188,14 @@ class _CommittedChildrenScreenState extends State<CommittedChildrenScreen> {
 
 class _ThresholdChip extends StatelessWidget {
   const _ThresholdChip({
-    required this.label,
+    required this.tier,
     required this.count,
     required this.selected,
     required this.onTap,
   });
 
-  final String label;
+  /// Where the tier starts: 3, 4 or 16.
+  final int tier;
   final int count;
   final bool selected;
   final VoidCallback onTap;
@@ -193,6 +213,22 @@ class _ThresholdChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             children: [
+              // Same height on all three: the badge, or a flame for «على الطريق».
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: tier >= 4
+                    ? BadgeMedal(
+                        badge:
+                            tier >= 16 ? KidBadge.streak16 : KidBadge.streak4,
+                        earned: true,
+                        size: 22,
+                      )
+                    : Icon(
+                        Icons.local_fire_department_outlined,
+                        size: 22,
+                        color: selected ? Colors.white : AppColors.muted,
+                      ),
+              ),
               Text(
                 '$count',
                 style: TextStyle(
@@ -202,10 +238,27 @@ class _ThresholdChip extends StatelessWidget {
                 ),
               ),
               Text(
-                AppStrings.presentInARowShort(label),
+                switch (tier) {
+                  >= 16 => AppStrings.badgeStreak16,
+                  >= 4 => AppStrings.badgeStreak4,
+                  _ => AppStrings.committedTierNear,
+                },
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? Colors.white : AppColors.navy,
+                ),
+              ),
+              Text(
+                switch (tier) {
+                  >= 16 => AppStrings.committedTierSub16,
+                  >= 4 => AppStrings.committedTierSub4,
+                  _ => AppStrings.committedTierNearSub,
+                },
+                style: TextStyle(
+                  fontSize: 11.5,
                   color: selected ? Colors.white : AppColors.muted,
                 ),
               ),
@@ -271,6 +324,10 @@ class _CommittedTile extends StatelessWidget {
                       [
                         if (showClass) streak.className,
                         AppStrings.presentSaturdays(streak.presentStreak),
+                        if (CommittedChildrenScreen.nextGoal(
+                                streak.presentStreak)
+                            case final goal?)
+                          goal,
                       ].join(' • '),
                       style:
                           const TextStyle(fontSize: 12, color: AppColors.muted),
@@ -278,8 +335,18 @@ class _CommittedTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.local_fire_department_rounded,
-                  color: color, size: 22),
+              // The badge the run holds now; none yet at 3.
+              if (streak.presentStreak >= 4)
+                BadgeMedal(
+                  badge: streak.presentStreak >= 16
+                      ? KidBadge.streak16
+                      : KidBadge.streak4,
+                  earned: true,
+                  size: 32,
+                )
+              else
+                const Icon(Icons.local_fire_department_outlined,
+                    color: AppColors.muted, size: 22),
             ],
           ),
         ),

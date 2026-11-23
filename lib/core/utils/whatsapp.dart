@@ -130,6 +130,20 @@ class WhatsApp {
         'ربنا يبارك حياتك وخدمتك.';
   }
 
+  /// A gentle word to a servant whose last preps did not come: no blame,
+  /// an offer to help.
+  static String servantPrepNudgeMessage({
+    required String name,
+    required String senderName,
+  }) {
+    final who = senderName.trim().isEmpty ? 'من الخدمة' : senderName.trim();
+    final first = name.trim().split(RegExp(r'\s+')).first;
+    return 'سلام ونعمة يا $first، معاك $who من خدمة السبت. '
+        'لاحظنا إن التحضير مش بيوصلنا الأسابيع اللي فاتت، '
+        'فحبينا نطمّن عليك. لو محتاج مساعدة في الدرس أو وسائل إيضاح قولنا '
+        'ونبعتلك اللي يساعدك. ربنا يبارك تعبك.';
+  }
+
   /// The ready message for a child who has been absent [absent] Saturdays.
   static String absenceMessage({
     required String childName,

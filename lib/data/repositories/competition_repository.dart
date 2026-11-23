@@ -182,4 +182,26 @@ class CompetitionRepository {
       throw AppFailure.from(e);
     }
   }
+
+  /// One child's mark in each competition, with the competition itself,
+  /// newest week first. Only the admin and the general servant can read
+  /// marks (RLS); anyone else gets an empty list.
+  Future<List<(Competition, int)>> childMarks(String childId) async {
+    try {
+      final data = await Db.client
+          .from(Db.tCompetitionMarks)
+          .select('mark, competitions(*)')
+          .eq('child_id', childId);
+      final result = <(Competition, int)>[];
+      for (final r in rows(data)) {
+        final c = r['competitions'];
+        if (c is! Map<String, dynamic>) continue;
+        result.add((Competition.fromMap(c), (r['mark'] as num?)?.toInt() ?? 0));
+      }
+      result.sort((a, b) => b.$1.weekDate.compareTo(a.$1.weekDate));
+      return result;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
 }

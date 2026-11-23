@@ -364,6 +364,70 @@ class ServantActivityRepository {
     }
   }
 
+  /// The substitutes recorded on [date] (empty where the table is missing).
+  Future<List<ServantSubstitute>> substitutesOn(DateTime date) async {
+    try {
+      final data = await Db.client
+          .from(Db.tServantSubstitutes)
+          .select()
+          .eq('date', isoDate(date));
+      return rows(data).map(ServantSubstitute.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// [servantId]'s substitute records either way (covered or was covered)
+  /// between [from] and [to], newest first.
+  Future<List<ServantSubstitute>> substitutesForServant(
+    String servantId, {
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    try {
+      var query = Db.client
+          .from(Db.tServantSubstitutes)
+          .select()
+          .or('absent_servant_id.eq.$servantId,'
+              'substitute_servant_id.eq.$servantId');
+      if (from != null) query = query.gte('date', isoDate(from));
+      if (to != null) query = query.lte('date', isoDate(to));
+      final data = await query.order('date', ascending: false);
+      return rows(data).map(ServantSubstitute.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Records that [substituteServantId] covered [absentServantId]'s class
+  /// on [date], and credits them with «خدمة», in one call.
+  Future<void> recordSubstitute({
+    required DateTime date,
+    required String classId,
+    required String absentServantId,
+    required String substituteServantId,
+  }) async {
+    try {
+      await Db.client.rpc('record_substitute', params: {
+        'p_date': isoDate(date),
+        'p_class_id': classId,
+        'p_absent_servant_id': absentServantId,
+        'p_substitute_servant_id': substituteServantId,
+      });
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Undoes a substitute record and the «خدمة» mark it gave.
+  Future<void> removeSubstitute(String id) async {
+    try {
+      await Db.client.rpc('remove_substitute', params: {'p_id': id});
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// Marks every one of [servantIds] present in [activityType] on [date] in
   /// one request, and returns the new rows («الكل حضروا»).
   Future<List<ServantAttendance>> recordAttendanceMany({
@@ -474,6 +538,28 @@ class ServantActivityRepository {
         for (final p in preps)
           if (classOf[asText(p['session_id'])] case final classId?) classId,
       };
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// Every servant mark between [from] and [to] (inclusive): the admin gets
+  /// all servants, a servant their own (row level security), or only
+  /// [servantId]'s.
+  Future<List<ServantAttendance>> attendancesBetween({
+    required DateTime from,
+    required DateTime to,
+    String? servantId,
+  }) async {
+    try {
+      var query = Db.client
+          .from(Db.tServantAttendances)
+          .select()
+          .gte('date', AppDateUtils.toIsoDate(from))
+          .lte('date', AppDateUtils.toIsoDate(to));
+      if (servantId != null) query = query.eq('servant_id', servantId);
+      final data = await query;
+      return rows(data).map(ServantAttendance.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }

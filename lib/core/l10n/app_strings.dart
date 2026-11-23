@@ -288,7 +288,15 @@ class AppStrings {
   static const assignmentsTitle = 'تعيين الخدام';
   static const assignServant = 'تعيين خادم';
   static const committedStreak = 'ملتزمين';
-  static const committedStreakHint = 'مخدومين بيحضروا كل سبت. شجّعهم!';
+  static const committedStreakHint =
+      '4 سبوت ورا بعض = وسام «ملتزم»، و16 = «ملتزم ذهبي». شجّعهم!';
+  static const committedTierNear = 'على الطريق';
+  static const committedTierNearSub = '3 سبوت';
+  static const committedTierSub4 = '4+ سبوت';
+  static const committedTierSub16 = '16+ سبت';
+  static const oneLeftForCommitted = 'باقي سبت على وسام «ملتزم»';
+  static String leftForGold(int n) =>
+      n == 1 ? 'باقي سبت على «ملتزم ذهبي»' : 'باقي $n على «ملتزم ذهبي»';
   static const noCommittedYet = 'لا يوجد مخدومين ملتزمين بعد';
   static const deleteVisit = 'حذف هذا الافتقاد؟';
   static const visitDeleted = 'تم حذف الافتقاد';
@@ -473,7 +481,6 @@ class AppStrings {
   static String followUpNote(int n) => 'افتقاد بعد غياب $n سبوت متتالية';
   static String absentInARowShort(String n) => 'غياب $n سبوت';
   static String absentSaturdays(int n) => 'غائب $n سبوت متتالية';
-  static String presentInARowShort(String n) => 'حضور $n سبوت';
   static String presentSaturdays(int n) => 'حاضر $n سبوت متتالية';
   static const lastPresent = 'آخر حضور';
   static const followedUpOn = 'تم الافتقاد';
@@ -586,15 +593,6 @@ class AppStrings {
   static const attendanceHistory = 'سجل الحضور';
   static const lastActivityTitle = 'آخر مرة لكل نشاط';
   static const neverAttended = 'لم يحضر بعد';
-  static const outstandingTitle = 'المميزون والملتزمون';
-  static const outstandingTab = 'المميزون';
-  static const committedTab = 'الملتزمون';
-  static const outstandingEmpty = 'لا توجد بيانات حضور بعد';
-  static const outstandingEmptyBody =
-      'سجّل حضور سبت واحد على الأقل حتى تظهر النتائج.';
-  static const committedEmpty = 'لا يوجد ملتزمون بعد';
-  static const committedEmptyBody =
-      'الملتزم هو من حضر كل السبوت المنقضية أو أغلبها.';
   static const attendanceRate = 'نسبة الحضور';
   static const birthdaysTitle = 'أعياد الميلاد';
   static const birthdaysEmpty = 'لا توجد أعياد ميلاد هذا الشهر';
@@ -611,9 +609,7 @@ class AppStrings {
   static const previousMonth = 'الشهر السابق';
   static const nextMonth = 'الشهر التالي';
   static const todayBirthdays = 'أعياد الميلاد اليوم';
-  static const attendanceStreak = 'حضور متصل';
   static const sessionsSoFar = 'السبوت المنقضية';
-  static const streakWeeks = 'سبت متصل';
   static const fullAttendance = 'حضور كامل';
   static const sessionLocked = 'جلسة مغلقة';
   static const sessionLockedBody =
@@ -667,6 +663,46 @@ class AppStrings {
   static String prepsWaitingReview(int n) =>
       n == 1 ? 'تحضير مستني مراجعة' : '$n تحضيرات مستنية مراجعة';
   static const generalServantShort = 'خادم عام';
+  static String servantAbsentRun(int n) =>
+      n == 2 ? 'غاب آخر سبتين' : 'غاب آخر $n سبوت';
+  static String servantMissedPreps(int n) =>
+      'ما بعتش التحضير $n من آخر 3 سبوت';
+  static String trendUp(int points) => 'الشهر ده أحسن بـ $points%';
+  static String trendDown(int points) => 'الشهر ده أقل بـ $points%';
+
+  // Servant badges and the monthly report.
+  static const servantBadgeFaithful = 'خادم أمين';
+  static const servantBadgeGreatPrep = 'تحضير متميّز';
+  static const servantBadgeMeeting = 'اجتماع ثابت';
+  static const servantBadgeConfession = 'قلب نقي';
+  static const servantBadgeFaithfulRule =
+      'خدمة وتحضير متبعت 4 سبوت ورا بعض';
+  static const servantBadgeGreatPrepRule = '5 تحضيرات اتقبلت';
+  static const servantBadgeMeetingRule =
+      'اجتماع الخدام كل سبت في شهر كامل';
+  static const servantBadgeConfessionRule = 'اعتراف كل شهر، 3 شهور ورا بعض';
+  static const badgeEarnedShort = 'اتاخد ✓';
+  static const monthReportTitle = 'تقرير الشهر';
+  static String reportHeader(String month, String name) =>
+      'تقرير $month لـ $name:';
+  static String reportPreps(int sent, int accepted) =>
+      'تحضير $sent (اتقبل $accepted)';
+  static const reportThanks = 'ربنا يبارك تعب محبتك 🙏';
+  static const sendToServant = 'ابعته للخادم على واتساب';
+  static const shareReport = 'مشاركة';
+
+  // Substitutes («مين غطّى؟»).
+  static const whoCovered = 'مين غطّى؟';
+  static const pickSubstitute = 'مين غطّى الفصل مكانه؟';
+  static const substituteSaved = 'اتسجّل ✓ وخد «خدمة»';
+  static const removeSubstitute = 'شيل التغطية';
+  static String coveredBy(String name) => 'غطّى مكانه: $name';
+  static String coveredFor(String name) => 'غطّى بدل $name';
+  static const coversTitle = 'التغطيات';
+  static String coveredForOn(String name, String date) =>
+      'غطّى بدل $name • $date';
+  static String wasCoveredByOn(String name, String date) =>
+      '$name غطّى مكانه • $date';
   static String profileBirthdayIn(int days) =>
       days == 1 ? 'عيد ميلاده بكرة' : 'عيد ميلاده بعد $days أيام';
 
@@ -696,8 +732,9 @@ class AppStrings {
   static const levelSprout = 'نبتة';
   static const levelTree = 'شجرة';
   static const levelFruit = 'ثمرة';
-  static const badgeStreak4 = 'مواظب';
-  static const badgeStreak4Rule = 'حضر 4 سبوت ورا بعض من غير غياب.';
+  static const badgeStreak4 = 'ملتزم';
+  static const badgeStreak4Rule =
+      '4 سبوت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
   static const badgeMassMonth = 'قداسي كامل';
   static const badgeMassMonthRule =
       'حضر القداس كل سبت في شهر كامل (3 سبوت على الأقل).';
@@ -708,8 +745,9 @@ class AppStrings {
   static const badgeConfession3Rule = 'اعترف كل شهر، 3 شهور ورا بعض.';
   static const badgeStarMonth = 'نجم الشهر';
   static const badgeStarMonthRule = 'الأول في الفصل في نقاط شهر خلص.';
-  static const badgeStreak16 = 'مواظب ذهبي';
-  static const badgeStreak16Rule = '16 سبت ورا بعض من غير غياب.';
+  static const badgeStreak16 = 'ملتزم ذهبي';
+  static const badgeStreak16Rule =
+      '16 سبت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
   static const classRankingTitle = 'ترتيب الفصل';
   static String classRankingOf(String className) => 'ترتيب فصل $className';
   static const seeAll = 'عرض الكل';
@@ -1133,6 +1171,14 @@ class AppStrings {
   static const paymentMethodTayo = 'كيتي';
   static const confirmDeletePayment = 'هل تريد حذف هذه الدفعة؟';
   static const paymentHistory = 'سجل الدفعات';
+  // On ملف المخدوم.
+  static String tripsOwed(String amount) => 'لسه باقي $amount';
+  static String tripPaidOf(String paid, String cost) => 'دفع $paid من $cost';
+  static const tripNotBooked = 'لسه محجزش';
+  static String moreTrips(int n) => n == 1 ? 'ونشاط كمان' : 'و$n نشاطات كمان';
+  static String marksOf(int mark, int max) => '$mark من $max';
+  static String inCompetitions(int n) =>
+      n == 1 ? 'في مسابقة واحدة' : 'في $n مسابقات';
   static const collected = 'محصَّل';
   static const expected = 'متوقع';
   static const partialPay = 'بدأ الدفع';

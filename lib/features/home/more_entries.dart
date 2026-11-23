@@ -138,7 +138,7 @@ class MoreCatalog {
       color: AppColors.success,
       group: MoreGroup.reports,
       open: () => const CommittedChildrenScreen(),
-      keywords: const ['مواظبة', 'حضور متتالي'],
+      keywords: const ['مواظبة', 'حضور متتالي', 'وسام', 'أوسمة', 'ملتزم'],
     ),
     MoreEntry(
       id: 'attendanceHistory',

@@ -37,7 +37,6 @@ class Db {
   static const vClassYearScores = 'v_class_year_scores';
   static const vAdminStats = 'v_admin_stats';
   static const vChildLastActivity = 'v_child_last_activity';
-  static const vChildCommitment = 'v_child_commitment';
   static const vChildAttendanceStreak = 'v_child_attendance_streak';
   static const vChildAttendanceTrend = 'v_child_attendance_trend';
   static const vPendingServants = 'v_pending_servants';
@@ -48,6 +47,7 @@ class Db {
   static const tServantLessonPreps = 'servant_lesson_preps';
   static const tServantLessonPrepPhotos = 'servant_lesson_prep_photos';
   static const tServantAttendances = 'servant_attendances';
+  static const tServantSubstitutes = 'servant_substitutes';
 
   // Tables – competitions (مسابقات)
   static const tCompetitions = 'competitions';

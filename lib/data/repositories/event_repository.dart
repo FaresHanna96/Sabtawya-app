@@ -211,4 +211,18 @@ class EventRepository {
       throw AppFailure.from(e);
     }
   }
+
+  /// One child's line in every event (booked or not), for ملف المخدوم.
+  /// RLS limits a servant to their own classes' children.
+  Future<List<ChildEventBalance>> childBalances(String childId) async {
+    try {
+      final data = await Db.client
+          .from(Db.vChildEventBalances)
+          .select()
+          .eq('child_id', childId);
+      return rows(data).map(ChildEventBalance.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
 }

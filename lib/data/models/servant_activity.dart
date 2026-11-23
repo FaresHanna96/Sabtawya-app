@@ -199,10 +199,40 @@ class ServantActivitySummary {
   /// "lowest attendance first" order. Null with nothing held yet.
   double? averageRate(int held) => held <= 0
       ? null
-      : (sundaySchoolCount + servantMeetingCount + massCount + confessionCount) /
+      : (sundaySchoolCount +
+              servantMeetingCount +
+              massCount +
+              confessionCount) /
           (4 * held);
 
   /// Preps sent out of [held] Saturdays: a class servant prepares every
   /// Saturday; a خادم عام (no class) has no expected number.
   int? expectedPreps(int held) => classesCount > 0 ? held : null;
+}
+
+/// «مين غطّى؟»: [substituteServantId] covered [absentServantId]'s class on
+/// [date].
+class ServantSubstitute {
+  const ServantSubstitute({
+    required this.id,
+    required this.date,
+    required this.classId,
+    required this.absentServantId,
+    required this.substituteServantId,
+  });
+
+  final String id;
+  final DateTime date;
+  final String classId;
+  final String absentServantId;
+  final String substituteServantId;
+
+  factory ServantSubstitute.fromMap(Map<String, dynamic> m) =>
+      ServantSubstitute(
+        id: m['id'] as String,
+        date: DateTime.parse(m['date'] as String),
+        classId: m['class_id'] as String,
+        absentServantId: m['absent_servant_id'] as String,
+        substituteServantId: m['substitute_servant_id'] as String,
+      );
 }

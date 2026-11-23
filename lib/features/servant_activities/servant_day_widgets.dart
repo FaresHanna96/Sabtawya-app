@@ -204,9 +204,13 @@ class ServantDayRow extends StatelessWidget {
     required this.className,
     required this.slots,
     required this.onOpen,
+    this.footer,
   });
 
   final String name;
+
+  /// Under the slots: who covered them, or «مين غطّى؟».
+  final Widget? footer;
 
   /// The class they serve; null for a general servant.
   final String? className;
@@ -266,6 +270,7 @@ class ServantDayRow extends StatelessWidget {
             Row(
               children: [for (final s in slots) Expanded(child: s)],
             ),
+            if (footer != null) footer!,
           ],
         ),
       ),

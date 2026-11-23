@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sabtawya/core/l10n/app_strings.dart';
 import 'package:sabtawya/data/models/reports.dart';
 import 'package:sabtawya/features/children/absence_followup_screen.dart';
 import 'package:sabtawya/features/children/committed_children_screen.dart';
@@ -20,16 +21,25 @@ void main() {
     _s('د', 'c2', 2),
   ];
 
-  test('3 and 4 keep only that exact run', () {
-    expect(CommittedChildrenScreen.filter(all, min: 3).map((r) => r.childName),
-        ['أ']);
-    expect(CommittedChildrenScreen.filter(all, min: 4).map((r) => r.childName),
-        ['ج']);
+  test('tiers: 3 alone, 4 to 15 (ملتزم), 16 and more (ذهبي)', () {
+    final runs = [
+      ...all,
+      _s('هـ', 'c1', 15),
+      _s('و', 'c2', 16),
+      _s('ز', 'c1', 20),
+    ];
+    Iterable<String> names(int min) =>
+        CommittedChildrenScreen.filter(runs, min: min).map((r) => r.childName);
+    expect(names(3), ['أ']);
+    expect(names(4), ['هـ', 'ب', 'ج']);
+    expect(names(16), ['ز', 'و']);
   });
 
-  test('5+ keeps only runs of five or more', () {
-    final rows = CommittedChildrenScreen.filter(all, min: 5);
-    expect(rows.map((r) => r.childName), ['ب']);
+  test('what each run is still short of', () {
+    expect(CommittedChildrenScreen.nextGoal(3), AppStrings.oneLeftForCommitted);
+    expect(CommittedChildrenScreen.nextGoal(4), AppStrings.leftForGold(12));
+    expect(CommittedChildrenScreen.nextGoal(15), AppStrings.leftForGold(1));
+    expect(CommittedChildrenScreen.nextGoal(16), isNull);
   });
 
   test('class filter limits to the chosen classes', () {

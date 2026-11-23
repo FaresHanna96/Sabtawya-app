@@ -245,6 +245,26 @@ void main() {
       expect(find.text(AppStrings.rankingPointsNote), findsOneWidget);
     });
 
+    testWidgets('a known child with no photo keeps the initial',
+        (tester) async {
+      final rows = [_row('a', 80), _row('b', 70)];
+      await tester.pumpWidget(_app(LeaderboardView(
+        rows: rows,
+        children: {
+          'a': Child(
+            id: 'a',
+            classId: 'c',
+            fullName: 'مخدوم a',
+            gender: Gender.girl,
+            isActive: true,
+          ),
+        },
+      )));
+      await tester.pumpAndSettle();
+      // The initial «م» for both: one known without a photo, one unknown.
+      expect(find.text('م'), findsNWidgets(2));
+    });
+
     testWidgets('nobody with points yet: the empty state', (tester) async {
       await tester.pumpWidget(_app(LeaderboardView(rows: [_row('a', 0)])));
       await tester.pumpAndSettle();

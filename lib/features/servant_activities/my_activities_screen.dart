@@ -8,13 +8,18 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/profile.dart';
 import '../../data/models/servant_activity.dart';
 import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'lesson_prep_screen.dart';
 import 'prep_review_sheet.dart';
+import 'servant_badges.dart';
+import 'servant_covers.dart';
+import '../../data/repositories/servant_repository.dart';
 import 'servant_summary_card.dart';
+import 'servant_year.dart';
 
 class MyActivitiesScreen extends StatefulWidget {
   const MyActivitiesScreen({super.key, this.showAppBar = false});
@@ -48,7 +53,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
       );
     }
 
-    final (sessions, preps, marks) = await (
+    final (sessions, preps, marks, yearDates, subs, people) = await (
       _repo.sessionsForClasses(classIds, yearId: year.id),
       // Status and Saturday only; a prep's page loads its files.
       _repo.myPrepsSummary(),
@@ -59,9 +64,27 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
         from: year.startDate,
         to: year.endDate,
       ),
+      // Every Saturday of the year, for the badges (a general servant has
+      // no class sessions of their own); best effort.
+      _repo
+          .sessionDatesForYear(year.id)
+          .catchError((Object _) => const <DateTime>[]),
+      // «التغطيات», with names from the servants' directory; best effort.
+      _repo
+          .substitutesForServant(
+            Db.userId!,
+            from: year.startDate,
+            to: year.endDate,
+          )
+          .catchError((Object _) => const <ServantSubstitute>[]),
+      const ServantRepository()
+          .directory()
+          .catchError((Object _) => const <ServantContact>[]),
     ).wait;
     final counts = ServantActivityRepository.countByType(
-      [for (final m in marks) {'activity_type': m.activityType}],
+      [
+        for (final m in marks) {'activity_type': m.activityType}
+      ],
     );
 
     return _ActivitiesData(
@@ -75,6 +98,10 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
       servantMeeting: counts['servant_meeting'] ?? 0,
       mass: counts['mass'] ?? 0,
       confession: counts['confession'] ?? 0,
+      yearDates: yearDates,
+      isClassServant: classIds.isNotEmpty,
+      subs: subs,
+      names: {for (final p in people) p.id: p.fullName},
     );
   }
 
@@ -196,11 +223,33 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                 const SizedBox(height: 12),
                 MyAttendanceCard(
                   held: [
-                    for (final d in {for (final s in held) s.sessionDate})
-                      d,
+                    for (final d in {for (final s in held) s.sessionDate}) d,
                   ],
                   marks: data.marks,
                 ),
+                const SizedBox(height: 12),
+                ServantBadgesCard(
+                  badges: ServantYear(
+                    heldSaturdays: [
+                      ...data.yearDates,
+                      for (final s in held) s.sessionDate,
+                    ],
+                    marks: data.marks,
+                    preps: data.preps,
+                    today: DateTime.now(),
+                    classServantIds: {
+                      if (data.isClassServant && Db.userId != null) Db.userId!,
+                    },
+                  ).badges(Db.userId ?? ''),
+                ),
+                if (data.subs.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ServantCoversCard(
+                    servantId: Db.userId ?? '',
+                    subs: data.subs,
+                    nameOf: (id) => data.names[id] ?? '',
+                  ),
+                ],
                 const SizedBox(height: 16),
                 FadeSlideIn(
                   index: 1,
@@ -579,8 +628,8 @@ class _SessionCard extends StatelessWidget {
                 padding: EdgeInsets.only(left: 4),
                 child: Tooltip(
                   message: AppStrings.prepSharedAsExample,
-                  child: Icon(Icons.star_rounded,
-                      size: 18, color: AppColors.gold),
+                  child:
+                      Icon(Icons.star_rounded, size: 18, color: AppColors.gold),
                 ),
               ),
             if (prep?.adminComment != null && prep!.adminComment!.isNotEmpty)
@@ -620,7 +669,18 @@ class _ActivitiesData {
     required this.servantMeeting,
     required this.mass,
     required this.confession,
+    this.yearDates = const [],
+    this.isClassServant = false,
+    this.subs = const [],
+    this.names = const {},
   });
+
+  final List<ServantSubstitute> subs;
+  final Map<String, String> names;
+
+  /// Every Saturday of the year held or not (no breaks), for the badges.
+  final List<DateTime> yearDates;
+  final bool isClassServant;
 
   final List<AttendanceSession> sessions;
   final List<LessonPrep> preps;
@@ -733,7 +793,8 @@ class PrepTodoCard extends StatelessWidget {
                     Text(
                       '${AppDateUtils.formatDayDate(date)} · '
                       '${sent ? prepStatusLabel(prep!.status) : AppStrings.prepTodoNotSent}',
-                      style: TextStyle(fontSize: 12.5, color: AppColors.readable(color)),
+                      style: TextStyle(
+                          fontSize: 12.5, color: AppColors.readable(color)),
                     ),
                   ],
                 ),
@@ -775,13 +836,25 @@ class MyAttendanceCard extends StatelessWidget {
   final List<ServantAttendance> marks;
 
   static const _activities = <(String, IconData, Color, String)>[
-    ('sunday_school', AppIcons.sundaySchool, AppColors.success,
-        AppStrings.chipService),
-    ('servant_meeting', AppIcons.servantMeeting, AppColors.olive,
-        AppStrings.servantMeetingShort),
+    (
+      'sunday_school',
+      AppIcons.sundaySchool,
+      AppColors.success,
+      AppStrings.chipService
+    ),
+    (
+      'servant_meeting',
+      AppIcons.servantMeeting,
+      AppColors.olive,
+      AppStrings.servantMeetingShort
+    ),
     ('mass', AppIcons.mass, AppColors.gold, AppStrings.massShort),
-    ('confession', AppIcons.confession, AppColors.coral,
-        AppStrings.confessionShort),
+    (
+      'confession',
+      AppIcons.confession,
+      AppColors.coral,
+      AppStrings.confessionShort
+    ),
   ];
 
   static String _day(DateTime d) => '${d.year}-${d.month}-${d.day}';
