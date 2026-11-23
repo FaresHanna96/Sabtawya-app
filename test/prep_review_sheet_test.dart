@@ -24,6 +24,7 @@ Future<_Run> _open(
   WidgetTester tester, {
   String? position,
   bool canSkip = false,
+  LessonPrep? prep,
 }) async {
   final run = _Run();
   tester.view.physicalSize = const Size(1080, 2400);
@@ -40,7 +41,7 @@ Future<_Run> _open(
           onPressed: () async {
             run.result = await showPrepReviewSheet(
               c,
-              prep: _prep,
+              prep: prep ?? _prep,
               onReview: (status, comment) async =>
                   run.reviews.add((status, comment)),
               position: position,
@@ -65,6 +66,31 @@ void main() {
     expect(find.text('مينا فايز'), findsOneWidget);
     expect(find.textContaining('3 ولاد'), findsOneWidget);
     expect(find.text('2 من 7'), findsOneWidget);
+  });
+
+  testWidgets('a commented prep shows the comment itself, and a fresh one none',
+      (tester) async {
+    await _open(
+      tester,
+      prep: LessonPrep(
+        id: 'p2',
+        servantId: 's1',
+        servantName: 'مينا فايز',
+        sessionId: 'x',
+        sessionDate: DateTime(2026, 11, 14),
+        status: 'commented',
+        adminComment: 'زوّد صورة',
+        photos: const [],
+        className: '3 ولاد',
+      ),
+    );
+    // The read-only box and the pre-filled field.
+    expect(find.text('زوّد صورة'), findsNWidgets(2));
+  });
+
+  testWidgets('a prep without a comment shows no comment box', (tester) async {
+    await _open(tester);
+    expect(find.text('زوّد صورة'), findsNothing);
   });
 
   testWidgets('skip comes back skipped and reviews nothing', (tester) async {

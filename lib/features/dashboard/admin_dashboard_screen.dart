@@ -154,9 +154,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: StatCard(
-                        label: AppStrings.totalPoints,
-                        value: '${stats.totalPoints}',
-                        icon: Icons.emoji_events_outlined,
+                        label: AppStrings.adminsShort,
+                        value: '${stats.adminsCount}',
+                        icon: Icons.admin_panel_settings_outlined,
                         color: AppColors.gold,
                       ),
                     ),

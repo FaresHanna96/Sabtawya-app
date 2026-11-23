@@ -540,12 +540,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
         for (final d in CalendarGrid.weekdayInitials)
           Expanded(
             child: Center(
-              child: Text(
-                d,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w700,
+              // Shrinks rather than wraps on a narrow phone.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  d,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),

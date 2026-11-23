@@ -4,7 +4,16 @@ class CalendarGrid {
   const CalendarGrid._();
 
   /// Day names for the header, Saturday first.
-  static const weekdayInitials = <String>['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
+  /// Short names, not single letters: ث / ر / ج read as nothing.
+  static const weekdayInitials = <String>[
+    'سبت',
+    'أحد',
+    'اثنين',
+    'ثلاثاء',
+    'أربعاء',
+    'خميس',
+    'جمعة',
+  ];
 
   static bool isLeap(int y) => (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
 
