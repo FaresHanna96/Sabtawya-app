@@ -641,7 +641,86 @@ class AppStrings {
   static const previousSaturday = 'السبت اللي قبله';
   static const nextSaturday = 'السبت اللي بعده';
 
+  // ── the child's profile: status strip, tabs, follow-up
+  static const profileInactive = 'المخدوم ده متوقف';
+  static String profileAbsentRun(int n) => 'غايب آخر $n سبوت ورا بعض';
+  static const profileNeverFollowedUp = 'محدش اتصل بيه ولا زاره لسه';
+  static String profileLastFollowUp(int days) => 'آخر افتقاد من $days يوم';
+  static const profileBirthdayToday = 'النهارده عيد ميلاده';
+  static const profileTabOverview = 'نظرة عامة';
+  static const profileTabAttendance = 'الحضور';
+  static const profileTabData = 'البيانات';
+  static const profileTabFollowUp = 'المتابعة';
+  static String attendedSaturdays(int came, int of) => 'حضر $came من $of سبت';
+  static const profileMoreActions = 'خيارات أكتر';
+  static String profileBirthdayIn(int days) =>
+      days == 1 ? 'عيد ميلاده بكرة' : 'عيد ميلاده بعد $days أيام';
+
   static const syncedAll = 'تمام، كل اللي سجّلته اتبعت ✓';
+
+  // ── points and badges
+  static const badgesTitle = 'الأوسمة';
+  static const gamePointsLabel = 'نقاط الأوسمة السنة دي';
+  static const pointsWord = 'نقطة';
+  static String toNextLevel(int n, String level) =>
+      'باقي $n نقطة وتبقى «$level»';
+  static const topLevelReached = 'وصلت لأعلى مستوى';
+  static String saturdaysInARow(int n) => '$n سبوت';
+  static const inARow = 'ورا بعض';
+  static String rankInClass(int rank) => switch (rank) {
+        1 => 'الأولى',
+        2 => 'التانية',
+        3 => 'التالتة',
+        _ => 'رقم $rank',
+      };
+  static const inClassLink = 'في الفصل ›';
+  static String badgesOf(int earned, int all) => '$earned من $all';
+  static String earnedOnDay(String day) => 'اتاخد $day';
+  static const notYet = 'لسه';
+  static String progressOf(int done, int of) => '$done من $of';
+  static const levelSeed = 'بذرة';
+  static const levelSprout = 'نبتة';
+  static const levelTree = 'شجرة';
+  static const levelFruit = 'ثمرة';
+  static const badgeStreak4 = 'مواظب';
+  static const badgeStreak4Rule = 'حضر 4 سبوت ورا بعض من غير غياب.';
+  static const badgeMassMonth = 'قداسي كامل';
+  static const badgeMassMonthRule =
+      'حضر القداس كل سبت في شهر كامل (3 سبوت على الأقل).';
+  static const badgeFullDay = 'يوم كامل';
+  static const badgeFullDayRule =
+      'حضر الأربع أنشطة (مدارس الأحد، العشية، القداس، الاعتراف) في نفس السبت 5 مرات.';
+  static const badgeConfession3 = 'قلب نقي';
+  static const badgeConfession3Rule = 'اعترف كل شهر، 3 شهور ورا بعض.';
+  static const badgeStarMonth = 'نجم الشهر';
+  static const badgeStarMonthRule = 'الأول في الفصل في نقاط شهر خلص.';
+  static const badgeStreak16 = 'مواظب ذهبي';
+  static const badgeStreak16Rule = '16 سبت ورا بعض من غير غياب.';
+  static const classRankingTitle = 'ترتيب الفصل';
+  static String classRankingOf(String className) => 'ترتيب فصل $className';
+  static const seeAll = 'عرض الكل';
+  static const rankingThisMonth = 'الشهر ده';
+  static const rankingThisYear = 'السنة دي';
+  static String badgesCount(int n) => '$n أوسمة';
+  static const rankingPointsNote =
+      'النقاط من الحضور (5 لكل نشاط) + 10 لكل وسام. التقارير بتفضل بنقاط الحضور بس.';
+  static const noRankingYet = 'لسه مفيش نقاط الشهر ده';
+  static const newBadge = 'وسام جديد';
+  static String newBadgesCount(int n) => '$n أوسمة جديدة';
+  static String badgeWonBy(String child, String badge, {required bool girl}) =>
+      girl
+          ? '$child خدت وسام «$badge». برافو عليها!'
+          : '$child خد وسام «$badge». برافو عليه!';
+  static String badgeBonus(int n) => '+$n نقط مكافأة';
+  static String congratsParents({required bool girl}) =>
+      girl ? 'ابعت تهنئة لأهلها' : 'ابعت تهنئة لأهله';
+  static String congratsMessage(String child, String badge,
+          {required bool girl}) =>
+      girl
+          ? 'مبروك! $child خدت النهارده وسام «$badge» في خدمة السبت. ربنا يبارك فيها ويفرّحكم بيها 🌟'
+          : 'مبروك! $child خد النهارده وسام «$badge» في خدمة السبت. ربنا يبارك فيه ويفرّحكم بيه 🌟';
+  static String sendCongratsTo(String child) => 'تهنئة لأهل $child';
+  static const badgeOk = 'تمام';
 
   // ── the welcome tour
   static const tourMenu = 'جولة في التطبيق';

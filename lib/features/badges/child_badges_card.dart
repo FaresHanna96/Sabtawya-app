@@ -1,0 +1,477 @@
+import 'package:flutter/material.dart';
+
+import '../../core/l10n/app_strings.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_date_utils.dart';
+import '../../core/utils/haptics.dart';
+import '../../core/widgets/motion.dart';
+import '../../data/models/badges.dart';
+import 'badge_look.dart';
+
+/// النقاط والأوسمة on a child's profile: the game points with the growth
+/// level, the run of Saturdays, the place in the class, then the six badges
+/// (tap one for its rule, and when it was won or how far along it is).
+class ChildBadgesCard extends StatefulWidget {
+  const ChildBadgesCard({
+    super.key,
+    required this.badges,
+    required this.gamePoints,
+    this.rank,
+    this.onOpenRanking,
+  });
+
+  final List<ChildBadge> badges;
+
+  /// Attendance points this year + [kBadgeBonus] per badge.
+  final int gamePoints;
+
+  /// Place in the class (null when not known).
+  final int? rank;
+  final VoidCallback? onOpenRanking;
+
+  @override
+  State<ChildBadgesCard> createState() => _ChildBadgesCardState();
+}
+
+class _ChildBadgesCardState extends State<ChildBadgesCard> {
+  KidBadge? _picked;
+
+  List<ChildBadge> get _ordered => [
+        for (final b in KidBadge.values)
+          for (final cb in widget.badges)
+            if (cb.badge == b) cb,
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final badges = _ordered;
+    final earned = badges.where((b) => b.earned).length;
+    // The run still going: the long-streak badge carries it uncapped to 16.
+    final run = badges
+        .where((b) => b.badge == KidBadge.streak16)
+        .map((b) => b.progress)
+        .fold(0, (a, b) => b > a ? b : a);
+    final selected = badges.isEmpty
+        ? null
+        : badges.firstWhere(
+            (b) => b.badge == (_picked ?? badges.first.badge),
+            orElse: () => badges.first,
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PointsCard(
+          points: widget.gamePoints,
+          run: run,
+          rank: widget.rank,
+          onOpenRanking: widget.onOpenRanking,
+        ),
+        const SizedBox(height: 12),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        AppStrings.badgesTitle,
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    Text(
+                      AppStrings.badgesOf(earned, badges.length),
+                      style:
+                          const TextStyle(fontSize: 13, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.95,
+                  children: [
+                    for (final b in badges)
+                      _BadgeTile(
+                        badge: b,
+                        selected: b.badge == selected?.badge,
+                        onTap: () {
+                          Haptics.select();
+                          setState(() => _picked = b.badge);
+                        },
+                      ),
+                  ],
+                ),
+                if (selected != null) ...[
+                  const SizedBox(height: 10),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _BadgeDetail(
+                      key: ValueKey(selected.badge),
+                      badge: selected,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PointsCard extends StatelessWidget {
+  const _PointsCard({
+    required this.points,
+    required this.run,
+    required this.rank,
+    required this.onOpenRanking,
+  });
+
+  final int points;
+  final int run;
+  final int? rank;
+  final VoidCallback? onOpenRanking;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = GameLevel.of(points);
+    final next = level.next;
+    const soft = Color(0xFFDCE4F2);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppGradients.navyHeader,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(AppStrings.gamePointsLabel,
+                        style: TextStyle(fontSize: 12.5, color: soft)),
+                    // Shrinks rather than overflows next to the level chip.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          AnimatedCount(
+                            value: points,
+                            style: const TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.15,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(AppStrings.pointsWord,
+                              style: TextStyle(fontSize: 13, color: soft)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(level.icon, size: 18, color: AppColors.oliveLight),
+                    const SizedBox(width: 6),
+                    Text(
+                      level.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: GameLevel.progress(points)),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, __) => LinearProgressIndicator(
+                value: v,
+                minHeight: 8,
+                backgroundColor: Colors.white.withValues(alpha: 0.18),
+                valueColor: const AlwaysStoppedAnimation(AppColors.oliveLight),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            next == null
+                ? AppStrings.topLevelReached
+                : AppStrings.toNextLevel(GameLevel.toNext(points), next.title),
+            style: const TextStyle(fontSize: 12, color: soft),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _Chip(
+                  icon: Icons.local_fire_department_rounded,
+                  value: AppStrings.saturdaysInARow(run),
+                  label: AppStrings.inARow,
+                ),
+              ),
+              if (rank != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _Chip(
+                    icon: Icons.emoji_events_rounded,
+                    value: AppStrings.rankInClass(rank!),
+                    label: AppStrings.inClassLink,
+                    onTap: onOpenRanking,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.icon,
+    required this.value,
+    required this.label,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFFF2C46D)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFFDCE4F2)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BadgeTile extends StatelessWidget {
+  const _BadgeTile({
+    required this.badge,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ChildBadge badge;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: badge.badge.title,
+      excludeSemantics: true,
+      child: Material(
+        color: selected ? AppColors.surface : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: selected
+                ? AppColors.navy
+                : AppColors.navy.withValues(alpha: 0.08),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 10, 4, 6),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                BadgeMedal(badge: badge.badge, earned: badge.earned),
+                const SizedBox(height: 6),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      badge.badge.title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: badge.earned ? AppColors.navy : AppColors.muted,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BadgeDetail extends StatelessWidget {
+  const _BadgeDetail({super.key, required this.badge});
+
+  final ChildBadge badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final earned = badge.earned;
+    final stateColor = earned ? AppColors.success : AppColors.muted;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Wraps under the title when the date does not fit beside it.
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                badge.badge.title,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                decoration: BoxDecoration(
+                  color: statusTint(stateColor),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  earned
+                      ? AppStrings.earnedOnDay(
+                          AppDateUtils.formatDate(badge.earnedOn!))
+                      : AppStrings.notYet,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.readable(stateColor),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            badge.badge.rule,
+            style: const TextStyle(fontSize: 13, color: AppColors.muted),
+          ),
+          if (!earned) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: badge.share,
+                      minHeight: 6,
+                      backgroundColor: AppColors.navy.withValues(alpha: 0.08),
+                      valueColor: const AlwaysStoppedAnimation(AppColors.navy),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  AppStrings.progressOf(badge.progress, badge.target),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

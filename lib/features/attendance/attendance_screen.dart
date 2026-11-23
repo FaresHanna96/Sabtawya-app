@@ -20,15 +20,18 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/badges.dart';
 import '../../data/models/event.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/lesson_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import '../events/event_detail_screen.dart' show showChildPaymentSheet;
+import '../badges/badge_earned_dialog.dart';
 import '../children/child_filters.dart';
 import '../children/child_profile_screen.dart';
 import 'attendance_draft.dart';
@@ -985,6 +988,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     final isOffline = !ConnectivityService.instance.isOnline;
     setState(() => _saving = true);
+    // The badges as they stand before this save, to tell after it which
+    // ones it just won (online only; never in the way of the save).
+    final savedSheets = [
+      for (final s in _sheets)
+        if (planned.any((p) => p.$1 == s.session.id)) s,
+    ];
+    final badgesBefore = isOffline ? null : await _classBadges(savedSheets);
+    if (!mounted) return;
     final ok = await Ui.runGuarded(
       context,
       () async {
@@ -1040,8 +1051,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       } else {
         // Reload so the scores come back from the database, in place.
         await _load(quiet: true);
+        if (badgesBefore != null) {
+          unawaited(_announceBadges(savedSheets, badgesBefore));
+        }
       }
     }
+  }
+
+  /// Every child's badges in the classes of [sheets]; null when they could
+  /// not be read in time (then nothing is announced).
+  Future<List<ChildBadge>?> _classBadges(List<AttendanceSheet> sheets) async {
+    final yearId = _year?.id;
+    if (yearId == null || sheets.isEmpty) return null;
+    try {
+      final lists = await Future.wait([
+        for (final classId in {for (final s in sheets) s.session.classId})
+          const BadgeRepository().forClass(yearId: yearId, classId: classId),
+      ]).timeout(const Duration(seconds: 3));
+      return [for (final l in lists) ...l];
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// «وسام جديد» for the badges this save just won.
+  Future<void> _announceBadges(
+    List<AttendanceSheet> sheets,
+    List<ChildBadge> before,
+  ) async {
+    final after = await _classBadges(sheets);
+    if (after == null || !mounted) return;
+    final children = {for (final e in _entries) e.child.id: e.child};
+    final wins = <BadgeWin>[
+      for (final day in {for (final s in sheets) s.session.sessionDate})
+        for (final w in newlyWon(before: before, after: after, day: day))
+          if (children[w.childId] case final child?)
+            (child: child, badge: w.badge),
+    ];
+    if (wins.isEmpty || !mounted) return;
+    await showBadgesEarned(context, wins);
   }
 
   @override

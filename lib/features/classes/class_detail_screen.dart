@@ -10,16 +10,19 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/motion.dart';
+import '../../data/models/badges.dart';
 import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
+import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_history_screen.dart';
 import '../attendance/attendance_screen.dart';
+import '../badges/class_leaderboard.dart';
 import '../children/child_filters.dart';
 import '../children/child_form_screen.dart';
 import '../children/child_profile_screen.dart';
@@ -64,13 +67,14 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     super.dispose();
   }
 
-  // Four independent reads, side by side.
+  // Five independent reads, side by side.
   Future<_ClassDetail> _load() async {
-    final (overview, servants, children, streaks) = await (
+    final (overview, servants, children, streaks, ranking) = await (
       _classes.overviewById(widget.classId),
       _classes.servantsOfClass(widget.classId),
       _children.byClass(widget.classId, includeInactive: true),
       _loadStreaks(),
+      _loadRanking(),
     ).wait;
     if (overview == null) {
       throw AppFailure(AppStrings.noPermission);
@@ -80,8 +84,31 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       servants: servants,
       children: children,
       streaks: streaks,
+      ranking: ranking,
     );
   }
+
+  /// ترتيب الفصل for the year; like the runs, a hint: null on failure.
+  Future<List<LeaderboardRow>?> _loadRanking() async {
+    try {
+      final yearId = context.read<SessionController>().currentYear?.id;
+      if (yearId == null) return null;
+      return await const BadgeRepository()
+          .leaderboard(yearId: yearId, classId: widget.classId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _openRanking(ClassOverview overview) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => ClassLeaderboardScreen(
+            classId: overview.classId,
+            className: overview.className,
+          ),
+        ),
+      );
 
   /// The runs are a hint on top of the page: a failure leaves them out rather
   /// than breaking the class screen.
@@ -305,6 +332,19 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     const SizedBox(height: 12),
                     FadeSlideIn(
                         index: 3, child: _servants(data.servants, overview)),
+                    // The first three of the year, «عرض الكل» for the rest.
+                    if (data.ranking != null &&
+                        data.ranking!.isNotEmpty &&
+                        data.ranking!.first.gamePoints > 0) ...[
+                      const SizedBox(height: 12),
+                      FadeSlideIn(
+                        index: 4,
+                        child: ClassRankingCard(
+                          top: data.ranking!.take(3).toList(),
+                          onSeeAll: () => _openRanking(overview),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -558,9 +598,13 @@ class _ClassDetail {
     required this.servants,
     required this.children,
     required this.streaks,
+    this.ranking,
   });
 
   final Map<String, ChildStreak> streaks;
+
+  /// The class ranking for the year, best first; null when not read.
+  final List<LeaderboardRow>? ranking;
   final ClassOverview overview;
   final List<ClassServant> servants;
   final List<Child> children;
