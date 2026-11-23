@@ -27,6 +27,13 @@
       "runtimeArgs": ["-m", "http.server", "8092", "--directory", "D:\\Projects\\sabtawya\\build\\web_dev"],
       "port": 8092,
       "autoPort": false
+    },
+    {
+      "name": "local-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8094", "--directory", "D:\\Projects\\sabtawya\\build\\web_local"],
+      "port": 8094,
+      "autoPort": false
     }
   ]
 }

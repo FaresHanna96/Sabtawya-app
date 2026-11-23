@@ -12,16 +12,21 @@ import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/badges.dart';
 import '../../data/models/child.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../data/services/photo_service.dart';
 import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
+import '../badges/child_badges_card.dart';
+import '../badges/class_leaderboard.dart';
+import '../dashboard/weekly_attendance_chart.dart';
 import 'change_history_card.dart';
 import 'child_attendance_log.dart';
 import 'child_avatar.dart';
@@ -33,6 +38,7 @@ import 'health_notes_card.dart';
 import 'location_sheet.dart';
 import 'missing_info.dart';
 import 'missing_info_banner.dart';
+import 'profile/profile_status.dart';
 
 /// Everything known about one child: personal, parent, and church details plus
 /// the attendance history and scores derived from them.
@@ -51,6 +57,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   static const _reports = ReportRepository();
 
   static const _classes = ClassRepository();
+  static const _badges = BadgeRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<_ProfileData>>();
 
@@ -73,6 +80,8 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       logs,
       changes,
       classSessions,
+      badges,
+      ranking,
     ) = await (
       _classes.overviewById(child.classId),
       yearId == null
@@ -88,9 +97,24 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       // The class's Saturdays, so one nobody recorded still shows in the log.
       yearId == null
           ? Future.value(const <AttendanceSession>[])
-          : _attendance
-              .sessionsForClasses(classIds: [child.classId], yearId: yearId)
-              .catchError((Object _) => const <AttendanceSession>[]),
+          : _attendance.sessionsForClasses(
+              classIds: [child.classId],
+              yearId:
+                  yearId).catchError((Object _) => const <AttendanceSession>[]),
+      // النقاط والأوسمة: a hint on top of the profile, so a failure (or
+      // offline) just leaves the card out.
+      yearId == null
+          ? Future<List<ChildBadge>?>.value(null)
+          : _badges
+              .forChild(yearId: yearId, childId: child.id)
+              .then<List<ChildBadge>?>((b) => b)
+              .catchError((Object _) => null),
+      yearId == null
+          ? Future<List<LeaderboardRow>?>.value(null)
+          : _badges
+              .leaderboard(yearId: yearId, classId: child.classId)
+              .then<List<LeaderboardRow>?>((r) => r)
+              .catchError((Object _) => null),
     ).wait;
 
     return _ProfileData(
@@ -109,8 +133,22 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       lastActivity: lastActivity,
       visitLogs: logs,
       changes: changes,
+      badges: badges,
+      ranking: ranking,
     );
   }
+
+  /// ترتيب الفصل, opened from the rank on the points card.
+  Future<void> _openRanking(Child child, String className) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => ClassLeaderboardScreen(
+            classId: child.classId,
+            className: className,
+            highlightChildId: child.id,
+          ),
+        ),
+      );
 
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
@@ -218,238 +256,377 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       body: AsyncSection<_ProfileData>(
         key: _sectionKey,
         load: _load,
+        // Each tab has its own pull to refresh (the tabs scroll, not the page).
+        enableRefresh: false,
         builder: (context, data, reload) {
           final child = data.child;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              FadeSlideIn(index: 0, child: _header(child, data.className)),
-              const SizedBox(height: 12),
-              // Calling the family is the most common reason to open a
-              // profile, so the numbers sit right under the name.
-              FadeSlideIn(index: 1, child: _contactBar(child)),
-              const SizedBox(height: 12),
-              // What the record is missing, and a way to ask the family.
-              if (canEdit && MissingInfo.of(child).isNotEmpty) ...[
-                FadeSlideIn(
-                  index: 1,
-                  child: MissingInfoBanner(
-                    child: child,
-                    servantName: session.displayName,
-                    canEdit: canEdit,
-                    onEdit: () => _edit(child),
+          final alerts = profileAlerts(
+            child: child,
+            absentSaturdays: absentRun(data.history, data.sessionDates),
+            today: DateTime.now(),
+          );
+          Widget tab(List<Widget> children) => RefreshIndicator(
+                onRefresh: reload,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                  children: children,
+                ),
+              );
+
+          return DefaultTabController(
+            length: 4,
+            child: NestedScrollView(
+              headerSliverBuilder: (context, _) => [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FadeSlideIn(
+                          index: 0,
+                          child: _header(child, data.className,
+                              canEdit: canEdit, isAdmin: isAdmin),
+                        ),
+                        if (alerts.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          FadeSlideIn(
+                            index: 1,
+                            child: ProfileStatusStrip(
+                              alerts: alerts,
+                              onCall: ContactPerson.forChild(child).isEmpty
+                                  ? null
+                                  : () => _callFamily(child),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _TabsHeader(
+                    TabBar(
+                      isScrollable: false,
+                      labelColor: AppColors.navy,
+                      unselectedLabelColor: AppColors.muted,
+                      indicatorColor: AppColors.navy,
+                      labelStyle: const TextStyle(
+                          fontSize: 13.5, fontWeight: FontWeight.w800),
+                      unselectedLabelStyle: const TextStyle(
+                          fontSize: 13.5, fontWeight: FontWeight.w600),
+                      tabs: const [
+                        Tab(text: AppStrings.profileTabOverview),
+                        Tab(text: AppStrings.profileTabAttendance),
+                        Tab(text: AppStrings.profileTabData),
+                        Tab(text: AppStrings.profileTabFollowUp),
+                      ],
+                    ),
+                  ),
+                ),
               ],
-              // Where the child lives: open it on the map, or get directions.
-              FadeSlideIn(
-                index: 1,
-                child: ChildLocationCard(
-                  location: child.location,
-                  address: child.address,
-                  onSet: canEdit ? () => _setLocation(child) : null,
-                ),
-              ),
-              if (child.location != null || canEdit) const SizedBox(height: 12),
-              // ملخص الحضور with every Saturday under it, in one card.
-              FadeSlideIn(
-                index: 2,
-                child: ChildAttendanceLog(
-                  history: data.history,
-                  sessionDates: data.sessionDates,
-                  breakDates: data.breakDates,
-                  lastActivity: data.lastActivity,
-                  points: data.yearReport?.points,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SectionCard(
-                title: AppStrings.personalInfo,
-                collapsible: true,
-                initiallyExpanded: true,
-                icon: Icons.badge_rounded,
-                accent: AppColors.navyLight,
-                child: Column(
-                  children: [
-                    InfoRow(
-                      label: AppStrings.childName,
-                      value: child.fullName,
-                      icon: Icons.person_outline,
-                    ),
-                    InfoRow(
-                      label: AppStrings.gender,
-                      value: child.gender.label,
-                      icon: Icons.wc_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.birthDate,
-                      value: child.birthDate == null
-                          ? null
-                          : AppDateUtils.formatDate(child.birthDate!),
-                      icon: Icons.cake_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.age,
-                      value: child.ageLabel,
-                      icon: Icons.timelapse_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.childMobile,
-                      value: child.mobile,
-                      icon: Icons.phone_outlined,
-                      isPhone: true,
-                      phoneActions: false,
-                    ),
-                    InfoRow(
-                      label: AppStrings.childCode,
-                      value: child.code,
-                      icon: Icons.tag,
-                    ),
-                    InfoRow(
-                      label: AppStrings.currentClass,
-                      value: data.className,
-                      icon: Icons.class_outlined,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SectionCard(
-                title: AppStrings.parentsInfo,
-                collapsible: true,
-                initiallyExpanded: true,
-                icon: Icons.family_restroom_rounded,
-                accent: AppColors.coral,
-                child: Column(
-                  children: [
-                    InfoRow(
-                      label: AppStrings.motherName,
-                      value: child.motherName,
-                      icon: Icons.woman_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.motherMobile,
-                      value: child.motherMobile,
-                      icon: Icons.phone_outlined,
-                      isPhone: true,
-                      phoneActions: false,
-                    ),
-                    InfoRow(
-                      label: AppStrings.fatherName,
-                      value: child.fatherName,
-                      icon: Icons.man_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.fatherMobile,
-                      value: child.fatherMobile,
-                      icon: Icons.phone_outlined,
-                      isPhone: true,
-                      phoneActions: false,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SectionCard(
-                title: AppStrings.churchInfo,
-                collapsible: true,
-                initiallyExpanded: false,
-                icon: Icons.church_rounded,
-                accent: AppColors.maroon,
-                child: Column(
-                  children: [
-                    InfoRow(
-                      label: AppStrings.confessionFather,
-                      value: child.confessionFather,
-                      icon: Icons.church_outlined,
-                    ),
-                    if (child.gender == Gender.boy)
-                      InfoRow(
-                        label: AppStrings.deacon,
-                        value: child.isDeacon ? AppStrings.yes : AppStrings.no,
-                        icon: Icons.volunteer_activism_outlined,
+              body: TabBarView(
+                children: [
+                  // ── نظرة عامة: who to reach, how they are doing.
+                  tab([
+                    _contactBar(child),
+                    if (canEdit && MissingInfo.of(child).isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      MissingInfoBanner(
+                        child: child,
+                        servantName: session.displayName,
+                        canEdit: canEdit,
+                        onEdit: () => _edit(child),
                       ),
-                  ],
-                ),
+                    ],
+                    const SizedBox(height: 12),
+                    Builder(
+                      builder: (context) => _attendanceGlance(
+                        data,
+                        onOpen: () =>
+                            DefaultTabController.of(context).animateTo(1),
+                      ),
+                    ),
+                    if (data.badges != null &&
+                        data.badges!.isNotEmpty &&
+                        data.ranking != null) ...[
+                      const SizedBox(height: 12),
+                      ChildBadgesCard(
+                        badges: data.badges!,
+                        gamePoints: data.gamePoints,
+                        rank: LeaderboardRow.rankOf(data.ranking!, child.id),
+                        onOpenRanking: () =>
+                            _openRanking(child, data.className),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Builder(
+                      builder: (context) => _lastFollowUp(
+                        data,
+                        onOpen: () =>
+                            DefaultTabController.of(context).animateTo(3),
+                      ),
+                    ),
+                  ]),
+                  // ── الحضور: every Saturday.
+                  tab([
+                    ChildAttendanceLog(
+                      history: data.history,
+                      sessionDates: data.sessionDates,
+                      breakDates: data.breakDates,
+                      lastActivity: data.lastActivity,
+                      points: data.yearReport?.points,
+                    ),
+                  ]),
+                  // ── البيانات: only what is not already above.
+                  tab(_dataTab(child, data, session, canEdit)),
+                  // ── المتابعة: record a call or a visit, then the history.
+                  tab([
+                    if (canEdit) ...[
+                      _VisitSection(
+                        // Re-create when the stored visit changes (saved or a
+                        // history entry deleted), so the fields show the new
+                        // values.
+                        key: ValueKey('${child.id}|${child.lastPhoneVisitDate}|'
+                            '${child.lastPhoneVisitNotes}|'
+                            '${child.lastHomeVisitDate}|'
+                            '${child.lastHomeVisitNotes}'),
+                        child: child,
+                        onSaved: _reload,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    _visitHistoryCard(data, canEdit),
+                    if (data.changes.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      ChangeHistoryCard(
+                        changes: data.changes,
+                        onUndo: canEdit ? _undoChange : null,
+                      ),
+                    ],
+                  ]),
+                ],
               ),
-              const SizedBox(height: 16),
-              SectionCard(
-                title: AppStrings.schoolInfo,
-                collapsible: true,
-                initiallyExpanded: false,
-                icon: Icons.school_rounded,
-                accent: AppColors.olive,
-                child: Column(
-                  children: [
-                    InfoRow(
-                      label: AppStrings.school,
-                      value: child.school,
-                      icon: Icons.apartment_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.address,
-                      value: child.address,
-                      icon: Icons.location_on_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.notes,
-                      value: child.notes,
-                      icon: Icons.notes_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.createdAt,
-                      value: child.createdAt == null
-                          ? null
-                          : AppDateUtils.formatDate(child.createdAt!),
-                      icon: Icons.event_outlined,
-                    ),
-                    InfoRow(
-                      label: AppStrings.updatedAt,
-                      value: child.updatedAt == null
-                          ? null
-                          : AppDateUtils.formatDateTime(child.updatedAt!),
-                      icon: Icons.update,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (canSeeHealthNotes(session, child.classId)) ...[
-                HealthNotesCard(
-                  key: ValueKey('health|${child.id}'),
-                  childId: child.id,
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (canEdit) ...[
-                _VisitSection(
-                  // Re-create when the stored visit changes (saved or a history
-                  // entry deleted), so the fields show the new values.
-                  key: ValueKey('${child.id}|${child.lastPhoneVisitDate}|'
-                      '${child.lastPhoneVisitNotes}|${child.lastHomeVisitDate}|'
-                      '${child.lastHomeVisitNotes}'),
-                  child: child,
-                  onSaved: _reload,
-                ),
-                const SizedBox(height: 16),
-              ],
-              _visitHistoryCard(data, canEdit),
-              if (data.changes.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                ChangeHistoryCard(
-                  changes: data.changes,
-                  onUndo: canEdit ? _undoChange : null,
-                ),
-              ],
-              const SizedBox(height: 20),
-              if (canEdit) _actions(child, data.className, isAdmin),
-              const SizedBox(height: 24),
-            ],
+            ),
           );
         },
       ),
     );
+  }
+
+  /// «اتصل» on the status strip: the family's numbers, one tap each.
+  Future<void> _callFamily(Child child) => showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: _contactBar(child),
+          ),
+        ),
+      );
+
+  /// The year at a glance on «نظرة عامة»; the full log is one tap away.
+  Widget _attendanceGlance(_ProfileData data, {required VoidCallback onOpen}) {
+    final y = data.yearReport;
+    final pct = y == null ? 0.0 : y.percentage.clamp(0, 100).toDouble();
+    return SectionCard(
+      title: AppStrings.attendanceSummary,
+      icon: Icons.fact_check_rounded,
+      accent: AppColors.success,
+      trailing: TextButton(
+        onPressed: onOpen,
+        child: const Text(AppStrings.seeAll),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      child: y == null || y.sessionsTotal == 0
+          ? const Text(
+              AppStrings.noAttendanceYet,
+              style: TextStyle(fontSize: 13, color: AppColors.muted),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '${pct.round()}%',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.readable(
+                            WeeklyAttendanceChart.levelColor(pct)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        AppStrings.attendedSaturdays(
+                            y.sessionsAttended, y.sessionsTotal),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.muted),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: pct / 100),
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, v, __) => LinearProgressIndicator(
+                      value: v,
+                      minHeight: 8,
+                      backgroundColor: AppColors.navy.withValues(alpha: 0.08),
+                      valueColor: AlwaysStoppedAnimation(
+                          WeeklyAttendanceChart.levelColor(pct)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  /// The last call or visit, one line; the whole follow-up one tap away.
+  Widget _lastFollowUp(_ProfileData data, {required VoidCallback onOpen}) {
+    final last = data.visitLogs.isEmpty ? null : data.visitLogs.first;
+    return SectionCard(
+      title: AppStrings.profileTabFollowUp,
+      icon: Icons.support_agent_rounded,
+      accent: AppColors.coral,
+      trailing: TextButton(
+        onPressed: onOpen,
+        child: const Text(AppStrings.seeAll),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      child: Text(
+        last == null
+            ? AppStrings.noVisitHistory
+            : '${last.isPhone ? AppStrings.followUpPhone : AppStrings.followUpHome}'
+                ' • ${AppDateUtils.formatDate(last.visitDate)}'
+                ' • ${AppDateUtils.sinceLabel(last.visitDate)}',
+        style: const TextStyle(fontSize: 13, color: AppColors.muted),
+      ),
+    );
+  }
+
+  /// «البيانات»: the record, without what the header and the contact cards
+  /// already say (name, gender, age, class, phone numbers).
+  List<Widget> _dataTab(
+    Child child,
+    _ProfileData data,
+    SessionController session,
+    bool canEdit,
+  ) {
+    String? orNull(String? s) => (s == null || s.trim().isEmpty) ? null : s;
+    return [
+      SectionCard(
+        title: AppStrings.personalInfo,
+        icon: Icons.badge_rounded,
+        accent: AppColors.navyLight,
+        child: Column(
+          children: [
+            InfoRow(
+              label: AppStrings.birthDate,
+              value: child.birthDate == null
+                  ? null
+                  : AppDateUtils.formatDate(child.birthDate!),
+              icon: Icons.cake_outlined,
+            ),
+            InfoRow(
+              label: AppStrings.childCode,
+              value: child.code,
+              icon: Icons.tag,
+            ),
+            InfoRow(
+              label: AppStrings.motherName,
+              value: orNull(child.motherName),
+              icon: Icons.woman_outlined,
+            ),
+            InfoRow(
+              label: AppStrings.fatherName,
+              value: orNull(child.fatherName),
+              icon: Icons.man_outlined,
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      SectionCard(
+        title: AppStrings.churchInfo,
+        icon: Icons.church_rounded,
+        accent: AppColors.maroon,
+        child: Column(
+          children: [
+            InfoRow(
+              label: AppStrings.confessionFather,
+              value: child.confessionFather,
+              icon: Icons.church_outlined,
+            ),
+            if (child.gender == Gender.boy)
+              InfoRow(
+                label: AppStrings.deacon,
+                value: child.isDeacon ? AppStrings.yes : AppStrings.no,
+                icon: Icons.volunteer_activism_outlined,
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      SectionCard(
+        title: AppStrings.schoolInfo,
+        icon: Icons.school_rounded,
+        accent: AppColors.olive,
+        child: Column(
+          children: [
+            InfoRow(
+              label: AppStrings.school,
+              value: child.school,
+              icon: Icons.apartment_outlined,
+            ),
+            InfoRow(
+              label: AppStrings.address,
+              value: child.address,
+              icon: Icons.location_on_outlined,
+            ),
+            InfoRow(
+              label: AppStrings.notes,
+              value: child.notes,
+              icon: Icons.notes_outlined,
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      ChildLocationCard(
+        location: child.location,
+        address: child.address,
+        onSet: canEdit ? () => _setLocation(child) : null,
+      ),
+      if (canSeeHealthNotes(session, child.classId)) ...[
+        const SizedBox(height: 12),
+        HealthNotesCard(
+          key: ValueKey('health|${child.id}'),
+          childId: child.id,
+        ),
+      ],
+      const SizedBox(height: 12),
+      Text(
+        [
+          if (child.createdAt != null)
+            '${AppStrings.createdAt}: ${AppDateUtils.formatDate(child.createdAt!)}',
+          if (child.updatedAt != null)
+            '${AppStrings.updatedAt}: ${AppDateUtils.formatDateTime(child.updatedAt!)}',
+        ].join('  •  '),
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+      ),
+    ];
   }
 
   /// Opens the photo full width so a face is actually recognisable.
@@ -499,64 +676,113 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  Widget _header(Child child, String className) {
+  Widget _header(
+    Child child,
+    String className, {
+    required bool canEdit,
+    required bool isAdmin,
+  }) {
     final tint = child.gender == Gender.boy ? AppColors.sky : AppColors.coral;
-    return FadeSlideIn(
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.topStart,
-              end: AlignmentDirectional.bottomEnd,
-              colors: [
-                tint.withValues(alpha: 0.28),
-                classAccent(child.classId).withValues(alpha: 0.12),
-                Colors.white,
-              ],
-            ),
-          ),
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
-                child: ChildAvatar(
-                  child: child,
-                  size: 72,
-                  heroTag: 'child-${child.id}',
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      child.fullName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        GenderBadge(gender: child.gender, compact: true),
-                        _headerFact(Icons.class_outlined, className),
-                        if (child.ageLabel != null)
-                          _headerFact(Icons.cake_outlined, child.ageLabel!),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              StatusBadge(isActive: child.isActive),
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.topStart,
+            end: AlignmentDirectional.bottomEnd,
+            colors: [
+              tint.withValues(alpha: 0.24),
+              classAccent(child.classId).withValues(alpha: 0.10),
+              Colors.white,
             ],
           ),
+        ),
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 4, 12),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
+              child: ChildAvatar(
+                child: child,
+                size: 56,
+                heroTag: 'child-${child.id}',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    child.fullName,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      GenderBadge(gender: child.gender, compact: true),
+                      _headerFact(Icons.class_outlined, className),
+                      if (child.ageLabel != null)
+                        _headerFact(Icons.cake_outlined, child.ageLabel!),
+                      if (!child.isActive) const StatusBadge(isActive: false),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (canEdit) ...[
+              IconButton(
+                tooltip: AppStrings.editChild,
+                onPressed: () => _edit(child),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              PopupMenuButton<String>(
+                tooltip: AppStrings.profileMoreActions,
+                icon: const Icon(Icons.more_vert),
+                onSelected: (v) => switch (v) {
+                  'move' => _move(child, className),
+                  _ => _toggleActive(child),
+                },
+                itemBuilder: (_) => [
+                  if (isAdmin)
+                    const PopupMenuItem(
+                      value: 'move',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.swap_horiz),
+                        title: Text(AppStrings.moveChild),
+                      ),
+                    ),
+                  PopupMenuItem(
+                    value: 'active',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        child.isActive
+                            ? Icons.person_off_outlined
+                            : Icons.person_add_alt,
+                        color: child.isActive
+                            ? AppColors.danger
+                            : AppColors.success,
+                      ),
+                      title: Text(
+                        child.isActive
+                            ? AppStrings.deactivateChild
+                            : AppStrings.activateChild,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -741,46 +967,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       ),
     );
   }
-
-  Widget _actions(Child child, String className, bool isAdmin) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FilledButton.icon(
-          onPressed: () => _edit(child),
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text(AppStrings.editChild),
-        ),
-        if (isAdmin) ...[
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () => _move(child, className),
-            icon: const Icon(Icons.swap_horiz),
-            label: const Text(AppStrings.moveChild),
-          ),
-        ],
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: () => _toggleActive(child),
-          style: OutlinedButton.styleFrom(
-            foregroundColor:
-                child.isActive ? AppColors.danger : AppColors.success,
-            side: BorderSide(
-              color: child.isActive ? AppColors.danger : AppColors.success,
-            ),
-          ),
-          icon: Icon(
-            child.isActive ? Icons.person_off_outlined : Icons.person_add_alt,
-          ),
-          label: Text(
-            child.isActive
-                ? AppStrings.deactivateChild
-                : AppStrings.activateChild,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _ProfileData {
@@ -794,7 +980,24 @@ class _ProfileData {
     this.sessionDates = const <DateTime>[],
     this.breakDates = const <DateTime>{},
     this.changes = const <ChildChange>[],
+    this.badges,
+    this.ranking,
   });
+
+  /// The six badges this year; null when they could not be read.
+  final List<ChildBadge>? badges;
+
+  /// The class ranking for the year; null when it could not be read.
+  final List<LeaderboardRow>? ranking;
+
+  /// The game points: this child's line in [ranking] (attendance points
+  /// plus the badge bonus), 0 when not found.
+  int get gamePoints {
+    for (final r in ranking ?? const <LeaderboardRow>[]) {
+      if (r.childId == child.id) return r.gamePoints;
+    }
+    return 0;
+  }
 
   final Child child;
   final String className;
@@ -1117,4 +1320,32 @@ class _MoveChildSheetState extends State<_MoveChildSheet> {
       ),
     );
   }
+}
+
+/// The profile's tabs, pinned under the app bar while the header scrolls away.
+class _TabsHeader extends SliverPersistentHeaderDelegate {
+  const _TabsHeader(this.tabs);
+
+  final TabBar tabs;
+
+  @override
+  double get minExtent => tabs.preferredSize.height;
+
+  @override
+  double get maxExtent => tabs.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) =>
+      Material(
+        color: AppColors.surface,
+        elevation: overlapsContent || shrinkOffset > 0 ? 2 : 0,
+        child: tabs,
+      );
+
+  @override
+  bool shouldRebuild(_TabsHeader old) => old.tabs != tabs;
 }
