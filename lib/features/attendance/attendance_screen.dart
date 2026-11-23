@@ -51,6 +51,11 @@ class AttendanceScreen extends StatefulWidget {
   final String? initialClassId;
   final DateTime? initialDate;
 
+  /// True while the attendance TAB (the one without its own app bar) holds
+  /// marks that are not saved yet, so the bottom bar can flag it from the
+  /// other tabs, where those children still read as absent.
+  static final ValueNotifier<bool> unsavedInTab = ValueNotifier(false);
+
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
 }
@@ -366,7 +371,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _scroll.dispose();
     final channel = _channel;
     if (channel != null) Db.client.removeChannel(channel);
+    if (_isTab) AttendanceScreen.unsavedInTab.value = false;
     super.dispose();
+  }
+
+  /// The instance in the bottom bar; the pushed ones have their own app bar.
+  bool get _isTab => !widget.showAppBar;
+
+  /// Tells the bottom bar whether this tab holds unsaved marks. Called from
+  /// build, so the change is applied after the frame (listeners rebuild).
+  void _publishUnsaved(bool unsaved) {
+    if (!_isTab || AttendanceScreen.unsavedInTab.value == unsaved) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AttendanceScreen.unsavedInTab.value = unsaved;
+    });
   }
 
   // ── live updates ──────────────────────────────────────────────────────────
@@ -734,6 +752,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       SnackBar(
         content: Text(AppStrings.draftRestored(restored)),
         duration: const Duration(seconds: 8),
+        // A snack bar with an action stays until tapped by default (Flutter
+        // 3.29+), and it lives in the app-wide messenger: it sat over every
+        // tab and screen. It goes after 8 s; the marks stay, flagged on the tab.
+        persist: false,
         action: SnackBarAction(
           label: AppStrings.ignoreDraft,
           onPressed: _dropDraft,
@@ -979,6 +1001,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _publishUnsaved(_canEdit && _hasChanges);
     return PopScope(
       canPop: !_hasChanges,
       onPopInvokedWithResult: (didPop, _) async {

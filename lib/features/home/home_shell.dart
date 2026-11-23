@@ -98,9 +98,19 @@ class _HomeShellState extends State<HomeShell>
     if (state == AppLifecycleState.resumed) _checkUpdate();
   }
 
+  /// The attendance tab's place in the bottom bar (the same for every role).
+  static const _attendanceTab = 3;
+
   void _selectTab(int index) {
     if (index == _index) return;
     Haptics.select();
+    // A snack bar belongs to the tab that showed it, not the next one.
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    if (_index == _attendanceTab && AttendanceScreen.unsavedInTab.value) {
+      messenger.showSnackBar(
+        unsavedAttendanceSnackBar(onBack: () => _selectTab(_attendanceTab)),
+      );
+    }
     setState(() {
       _index = index;
       _opened.add(index);
@@ -287,12 +297,16 @@ class _HomeShellState extends State<HomeShell>
         destinations: [
           for (var i = 0; i < tabs.length; i++)
             NavigationDestination(
-              icon: (i == 3 && pendingCount > 0)
-                  ? Badge(
-                      label: AnimatedCount(value: pendingCount),
-                      child: Icon(tabs[i].icon),
-                    )
-                  : Icon(tabs[i].icon),
+              icon: i != _attendanceTab
+                  ? Icon(tabs[i].icon)
+                  : ValueListenableBuilder<bool>(
+                      valueListenable: AttendanceScreen.unsavedInTab,
+                      builder: (_, unsaved, __) => AttendanceTabIcon(
+                        icon: tabs[i].icon,
+                        pendingCount: pendingCount,
+                        unsaved: unsaved,
+                      ),
+                    ),
               selectedIcon: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.6, end: 1),
                 duration: const Duration(milliseconds: 500),
@@ -305,6 +319,48 @@ class _HomeShellState extends State<HomeShell>
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Shown on leaving the attendance tab with marks not saved yet. It goes by
+/// itself (a snack bar with an action would otherwise stay until tapped).
+SnackBar unsavedAttendanceSnackBar({required VoidCallback onBack}) => SnackBar(
+      content: const Text(AppStrings.attendanceNotSaved),
+      persist: false,
+      action: SnackBarAction(
+        label: AppStrings.backToAttendance,
+        onPressed: onBack,
+      ),
+    );
+
+/// The attendance tab's icon: the number of saves waiting to be sent, or a
+/// dot while marks taken on it are not saved yet.
+class AttendanceTabIcon extends StatelessWidget {
+  const AttendanceTabIcon({
+    super.key,
+    required this.icon,
+    required this.pendingCount,
+    required this.unsaved,
+  });
+
+  final IconData icon;
+  final int pendingCount;
+  final bool unsaved;
+
+  @override
+  Widget build(BuildContext context) {
+    if (pendingCount > 0) {
+      return Badge(
+        label: AnimatedCount(value: pendingCount),
+        child: Icon(icon),
+      );
+    }
+    return Badge(
+      isLabelVisible: unsaved,
+      backgroundColor: AppColors.warning,
+      smallSize: 9,
+      child: Icon(icon),
     );
   }
 }

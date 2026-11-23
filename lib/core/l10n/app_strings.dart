@@ -628,6 +628,8 @@ class AppStrings {
       ? 'رجّعنا علامات مخدوم ما اتحفظتش'
       : 'رجّعنا علامات $n مخدوم ما اتحفظتش';
   static const ignoreDraft = 'تجاهل';
+  static const attendanceNotSaved = 'علامات الحضور لسه ما اتحفظتش';
+  static const backToAttendance = 'ارجع احفظ';
   static const noSearchMatch = 'لا يوجد مخدوم بهذا البحث';
   static const backToTop = 'إلى أعلى';
 
