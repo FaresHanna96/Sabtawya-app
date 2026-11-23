@@ -624,8 +624,11 @@ class _AttendanceTabState extends State<_AttendanceTab>
             ),
             for (final (t, icon, label) in const [
               ('sunday_school', AppIcons.sundaySchool, AppStrings.chipService),
-              ('servant_meeting', AppIcons.servantMeeting,
-                  AppStrings.chipMeeting),
+              (
+                'servant_meeting',
+                AppIcons.servantMeeting,
+                AppStrings.chipMeeting
+              ),
               ('mass', AppIcons.mass, AppStrings.massShort),
               ('confession', AppIcons.confession, AppStrings.confessionShort),
             ])
@@ -767,20 +770,10 @@ class _AttendanceTabState extends State<_AttendanceTab>
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: _SearchBox(onChanged: (q) => setState(() => _query = q)),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.tonalIcon(
-                onPressed: _selectedDate == null || _servants.isEmpty
-                    ? null
-                    : _markAll,
-                icon: const Icon(Icons.done_all, size: 18),
-                label: const Text(AppStrings.allServantsCame),
-              ),
-            ],
+          child: ServantSearchRow(
+            onChanged: (q) => setState(() => _query = q),
+            onMarkAll:
+                _selectedDate == null || _servants.isEmpty ? null : _markAll,
           ),
         ),
         const Divider(height: 1, thickness: 0.5),
@@ -1103,7 +1096,9 @@ class _Toggle extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.readable(color)),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.readable(color)),
               ),
             ],
           ),
@@ -1193,10 +1188,13 @@ class _HeaderStat extends StatelessWidget {
         const SizedBox(height: 4),
         Text(value,
             style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.readable(color))),
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.readable(color))),
         Text(label,
-            style:
-                TextStyle(fontSize: 12, color: AppColors.readable(color).withValues(alpha: 0.7))),
+            style: TextStyle(
+                fontSize: 12,
+                color: AppColors.readable(color).withValues(alpha: 0.7))),
       ],
     );
     return Expanded(
@@ -1435,6 +1433,45 @@ bool _matches(String name, String query) {
   final q = ArabicSort.key(query).replaceAll(' ', '');
   if (q.isEmpty) return true;
   return ArabicSort.key(name).replaceAll(' ', '').contains(q);
+}
+
+/// The search box and «الكل حضروا» on «حضور الخدام».
+///
+/// The button sets its own minimum size: the theme gives filled buttons
+/// `Size.fromHeight(50)`, an infinite width meant for full-width buttons,
+/// which a Row cannot lay out; the release build then drew this whole row
+/// as an empty band.
+@visibleForTesting
+class ServantSearchRow extends StatelessWidget {
+  const ServantSearchRow({
+    super.key,
+    required this.onChanged,
+    required this.onMarkAll,
+  });
+
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onMarkAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: _SearchBox(onChanged: onChanged)),
+        const SizedBox(width: 8),
+        FilledButton.tonalIcon(
+          onPressed: onMarkAll,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            textStyle:
+                const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+          icon: const Icon(Icons.done_all, size: 18),
+          label: const Text(AppStrings.allServantsCame),
+        ),
+      ],
+    );
+  }
 }
 
 /// Search field above the servant lists.
