@@ -203,7 +203,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _syncBooking() {
     final list = _bookable;
     final keep = list.where((e) => e.id == _bookingEvent?.id);
-    final next = keep.isNotEmpty ? keep.first : (list.isEmpty ? null : list.first);
+    final next =
+        keep.isNotEmpty ? keep.first : (list.isEmpty ? null : list.first);
     if (next?.id == _bookingEvent?.id) return false;
     setState(() {
       _bookingEvent = next;
@@ -462,6 +463,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  /// Pull to refresh. With nothing unsaved: a full reload in place (new
+  /// children, bookings, the scores). With marks not saved yet: only the
+  /// co-servants' saved marks are merged in, so nothing taken here is lost.
+  Future<void> _refresh() async {
+    HapticFeedback.selectionClick();
+    if (_hasChanges) {
+      await _catchUp();
+    } else {
+      await _load(quiet: true);
+    }
+  }
+
   /// Fetches what the Saturdays on screen hold now and merges it, after the
   /// live connection was lost for a while.
   Future<void> _catchUp() async {
@@ -547,6 +560,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool get _allClasses => _shownClassIds.length > 1;
 
   bool get _isLocked => !_allClasses && (_sheet?.session.isLocked ?? false);
+
   /// A Saturday with no lesson is shown but never taken (the database
   /// refuses it too); a locked one only by the admin.
   bool _canEditSheet(AttendanceSheet sheet) =>
@@ -1098,6 +1112,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ];
     final list = ListView.builder(
       controller: _scroll,
+      // Pull down even when the roster is shorter than the screen.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 96),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: rows.length,
@@ -1174,7 +1190,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return Stack(
       children: [
-        list,
+        RefreshIndicator(onRefresh: _refresh, child: list),
         // Once the header has scrolled away: the date and the count stay in
         // sight, and a tap goes back up to the search and the buttons.
         PositionedDirectional(
@@ -1760,31 +1776,31 @@ class AttendanceProgressLine extends StatelessWidget {
     final ratio = total == 0 ? 0.0 : present / total;
     final (statusText, statusColor) = status(recorded, total);
     final count = Text.rich(
-          TextSpan(
-            style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
-            children: [
-              const TextSpan(text: '${AppStrings.presentOf} '),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.baseline,
-                baseline: TextBaseline.alphabetic,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(end: present.toDouble()),
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeOutCubic,
-                  builder: (_, v, __) => Text(
-                    '${v.round()}',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.navy,
-                    ),
-                  ),
+      TextSpan(
+        style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+        children: [
+          const TextSpan(text: '${AppStrings.presentOf} '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: present.toDouble()),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, __) => Text(
+                '${v.round()}',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
                 ),
               ),
-              TextSpan(text: ' ${AppStrings.ofWord} $total'),
-            ],
+            ),
           ),
-        );
+          TextSpan(text: ' ${AppStrings.ofWord} $total'),
+        ],
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

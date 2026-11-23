@@ -124,7 +124,17 @@ class _MoreScreenState extends State<MoreScreen> {
     return Scaffold(
       appBar:
           widget.showAppBar ? AppBar(title: const Text(AppStrings.more)) : null,
-      body: SafeArea(child: body),
+      body: SafeArea(
+        // Pulling down counts the badges again (absences, preps, ...).
+        child: RefreshIndicator(
+          onRefresh: () {
+            final next = _loadCounts();
+            setState(() => _counts = next);
+            return next.then<void>((_) {}, onError: (Object _) {});
+          },
+          child: body,
+        ),
+      ),
     );
   }
 }
@@ -208,6 +218,8 @@ class _MoreViewState extends State<MoreView> {
     );
 
     return ListView(
+      // Pull to refresh the badges, even when the page fits the screen.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [

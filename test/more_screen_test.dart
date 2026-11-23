@@ -38,6 +38,12 @@ Future<List<MoreEntry>> _pump(
 }
 
 void main() {
+  testWidgets('the page can always be pulled down to refresh', (tester) async {
+    await _pump(tester);
+    final list = tester.widget<ListView>(find.byType(ListView).first);
+    expect(list.physics, isA<AlwaysScrollableScrollPhysics>());
+  });
+
   testWidgets('the header shows the name, initials and role', (tester) async {
     await _pump(tester);
     expect(find.text('مينا فايز'), findsOneWidget);
