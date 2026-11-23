@@ -25,6 +25,7 @@ import '../servant_activities/preps_inbox_screen.dart';
 import '../servants/servants_screen.dart';
 import '../settings/settings_screen.dart';
 import '../sync/sync_screen.dart';
+import 'welcome_tour.dart';
 
 /// Who is looking at المزيد. Hiding an entry is a convenience; the database
 /// policies are what actually stop a write.
@@ -311,6 +312,16 @@ class MoreCatalog {
       color: AppColors.olive,
       group: MoreGroup.app,
       keywords: ['تحديث', 'اصدار', 'نسخة جديدة'],
+    ),
+    // The welcome tour again, for whoever skipped it or wants a reminder.
+    MoreEntry(
+      id: 'tour',
+      icon: Icons.tour_rounded,
+      title: AppStrings.tourMenu,
+      color: AppColors.gold,
+      group: MoreGroup.app,
+      open: () => const WelcomeTourScreen(),
+      keywords: const ['جولة', 'شرح', 'ازاي', 'مساعدة'],
     ),
     MoreEntry(
       id: 'settings',

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:ota_update/ota_update.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/app_version.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/services/sync_service.dart';
@@ -29,6 +30,7 @@ import '../servant_activities/my_activities_screen.dart';
 import '../notifications/notifications_bell.dart';
 import '../search/app_search.dart';
 import 'more_screen.dart';
+import 'welcome_tour.dart';
 import 'whats_new_popup.dart';
 
 /// The signed-in shell: five tabs, with the dashboard and the labels adapting
@@ -64,10 +66,21 @@ class _HomeShellState extends State<HomeShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkUpdate();
-    _callerName();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) WhatsNewPopup.maybeShow(context);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _welcome());
+  }
+
+  /// One thing at a time on opening: the welcome tour once on this phone
+  /// (it then stands in for this update's "what's new"), otherwise the
+  /// release notes; then the caller-name question.
+  Future<void> _welcome() async {
+    if (!mounted) return;
+    final toured = await WelcomeTour.maybeShow(context);
+    if (toured) {
+      await WhatsNewStore.instance.markSeen(kAppBuild);
+    } else if (mounted) {
+      await WhatsNewPopup.maybeShow(context);
+    }
+    if (mounted) await _callerName();
   }
 
   /// "Caller name" is on by default on Android: keeps its list current, and

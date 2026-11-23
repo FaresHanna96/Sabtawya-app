@@ -640,6 +640,36 @@ class AppStrings {
   static const messageSentAgain = 'اتبعتت، ابعتها تاني';
   static const previousSaturday = 'السبت اللي قبله';
   static const nextSaturday = 'السبت اللي بعده';
+
+  // ── the welcome tour
+  static const tourMenu = 'جولة في التطبيق';
+  static const tourSkip = 'تخطي';
+  static const tourNext = 'التالي';
+  static const tourStart = 'يلا نبدأ';
+  static const tourWelcomeTitle = 'أهلاً بيك في سبتاوية';
+  static const tourWelcomeBody =
+      'كل حاجة للخدمة في مكان واحد: الحضور، المخدومين، المتابعة والتحضير. خلّينا نوريك أهم حاجات في دقيقة.';
+  static const tourAttendanceTitle = 'الحضور في ثواني';
+  static const tourAttendanceBody =
+      'اضغط على النشاط تحت اسم كل طفل، أو اسحب السطر شمال يبقى حاضر في الكل ويمين تمسحه. وفي الآخر «حفظ الحضور». شغال من غير نت كمان.';
+  static const tourAttendanceGeneralBody =
+      'تقدر تسجّل الحضور لأي فصل: اضغط على النشاط تحت اسم الطفل، أو اسحب السطر شمال يبقى حاضر في الكل. وفي الآخر «حفظ الحضور».';
+  static const tourFollowUpTitle = 'محدش يفوتك';
+  static const tourFollowUpServantBody =
+      'في الرئيسية هتلاقي اللي محتاج متابعة: الغايبين والبيانات الناقصة وأعياد الميلاد. اضغط على أي طفل تكلّم أهله أو تبعتلهم واتساب.';
+  static const tourFollowUpGeneralBody =
+      '«محتاج متابعة» في الرئيسية بيجمعلك الغايبين والبيانات الناقصة من كل الفصول، واضغط على أي سطر يفتحلك القايمة.';
+  static const tourFollowUpAdminBody =
+      '«محتاج متابعة» في الرئيسية: الغايبين، البيانات الناقصة، التحضيرات اللي مستنية مراجعة وطلبات الانضمام، كل واحدة بعددها.';
+  static const tourPrepTitle = 'ارفع تحضيرك';
+  static const tourPrepBody =
+      'من «نشاطي» ارفع تحضير الدرس قبل السبت، وتحت كل درس هتلاقي وسائل إيضاح وأفكار من خدام تانيين.';
+  static const tourMoreTitle = 'التقارير والتقويم';
+  static const tourMoreBody =
+      'في «المزيد»: التقارير، سجل الحضور، التقويم والمسابقات. وفيه بحث يوصلك لأي حاجة بسرعة.';
+  static const tourClassesTitle = 'صحة كل فصل';
+  static const tourClassesBody =
+      'تاب الفصول بيوريك كل فصل: ماشيين كويس ولا محتاجين دعم، حضور السبت، التحضير، ولو الفصل محتاج خادم.';
   static const backToAttendance = 'ارجع احفظ';
   static const noSearchMatch = 'لا يوجد مخدوم بهذا البحث';
   static const backToTop = 'إلى أعلى';
