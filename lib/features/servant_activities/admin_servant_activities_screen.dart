@@ -13,6 +13,7 @@ import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/servant_activity.dart';
+import '../../data/repositories/class_repository.dart';
 import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/repositories/servant_repository.dart';
 import '../../data/services/excel_service.dart';
@@ -23,6 +24,8 @@ import 'prep_review_sheet.dart';
 import 'preps_inbox_screen.dart';
 import 'servant_activity_detail_screen.dart';
 import 'servant_marks.dart';
+import 'servant_day_widgets.dart';
+import '../attendance/attendance_swipe.dart';
 
 /// Admin overview of all servants' activity stats.
 ///
@@ -354,6 +357,10 @@ class _AttendanceTabState extends State<_AttendanceTab>
   /// Typed into the search box above the servants.
   String _query = '';
 
+  /// The class each servant serves (servant id -> class name); a general
+  /// servant has none.
+  Map<String, String> _classOf = const {};
+
   final _dateScrollController = ScrollController();
 
   @override
@@ -477,9 +484,18 @@ class _AttendanceTabState extends State<_AttendanceTab>
             ? _repo.sessionDatesForYear(yearId)
             : Future.value(<DateTime>[]),
         _servantRepo.servants(includeInactive: false),
+        // Which class each servant serves; without it the rows just say
+        // nothing about the class.
+        const ClassRepository()
+            .allAssignments()
+            .catchError((Object _) => const <ClassServant>[]),
       ]);
       final dates = results[0] as List<DateTime>;
       final servants = results[1] as List<Profile>;
+      final classOf = {
+        for (final a in results[2] as List<ClassServant>)
+          a.servantId: a.className,
+      };
       // Default to the date closest to today (current week)
       final selected = dates.isNotEmpty ? _nearestDate(dates) : null;
       List<ServantAttendance> att = [];
@@ -496,6 +512,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
       setState(() {
         _sessionDates = dates;
         _servants = servants;
+        _classOf = classOf;
         _selectedDate = selected;
         _marks.reset(att);
         _preps = preps;
@@ -599,6 +616,15 @@ class _AttendanceTabState extends State<_AttendanceTab>
       if (!mounted) return;
       if (_selectedDate == date) setState(() => _marks.fail(toggle));
       Ui.error(context, e);
+    }
+  }
+
+  /// The swipe on a servant: present at all four activities, or none.
+  /// Each one that differs flips on its own (the prep is never touched).
+  void _setAll(String servantId, bool present) {
+    for (final type in servantDayActivities) {
+      final marked = _find(servantId, type) != null;
+      if (marked != present) _toggle(servantId, type);
     }
   }
 
@@ -768,6 +794,17 @@ class _AttendanceTabState extends State<_AttendanceTab>
               ],
             ),
           ),
+        if (_selectedDate != null && _servants.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+            child: ServantDayProgressLine(
+              progress: ServantDayProgress.of(
+                servantIds: [for (final s in _servants) s.id],
+                isMarked: (id, type) => _find(id, type) != null,
+                preps: _preps,
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: ServantSearchRow(
@@ -801,158 +838,54 @@ class _AttendanceTabState extends State<_AttendanceTab>
                     final conf = _find(servant.id, 'confession');
                     final prep = _findPrep(servant.id);
                     final lp = _find(servant.id, 'lesson_prep');
-                    return _BulkServantRow(
-                      servant: servant,
-                      sundaySchoolPresent: ss != null,
-                      servantMeetingPresent: sm != null,
-                      massPresent: mass != null,
-                      confessionPresent: conf != null,
-                      prep: prep,
-                      lessonPrepManual: lp != null,
-                      busy: (type) => _marks.isBusy(servant.id, type),
-                      onToggleSunday: () =>
-                          _toggle(servant.id, 'sunday_school'),
-                      onToggleMeeting: () =>
-                          _toggle(servant.id, 'servant_meeting'),
-                      onToggleMass: () => _toggle(servant.id, 'mass'),
-                      onToggleConfession: () =>
-                          _toggle(servant.id, 'confession'),
-                      onPrep: prep != null
-                          ? () => _reviewPrep(prep)
-                          : () => _toggle(servant.id, 'lesson_prep'),
-                      onDetail: () => _openDetail(servant),
+                    final look = prepChipLook(prep, manualPresent: lp != null);
+                    ServantSlot slot(String type, String label, IconData icon,
+                            ServantAttendance? mark) =>
+                        ServantSlot(
+                          label: label,
+                          icon: mark != null ? Icons.check_rounded : icon,
+                          color: AppColors.success,
+                          on: mark != null,
+                          busy: _marks.isBusy(servant.id, type),
+                          onTap: () => _toggle(servant.id, type),
+                        );
+                    return AttendanceSwipe(
+                      id: '${_selectedDate?.toIso8601String()}-${servant.id}',
+                      enabled: _selectedDate != null,
+                      onAllPresent: () => _setAll(servant.id, true),
+                      onClear: () => _setAll(servant.id, false),
+                      onLongPress: () => _openDetail(servant),
+                      child: ServantDayRow(
+                        name: servant.fullName,
+                        className: _classOf[servant.id],
+                        onOpen: () => _openDetail(servant),
+                        slots: [
+                          ServantSlot(
+                            label: AppStrings.chipPrep,
+                            icon: look.icon,
+                            color: look.color,
+                            on: prep != null || lp != null,
+                            busy: _marks.isBusy(servant.id, 'lesson_prep'),
+                            semantics: '${AppStrings.chipPrep}: ${look.status}',
+                            onTap: prep != null
+                                ? () => _reviewPrep(prep)
+                                : () => _toggle(servant.id, 'lesson_prep'),
+                          ),
+                          slot('sunday_school', AppStrings.chipService,
+                              AppIcons.sundaySchool, ss),
+                          slot('servant_meeting', AppStrings.chipMeeting,
+                              AppIcons.servantMeeting, sm),
+                          slot('mass', AppStrings.massShort, AppIcons.mass,
+                              mass),
+                          slot('confession', AppStrings.confessionShort,
+                              AppIcons.confession, conf),
+                        ],
+                      ),
                     );
                   },
                 ),
         ),
       ],
-    );
-  }
-}
-
-class _BulkServantRow extends StatelessWidget {
-  const _BulkServantRow({
-    required this.servant,
-    required this.sundaySchoolPresent,
-    required this.servantMeetingPresent,
-    required this.massPresent,
-    required this.confessionPresent,
-    required this.prep,
-    required this.lessonPrepManual,
-    required this.busy,
-    required this.onToggleSunday,
-    required this.onToggleMeeting,
-    required this.onToggleMass,
-    required this.onToggleConfession,
-    required this.onPrep,
-    required this.onDetail,
-  });
-
-  final Profile servant;
-  final bool sundaySchoolPresent;
-  final bool servantMeetingPresent;
-  final bool massPresent;
-  final bool confessionPresent;
-  final LessonPrep? prep;
-  final bool lessonPrepManual;
-
-  /// The chip of this activity type is being saved.
-  final bool Function(String type) busy;
-  final VoidCallback onToggleSunday;
-  final VoidCallback onToggleMeeting;
-  final VoidCallback onToggleMass;
-  final VoidCallback onToggleConfession;
-  final VoidCallback onPrep;
-  final VoidCallback onDetail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 6, 8, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Row 1: avatar + name + arrow. Only this row opens the servant's
-            // page, so a near miss on a chip below never navigates away.
-            InkWell(
-              onTap: onDetail,
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: AppColors.navy.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.person_outline,
-                          size: 16, color: AppColors.navy),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        servant.fullName,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Icon(AppIcons.forward,
-                        size: 18, color: AppColors.muted),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            // Row 2: chips, each a full-size touch target.
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                _PrepChip(
-                    prep: prep,
-                    manualPresent: lessonPrepManual,
-                    disabled: busy('lesson_prep'),
-                    onTap: onPrep),
-                _Toggle(
-                  label: AppStrings.chipService,
-                  icon: AppIcons.sundaySchool,
-                  present: sundaySchoolPresent,
-                  disabled: busy('sunday_school'),
-                  onTap: onToggleSunday,
-                ),
-                _Toggle(
-                  label: AppStrings.chipMeeting,
-                  icon: AppIcons.servantMeeting,
-                  present: servantMeetingPresent,
-                  disabled: busy('servant_meeting'),
-                  onTap: onToggleMeeting,
-                ),
-                _Toggle(
-                  label: AppStrings.massShort,
-                  icon: AppIcons.mass,
-                  present: massPresent,
-                  disabled: busy('mass'),
-                  onTap: onToggleMass,
-                ),
-                _Toggle(
-                  label: AppStrings.confessionShort,
-                  icon: AppIcons.confession,
-                  present: confessionPresent,
-                  disabled: busy('confession'),
-                  onTap: onToggleConfession,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -984,128 +917,6 @@ class _BulkServantRow extends StatelessWidget {
     icon: Icons.assignment_outlined,
     status: AppStrings.prepNotSent,
   );
-}
-
-class _PrepChip extends StatelessWidget {
-  const _PrepChip({
-    required this.prep,
-    required this.manualPresent,
-    required this.disabled,
-    required this.onTap,
-  });
-
-  final LessonPrep? prep;
-  final bool manualPresent;
-  final bool disabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = prepChipLook(prep, manualPresent: manualPresent);
-    final active = prep != null || manualPresent;
-    final color = look.color;
-    return Tooltip(
-      message: look.status,
-      child: Semantics(
-        button: true,
-        label: '${AppStrings.chipPrep}: ${look.status}',
-        excludeSemantics: true,
-        child: InkWell(
-          onTap: disabled ? null : onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            constraints: const BoxConstraints(minHeight: 40),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: active ? 0.12 : 0.07),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: color.withValues(alpha: active ? 0.5 : 0.25),
-                width: 1.2,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(look.icon, size: 14, color: color),
-                const SizedBox(width: 4),
-                Text(
-                  AppStrings.chipPrep,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.readable(color),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Toggle extends StatelessWidget {
-  const _Toggle({
-    required this.label,
-    required this.icon,
-    required this.present,
-    required this.disabled,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool present;
-  final bool disabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = present ? AppColors.success : AppColors.muted;
-    return Semantics(
-      button: true,
-      toggled: present,
-      label: label,
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: disabled ? null : onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          constraints: const BoxConstraints(minHeight: 40),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: present ? 0.12 : 0.07),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: color.withValues(alpha: present ? 0.5 : 0.25),
-                width: 1.2),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                present ? Icons.check_circle : icon,
-                size: 14,
-                color: color,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.readable(color)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ================================================================ shared data

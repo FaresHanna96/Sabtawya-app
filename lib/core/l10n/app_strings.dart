@@ -662,6 +662,11 @@ class AppStrings {
   static const levelYouAreHere = 'مستواه دلوقتي';
   static const levelReached = 'عدّاه';
   static String levelPointsLeft(int n) => 'باقي $n نقطة';
+  static String servantsMarkedOf(int marked, int total) =>
+      'اتسجّل $marked من $total خادم';
+  static String prepsWaitingReview(int n) =>
+      n == 1 ? 'تحضير مستني مراجعة' : '$n تحضيرات مستنية مراجعة';
+  static const generalServantShort = 'خادم عام';
   static String profileBirthdayIn(int days) =>
       days == 1 ? 'عيد ميلاده بكرة' : 'عيد ميلاده بعد $days أيام';
 
