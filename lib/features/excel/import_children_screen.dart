@@ -381,7 +381,7 @@ class _Tally extends StatelessWidget {
             style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 15,
-              color: color,
+              color: AppColors.readable(color),
             ),
           ),
           const SizedBox(width: 6),
@@ -585,7 +585,7 @@ class _Banner extends StatelessWidget {
             message,
             style: TextStyle(
               fontSize: compact ? 12 : 13,
-              color: color,
+              color: AppColors.readable(color),
               height: 1.4,
             ),
           ),

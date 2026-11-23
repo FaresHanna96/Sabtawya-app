@@ -687,7 +687,7 @@ class StatCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
-                                color: color,
+                                color: AppColors.readable(color),
                               ),
                             ),
                           )
@@ -696,7 +696,7 @@ class StatCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w800,
-                              color: color,
+                              color: AppColors.readable(color),
                             ),
                           ),
                     const SizedBox(height: 2),
@@ -755,7 +755,7 @@ class ScoreChip extends StatelessWidget {
         showMax ? '$score/$maxScore' : '$score',
         textDirection: TextDirection.ltr,
         style: TextStyle(
-          color: _color,
+          color: AppColors.readable(_color),
           fontWeight: FontWeight.w800,
           fontSize: compact ? 12 : 13,
         ),
@@ -792,7 +792,7 @@ class PercentageBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: _color,
+                  color: AppColors.readable(_color),
                 ),
               ),
             ],
@@ -984,7 +984,7 @@ class StatusBadge extends StatelessWidget {
       child: Text(
         isActive ? AppStrings.active : AppStrings.inactive,
         style:
-            TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.readable(color)),
       ),
     );
   }
@@ -1026,7 +1026,7 @@ class StatTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: color,
+                    color: AppColors.readable(color),
                   ),
                 ),
                 Text(

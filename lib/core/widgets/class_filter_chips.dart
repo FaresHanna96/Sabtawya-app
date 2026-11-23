@@ -80,7 +80,8 @@ class ClassFilterChips extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: () => _open(context),
           child: Container(
-            height: 42,
+            // Grows with the phone's text size rather than clipping it.
+            constraints: const BoxConstraints(minHeight: 42),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),

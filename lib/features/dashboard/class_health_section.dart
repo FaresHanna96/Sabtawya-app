@@ -174,7 +174,7 @@ class _Line extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: color,
+                    color: AppColors.readable(color),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -242,7 +242,7 @@ class ClassHealthDetail extends StatelessWidget {
                   ? ClassHealthSection.labelOf(c.level)
                   : '${c.score}% • ${ClassHealthSection.labelOf(c.level)}',
               style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w800, color: color),
+                  fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.readable(color)),
             ),
           ],
         ),

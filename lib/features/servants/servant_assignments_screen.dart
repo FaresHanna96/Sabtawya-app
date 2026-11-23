@@ -95,7 +95,7 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
                           '${AppStrings.currentClass}: $fromClass',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: AppColors.warning,
+                            color: AppColors.warningText,
                           ),
                         )
                       : servant.email == null

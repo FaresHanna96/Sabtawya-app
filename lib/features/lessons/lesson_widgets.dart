@@ -183,7 +183,7 @@ class LessonBlock extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.olive,
+                        color: AppColors.oliveText,
                       ),
                     ),
                   ),
@@ -220,7 +220,7 @@ class LessonBlock extends StatelessWidget {
                                   AppStrings.materialsLink,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.sky,
+                                    color: AppColors.skyText,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),

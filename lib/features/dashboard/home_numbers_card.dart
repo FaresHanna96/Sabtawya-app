@@ -85,7 +85,7 @@ class HomeNumbersCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.sky,
+                          color: AppColors.skyText,
                         ),
                       ),
                     ),
@@ -126,7 +126,7 @@ class HomeNumbersCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.coral,
+                          color: AppColors.coralText,
                         ),
                       ),
                     ),
@@ -168,7 +168,7 @@ class _Number extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: color,
+              color: AppColors.readable(color),
               height: 1.1,
             ),
           ),

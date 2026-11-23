@@ -274,6 +274,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
                 suffixIcon: _child == null
                     ? const Icon(Icons.search_rounded)
                     : IconButton(
+                        tooltip: AppStrings.clearSearch,
                         icon: const Icon(Icons.close_rounded),
                         onPressed: () {
                           setState(() => _child = null);

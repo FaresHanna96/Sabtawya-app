@@ -309,11 +309,13 @@ class _FamilyTile extends StatelessWidget {
         ),
         trailing: sent
             ? IconButton(
+                tooltip: AppStrings.messageSentAgain,
                 onPressed: onOpen,
                 icon: const Icon(Icons.check_circle_rounded,
                     color: AppColors.success),
               )
             : IconButton(
+                tooltip: AppStrings.whatsapp,
                 onPressed: onOpen,
                 icon: const WhatsAppIcon(size: 26),
               ),

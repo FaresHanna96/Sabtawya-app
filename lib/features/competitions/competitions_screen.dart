@@ -523,7 +523,7 @@ class _CompetitionTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.olive,
+                    color: AppColors.oliveText,
                   ),
                 ),
               ),

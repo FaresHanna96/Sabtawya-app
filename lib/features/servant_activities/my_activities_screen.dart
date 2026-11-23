@@ -449,7 +449,7 @@ class _MiniBadge extends StatelessWidget {
             '$label: $value',
             style: TextStyle(
               fontSize: 12,
-              color: color,
+              color: AppColors.readable(color),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -567,7 +567,7 @@ class _SessionCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: color,
+                        color: AppColors.readable(color),
                       ),
                     ),
                   ),
@@ -733,7 +733,7 @@ class PrepTodoCard extends StatelessWidget {
                     Text(
                       '${AppDateUtils.formatDayDate(date)} · '
                       '${sent ? prepStatusLabel(prep!.status) : AppStrings.prepTodoNotSent}',
-                      style: TextStyle(fontSize: 12.5, color: color),
+                      style: TextStyle(fontSize: 12.5, color: AppColors.readable(color)),
                     ),
                   ],
                 ),

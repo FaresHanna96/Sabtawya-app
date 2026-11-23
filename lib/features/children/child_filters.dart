@@ -266,7 +266,7 @@ class GenderBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: compact ? 10 : 11,
           fontWeight: FontWeight.w700,
-          color: color,
+          color: AppColors.readable(color),
         ),
       ),
     );

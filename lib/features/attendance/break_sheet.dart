@@ -133,7 +133,7 @@ class _BreakSheetState extends State<BreakSheet> {
                     AppStrings.breakHasRecords,
                     style: const TextStyle(
                       fontSize: 12,
-                      color: AppColors.warning,
+                      color: AppColors.warningText,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

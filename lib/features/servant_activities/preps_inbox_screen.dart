@@ -278,7 +278,7 @@ class PrepInboxRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: color,
+            color: AppColors.readable(color),
           ),
         ),
       ),

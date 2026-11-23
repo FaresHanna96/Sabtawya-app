@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../l10n/app_strings.dart';
 import 'file_fallback.dart';
 
 /// Opens [url] full screen on a dark background. Pinch to zoom, drag to move
@@ -100,6 +102,7 @@ class _ImageViewerState extends State<_ImageViewer> {
               child: Padding(
                 padding: const EdgeInsets.all(8),
                 child: IconButton.filled(
+                  tooltip: AppStrings.close,
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.black54,
                     foregroundColor: Colors.white,

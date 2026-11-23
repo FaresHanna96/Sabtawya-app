@@ -100,7 +100,7 @@ class ChildTile extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.coral,
+                              color: AppColors.coralText,
                             ),
                           ),
                         ],

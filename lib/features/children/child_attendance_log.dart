@@ -551,7 +551,7 @@ class _ActivityTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: color,
+                    color: AppColors.readable(color),
                   ),
                 ),
             ],
@@ -711,7 +711,7 @@ class _MonthSection extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: color,
+                          color: AppColors.readable(color),
                         ),
                       ),
                     if (onToggle != null)
@@ -915,7 +915,7 @@ class _Tag extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: color,
+          color: AppColors.readable(color),
         ),
       ),
     );

@@ -110,7 +110,7 @@ class _SwipeBackground extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: color,
+              color: AppColors.readable(color),
             ),
           ),
         ],

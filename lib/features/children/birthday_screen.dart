@@ -627,7 +627,7 @@ class _Summary extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.warning,
+                  color: AppColors.warningText,
                 ),
               ),
             ),
@@ -788,7 +788,7 @@ class _BirthdayTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
-                  color: statusColor,
+                  color: AppColors.readable(statusColor),
                 ),
               ),
             ],
@@ -857,7 +857,7 @@ class _DayBadge extends StatelessWidget {
               fontSize: month == null ? 15 : 14,
               height: 1.1,
               fontWeight: FontWeight.w800,
-              color: color,
+              color: AppColors.readable(color),
             ),
           ),
           if (month != null)
@@ -867,7 +867,7 @@ class _DayBadge extends StatelessWidget {
                 fit: BoxFit.scaleDown,
                 child: Text(
                   AppDateUtils.monthName(month!),
-                  style: TextStyle(fontSize: 12, height: 1.1, color: color),
+                  style: TextStyle(fontSize: 12, height: 1.1, color: AppColors.readable(color)),
                 ),
               ),
             ),

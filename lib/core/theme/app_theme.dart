@@ -37,6 +37,28 @@ class AppColors {
   static const Color warning = Color(0xFFB7791F);
   static const Color danger = Color(0xFFB3261E);
   static const Color muted = Color(0xFF6B7280);
+
+  /// The same hues, darkened so TEXT in them is readable: at least 4.5:1 on
+  /// white, on the cream background and on their own light tint up to 20%
+  /// (WCAG AA).
+  /// Gold text was 2:1. Icons, bars and fills keep the brand colours above.
+  static const Color goldText = Color(0xFF906211);
+  static const Color coralText = Color(0xFFB93919);
+  static const Color skyText = Color(0xFF276E95);
+  static const Color oliveText = Color(0xFF616C1E);
+  static const Color warningText = Color(0xFF8B5C18);
+
+  /// [color] for text: its readable shade when it is one of the light brand
+  /// colours, itself otherwise (navy, maroon, success, danger, muted and
+  /// anything else already read well).
+  static Color readable(Color color) {
+    if (color == gold) return goldText;
+    if (color == coral) return coralText;
+    if (color == sky) return skyText;
+    if (color == olive) return oliveText;
+    if (color == warning) return warningText;
+    return color;
+  }
 }
 
 /// The soft background that goes with a status colour: the dedicated tints

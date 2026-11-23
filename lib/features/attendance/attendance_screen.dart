@@ -338,7 +338,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             style: const TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w800,
-              color: AppColors.sky,
+              color: AppColors.skyText,
             ),
           ),
         ],
@@ -1504,7 +1504,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.warning,
+                  color: AppColors.warningText,
                 ),
               ),
             ),
@@ -1616,9 +1616,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: _pickSession,
-              child: SizedBox(
-                height: 42,
+              // At least as tall as the class picker beside it, taller when
+              // the phone's text size is larger (never clipped).
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 42),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Row(
@@ -1709,7 +1712,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               _isAdmin
                   ? AppStrings.sessionLocked
                   : AppStrings.sessionLockedBody,
-              style: const TextStyle(fontSize: 12, color: AppColors.warning),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.warningText),
             ),
           ),
         ],
@@ -1857,7 +1861,7 @@ class AttendanceProgressLine extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  color: statusColor,
+                  color: AppColors.readable(statusColor),
                 ),
               ),
             ),
@@ -2428,7 +2432,7 @@ class _MarkToggle extends StatelessWidget {
                       fontSize: 12,
                       height: 1.35,
                       fontWeight: FontWeight.w700,
-                      color: labelColor,
+                      color: AppColors.readable(labelColor),
                     ),
                   ),
                 ],

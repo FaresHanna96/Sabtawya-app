@@ -706,6 +706,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
             child: Row(
               children: [
                 IconButton.filledTonal(
+                  tooltip: AppStrings.previousSaturday,
                   onPressed: _selectedIndex > 0 ? _goPrev : null,
                   icon: const Icon(AppIcons.back),
                 ),
@@ -754,6 +755,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
+                  tooltip: AppStrings.nextSaturday,
                   onPressed: _selectedIndex >= 0 &&
                           _selectedIndex < _sessionDates.length - 1
                       ? _goNext
@@ -1040,7 +1042,7 @@ class _PrepChip extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: color,
+                    color: AppColors.readable(color),
                   ),
                 ),
               ],
@@ -1101,7 +1103,7 @@ class _Toggle extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600, color: color),
+                    fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.readable(color)),
               ),
             ],
           ),
@@ -1191,10 +1193,10 @@ class _HeaderStat extends StatelessWidget {
         const SizedBox(height: 4),
         Text(value,
             style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+                fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.readable(color))),
         Text(label,
             style:
-                TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7))),
+                TextStyle(fontSize: 12, color: AppColors.readable(color).withValues(alpha: 0.7))),
       ],
     );
     return Expanded(
@@ -1419,7 +1421,7 @@ class _Pill extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: color,
+              color: AppColors.readable(color),
             ),
           ),
         ],

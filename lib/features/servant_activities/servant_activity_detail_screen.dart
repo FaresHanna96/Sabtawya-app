@@ -323,7 +323,7 @@ class _PrepRow extends StatelessWidget {
             _statusLabel(prep.status),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: color),
+            style: TextStyle(fontSize: 12, color: AppColors.readable(color)),
           ),
         ),
         trailing: const Icon(AppIcons.forward, color: AppColors.muted),
@@ -488,7 +488,7 @@ class _ActivityToggle extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: color,
+                  color: AppColors.readable(color),
                 ),
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,

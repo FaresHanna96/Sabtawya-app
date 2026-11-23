@@ -958,7 +958,7 @@ class _RankBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w800,
-          color: _color,
+          color: AppColors.readable(_color),
         ),
       ),
     );
@@ -1085,7 +1085,7 @@ class _RateChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,
-              color: color,
+              color: AppColors.readable(color),
             ),
           ),
         ],

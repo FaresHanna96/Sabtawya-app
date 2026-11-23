@@ -312,7 +312,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                 '${AppStrings.collected}: ',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.olive,
+                                  color: AppColors.oliveText,
                                 ),
                               ),
                               // The collected amount counts up.
@@ -324,7 +324,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                   '${v.toStringAsFixed(0)} ج.م',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w800,
-                                    color: AppColors.olive,
+                                    color: AppColors.oliveText,
                                   ),
                                 ),
                               ),
@@ -467,7 +467,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                                   .toStringAsFixed(0),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w800,
-                                                color: AppColors.olive,
+                                                color: AppColors.oliveText,
                                               ),
                                             ),
                                             TextSpan(
@@ -626,7 +626,7 @@ class _BalanceRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.sky,
+                      color: AppColors.skyText,
                     ),
                   ),
                 ),

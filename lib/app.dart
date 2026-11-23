@@ -37,12 +37,21 @@ Widget appFrame(BuildContext context, Widget? child) {
   return MaxWidthBox(
     maxWidth: kMaxAppWidth,
     background: AppColors.navyDark,
-    child: Directionality(
-      textDirection: TextDirection.rtl,
-      child: child ?? const SizedBox.shrink(),
+    // The phone's text size is followed, up to [kMaxTextScale]: beyond it
+    // the cards and rows designed for a phone would break apart.
+    child: MediaQuery.withClampedTextScaling(
+      maxScaleFactor: kMaxTextScale,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: child ?? const SizedBox.shrink(),
+      ),
     ),
   );
 }
+
+/// The largest text size the app follows (Android's largest standard
+/// setting is about 1.3).
+const double kMaxTextScale = 1.5;
 
 class SabtawyaApp extends StatelessWidget {
   const SabtawyaApp({super.key});

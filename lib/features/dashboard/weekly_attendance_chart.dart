@@ -198,7 +198,7 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: level,
+              color: AppColors.readable(level),
             ),
           ),
         ),
@@ -248,7 +248,7 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: color,
+                color: AppColors.readable(color),
               ),
             ),
           ),
@@ -411,7 +411,7 @@ class _ClassLine extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: color,
+                color: AppColors.readable(color),
               ),
             ),
           ),

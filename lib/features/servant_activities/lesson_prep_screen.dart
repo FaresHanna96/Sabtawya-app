@@ -350,7 +350,7 @@ class _StatusCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: color,
+                    color: AppColors.readable(color),
                   ),
                 ),
                 if (prep.isCommented)

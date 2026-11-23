@@ -310,7 +310,7 @@ class _Note extends StatelessWidget {
         padding: const EdgeInsets.only(top: 8),
         child: Text(
           text,
-          style: TextStyle(fontSize: 12.5, color: color, height: 1.4),
+          style: TextStyle(fontSize: 12.5, color: AppColors.readable(color), height: 1.4),
         ),
       );
 }

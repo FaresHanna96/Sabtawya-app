@@ -529,7 +529,7 @@ class _GapChip extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
-          color: color,
+          color: AppColors.readable(color),
         ),
       ),
     );

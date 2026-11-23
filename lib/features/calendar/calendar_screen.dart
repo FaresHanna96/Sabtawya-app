@@ -503,7 +503,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: color,
+              color: AppColors.readable(color),
             ),
           ),
         );

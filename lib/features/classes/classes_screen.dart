@@ -616,7 +616,7 @@ class HealthScoreChip extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: color,
+                      color: AppColors.readable(color),
                     ),
                   ),
                 ),
@@ -628,7 +628,7 @@ class HealthScoreChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
-                  color: color.withValues(alpha: 0.75),
+                  color: AppColors.readable(color).withValues(alpha: 0.75),
                 ),
               ),
             ],
@@ -690,7 +690,7 @@ class _PrepLine extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: sent ? FontWeight.w700 : FontWeight.w500,
-              color: color,
+              color: AppColors.readable(color),
             ),
           ),
         ],
@@ -748,7 +748,7 @@ class ClassSaturdayStatus extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: color,
+                      color: AppColors.readable(color),
                     ),
                   ),
                 ),
@@ -769,7 +769,7 @@ class ClassSaturdayStatus extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: level,
+                    color: AppColors.readable(level),
                   ),
                 ),
               ],
@@ -812,7 +812,7 @@ class ClassSaturdayStatus extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: color,
+                color: AppColors.readable(color),
               ),
             ),
           ),
@@ -867,7 +867,7 @@ class _Pill extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: color,
+                    color: AppColors.readable(color),
                   ),
                 ),
               ],

@@ -159,7 +159,7 @@ class _AddPrompt extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.coral,
+                    color: AppColors.coralText,
                   ),
                 ),
               ),

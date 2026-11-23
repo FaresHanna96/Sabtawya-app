@@ -629,7 +629,7 @@ class _Pill extends StatelessWidget {
       child: Text(
         count > 99 ? '99+' : '$count',
         style: TextStyle(
-          color: color,
+          color: AppColors.readable(color),
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),

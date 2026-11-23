@@ -78,7 +78,7 @@ class _CountBadge extends StatelessWidget {
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w800,
-          color: AppColors.olive,
+          color: AppColors.oliveText,
         ),
       ),
     );
@@ -138,7 +138,7 @@ class ServantRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: color,
+                  color: AppColors.readable(color),
                 ),
               ),
             ),
@@ -227,7 +227,7 @@ class _Tag extends StatelessWidget {
         style: TextStyle(
           fontSize: 11.5,
           fontWeight: FontWeight.w700,
-          color: color,
+          color: AppColors.readable(color),
         ),
       ),
     );

@@ -126,7 +126,7 @@ class _AttendanceYearsScreenState extends State<AttendanceYearsScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.olive,
+                              color: AppColors.oliveText,
                             ),
                           ),
                         )
