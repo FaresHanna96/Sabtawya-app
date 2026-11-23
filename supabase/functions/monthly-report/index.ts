@@ -141,7 +141,7 @@ async function report(month: string, dryRun: boolean) {
       to: address,
       subject: `التقرير الشهري — سبتاوية ${month}`,
       text: `التقرير الشهري للحضور عن شهر ${month} (ملف Excel مرفق).\n` +
-        `فيه لكل مخدوم: السبوت المحضورة، عدد الجلسات، النقاط ونسبة الحضور.\n` +
+        `فيه لكل مخدوم: السبوت المحضورة، عدد الجلسات، الطايوهات ونسبة الحضور.\n` +
         `الملف فيه بيانات المخدومين: احتفظ به في مكان آمن.`,
       attachments: [{
         filename: `sabtawya-monthly-${month}.xlsx`,

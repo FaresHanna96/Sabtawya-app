@@ -215,7 +215,7 @@ class MoreCatalog {
       color: AppColors.gold,
       group: MoreGroup.service,
       open: () => const CompetitionsScreen(),
-      keywords: const ['مسابقة', 'نقاط'],
+      keywords: const ['مسابقة', 'طايوهات'],
       roles: const {MoreRole.admin, MoreRole.generalServant},
     ),
     // An admin has the full servants list under الإدارة instead.

@@ -919,7 +919,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ),
                   ),
                   const Text(
-                    'نقطة',
+                    'طايو',
                     style: TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                 ],
@@ -1332,7 +1332,7 @@ class _Podium extends StatelessWidget {
                     ),
                   ),
                   const Text(
-                    'نقطة',
+                    'طايو',
                     style: TextStyle(fontSize: 10, color: AppColors.muted),
                   ),
                 ],

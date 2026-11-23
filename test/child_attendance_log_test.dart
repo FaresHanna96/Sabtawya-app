@@ -167,8 +167,8 @@ void main() {
 
       expect(find.text('نوفمبر 2026'), findsOneWidget);
       expect(find.text('حضر 1 من 2'), findsOneWidget);
-      expect(find.text('20 نقطة · سبت لم يُسجَّل'), findsOneWidget);
-      expect(find.text('5 نقطة · 4 سبوت لم تُسجَّل'), findsOneWidget);
+      expect(find.text('20 طايو · سبت لم يُسجَّل'), findsOneWidget);
+      expect(find.text('5 طايو · 4 سبوت لم تُسجَّل'), findsOneWidget);
     });
 
     testWidgets('a Saturday nobody recorded is not listed', (tester) async {

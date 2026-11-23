@@ -90,7 +90,7 @@ export function monthlySheets(rows: MonthlyRow[], mainName: string): Sheet[] {
     'النوع',
     'السبوت المحضورة',
     'عدد الجلسات',
-    'إجمالي النقاط',
+    'إجمالي الطايوهات',
     'متوسط الحضور %',
   ];
   const widths = [16, 28, 10, 16, 14, 14, 16];

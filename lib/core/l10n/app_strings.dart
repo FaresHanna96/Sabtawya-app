@@ -34,7 +34,7 @@ class AppStrings {
   static const yes = 'نعم';
   static const no = 'لا';
   static const total = 'الإجمالي';
-  static const points = 'نقطة';
+  static const points = 'طايو';
   static const notes = 'ملاحظات';
   static const saved = 'تم الحفظ بنجاح';
   static String saveFailedFor(List<String> classes) =>
@@ -135,7 +135,7 @@ class AppStrings {
   static const totalClasses = 'الفصول';
   static const totalServants = 'الخدام';
   static const totalChildren = 'المخدومين';
-  static const totalPoints = 'إجمالي النقاط';
+  static const totalPoints = 'إجمالي الطايوهات';
   static const nextAttendance = 'موعد الحضور القادم';
   static const lastAttendance = 'آخر سبت للحضور';
   static const lastSaturdayRate = 'حضور آخر سبت';
@@ -285,7 +285,7 @@ class AppStrings {
   static const noServants = 'لا يوجد خدام';
   static const noServantsHint = 'لا يوجد خدام في هذا الفصل بعد. أمين الخدمة هو من يعيّن الخدام.';
   static const classFollowUp = 'متابعة الفصل';
-  static String pointsOf(int n) => '$n نقطة';
+  static String pointsOf(int n) => '$n طايو';
   static const followAbsent = 'غياب متكرر';
   static const followBirthdays = 'أعياد الشهر';
   static const followMissing = 'بيانات ناقصة';
@@ -559,7 +559,7 @@ class AppStrings {
   static const clearFilters = 'إلغاء التصفية';
   static const sortBy = 'ترتيب حسب';
   static const sortByName = 'الاسم';
-  static const sortByPoints = 'النقاط';
+  static const sortByPoints = 'الطايوهات';
   static const sortByAttendance = 'نسبة الحضور';
   static const sortByAge = 'السن';
   static const allMonths = 'كل الشهور';
@@ -572,7 +572,7 @@ class AppStrings {
   static const logNotRecorded = 'لم يُسجَّل';
   static String logAttendedOf(int attended, int held) =>
       'حضر $attended من $held';
-  static String logPoints(int points) => '$points نقطة';
+  static String logPoints(int points) => '$points طايو';
   static String logUnrecorded(int n) =>
       n == 1 ? 'سبت لم يُسجَّل' : '$n سبوت لم تُسجَّل';
   static const attendanceLogEmpty = 'لا توجد سبوت في هذه السنة بعد';
@@ -667,12 +667,12 @@ class AppStrings {
   static const attendanceChip = 'حضور السنة';
   static const levelsTitle = 'المستويات';
   static const levelsHint =
-      'بتكبر مع نقاط الأوسمة: نقط الحضور + 10 لكل وسام، وبتبدأ من جديد كل سنة.';
+      'بتكبر مع طايوهات الأوسمة: طايوهات الحضور + 10 لكل وسام، وبتبدأ من جديد كل سنة.';
   static String levelFrom(int points) =>
-      points == 0 ? 'من البداية' : 'من $points نقطة';
+      points == 0 ? 'من البداية' : 'من $points طايو';
   static const levelYouAreHere = 'مستواه دلوقتي';
   static const levelReached = 'عدّاه';
-  static String levelPointsLeft(int n) => 'باقي $n نقطة';
+  static String levelPointsLeft(int n) => 'باقي $n طايو';
   static String servantsMarkedOf(int marked, int total) =>
       'اتسجّل $marked من $total خادم';
   static String prepsWaitingReview(int n) =>
@@ -725,10 +725,10 @@ class AppStrings {
 
   // ── points and badges
   static const badgesTitle = 'الأوسمة';
-  static const gamePointsLabel = 'نقاط الأوسمة السنة دي';
-  static const pointsWord = 'نقطة';
+  static const gamePointsLabel = 'طايوهات الأوسمة السنة دي';
+  static const pointsWord = 'طايو';
   static String toNextLevel(int n, String level) =>
-      'باقي $n نقطة وتبقى «$level»';
+      'باقي $n طايو وتبقى «$level»';
   static const topLevelReached = 'وصلت لأعلى مستوى';
   static String saturdaysInARow(int n) => '$n سبوت';
   static const inARow = 'ورا بعض';
@@ -759,7 +759,7 @@ class AppStrings {
   static const badgeConfession3 = 'قلب نقي';
   static const badgeConfession3Rule = 'اعترف كل شهر، 3 شهور ورا بعض.';
   static const badgeStarMonth = 'نجم الشهر';
-  static const badgeStarMonthRule = 'الأول في الفصل في نقاط شهر خلص.';
+  static const badgeStarMonthRule = 'الأول في الفصل في طايوهات شهر خلص.';
   static const badgeStreak16 = 'ملتزم ذهبي';
   static const badgeStreak16Rule =
       '16 سبت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
@@ -770,15 +770,15 @@ class AppStrings {
   static const rankingThisYear = 'السنة دي';
   static String badgesCount(int n) => '$n أوسمة';
   static const rankingPointsNote =
-      'النقاط من الحضور (5 لكل نشاط) + 10 لكل وسام. التقارير بتفضل بنقاط الحضور بس.';
-  static const noRankingYet = 'لسه مفيش نقاط الشهر ده';
+      'الطايوهات من الحضور (5 لكل نشاط) + 10 لكل وسام. التقارير بتفضل بطايوهات الحضور بس.';
+  static const noRankingYet = 'لسه مفيش طايوهات الشهر ده';
   static const newBadge = 'وسام جديد';
   static String newBadgesCount(int n) => '$n أوسمة جديدة';
   static String badgeWonBy(String child, String badge, {required bool girl}) =>
       girl
           ? '$child خدت وسام «$badge». برافو عليها!'
           : '$child خد وسام «$badge». برافو عليه!';
-  static String badgeBonus(int n) => '+$n نقط مكافأة';
+  static String badgeBonus(int n) => '+$n طايو مكافأة';
   static String congratsParents({required bool girl}) =>
       girl ? 'ابعت تهنئة لأهلها' : 'ابعت تهنئة لأهله';
   static String congratsMessage(String child, String badge,
@@ -952,13 +952,13 @@ class AppStrings {
   static const endDate = 'تاريخ النهاية';
   static const currentYear = 'السنة الحالية';
   static const setAsCurrent = 'تعيين كسنة حالية';
-  static const pointsPerActivity = 'نقاط كل نشاط';
+  static const pointsPerActivity = 'طايوهات كل نشاط';
   static const generateSessions = 'إنشاء جلسات السبوت';
   static const sessionsGenerated = 'تم إنشاء الجلسات';
   static const yearNameRequired = 'اسم السنة مطلوب';
   static const endBeforeStart = 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية';
   static const totalSessions = 'عدد الجلسات';
-  static const maxPoints = 'الحد الأقصى للنقاط';
+  static const maxPoints = 'الحد الأقصى للطايوهات';
 
   // ----------------------------------------------------------------- reports
   static const reportsTitle = 'ابطال الطايو';
@@ -973,7 +973,7 @@ class AppStrings {
   static const periodAll = 'كل السنة';
   static const periodFrom = 'من';
   static const periodTo = 'إلى';
-  static const pointsInPeriod = 'نقاط الفترة';
+  static const pointsInPeriod = 'طايوهات الفترة';
   static const filterDay = 'يوم';
   static const filterMonth = 'شهر';
   static const filterYear = 'سنة';
