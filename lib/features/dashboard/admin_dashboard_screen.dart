@@ -15,7 +15,8 @@ import '../children/child_form_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../lessons/lesson_widgets.dart';
-import 'missing_info_section.dart';
+import 'home_numbers_card.dart';
+import 'needs_attention_card.dart';
 import 'quick_action_grid.dart';
 import 'weekly_attendance_chart.dart';
 import 'today_birthdays_section.dart';
@@ -107,76 +108,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Glance first (greeting, the four numbers), then today
-              // (birthdays, the lesson), then what to do and the details.
+              // A slim greeting and every number in one card, then what is
+              // waiting (محتاج متابعة), today (birthdays, if any; the lesson,
+              // closed), the shortcuts and the details.
               FadeSlideIn(
                 index: 0,
                 child:
                     _greeting(session.displayName, session.currentYear?.name),
               ),
-              const SizedBox(height: 16),
-              FadeSlideIn(
-                index: 1,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                        label: AppStrings.totalChildren,
-                        value: '${stats.childrenCount}',
-                        icon: Icons.groups_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: StatCard(
-                        label: AppStrings.totalClasses,
-                        value: '${stats.classesCount}',
-                        icon: Icons.class_outlined,
-                        color: AppColors.olive,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 12),
               FadeSlideIn(
-                index: 2,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                        label: AppStrings.totalServants,
-                        value: '${stats.servantsCount}',
-                        icon: Icons.volunteer_activism_outlined,
-                        color: AppColors.navyLight,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: StatCard(
-                        label: AppStrings.adminsShort,
-                        value: '${stats.adminsCount}',
-                        icon: Icons.admin_panel_settings_outlined,
-                        color: AppColors.gold,
-                      ),
-                    ),
-                  ],
+                index: 1,
+                child: HomeNumbersCard(
+                  children: stats.childrenCount,
+                  classes: stats.classesCount,
+                  servants: stats.servantsCount,
+                  admins: stats.adminsCount,
+                  boys: stats.boysCount,
+                  girls: stats.girlsCount,
                 ),
               ),
               const SizedBox(height: 16),
               FadeSlideIn(
-                index: 3,
-                child: TodayBirthdaysSection(reloadToken: _loads),
+                index: 2,
+                child: NeedsAttentionCard(
+                  isAdmin: session.isAdmin,
+                  yearId: session.currentYear?.id,
+                  reloadToken: _loads,
+                  onOpen: _push,
+                ),
               ),
               FadeSlideIn(
                 index: 3,
-                child: MissingInfoSection(reloadToken: _loads),
+                child: TodayBirthdaysSection(
+                  reloadToken: _loads,
+                  hideWhenEmpty: true,
+                ),
               ),
               FadeSlideIn(
                 index: 4,
                 child: LessonOfDay(
                   date: upcomingSaturday(),
                   reloadToken: _loads,
+                  initiallyExpanded: false,
                 ),
               ),
               FadeSlideIn(index: 5, child: _quickActions()),
@@ -198,10 +172,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     : SectionCard(child: _lastSaturday(stats)),
               ),
               const SizedBox(height: 16),
-              FadeSlideIn(index: 7, child: _childrenSplit(stats)),
-              const SizedBox(height: 16),
               if (data.activity.isNotEmpty)
-                FadeSlideIn(index: 8, child: _activity(data.activity)),
+                FadeSlideIn(index: 7, child: _activity(data.activity)),
             ],
           ),
         );
@@ -220,74 +192,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         icon: Icons.event_available_outlined,
       );
 
-  /// All active children, boys vs girls as one split bar. Its own card with
-  /// its own title, so the totals are not read as that Saturday's attendance.
-  Widget _childrenSplit(AdminStats stats) {
-    final total = stats.boysCount + stats.girlsCount;
-    final boysShare = total == 0 ? 0.5 : stats.boysCount / total;
-    return SectionCard(
-      title: '${AppStrings.childrenCount} ($total)',
-      icon: Icons.groups_rounded,
-      accent: AppColors.navy,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.boy_rounded, size: 18, color: AppColors.sky),
-              Text(
-                ' ${AppStrings.boys} ${stats.boysCount}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.sky,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${stats.girlsCount} ${AppStrings.girls} ',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.coral,
-                ),
-              ),
-              const Icon(Icons.girl_rounded, size: 18, color: AppColors.coral),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.5, end: boysShare),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (_, share, __) => SizedBox(
-                height: 8,
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: (share * 1000).round().clamp(1, 999),
-                      child: Container(color: AppColors.sky),
-                    ),
-                    Expanded(
-                      flex: ((1 - share) * 1000).round().clamp(1, 999),
-                      child: Container(color: AppColors.coral),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Recent activity as a small timeline: an icon per kind of change and how
-  /// long ago it happened. Five at first, the rest behind "عرض الكل".
+  /// long ago it happened. Three at first, the rest behind "عرض الكل".
   Widget _activity(List<ActivityLogEntry> all) {
-    final shown = _showAllActivity ? all : all.take(5).toList();
+    final shown = _showAllActivity ? all : all.take(3).toList();
     return SectionCard(
       title: AppStrings.recentActivity,
       icon: Icons.history_rounded,
@@ -301,7 +209,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             for (var i = 0; i < shown.length; i++)
               _activityRow(shown[i], last: i == shown.length - 1),
-            if (all.length > 5)
+            if (all.length > 3)
               TextButton(
                 onPressed: () =>
                     setState(() => _showAllActivity = !_showAllActivity),
@@ -372,7 +280,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _greeting(String name, String? yearName) =>
-      GreetingBanner(name: name, subtitle: yearName);
+      GreetingBanner(name: name, subtitle: yearName, dense: true);
 
   Widget _quickActions() {
     // خادم عام sees everything but does not add or import children.

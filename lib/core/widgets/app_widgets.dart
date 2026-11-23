@@ -117,10 +117,18 @@ class BrandHeader extends StatelessWidget {
 /// Warm gradient welcome banner shared by both dashboards. The greeting follows
 /// the time of day.
 class GreetingBanner extends StatelessWidget {
-  const GreetingBanner({super.key, required this.name, this.subtitle});
+  const GreetingBanner({
+    super.key,
+    required this.name,
+    this.subtitle,
+    this.dense = false,
+  });
 
   final String name;
   final String? subtitle;
+
+  /// Less padding and a smaller logo, for a home with more below it.
+  final bool dense;
 
   static (String, String) _greetingFor(int hour) {
     if (hour < 12) return ('صباح الخير', '☀️');
@@ -172,16 +180,19 @@ class GreetingBanner extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.symmetric(
+                horizontal: dense ? 16 : 20,
+                vertical: dense ? 12 : 20,
+              ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(dense ? 6 : 10),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.9),
                       shape: BoxShape.circle,
                     ),
-                    child: const AppLogo(size: 44),
+                    child: AppLogo(size: dense ? 32 : 44),
                   ),
                   const SizedBox(width: 14),
                   Expanded(

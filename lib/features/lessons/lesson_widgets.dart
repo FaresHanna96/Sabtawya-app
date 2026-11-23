@@ -55,11 +55,15 @@ class LessonOfDay extends StatefulWidget {
     this.title = AppStrings.lessonOfWeek,
     this.showExtras = true,
     this.reloadToken = 0,
+    this.initiallyExpanded = true,
   });
 
   final DateTime date;
   final String title;
   final bool showExtras;
+
+  /// The admin home opens it closed, to keep the page short.
+  final bool initiallyExpanded;
 
   /// Changes when the home reloads (pull-to-refresh, or data changed
   /// elsewhere); the card then fetches again, keeping what it shows meanwhile.
@@ -101,7 +105,7 @@ class _LessonOfDayState extends State<LessonOfDay> {
             icon: Icons.menu_book_rounded,
             accent: AppColors.olive,
             collapsible: true,
-            initiallyExpanded: true,
+            initiallyExpanded: widget.initiallyExpanded,
             child: LessonBlock(
               date: widget.date,
               firstDay: firstDay,

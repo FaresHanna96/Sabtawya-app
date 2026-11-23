@@ -113,6 +113,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final _headerKey = GlobalKey();
   bool _sticky = false;
 
+  /// The pinned bar's search. While it is being typed in, the bar stays even
+  /// if the shorter list scrolls back above the header.
+  final _stickySearchFocus = FocusNode();
+
   // ── unsaved marks kept on the phone ─────────────────────────────────────
   static final _drafts = AttendanceDraft.instance;
   Timer? _draftTimer;
@@ -354,6 +358,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _date = widget.initialDate;
     _load();
     _scroll.addListener(_onScroll);
+    // The pinned bar stays while its search is focused (see _showSticky).
+    _stickySearchFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
     _drafts.compact().then((on) {
       if (mounted && on) setState(() => _compact = true);
     });
@@ -368,6 +376,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (_draftTimer?.isActive ?? false) unawaited(_writeDrafts());
     _draftTimer?.cancel();
     _search.dispose();
+    _stickySearchFocus.dispose();
     _scroll.dispose();
     final channel = _channel;
     if (channel != null) Db.client.removeChannel(channel);
@@ -1173,9 +1182,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           start: 0,
           end: 0,
           child: IgnorePointer(
-            ignoring: !_sticky,
+            ignoring: !_showSticky,
             child: AnimatedSlide(
-              offset: _sticky ? Offset.zero : const Offset(0, -1.2),
+              offset: _showSticky ? Offset.zero : const Offset(0, -1.2),
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
               child: _stickyBar(),
@@ -1186,94 +1195,123 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  bool get _showSticky => _sticky || _stickySearchFocus.hasFocus;
+
+  /// Pinned once the header has scrolled away: the date and the count, and
+  /// the search, so a child can be found without going back up. Tapping the
+  /// date line goes back to the top.
   Widget _stickyBar() {
     final total = _entries.length;
     final present = _entries.where((e) => e.sundaySchool).length;
     return Material(
       color: AppColors.card,
       elevation: 3,
-      child: InkWell(
-        onTap: () => _scroll.animateTo(
-          0,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              const Icon(Icons.event_rounded, size: 18, color: AppColors.navy),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _date == null ? '' : AppDateUtils.formatDayDate(_date!),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () {
+                _stickySearchFocus.unfocus();
+                _scroll.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.event_rounded,
+                        size: 18, color: AppColors.navy),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _date == null ? '' : AppDateUtils.formatDayDate(_date!),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${AppStrings.presentOf} $present ${AppStrings.ofWord} $total',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Tooltip(
+                      message: AppStrings.backToTop,
+                      child: Icon(Icons.keyboard_arrow_up_rounded,
+                          color: AppColors.muted),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                '${AppStrings.presentOf} $present ${AppStrings.ofWord} $total',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.success,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Tooltip(
-                message: AppStrings.backToTop,
-                child: Icon(Icons.keyboard_arrow_up_rounded,
-                    color: AppColors.muted),
-              ),
-            ],
-          ),
+            ),
+            if (_entries.isNotEmpty)
+              _searchField(focusNode: _stickySearchFocus),
+          ],
         ),
       ),
     );
   }
 
-  /// The search box, the compact switch and "لم يُسجَّل حضورهم".
-  Widget _finder() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _search,
-                onChanged: (v) => setState(() => _query = v),
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: AppStrings.attendanceSearchHint,
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _query.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: AppStrings.clearSearch,
-                          icon: const Icon(Icons.clear),
-                          onPressed: () => setState(() {
-                            _search.clear();
-                            _query = '';
-                          }),
-                        ),
-                ),
+  /// The search box; the header and the pinned bar share its text.
+  Widget _searchField({FocusNode? focusNode}) {
+    return TextField(
+      controller: _search,
+      focusNode: focusNode,
+      onChanged: (v) => setState(() => _query = v),
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: AppStrings.attendanceSearchHint,
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: _query.isEmpty
+            ? null
+            : IconButton(
+                tooltip: AppStrings.clearSearch,
+                icon: const Icon(Icons.clear),
+                onPressed: () => setState(() {
+                  _search.clear();
+                  _query = '';
+                }),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              tooltip: _compact ? AppStrings.fullView : AppStrings.compactView,
-              isSelected: _compact,
-              onPressed: _toggleCompact,
-              icon: const Icon(Icons.view_headline_rounded),
-              selectedIcon: const Icon(Icons.view_agenda_outlined),
-            ),
-          ],
+      ),
+    );
+  }
+
+  /// The search, «تحضير الجميع» and the compact switch, on one line.
+  Widget _finder() {
+    return Row(
+      children: [
+        Expanded(child: _searchField()),
+        if (_canEdit) ...[
+          const SizedBox(width: 6),
+          IconButton.filledTonal(
+            key: const ValueKey('markAll'),
+            tooltip: AppStrings.markAllPresent,
+            onPressed: _pickMarkAll,
+            icon: const Icon(Icons.done_all),
+          ),
+        ],
+        const SizedBox(width: 6),
+        IconButton.filledTonal(
+          tooltip: _compact ? AppStrings.fullView : AppStrings.compactView,
+          isSelected: _compact,
+          onPressed: _toggleCompact,
+          icon: const Icon(Icons.view_headline_rounded),
+          selectedIcon: const Icon(Icons.view_agenda_outlined),
         ),
       ],
     );
@@ -1309,122 +1347,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  /// Three short rows: the classes and the Saturday; the count with its
+  /// status and the ⋮ menu (clear all, holiday, the details); the search
+  /// with «تحضير الجميع». A day with no lesson and a trip being booked add
+  /// one slim line each.
   Widget _header() {
     final sheet = _sheet;
+    final menu = _headerMenuItems().isNotEmpty;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      child: SectionCard(
-        icon: Icons.fact_check_rounded,
-        accent: AppColors.sky,
-        padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.navy.withValues(alpha: 0.08)),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_classes.length > 1)
-              ClassFilterChips(
-                classes: _classes
-                    .map((c) =>
-                        ClassFilterOption(id: c.classId, name: c.className))
-                    .toList(),
-                selectedIds: _classIds,
-                onChanged: _switchClass,
-              )
-            else
-              Text(
-                _classes.first.className,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            _classAndDate(),
+            if (sheet != null) ...[
+              const SizedBox(height: 8),
+              _progress(),
+            ] else if (menu)
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: _headerMenu(),
               ),
-            const SizedBox(height: 10),
-            _dateNavigator(),
+            if (_isBreakDay) ...[
+              const SizedBox(height: 8),
+              _breakLine(),
+            ],
             if (_bookingEvent != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               _bookingBar(),
             ],
-            if (_isBreakDay) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 4, 4),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _break?.kind == LessonBreakKind.activity
-                          ? Icons.celebration_rounded
-                          : Icons.beach_access_rounded,
-                      size: 18,
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Text(
-                          AppStrings.breakDayBanner(
-                            (_break?.kind ?? LessonBreakKind.holiday).label,
-                          ),
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.warning,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_isAdmin)
-                      TextButton(
-                        onPressed: _setBreak,
-                        child: const Text(AppStrings.change),
-                      ),
-                  ],
-                ),
-              ),
-            ] else if (_isAdmin && _date != null) ...[
-              const SizedBox(height: 6),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton.icon(
-                  onPressed: _setBreak,
-                  icon: const Icon(Icons.beach_access_outlined, size: 18),
-                  label: const Text(AppStrings.markNoLesson),
-                ),
-              ),
-            ],
-            if (sheet != null) ...[
-              const SizedBox(height: 12),
-              _progress(),
-              if (_canEdit) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: _pickMarkAll,
-                        icon: const Icon(Icons.done_all, size: 18),
-                        label: const Text(AppStrings.markAllPresent),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      onPressed: _entries.any((e) => e.isPresent)
-                          ? _confirmClearAll
-                          : null,
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.danger,
-                      ),
-                      icon: const Icon(Icons.remove_done, size: 18),
-                      label: const Text(AppStrings.clearAll),
-                    ),
-                  ],
-                ),
-              ],
-              if (_entries.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _finder(),
-              ],
+            if (sheet != null && _entries.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _finder(),
             ],
           ],
         ),
@@ -1432,9 +1393,153 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  /// The class picker and the Saturday side by side; stacked when narrow.
+  Widget _classAndDate() {
+    final Widget classes = _classes.length > 1
+        ? ClassFilterChips(
+            classes: _classes
+                .map((c) => ClassFilterOption(id: c.classId, name: c.className))
+                .toList(),
+            selectedIds: _classIds,
+            onChanged: _switchClass,
+          )
+        : Text(
+            _classes.first.className,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          );
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (box.maxWidth < 300) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [classes, const SizedBox(height: 8), _dateNavigator()],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(flex: 5, child: classes),
+            const SizedBox(width: 6),
+            Expanded(flex: 6, child: _dateNavigator()),
+          ],
+        );
+      },
+    );
+  }
+
+  /// «إجازة» or «نشاط ترفيهي» on this Saturday, with «تغيير» for the admin.
+  Widget _breakLine() {
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 2, 2, 2),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _break?.kind == LessonBreakKind.activity
+                ? Icons.celebration_rounded
+                : Icons.beach_access_rounded,
+            size: 18,
+            color: AppColors.warning,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text(
+                AppStrings.breakDayBanner(
+                  (_break?.kind ?? LessonBreakKind.holiday).label,
+                ),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.warning,
+                ),
+              ),
+            ),
+          ),
+          if (_isAdmin)
+            TextButton(
+              onPressed: _setBreak,
+              child: const Text(AppStrings.change),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// What the ⋮ menu holds: «مسح الكل» (who can edit), «إجازة / نشاط
+  /// ترفيهي» (the admin, on a normal Saturday), and the recorded count and
+  /// points as a line to read.
+  List<PopupMenuEntry<_HeaderAction>> _headerMenuItems() {
+    final canClear = _sheet != null && _canEdit;
+    final canBreak = _isAdmin && _date != null && !_isBreakDay;
+    final total = _entries.length;
+    final recorded = _entries.where((e) => e.isRecorded).length;
+    final maxScore = _sheets.fold<int>(0, (sum, sh) => sum + sh.maxScore);
+    return [
+      if (canClear)
+        PopupMenuItem(
+          value: _HeaderAction.clearAll,
+          enabled: _entries.any((e) => e.isPresent),
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.remove_done, color: AppColors.danger),
+            title: Text(
+              AppStrings.clearAll,
+              style: TextStyle(color: AppColors.danger),
+            ),
+          ),
+        ),
+      if (canBreak)
+        const PopupMenuItem(
+          value: _HeaderAction.noLesson,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.beach_access_outlined),
+            title: Text(AppStrings.markNoLesson),
+          ),
+        ),
+      if (_sheet != null) ...[
+        if (canClear || canBreak) const PopupMenuDivider(),
+        PopupMenuItem(
+          enabled: false,
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${AppStrings.recordedCount}: $recorded/$total'),
+                const SizedBox(height: 4),
+                Text('${AppStrings.totalPoints}: ${_totalScore()}/$maxScore'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ];
+  }
+
+  Widget _headerMenu() {
+    return PopupMenuButton<_HeaderAction>(
+      key: const ValueKey('attendanceMenu'),
+      tooltip: AppStrings.more,
+      icon: const Icon(Icons.more_vert, color: AppColors.muted),
+      itemBuilder: (_) => _headerMenuItems(),
+      onSelected: (action) => switch (action) {
+        _HeaderAction.clearAll => _confirmClearAll(),
+        _HeaderAction.noLesson => _setBreak(),
+      },
+    );
+  }
+
   /// Previous / next Saturday around the chosen date. The arrows grey out at
   /// the ends of the year, and the line under the date says how long ago it
-  /// was (or that it is still to come).
+  /// was (or that it is still to come). Every session is a Saturday, so the
+  /// pill shows the day and month only; the full date is in the pinned bar.
   Widget _dateNavigator() {
     final index = _date == null
         ? -1
@@ -1445,9 +1550,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final today = AppDateUtils.dateOnly(DateTime.now());
     final upcoming = _date != null && _date!.isAfter(today);
 
-    Widget arrow(IconData icon, bool enabled, int step) =>
-        IconButton.filledTonal(
+    Widget arrow(IconData icon, bool enabled, int step) => IconButton(
           tooltip: AppStrings.attendanceDate,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 34, height: 42),
           onPressed: enabled ? () => _step(step) : null,
           icon: Icon(icon),
         );
@@ -1455,43 +1561,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Row(
       children: [
         arrow(AppIcons.back, canBack, -1),
-        const SizedBox(width: 8),
         Expanded(
           child: Material(
             color: AppColors.navy.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               onTap: _pickSession,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              child: SizedBox(
+                height: 42,
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.event_rounded,
-                          size: 16,
-                          color: AppColors.navy,
-                        ),
-                        const SizedBox(width: 6),
                         Flexible(
                           child: Text(
                             _date == null
                                 ? AppStrings.selectSaturday
-                                : AppDateUtils.formatDayDate(_date!),
-                            textAlign: TextAlign.center,
+                                : '${_date!.day} '
+                                    '${AppDateUtils.monthName(_date!.month)}',
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: FontWeight.w800,
+                              height: 1.2,
                             ),
                           ),
                         ),
                         const Icon(
                           Icons.arrow_drop_down,
-                          size: 20,
+                          size: 18,
                           color: AppColors.muted,
                         ),
                       ],
@@ -1501,8 +1603,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         upcoming
                             ? AppStrings.upcomingSaturday
                             : AppDateUtils.sinceLabel(_date!),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
+                          height: 1.2,
                           color: AppColors.muted,
                         ),
                       ),
@@ -1512,109 +1617,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
         arrow(AppIcons.forward, canForward, 1),
       ],
     );
   }
 
-  /// "حضر 8 من 13" with a bar, a status badge (not taken / partly / done),
-  /// and the points as a smaller line.
-  Widget _progress() {
-    final total = _entries.length;
-    final present = _entries.where((e) => e.sundaySchool).length;
-    final recorded = _entries.where((e) => e.isRecorded).length;
-    final maxScore = _sheets.fold<int>(0, (sum, sh) => sum + sh.maxScore);
-    final ratio = total == 0 ? 0.0 : present / total;
-
-    final (statusText, statusColor) = recorded == 0
-        ? (AppStrings.notTakenYet, AppColors.warning)
-        : recorded < total
-            ? (AppStrings.partlyTaken, AppColors.coral)
-            : (AppStrings.takenDone, AppColors.success);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Text.rich(
-              TextSpan(
-                style: const TextStyle(fontSize: 13, color: AppColors.muted),
-                children: [
-                  const TextSpan(text: '${AppStrings.presentOf} '),
-                  // The count rolls to its new value as children are marked.
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.baseline,
-                    baseline: TextBaseline.alphabetic,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(end: present.toDouble()),
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOutCubic,
-                      builder: (_, v, __) => Text(
-                        '${v.round()}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ),
-                  ),
-                  TextSpan(text: ' ${AppStrings.ofWord} $total'),
-                ],
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: statusColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: ratio),
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOutCubic,
-            builder: (_, v, __) => LinearProgressIndicator(
-              value: v,
-              minHeight: 8,
-              backgroundColor: AppColors.navy.withValues(alpha: 0.08),
-              valueColor: const AlwaysStoppedAnimation(AppColors.success),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Text(
-              '${AppStrings.recordedCount}: $recorded/$total',
-              style: const TextStyle(fontSize: 12, color: AppColors.muted),
-            ),
-            const Spacer(),
-            Text(
-              '${AppStrings.totalPoints}: ${_totalScore()}/$maxScore',
-              style: const TextStyle(fontSize: 12, color: AppColors.muted),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  /// "حضر 8 من 13", a thin bar, the status badge and the ⋮ menu.
+  Widget _progress() => AttendanceProgressLine(
+        present: _entries.where((e) => e.sundaySchool).length,
+        recorded: _entries.where((e) => e.isRecorded).length,
+        total: _entries.length,
+        trailing: _headerMenu(),
+      );
 
   /// Clearing wipes every mark on screen in one tap, so ask first.
   Future<void> _confirmClearAll() async {
@@ -1716,6 +1730,113 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (picked != null) await _goToDate(picked);
   }
 }
+
+/// The attendance header's second row: "حضر 8 من 13" (the count rolls as
+/// children are marked), the status badge (not taken / partly / done) and
+/// [trailing] (the ⋮ menu), with a thin bar underneath.
+class AttendanceProgressLine extends StatelessWidget {
+  const AttendanceProgressLine({
+    super.key,
+    required this.present,
+    required this.recorded,
+    required this.total,
+    this.trailing,
+  });
+
+  final int present;
+  final int recorded;
+  final int total;
+  final Widget? trailing;
+
+  /// The badge's words and colour for [recorded] out of [total].
+  static (String, Color) status(int recorded, int total) => recorded == 0
+      ? (AppStrings.notTakenYet, AppColors.warning)
+      : recorded < total
+          ? (AppStrings.partlyTaken, AppColors.coral)
+          : (AppStrings.takenDone, AppColors.success);
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total == 0 ? 0.0 : present / total;
+    final (statusText, statusColor) = status(recorded, total);
+    final count = Text.rich(
+          TextSpan(
+            style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+            children: [
+              const TextSpan(text: '${AppStrings.presentOf} '),
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(end: present.toDouble()),
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, v, __) => Text(
+                    '${v.round()}',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+              ),
+              TextSpan(text: ' ${AppStrings.ofWord} $total'),
+            ],
+          ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            // Shrinks rather than overflows on a narrow phone.
+            Expanded(
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: FittedBox(fit: BoxFit.scaleDown, child: count),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                statusText,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: statusColor,
+                ),
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: ratio),
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, __) => LinearProgressIndicator(
+              value: v,
+              minHeight: 4,
+              backgroundColor: AppColors.navy.withValues(alpha: 0.08),
+              valueColor: const AlwaysStoppedAnimation(AppColors.success),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// What the attendance header's ⋮ menu can do.
+enum _HeaderAction { clearAll, noLesson }
 
 enum AttendanceActivity {
   sundaySchool(AppStrings.sundaySchoolShort, AppIcons.sundaySchool),

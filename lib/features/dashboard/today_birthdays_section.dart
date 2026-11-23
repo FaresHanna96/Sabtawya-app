@@ -17,7 +17,14 @@ import '../children/child_profile_screen.dart';
 /// Shows today's birthdays on the home screen, split into two cards:
 /// one for children (المخدومين) and one for servants (الخدام).
 class TodayBirthdaysSection extends StatefulWidget {
-  const TodayBirthdaysSection({super.key, this.reloadToken = 0});
+  const TodayBirthdaysSection({
+    super.key,
+    this.reloadToken = 0,
+    this.hideWhenEmpty = false,
+  });
+
+  /// No line at all on a day without birthdays (the admin home).
+  final bool hideWhenEmpty;
 
   /// Changes when the home reloads (pull-to-refresh, or data changed
   /// elsewhere); the card then fetches again, keeping what it shows meanwhile.
@@ -63,6 +70,11 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
 
         // Nothing until the first answer, so the cards do not flash empty.
         if (!snapshot.hasData) return const SizedBox.shrink();
+        if (widget.hideWhenEmpty &&
+            childBirthdays.isEmpty &&
+            servantBirthdays.isEmpty) {
+          return const SizedBox.shrink();
+        }
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
