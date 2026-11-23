@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/responsive.dart';
+
 /// Palette taken from the Sabtawya emblem: Coptic navy lettering on white with
 /// the olive Arabic script.
 class AppColors {
@@ -227,13 +229,22 @@ class AppTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(color: Color(0xFFE5E7EB), space: 1),
+      // Opened screens keep a phone-like width on a wide window
+      // (see CappedPageTransitionsBuilder); a phone sees no difference.
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: ZoomPageTransitionsBuilder(),
-          TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
-          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-          TargetPlatform.macOS: ZoomPageTransitionsBuilder(),
-          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+          TargetPlatform.android:
+              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+          TargetPlatform.iOS:
+              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+          TargetPlatform.windows:
+              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+          TargetPlatform.macOS:
+              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+          TargetPlatform.linux:
+              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+          TargetPlatform.fuchsia:
+              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
         },
       ),
       dialogTheme: DialogThemeData(

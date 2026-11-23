@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/responsive.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/report_repository.dart';
@@ -106,9 +107,10 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
         return SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+          // One column on a phone; beside each other on a wide window (the
+          // chart next to the rest), as on the admin home.
+          child: TwoColumns(
+            main: [
               // Same order as the admin home: glance (greeting, numbers), today
               // (birthdays, lesson), then shortcuts and the classes.
               FadeSlideIn(
@@ -210,6 +212,8 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+            ],
+            side: [
               if (hasChart) ...[
                 FadeSlideIn(
                   index: 5,

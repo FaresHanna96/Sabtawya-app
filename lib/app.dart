@@ -10,6 +10,7 @@ import 'core/services/sync_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/ui.dart';
 import 'core/widgets/app_widgets.dart';
+import 'core/widgets/responsive.dart';
 import 'features/auth/login_screen.dart';
 import 'features/home/home_shell.dart';
 import 'state/session_controller.dart';
@@ -25,31 +26,20 @@ final List<LocalizationsDelegate<dynamic>> _localizationDelegates =
   GlobalCupertinoLocalizations.delegate,
 ];
 
-/// The widest the app is drawn. The screens are designed for a phone; on a
-/// tablet or a desktop browser they sit in a centred column of this width
-/// instead of stretching every card and bar from edge to edge.
-const double kMaxAppWidth = 720;
+/// The widest the app is drawn, on a very wide monitor. Below it the home
+/// uses the window (side menu, two columns, see HomeShell); every screen
+/// opened over it is capped at [kPageMaxWidth] by the page transitions.
+const double kMaxAppWidth = 1440;
 
 /// `MaterialApp.builder` for both apps: right-to-left, and capped in width.
 /// Dialogs, sheets and pushed screens live under it, so they are capped too.
 Widget appFrame(BuildContext context, Widget? child) {
-  final content = Directionality(
-    textDirection: TextDirection.rtl,
-    child: child ?? const SizedBox.shrink(),
-  );
-  final media = MediaQuery.of(context);
-  if (media.size.width <= kMaxAppWidth) return content;
-  return ColoredBox(
-    color: AppColors.navyDark,
-    child: Center(
-      child: SizedBox(
-        width: kMaxAppWidth,
-        // Screens that measure the window must see the column, not the window.
-        child: MediaQuery(
-          data: media.copyWith(size: Size(kMaxAppWidth, media.size.height)),
-          child: ClipRect(child: content),
-        ),
-      ),
+  return MaxWidthBox(
+    maxWidth: kMaxAppWidth,
+    background: AppColors.navyDark,
+    child: Directionality(
+      textDirection: TextDirection.rtl,
+      child: child ?? const SizedBox.shrink(),
     ),
   );
 }

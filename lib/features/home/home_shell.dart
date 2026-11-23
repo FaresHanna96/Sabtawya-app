@@ -14,6 +14,7 @@ import '../../core/utils/haptics.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/responsive.dart';
 import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
@@ -185,6 +186,67 @@ class _HomeShellState extends State<HomeShell>
     ];
 
     final current = tabs[_index];
+    // A laptop or desktop browser: a side menu instead of the bottom bar, and
+    // each tab centred at a readable width (the home lays out two columns).
+    final wide = isWideLayout(context);
+
+    Widget tabIcon(int i) => i != _attendanceTab
+        ? Icon(tabs[i].icon)
+        : ValueListenableBuilder<bool>(
+            valueListenable: AttendanceScreen.unsavedInTab,
+            builder: (_, unsaved, __) => AttendanceTabIcon(
+              icon: tabs[i].icon,
+              pendingCount: pendingCount,
+              unsaved: unsaved,
+            ),
+          );
+
+    Widget selectedTabIcon(int i) => TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.6, end: 1),
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.elasticOut,
+          builder: (_, v, child) => Transform.scale(scale: v, child: child),
+          child: Icon(tabs[i].selectedIcon, color: AppColors.navy),
+        );
+
+    Widget tabBody(int i, Widget child) => wide
+        ? MaxWidthBox(
+            maxWidth: i == 0 ? kHomeMaxWidth : kTabMaxWidth,
+            child: child,
+          )
+        : child;
+
+    // The side menu sits at the start (the right, in Arabic), where the eye
+    // starts reading.
+    Widget withRail(Widget body) => !wide
+        ? body
+        : Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _index,
+                onDestinationSelected: _selectTab,
+                extended:
+                    MediaQuery.sizeOf(context).width >= kExtendedRailBreakpoint,
+                minExtendedWidth: 200,
+                labelType:
+                    MediaQuery.sizeOf(context).width >= kExtendedRailBreakpoint
+                        ? NavigationRailLabelType.none
+                        : NavigationRailLabelType.all,
+                backgroundColor: AppColors.card,
+                indicatorColor: AppColors.oliveLight.withValues(alpha: 0.35),
+                destinations: [
+                  for (var i = 0; i < tabs.length; i++)
+                    NavigationRailDestination(
+                      icon: tabIcon(i),
+                      selectedIcon: selectedTabIcon(i),
+                      label: Text(tabs[i].label),
+                    ),
+                ],
+              ),
+              const VerticalDivider(width: 1, thickness: 1),
+              Expanded(child: body),
+            ],
+          );
 
     return Scaffold(
       appBar: AppBar(
@@ -230,7 +292,7 @@ class _HomeShellState extends State<HomeShell>
       ),
       // IndexedStack keeps each tab's scroll position and loaded data, so
       // moving between attendance and the roster does not re-query every time.
-      body: Column(
+      body: withRail(Column(
         children: [
           if (_update != null)
             _UpdateBanner(
@@ -280,7 +342,7 @@ class _HomeShellState extends State<HomeShell>
                         _opened.contains(i)
                             ? TickerMode(
                                 enabled: i == _index,
-                                child: tab.child,
+                                child: tabBody(i, tab.child),
                               )
                             : const SizedBox.shrink(),
                     ],
@@ -290,35 +352,21 @@ class _HomeShellState extends State<HomeShell>
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _selectTab,
-        destinations: [
-          for (var i = 0; i < tabs.length; i++)
-            NavigationDestination(
-              icon: i != _attendanceTab
-                  ? Icon(tabs[i].icon)
-                  : ValueListenableBuilder<bool>(
-                      valueListenable: AttendanceScreen.unsavedInTab,
-                      builder: (_, unsaved, __) => AttendanceTabIcon(
-                        icon: tabs[i].icon,
-                        pendingCount: pendingCount,
-                        unsaved: unsaved,
-                      ),
-                    ),
-              selectedIcon: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.6, end: 1),
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.elasticOut,
-                builder: (_, v, child) =>
-                    Transform.scale(scale: v, child: child),
-                child: Icon(tabs[i].selectedIcon, color: AppColors.navy),
-              ),
-              label: tabs[i].label,
+      )),
+      bottomNavigationBar: wide
+          ? null
+          : NavigationBar(
+              selectedIndex: _index,
+              onDestinationSelected: _selectTab,
+              destinations: [
+                for (var i = 0; i < tabs.length; i++)
+                  NavigationDestination(
+                    icon: tabIcon(i),
+                    selectedIcon: selectedTabIcon(i),
+                    label: tabs[i].label,
+                  ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

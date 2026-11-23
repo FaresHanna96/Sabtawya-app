@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/responsive.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
@@ -105,9 +106,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+          // On a phone one column in this order; on a wide window what to
+          // act on stays at the start (the right) and the chart and the
+          // activity feed move beside it.
+          child: TwoColumns(
+            main: [
               // A slim greeting and every number in one card, then what is
               // waiting (محتاج متابعة), today (birthdays, if any; the lesson,
               // closed), the shortcuts and the details.
@@ -155,6 +158,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               FadeSlideIn(index: 5, child: _quickActions()),
               const SizedBox(height: 16),
+            ],
+            side: [
               // The chart names its own Saturday; with nothing recorded yet
               // the last Saturday keeps a card of its own.
               FadeSlideIn(

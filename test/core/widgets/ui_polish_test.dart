@@ -68,8 +68,12 @@ void main() {
       return tester.getSize(find.byKey(key)).width;
     }
 
-    testWidgets('caps the app on a wide window', (tester) async {
-      expect(await widthAt(tester, 1200), kMaxAppWidth);
+    testWidgets('caps the app on a very wide window', (tester) async {
+      expect(await widthAt(tester, 1800), kMaxAppWidth);
+    });
+
+    testWidgets('a laptop window is used in full', (tester) async {
+      expect(await widthAt(tester, 1200), 1200);
     });
 
     testWidgets('leaves a phone at full width', (tester) async {
@@ -77,7 +81,7 @@ void main() {
     });
 
     testWidgets('screens measure the column, not the window', (tester) async {
-      _setSurface(tester, const Size(1200, 800));
+      _setSurface(tester, const Size(1800, 800));
       late double seen;
       await tester.pumpWidget(
         MaterialApp(
