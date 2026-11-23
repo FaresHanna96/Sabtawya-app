@@ -61,6 +61,7 @@ final _six = [
 
 void main() {
   _headerMergeTests();
+  _levelsSheetTests();
   group('GameLevel', () {
     test('levels start at 0, 100, 300 and 600', () {
       expect(GameLevel.of(0), GameLevel.seed);
@@ -378,6 +379,46 @@ void _headerMergeTests() {
         ),
         scale: 1.5,
       ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  });
+}
+
+void _levelsSheetTests() {
+  group('levels sheet', () {
+    testWidgets('tapping the level chip lists the four levels', (tester) async {
+      await tester.pumpWidget(_app(Container(
+        color: const Color(0xFF1B3A6B),
+        child: const GamePointsPanel(points: 120, run: 2),
+      )));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(GameLevel.sprout.title));
+      await tester.pumpAndSettle();
+      expect(find.text(AppStrings.levelsTitle), findsOneWidget);
+      expect(find.byType(LevelRow), findsNWidgets(4));
+      // 120 points: seed passed, sprout current, tree and fruit ahead.
+      expect(find.text(AppStrings.levelReached), findsOneWidget);
+      expect(find.text(AppStrings.levelYouAreHere), findsOneWidget);
+      expect(find.text(AppStrings.levelPointsLeft(180)), findsOneWidget);
+      expect(find.text(AppStrings.levelPointsLeft(480)), findsOneWidget);
+      expect(find.text(AppStrings.levelFrom(0)), findsOneWidget);
+      expect(find.text(AppStrings.levelFrom(600)), findsOneWidget);
+    });
+
+    testWidgets('the sheet fits a small phone at large text', (tester) async {
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_app(
+        Container(
+          color: const Color(0xFF1B3A6B),
+          child: const GamePointsPanel(points: 10, run: 0),
+        ),
+        scale: 1.5,
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(GameLevel.seed.title));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });

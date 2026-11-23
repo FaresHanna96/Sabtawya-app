@@ -250,27 +250,38 @@ class GamePointsPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
+              // Tap: the four levels and where this child stands.
+              Material(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
                   borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(level.icon, size: 18, color: AppColors.oliveLight),
-                    const SizedBox(width: 6),
-                    Text(
-                      level.title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                  onTap: () {
+                    Haptics.select();
+                    showLevelsSheet(context, points);
+                  },
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(level.icon, size: 18, color: AppColors.oliveLight),
+                        const SizedBox(width: 6),
+                        Text(
+                          level.title,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.expand_more_rounded,
+                            size: 18, color: Colors.white70),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -539,6 +550,143 @@ class _BadgeDetail extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// The growth levels, from the level chip: each with the points it starts
+/// at, the child's own highlighted, the ones behind ticked, and how many
+/// points the next one still needs.
+Future<void> showLevelsSheet(BuildContext context, int points) {
+  final current = GameLevel.of(points);
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    // Taller than the default when the text is large; scrolls if needed.
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                AppStrings.levelsTitle,
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                AppStrings.levelsHint,
+                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
+              const SizedBox(height: 12),
+              for (final l in GameLevel.values)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: LevelRow(level: l, points: points, current: current),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// One level in the sheet.
+@visibleForTesting
+class LevelRow extends StatelessWidget {
+  const LevelRow({
+    super.key,
+    required this.level,
+    required this.points,
+    required this.current,
+  });
+
+  final GameLevel level;
+  final int points;
+  final GameLevel current;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCurrent = level == current;
+    final reached = points >= level.from;
+    final color = reached ? AppColors.olive : AppColors.muted;
+    final String status;
+    if (isCurrent) {
+      status = AppStrings.levelYouAreHere;
+    } else if (reached) {
+      status = AppStrings.levelReached;
+    } else {
+      status = AppStrings.levelPointsLeft(level.from - points);
+    }
+    return Semantics(
+      selected: isCurrent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isCurrent ? AppColors.oliveTint : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isCurrent
+                ? AppColors.olive
+                : AppColors.navy.withValues(alpha: 0.08),
+            width: isCurrent ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: statusTint(color, 0.14),
+              ),
+              child: Icon(level.icon, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    level.title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: reached ? AppColors.navy : AppColors.muted,
+                    ),
+                  ),
+                  Text(
+                    AppStrings.levelFrom(level.from),
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            if (reached && !isCurrent)
+              const Icon(Icons.check_circle_rounded,
+                  size: 18, color: AppColors.success)
+            else
+              const SizedBox.shrink(),
+            const SizedBox(width: 6),
+            Text(
+              status,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isCurrent
+                    ? AppColors.oliveText
+                    : (reached ? AppColors.success : AppColors.muted),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

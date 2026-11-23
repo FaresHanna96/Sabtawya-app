@@ -654,6 +654,14 @@ class AppStrings {
   static String attendedSaturdays(int came, int of) => 'حضر $came من $of سبت';
   static const profileMoreActions = 'خيارات أكتر';
   static const attendanceChip = 'حضور السنة';
+  static const levelsTitle = 'المستويات';
+  static const levelsHint =
+      'بتكبر مع نقاط الأوسمة: نقط الحضور + 10 لكل وسام، وبتبدأ من جديد كل سنة.';
+  static String levelFrom(int points) =>
+      points == 0 ? 'من البداية' : 'من $points نقطة';
+  static const levelYouAreHere = 'مستواه دلوقتي';
+  static const levelReached = 'عدّاه';
+  static String levelPointsLeft(int n) => 'باقي $n نقطة';
   static String profileBirthdayIn(int days) =>
       days == 1 ? 'عيد ميلاده بكرة' : 'عيد ميلاده بعد $days أيام';
 
