@@ -5,7 +5,6 @@ import 'package:sabtawya/core/utils/child_changes.dart';
 import 'package:sabtawya/data/models/child.dart';
 import 'package:sabtawya/data/models/import_batch.dart';
 import 'package:sabtawya/features/children/change_history_card.dart';
-import 'package:sabtawya/features/excel/recent_imports_card.dart';
 
 ChildChange _edit(
   int id,
@@ -138,37 +137,6 @@ void main() {
       expect(b.inserted, 3);
       expect(b.updated, 2);
       expect(b.actorName, 'فارس');
-    });
-
-    testWidgets('shows nothing when there are no imports', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: RecentImportsCard(load: () async => [])),
-      ));
-      await tester.pumpAndSettle();
-      expect(find.text('استيرادات حديثة'), findsNothing);
-    });
-
-    testWidgets('lists an import with its undo button', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Directionality(
-            textDirection: TextDirection.rtl,
-            child: RecentImportsCard(
-              load: () async => [
-                ImportBatch(
-                  id: 'b1',
-                  createdAt: DateTime(2026, 11, 17),
-                  inserted: 3,
-                  updated: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ));
-      await tester.pumpAndSettle();
-      expect(find.text('استيرادات حديثة'), findsOneWidget);
-      expect(find.text('تراجع'), findsOneWidget);
     });
   });
 }

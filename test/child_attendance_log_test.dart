@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sabtawya/data/models/attendance.dart';
+import 'package:sabtawya/data/models/badges.dart';
 import 'package:sabtawya/data/models/child.dart';
 import 'package:sabtawya/data/models/reports.dart';
 import 'package:sabtawya/features/children/child_attendance_log.dart';
@@ -169,6 +170,38 @@ void main() {
       expect(find.text('حضر 1 من 2'), findsOneWidget);
       expect(find.text('20 طايو · سبت لم يُسجَّل'), findsOneWidget);
       expect(find.text('5 طايو · 4 سبوت لم تُسجَّل'), findsOneWidget);
+    });
+
+    testWidgets('each badge adds 10 to the year and to the month it was earned',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: ChildAttendanceLog(
+                history: _history,
+                sessionDates: _sessions,
+                points: 25,
+                badges: [
+                  ChildBadge(
+                    childId: 'child',
+                    classId: 'c',
+                    badge: KidBadge.streak4,
+                    earnedOn: DateTime(2026, 11, 7),
+                    progress: 4,
+                    target: 4,
+                  ),
+                ],
+                today: _today,
+              ),
+            ),
+          ),
+        ),
+      ));
+      expect(find.text('35'), findsOneWidget); // 25 + 10
+      expect(find.text('30 طايو · سبت لم يُسجَّل'), findsOneWidget); // Nov
+      expect(find.text('5 طايو · 4 سبوت لم تُسجَّل'), findsOneWidget); // Oct
     });
 
     testWidgets('a Saturday nobody recorded is not listed', (tester) async {

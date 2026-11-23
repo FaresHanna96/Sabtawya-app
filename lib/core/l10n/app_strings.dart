@@ -172,7 +172,7 @@ class AppStrings {
   static const logPeriodToday = 'اليوم';
   static const logPeriodWeek = 'آخر 7 أيام';
   static const logPeriodMonth = 'آخر 30 يوم';
-  static const logEmpty = 'لا توجد نشاطات بهذه التصفية';
+  static const logEmpty = 'لا توجد تعديلات بهذه التصفية';
   static const logLoadMore = 'عرض المزيد';
   static const loadFailed = 'تعذّر التحميل';
   static const missingInfoTitle = 'بيانات ناقصة';
@@ -442,8 +442,8 @@ class AppStrings {
       'كان $previous٪ وأصبح $recent٪';
   static const searchEverything = 'ابحث عن مخدوم أو فصل أو خادم';
   static const searchHint = 'اكتب حرفين على الأقل';
-  static const activityReport = 'الأنشطة';
-  static const activityByClass = 'الحضور حسب النشاط';
+  static const activityReport = 'الممارسات الروحية';
+  static const activityByClass = 'الحضور حسب الممارسة';
   static const saturdaysHeld = 'السبوت حتى الآن';
   static const weeklyAttendance = 'الحضور كل سبت';
   static const attendedLastSaturday = 'حضروا آخر سبت';
@@ -606,7 +606,7 @@ class AppStrings {
   static const attendanceDate = 'تاريخ الحضور';
   static const selectSaturday = 'اختر السبت';
   static const attendanceHistory = 'سجل الحضور';
-  static const lastActivityTitle = 'آخر مرة لكل نشاط';
+  static const lastActivityTitle = 'آخر مرة لكل ممارسة';
   static const neverAttended = 'لم يحضر بعد';
   static const attendanceRate = 'نسبة الحضور';
   static const birthdaysTitle = 'أعياد الميلاد';
@@ -639,7 +639,7 @@ class AppStrings {
   static const compactView = 'عرض مختصر';
   static const fullView = 'عرض كامل';
   static const markAllWhich = 'الكل حضروا في:';
-  static const allActivities = 'كل الأنشطة';
+  static const allActivities = 'كل الممارسات';
   static String draftRestored(int n) => n == 1
       ? 'رجّعنا علامات مخدوم ما اتحفظتش'
       : 'رجّعنا علامات $n مخدوم ما اتحفظتش';
@@ -667,7 +667,10 @@ class AppStrings {
   static const attendanceChip = 'حضور السنة';
   static const levelsTitle = 'المستويات';
   static const levelsHint =
-      'بتكبر مع طايوهات الأوسمة: طايوهات الحضور + 10 لكل وسام، وبتبدأ من جديد كل سنة.';
+      'مستوى المخدوم بيتحدد بعدد الطايوهات اللي جمعها السنة دي. بياخد 5 طايو '
+      'على كل ممارسة روحية حضرها (مدارس الأحد، القداس، العشية، الاعتراف) + 10 طايو '
+      'على كل وسام يكسبه. كل ما الطايوهات تزيد، بيطلع لمستوى أعلى. '
+      'والعدّاد بيبدأ من جديد مع كل سنة.';
   static String levelFrom(int points) =>
       points == 0 ? 'من البداية' : 'من $points طايو';
   static const levelYouAreHere = 'مستواه دلوقتي';
@@ -755,7 +758,7 @@ class AppStrings {
       'حضر القداس كل سبت في شهر كامل (3 سبوت على الأقل).';
   static const badgeFullDay = 'يوم كامل';
   static const badgeFullDayRule =
-      'حضر الأربع أنشطة (مدارس الأحد، العشية، القداس، الاعتراف) في نفس السبت 5 مرات.';
+      'حضر الأربع ممارسات روحية (مدارس الأحد، العشية، القداس، الاعتراف) في نفس السبت 5 مرات.';
   static const badgeConfession3 = 'قلب نقي';
   static const badgeConfession3Rule = 'اعترف كل شهر، 3 شهور ورا بعض.';
   static const badgeStarMonth = 'نجم الشهر';
@@ -770,7 +773,7 @@ class AppStrings {
   static const rankingThisYear = 'السنة دي';
   static String badgesCount(int n) => '$n أوسمة';
   static const rankingPointsNote =
-      'الطايوهات من الحضور (5 لكل نشاط) + 10 لكل وسام. التقارير بتفضل بطايوهات الحضور بس.';
+      'الطايوهات من الحضور (5 لكل ممارسة) + 10 لكل وسام، وبتظهر بنفس الشكل في التقارير والـ Excel.';
   static const noRankingYet = 'لسه مفيش طايوهات الشهر ده';
   static const newBadge = 'وسام جديد';
   static String newBadgesCount(int n) => '$n أوسمة جديدة';
@@ -799,9 +802,9 @@ class AppStrings {
       'كل حاجة للخدمة في مكان واحد: الحضور، المخدومين، المتابعة والتحضير. خلّينا نوريك أهم حاجات في دقيقة.';
   static const tourAttendanceTitle = 'الحضور في ثواني';
   static const tourAttendanceBody =
-      'اضغط على النشاط تحت اسم كل طفل، أو اسحب السطر شمال يبقى حاضر في الكل ويمين تمسحه. وفي الآخر «حفظ الحضور». شغال من غير نت كمان.';
+      'اضغط على الممارسة تحت اسم كل طفل، أو اسحب السطر شمال يبقى حاضر في الكل ويمين تمسحه. وفي الآخر «حفظ الحضور». شغال من غير نت كمان.';
   static const tourAttendanceGeneralBody =
-      'تقدر تسجّل الحضور لأي فصل: اضغط على النشاط تحت اسم الطفل، أو اسحب السطر شمال يبقى حاضر في الكل. وفي الآخر «حفظ الحضور».';
+      'تقدر تسجّل الحضور لأي فصل: اضغط على الممارسة تحت اسم الطفل، أو اسحب السطر شمال يبقى حاضر في الكل. وفي الآخر «حفظ الحضور».';
   static const tourFollowUpTitle = 'محدش يفوتك';
   static const tourFollowUpServantBody =
       'في الرئيسية هتلاقي اللي محتاج متابعة: الغايبين والبيانات الناقصة وأعياد الميلاد. اضغط على أي طفل تكلّم أهله أو تبعتلهم واتساب.';
@@ -811,7 +814,7 @@ class AppStrings {
       '«محتاج متابعة» في الرئيسية: الغايبين، البيانات الناقصة، التحضيرات اللي مستنية مراجعة وطلبات الانضمام، كل واحدة بعددها.';
   static const tourPrepTitle = 'ارفع تحضيرك';
   static const tourPrepBody =
-      'من «نشاطي» ارفع تحضير الدرس قبل السبت، وتحت كل درس هتلاقي وسائل إيضاح وأفكار من خدام تانيين.';
+      'من «تحضيراتي» ارفع تحضير الدرس قبل السبت، وتحت كل درس هتلاقي وسائل إيضاح وأفكار من خدام تانيين.';
   static const tourMoreTitle = 'التقارير والتقويم';
   static const tourMoreBody =
       'في «المزيد»: التقارير، سجل الحضور، التقويم والمسابقات. وفيه بحث يوصلك لأي حاجة بسرعة.';
@@ -952,7 +955,7 @@ class AppStrings {
   static const endDate = 'تاريخ النهاية';
   static const currentYear = 'السنة الحالية';
   static const setAsCurrent = 'تعيين كسنة حالية';
-  static const pointsPerActivity = 'طايوهات كل نشاط';
+  static const pointsPerActivity = 'طايوهات كل ممارسة';
   static const generateSessions = 'إنشاء جلسات السبوت';
   static const sessionsGenerated = 'تم إنشاء الجلسات';
   static const yearNameRequired = 'اسم السنة مطلوب';
@@ -1027,11 +1030,11 @@ class AppStrings {
 
   // -------------------------------------------------------- servant activities
   static const myActivities = 'تحضيراتي';
-  static const activitiesNav = 'التحضير والحضور';
+  static const activitiesNav = 'متابعة الخدام';
   static const exportServantMonthly = 'تقرير شهري - الخدام';
   static const exportServantYearly = 'تقرير سنوي - الخدام';
-  static const servantActivities = 'حضور وتحضير الخدام';
-  static const servantActivityReport = 'تقرير نشاطات الخدام';
+  static const servantActivities = 'متابعة الخدام';
+  static const servantActivityReport = 'تقرير متابعة الخدام';
   static const lessonPrep = 'تحضير الدرس';
   static const sundaySchoolAttendance = 'حضور مدارس الأحد';
   static const servantMeetingAttendance = 'حضور اجتماع الخدمة';

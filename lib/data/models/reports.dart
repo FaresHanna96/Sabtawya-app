@@ -71,6 +71,7 @@ class ChildYearReport {
     this.childMobile,
     this.school,
     this.yearName,
+    this.bonus = 0,
   });
 
   final String childId;
@@ -81,7 +82,36 @@ class ChildYearReport {
   final String yearId;
   final int sessionsTotal;
   final int sessionsAttended;
+
+  /// Attendance points only; the % is worked out from these.
   final int points;
+
+  /// What the badges added ([kBadgeBonus] each); 0 until filled in.
+  final int bonus;
+
+  /// The طايو to show: attendance points plus the badge bonus.
+  int get total => points + bonus;
+
+  ChildYearReport withBonus(int bonus) => ChildYearReport(
+        childId: childId,
+        childName: childName,
+        gender: gender,
+        classId: classId,
+        className: className,
+        yearId: yearId,
+        sessionsTotal: sessionsTotal,
+        sessionsAttended: sessionsAttended,
+        points: points,
+        maxPoints: maxPoints,
+        percentage: percentage,
+        childIsActive: childIsActive,
+        birthDate: birthDate,
+        childCode: childCode,
+        childMobile: childMobile,
+        school: school,
+        yearName: yearName,
+        bonus: bonus,
+      );
   final int maxPoints;
   final double percentage;
   final bool childIsActive;
@@ -128,6 +158,7 @@ class ChildMonthlyReport {
     required this.maxPoints,
     required this.percentage,
     required this.childIsActive,
+    this.bonus = 0,
   });
 
   final String childId;
@@ -139,7 +170,32 @@ class ChildMonthlyReport {
   final DateTime monthStart;
   final int sessionsTotal;
   final int sessionsAttended;
+
+  /// Attendance points only.
   final int points;
+
+  /// What the badges earned this month added; 0 until filled in.
+  final int bonus;
+
+  /// The طايو to show: attendance points plus the badge bonus.
+  int get total => points + bonus;
+
+  ChildMonthlyReport withBonus(int bonus) => ChildMonthlyReport(
+        childId: childId,
+        childName: childName,
+        gender: gender,
+        classId: classId,
+        className: className,
+        yearId: yearId,
+        monthStart: monthStart,
+        sessionsTotal: sessionsTotal,
+        sessionsAttended: sessionsAttended,
+        points: points,
+        maxPoints: maxPoints,
+        percentage: percentage,
+        childIsActive: childIsActive,
+        bonus: bonus,
+      );
   final int maxPoints;
   final double percentage;
   final bool childIsActive;

@@ -469,6 +469,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       breakDates: data.breakDates,
                       lastActivity: data.lastActivity,
                       points: data.yearReport?.points,
+                      badges: data.badges ?? const <ChildBadge>[],
                     ),
                   ]),
                   // ── البيانات: only what is not already above.

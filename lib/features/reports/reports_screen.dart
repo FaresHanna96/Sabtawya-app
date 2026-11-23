@@ -13,6 +13,7 @@ import '../../core/widgets/class_group_header.dart';
 import '../../core/widgets/date_granularity_filter.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
+import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../data/services/excel_service.dart';
 import '../../data/services/file_service.dart';
@@ -79,18 +80,30 @@ class _ReportsScreenState extends State<ReportsScreen> {
     // One class: the database narrows it. Several: narrowed below.
     final oneClass = _classIds.length == 1 ? _classIds.first : null;
     // The three reads are independent, so run them side by side.
-    final (children, classes, monthly, activity) = await (
+    final classIds = oneClass != null
+        ? [oneClass]
+        : [for (final c in context.read<SessionController>().myClasses) c.classId];
+    final (children, classes, monthly, activity, bonus) = await (
       _reports.childYearReports(yearId: yearId, classId: oneClass),
       _reports.classScores(yearId),
       _reports.childMonthly(yearId: yearId, classId: oneClass),
       _reports.activityRates(yearId: yearId, classId: oneClass),
+      // The badges' +10 each, added to every child's طايو below.
+      BadgeBonus.load(yearId: yearId, classIds: classIds),
     ).wait;
     return _latest = _ReportsData(
-      children: children.where((r) => _inClasses(r.classId)).toList(),
+      children: children
+          .where((r) => _inClasses(r.classId))
+          .map(bonus.forYear)
+          .toList(),
       classes: classes.where((r) => _inClasses(r.classId)).toList(),
-      monthly: monthly.where((r) => _inClasses(r.classId)).toList(),
+      monthly: monthly
+          .where((r) => _inClasses(r.classId))
+          .map(bonus.forMonth)
+          .toList(),
       activity: activity.where((r) => _inClasses(r.classId)).toList(),
       maxPerSession: maxPerSession,
+      bonus: bonus,
     );
   }
 
@@ -454,6 +467,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               classId: r.classId,
               className: r.className,
               points: r.points,
+              bonus: r.bonus,
               maxPoints: r.maxPoints,
               sessionsAttended: r.sessionsAttended,
               sessionsTotal: held[r.childId] ?? r.sessionsTotal,
@@ -629,6 +643,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         classId: r.classId,
                         className: r.className,
                         points: r.points,
+                        bonus: r.bonus,
                         maxPoints: r.maxPoints,
                         sessionsAttended: r.sessionsAttended,
                         sessionsTotal: r.sessionsTotal,
@@ -856,7 +871,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
 
   Widget _scoreCard(_ChildScore r, int rank, {required bool showClass}) {
-    final ratio = r.maxPoints > 0 ? r.points / r.maxPoints * 100 : 0.0;
+    final ratio =
+        r.maxPoints > 0 ? r.attendancePoints / r.maxPoints * 100 : 0.0;
     final color = _pctColor(ratio);
     return Card(
       margin: EdgeInsets.zero,
@@ -1038,6 +1054,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         classId: first.classId,
         className: first.className,
         points: e.value.fold<int>(0, (a, r) => a + r.score),
+        bonus: data.bonus.between(e.key, from: _filterFrom, to: _filterTo),
         maxPoints: e.value.length * data.maxPerSession,
         sessionsAttended: e.value.where((r) => r.present).length,
         sessionsTotal: e.value.length,
@@ -1077,17 +1094,24 @@ class _ChildScore {
     required this.childName,
     required this.classId,
     required this.className,
-    required this.points,
+    required int points,
+    int bonus = 0,
     required this.maxPoints,
     required this.sessionsAttended,
     required this.sessionsTotal,
-  });
+  })  : attendancePoints = points,
+        points = points + bonus;
 
   final String childId;
   final String childName;
   final String classId;
   final String className;
+
+  /// The طايو shown: attendance points plus the badges' bonus.
   final int points;
+
+  /// Attendance points alone: the bar's share of [maxPoints] uses these.
+  final int attendancePoints;
   final int maxPoints;
   final int sessionsAttended;
   final int sessionsTotal;
@@ -1136,6 +1160,7 @@ class _ReportsData {
     required this.monthly,
     this.activity = const <ChildActivityRate>[],
     this.maxPerSession = 20,
+    this.bonus = BadgeBonus.none,
   });
 
   const _ReportsData.empty()
@@ -1143,7 +1168,8 @@ class _ReportsData {
         classes = const <ClassYearScore>[],
         monthly = const <ChildMonthlyReport>[],
         activity = const <ChildActivityRate>[],
-        maxPerSession = 20;
+        maxPerSession = 20,
+        bonus = BadgeBonus.none;
 
   final List<ChildYearReport> children;
   final List<ClassYearScore> classes;
@@ -1151,6 +1177,9 @@ class _ReportsData {
   final List<ChildActivityRate> activity;
 
   final int maxPerSession;
+
+  /// The badges' +10 each, by child and day (for the period filter).
+  final BadgeBonus bonus;
 }
 
 // ---------------------------------------------------------------- rank badge

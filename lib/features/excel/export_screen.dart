@@ -12,6 +12,7 @@ import '../../data/models/attendance.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../data/repositories/report_repository.dart';
 import '../../data/repositories/servant_activity_repository.dart';
@@ -285,8 +286,17 @@ class _ExportScreenState extends State<ExportScreen> {
     setState(() => _busy = true);
     final List<ChildMonthlyReport> all;
     try {
-      all = (await _reports.childMonthly(yearId: yearId, classId: _classId))
+      // The badges' +10 each go into the month they were earned in.
+      final (monthly, bonus) = await (
+        _reports.childMonthly(yearId: yearId, classId: _classId),
+        BadgeBonus.load(
+          yearId: yearId,
+          classIds: [for (final c in _scopeClasses) c.classId],
+        ),
+      ).wait;
+      all = monthly
           .where((r) => _inScope(r.classId))
+          .map(bonus.forMonth)
           .toList();
     } catch (e) {
       if (mounted) Ui.error(context, e);
@@ -417,11 +427,16 @@ class _ExportScreenState extends State<ExportScreen> {
         build: () async {
           final yearId = _yearId;
           if (yearId == null) return null;
-          final report = (await _reports.childYearReports(
-            yearId: yearId,
-            classId: _classId,
-          ))
+          final (years, bonus) = await (
+            _reports.childYearReports(yearId: yearId, classId: _classId),
+            BadgeBonus.load(
+              yearId: yearId,
+              classIds: [for (final c in _scopeClasses) c.classId],
+            ),
+          ).wait;
+          final report = years
               .where((r) => _inScope(r.classId))
+              .map(bonus.forYear)
               .toList();
           if (report.isEmpty) return null;
           // The year view already counts only the Saturdays held so far, so

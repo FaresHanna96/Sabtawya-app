@@ -747,7 +747,7 @@ class ExcelService {
           _text(row.school),
           IntCellValue(row.sessionsAttended),
           IntCellValue(held),
-          IntCellValue(row.points),
+          IntCellValue(row.total),
           DoubleCellValue(pct),
         ];
       },
@@ -1545,7 +1545,7 @@ class _MonthlyChild {
         gender = rows.first.gender,
         attended = rows.fold(0, (a, r) => a + r.sessionsAttended),
         held = rows.fold(0, (a, r) => a + r.sessionsTotal),
-        points = rows.fold(0, (a, r) => a + r.points);
+        points = rows.fold(0, (a, r) => a + r.total);
 
   final String name;
   final String className;

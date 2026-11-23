@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../data/models/attendance.dart';
+import '../../data/models/badges.dart';
 import '../../data/models/reports.dart';
 
 /// One Saturday in a child's log: its record, or none when the class's
@@ -172,6 +173,7 @@ class ChildAttendanceLog extends StatefulWidget {
     this.breakDates = const {},
     this.lastActivity,
     this.points,
+    this.badges = const <ChildBadge>[],
     this.today,
   });
 
@@ -186,9 +188,13 @@ class ChildAttendanceLog extends StatefulWidget {
   /// When each activity was last done (any year).
   final ChildLastActivity? lastActivity;
 
-  /// The year's points as the database counts them; summed from [history]
-  /// when not given.
+  /// The year's attendance points as the database counts them; summed from
+  /// [history] when not given. The badges' bonus is added on top.
   final int? points;
+
+  /// The child's badges: each one earned adds [kBadgeBonus] to the year's
+  /// طايو and to the month it was earned in.
+  final List<ChildBadge> badges;
 
   /// Defaults to now; tests pin it.
   final DateTime? today;
@@ -226,6 +232,18 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
     }
   }
 
+  /// The badges' bonus by the month each was earned in (the 1st of it).
+  Map<DateTime, int> get _bonusByMonth {
+    final out = <DateTime, int>{};
+    for (final b in widget.badges) {
+      final on = b.earnedOn;
+      if (on == null) continue;
+      final month = DateTime(on.year, on.month);
+      out[month] = (out[month] ?? 0) + kBadgeBonus;
+    }
+    return out;
+  }
+
   bool _isOpen(LogMonth m) {
     final asked = _open[m.month];
     if (asked != null) return asked;
@@ -245,7 +263,8 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
   Widget build(BuildContext context) {
     final totals = LogTotals.of(_months);
     final points =
-        widget.points ?? widget.history.fold<int>(0, (sum, h) => sum + h.score);
+        (widget.points ?? widget.history.fold<int>(0, (sum, h) => sum + h.score)) +
+            _bonusByMonth.values.fold<int>(0, (a, b) => a + b);
 
     return SectionCard(
       title: AppStrings.attendanceSummary,
@@ -326,6 +345,7 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
   List<Widget> _monthsShown() {
     final filtering = _filter != LogFilter.all;
     final out = <Widget>[];
+    final bonusByMonth = _bonusByMonth;
     for (final m in _months) {
       // "الكل" also lists the no-lesson Saturdays; حضر / غاب only real ones.
       final rows = filtering
@@ -337,6 +357,7 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
       final open = rows.isNotEmpty && (filtering || _isOpen(m));
       out.add(_MonthSection(
         month: m,
+        bonus: bonusByMonth[DateTime(m.month.year, m.month.month)] ?? 0,
         rows: rows,
         open: open,
         onToggle: filtering || rows.isEmpty
@@ -657,9 +678,13 @@ class _MonthSection extends StatelessWidget {
     required this.rows,
     required this.open,
     required this.onToggle,
+    this.bonus = 0,
   });
 
   final LogMonth month;
+
+  /// What the badges earned this month added to the month's طايو.
+  final int bonus;
   final List<LogSaturday> rows;
   final bool open;
 
@@ -677,7 +702,7 @@ class _MonthSection extends StatelessWidget {
                 ? AppColors.warning
                 : AppColors.danger;
     final sub = [
-      if (month.held > 0) AppStrings.logPoints(month.points),
+      if (month.held > 0) AppStrings.logPoints(month.points + bonus),
       if (month.notRecorded > 0) AppStrings.logUnrecorded(month.notRecorded),
       if (month.noLesson > 0) AppStrings.logNoLessonCount(month.noLesson),
     ].join(' · ');
