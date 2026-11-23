@@ -653,6 +653,7 @@ class AppStrings {
   static const profileTabFollowUp = 'المتابعة';
   static String attendedSaturdays(int came, int of) => 'حضر $came من $of سبت';
   static const profileMoreActions = 'خيارات أكتر';
+  static const attendanceChip = 'حضور السنة';
   static String profileBirthdayIn(int days) =>
       days == 1 ? 'عيد ميلاده بكرة' : 'عيد ميلاده بعد $days أيام';
 

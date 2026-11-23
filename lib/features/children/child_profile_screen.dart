@@ -260,6 +260,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
         enableRefresh: false,
         builder: (context, data, reload) {
           final child = data.child;
+          // The points, badges and rank loaded: they join the header card.
+          final hasGame = data.badges != null &&
+              data.badges!.isNotEmpty &&
+              data.ranking != null;
           final alerts = profileAlerts(
             child: child,
             absentSaturdays: absentRun(data.history, data.sessionDates),
@@ -286,8 +290,33 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       children: [
                         FadeSlideIn(
                           index: 0,
-                          child: _header(child, data.className,
-                              canEdit: canEdit, isAdmin: isAdmin),
+                          child: Builder(
+                            builder: (context) => _header(
+                              child,
+                              data.className,
+                              canEdit: canEdit,
+                              isAdmin: isAdmin,
+                              panel: !hasGame
+                                  ? null
+                                  : GamePointsPanel(
+                                      framed: false,
+                                      points: data.gamePoints,
+                                      run: currentRun(data.badges!),
+                                      rank: LeaderboardRow.rankOf(
+                                          data.ranking!, child.id),
+                                      onOpenRanking: () =>
+                                          _openRanking(child, data.className),
+                                      attendancePct: data.yearReport == null ||
+                                              data.yearReport!.sessionsTotal ==
+                                                  0
+                                          ? null
+                                          : data.yearReport!.percentage,
+                                      onOpenAttendance: () =>
+                                          DefaultTabController.of(context)
+                                              .animateTo(1),
+                                    ),
+                            ),
+                          ),
                         ),
                         if (alerts.isNotEmpty) ...[
                           const SizedBox(height: 8),
@@ -342,25 +371,23 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       ),
                     ],
                     const SizedBox(height: 12),
-                    Builder(
-                      builder: (context) => _attendanceGlance(
-                        data,
-                        onOpen: () =>
-                            DefaultTabController.of(context).animateTo(1),
-                      ),
-                    ),
-                    if (data.badges != null &&
-                        data.badges!.isNotEmpty &&
-                        data.ranking != null) ...[
-                      const SizedBox(height: 12),
+                    // The attendance % is in the header with the points;
+                    // without them it keeps a card of its own.
+                    if (!hasGame)
+                      Builder(
+                        builder: (context) => _attendanceGlance(
+                          data,
+                          onOpen: () =>
+                              DefaultTabController.of(context).animateTo(1),
+                        ),
+                      )
+                    else
                       ChildBadgesCard(
                         badges: data.badges!,
                         gamePoints: data.gamePoints,
-                        rank: LeaderboardRow.rankOf(data.ranking!, child.id),
-                        onOpenRanking: () =>
-                            _openRanking(child, data.className),
+                        showPoints: false,
+                        detailInSheet: true,
                       ),
-                    ],
                     const SizedBox(height: 12),
                     Builder(
                       builder: (context) => _lastFollowUp(
@@ -676,13 +703,136 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
+  /// Who the child is, with ✏️ and ⋮. With [panel] (the points, level, run,
+  /// rank and attendance) it is one navy card holding both; without (badges
+  /// not loaded) the light card of before.
   Widget _header(
     Child child,
     String className, {
     required bool canEdit,
     required bool isAdmin,
+    Widget? panel,
   }) {
+    final dark = panel != null;
+    final ink = dark ? Colors.white : AppColors.navy;
+    final soft = dark ? const Color(0xFFDCE4F2) : AppColors.muted;
     final tint = child.gender == Gender.boy ? AppColors.sky : AppColors.coral;
+    final identity = Row(
+      children: [
+        GestureDetector(
+          onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
+          child: Container(
+            padding: dark ? const EdgeInsets.all(2) : EdgeInsets.zero,
+            decoration: dark
+                ? const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  )
+                : null,
+            child: ChildAvatar(
+              child: child,
+              size: dark ? 52 : 56,
+              heroTag: 'child-${child.id}',
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                child.fullName,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: dark ? Colors.white : null,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 10,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (!dark) GenderBadge(gender: child.gender, compact: true),
+                  _headerFact(Icons.class_outlined, className, soft),
+                  if (child.ageLabel != null)
+                    _headerFact(Icons.cake_outlined, child.ageLabel!, soft),
+                  if (!child.isActive) const StatusBadge(isActive: false),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (canEdit) ...[
+          IconButton(
+            tooltip: AppStrings.editChild,
+            color: ink,
+            onPressed: () => _edit(child),
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          PopupMenuButton<String>(
+            tooltip: AppStrings.profileMoreActions,
+            icon: Icon(Icons.more_vert, color: ink),
+            onSelected: (v) => switch (v) {
+              'move' => _move(child, className),
+              _ => _toggleActive(child),
+            },
+            itemBuilder: (_) => [
+              if (isAdmin)
+                const PopupMenuItem(
+                  value: 'move',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.swap_horiz),
+                    title: Text(AppStrings.moveChild),
+                  ),
+                ),
+              PopupMenuItem(
+                value: 'active',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    child.isActive
+                        ? Icons.person_off_outlined
+                        : Icons.person_add_alt,
+                    color:
+                        child.isActive ? AppColors.danger : AppColors.success,
+                  ),
+                  title: Text(
+                    child.isActive
+                        ? AppStrings.deactivateChild
+                        : AppStrings.activateChild,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+
+    if (dark) {
+      return Container(
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 14, 6, 16),
+        decoration: BoxDecoration(
+          gradient: AppGradients.navyHeader,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            identity,
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 8),
+              child: panel,
+            ),
+          ],
+        ),
+      );
+    }
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -699,106 +849,22 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           ),
         ),
         padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 4, 12),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: child.hasPhoto ? () => _viewPhoto(child) : null,
-              child: ChildAvatar(
-                child: child,
-                size: 56,
-                heroTag: 'child-${child.id}',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    child.fullName,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      GenderBadge(gender: child.gender, compact: true),
-                      _headerFact(Icons.class_outlined, className),
-                      if (child.ageLabel != null)
-                        _headerFact(Icons.cake_outlined, child.ageLabel!),
-                      if (!child.isActive) const StatusBadge(isActive: false),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (canEdit) ...[
-              IconButton(
-                tooltip: AppStrings.editChild,
-                onPressed: () => _edit(child),
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              PopupMenuButton<String>(
-                tooltip: AppStrings.profileMoreActions,
-                icon: const Icon(Icons.more_vert),
-                onSelected: (v) => switch (v) {
-                  'move' => _move(child, className),
-                  _ => _toggleActive(child),
-                },
-                itemBuilder: (_) => [
-                  if (isAdmin)
-                    const PopupMenuItem(
-                      value: 'move',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.swap_horiz),
-                        title: Text(AppStrings.moveChild),
-                      ),
-                    ),
-                  PopupMenuItem(
-                    value: 'active',
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        child.isActive
-                            ? Icons.person_off_outlined
-                            : Icons.person_add_alt,
-                        color: child.isActive
-                            ? AppColors.danger
-                            : AppColors.success,
-                      ),
-                      title: Text(
-                        child.isActive
-                            ? AppStrings.deactivateChild
-                            : AppStrings.activateChild,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
+        child: identity,
       ),
     );
   }
 
   /// A small icon and a few words under the child's name (class, age).
-  Widget _headerFact(IconData icon, String text) {
+  Widget _headerFact(IconData icon, String text, Color color) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppColors.muted),
+        Icon(icon, size: 14, color: color),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             text,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            style: TextStyle(color: color, fontSize: 12),
           ),
         ),
       ],

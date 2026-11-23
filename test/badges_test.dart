@@ -60,6 +60,7 @@ final _six = [
 ];
 
 void main() {
+  _headerMergeTests();
   group('GameLevel', () {
     test('levels start at 0, 100, 300 and 600', () {
       expect(GameLevel.of(0), GameLevel.seed);
@@ -297,6 +298,88 @@ void main() {
       expect(find.text(KidBadge.fullDay.title), findsOneWidget);
       // Only the child with a number gets a congratulation button.
       expect(find.byIcon(Icons.chat_rounded), findsOneWidget);
+    });
+  });
+}
+
+void _headerMergeTests() {
+  group('profile header merge', () {
+    testWidgets('showPoints false: only the badge grid', (tester) async {
+      await tester.pumpWidget(_app(SingleChildScrollView(
+        child: ChildBadgesCard(
+          badges: _six,
+          gamePoints: 245,
+          showPoints: false,
+          detailInSheet: true,
+        ),
+      )));
+      await tester.pumpAndSettle();
+      expect(find.byType(GamePointsPanel), findsNothing);
+      expect(find.text(AppStrings.badgesTitle), findsOneWidget);
+      // No detail box under the grid.
+      expect(find.text(KidBadge.streak4.rule), findsNothing);
+    });
+
+    testWidgets('detailInSheet: a tap opens the badge in a sheet',
+        (tester) async {
+      await tester.pumpWidget(_app(SingleChildScrollView(
+        child: ChildBadgesCard(
+          badges: _six,
+          gamePoints: 245,
+          showPoints: false,
+          detailInSheet: true,
+        ),
+      )));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(KidBadge.fullDay.title));
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.text(KidBadge.fullDay.rule), findsOneWidget);
+      expect(find.text(AppStrings.progressOf(2, 5)), findsOneWidget);
+    });
+
+    testWidgets('the panel can carry the attendance % and opens it',
+        (tester) async {
+      var opened = 0;
+      await tester.pumpWidget(_app(Container(
+        color: const Color(0xFF1B3A6B),
+        child: GamePointsPanel(
+          framed: false,
+          points: 245,
+          run: 2,
+          rank: 3,
+          attendancePct: 24.6,
+          onOpenAttendance: () => opened++,
+        ),
+      )));
+      await tester.pumpAndSettle();
+      expect(find.text('25%'), findsOneWidget);
+      expect(find.text(AppStrings.attendanceChip), findsOneWidget);
+      await tester.tap(find.text('25%'));
+      expect(opened, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('three chips fit a small phone at large text', (tester) async {
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_app(
+        Container(
+          color: const Color(0xFF1B3A6B),
+          padding: const EdgeInsets.all(14),
+          child: const GamePointsPanel(
+            framed: false,
+            points: 245,
+            run: 12,
+            rank: 10,
+            attendancePct: 100,
+          ),
+        ),
+        scale: 1.5,
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     });
   });
 }

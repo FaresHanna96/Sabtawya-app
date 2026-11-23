@@ -18,9 +18,19 @@ class ChildBadgesCard extends StatefulWidget {
     required this.gamePoints,
     this.rank,
     this.onOpenRanking,
+    this.showPoints = true,
+    this.detailInSheet = false,
   });
 
   final List<ChildBadge> badges;
+
+  /// False when the points sit elsewhere (the profile's header): only the
+  /// badges are drawn.
+  final bool showPoints;
+
+  /// Tapping a badge opens its rule and progress in a sheet instead of a box
+  /// under the grid (keeps the card to the grid alone).
+  final bool detailInSheet;
 
   /// Attendance points this year + [kBadgeBonus] per badge.
   final int gamePoints;
@@ -46,11 +56,7 @@ class _ChildBadgesCardState extends State<ChildBadgesCard> {
   Widget build(BuildContext context) {
     final badges = _ordered;
     final earned = badges.where((b) => b.earned).length;
-    // The run still going: the long-streak badge carries it uncapped to 16.
-    final run = badges
-        .where((b) => b.badge == KidBadge.streak16)
-        .map((b) => b.progress)
-        .fold(0, (a, b) => b > a ? b : a);
+    final run = currentRun(badges);
     final selected = badges.isEmpty
         ? null
         : badges.firstWhere(
@@ -61,13 +67,15 @@ class _ChildBadgesCardState extends State<ChildBadgesCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _PointsCard(
-          points: widget.gamePoints,
-          run: run,
-          rank: widget.rank,
-          onOpenRanking: widget.onOpenRanking,
-        ),
-        const SizedBox(height: 12),
+        if (widget.showPoints) ...[
+          GamePointsPanel(
+            points: widget.gamePoints,
+            run: run,
+            rank: widget.rank,
+            onOpenRanking: widget.onOpenRanking,
+          ),
+          const SizedBox(height: 12),
+        ],
         Card(
           margin: EdgeInsets.zero,
           child: Padding(
@@ -103,15 +111,41 @@ class _ChildBadgesCardState extends State<ChildBadgesCard> {
                     for (final b in badges)
                       _BadgeTile(
                         badge: b,
-                        selected: b.badge == selected?.badge,
+                        selected:
+                            !widget.detailInSheet && b.badge == selected?.badge,
                         onTap: () {
                           Haptics.select();
-                          setState(() => _picked = b.badge);
+                          if (widget.detailInSheet) {
+                            showModalBottomSheet<void>(
+                              context: context,
+                              showDragHandle: true,
+                              builder: (_) => SafeArea(
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      BadgeMedal(
+                                        badge: b.badge,
+                                        earned: b.earned,
+                                        size: 72,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _BadgeDetail(badge: b),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          } else {
+                            setState(() => _picked = b.badge);
+                          }
                         },
                       ),
                   ],
                 ),
-                if (selected != null) ...[
+                if (selected != null && !widget.detailInSheet) ...[
                   const SizedBox(height: 10),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
@@ -130,18 +164,39 @@ class _ChildBadgesCardState extends State<ChildBadgesCard> {
   }
 }
 
-class _PointsCard extends StatelessWidget {
-  const _PointsCard({
+/// The Saturdays in a row still going: the long-streak badge carries it,
+/// uncapped up to 16.
+int currentRun(List<ChildBadge> badges) => badges
+    .where((b) => b.badge == KidBadge.streak16)
+    .map((b) => b.progress)
+    .fold(0, (a, b) => b > a ? b : a);
+
+/// The game points on navy: the points and the level, the bar to the next
+/// level, the run of Saturdays and the place in the class. [framed] draws its
+/// own navy card; false lays it on a navy card already there (the profile's
+/// header).
+class GamePointsPanel extends StatelessWidget {
+  const GamePointsPanel({
+    super.key,
     required this.points,
     required this.run,
-    required this.rank,
-    required this.onOpenRanking,
+    this.rank,
+    this.onOpenRanking,
+    this.framed = true,
+    this.attendancePct,
+    this.onOpenAttendance,
   });
 
   final int points;
   final int run;
   final int? rank;
   final VoidCallback? onOpenRanking;
+  final bool framed;
+
+  /// The year's attendance %, as a third chip (the profile's header); none
+  /// when null.
+  final double? attendancePct;
+  final VoidCallback? onOpenAttendance;
 
   @override
   Widget build(BuildContext context) {
@@ -149,11 +204,13 @@ class _PointsCard extends StatelessWidget {
     final next = level.next;
     const soft = Color(0xFFDCE4F2);
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: AppGradients.navyHeader,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      padding: framed ? const EdgeInsets.all(16) : EdgeInsets.zero,
+      decoration: framed
+          ? BoxDecoration(
+              gradient: AppGradients.navyHeader,
+              borderRadius: BorderRadius.circular(20),
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -243,6 +300,17 @@ class _PointsCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
+              if (attendancePct != null) ...[
+                Expanded(
+                  child: _Chip(
+                    icon: Icons.fact_check_rounded,
+                    value: '${attendancePct!.round()}%',
+                    label: AppStrings.attendanceChip,
+                    onTap: onOpenAttendance,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: _Chip(
                   icon: Icons.local_fire_department_rounded,
