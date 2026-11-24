@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sabtawya/core/theme/app_theme.dart';
 import 'package:sabtawya/core/widgets/date_picker.dart';
 
 Future<void> _open(
@@ -68,5 +69,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(done, isTrue);
     expect(result, DateTime(2024, 11, 15));
+  });
+
+  testWidgets('the selected day (even when it is today) is readable',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.light(),
+      home: Material(
+        child: CalendarDatePicker(
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2100),
+          onDateChanged: (_) {},
+        ),
+      ),
+    ));
+    final today = DateTime.now().day.toString();
+    final text = tester.widget<Text>(find.text(today).first);
+    final style = DefaultTextStyle.of(tester.element(find.text(today).first));
+    final color = text.style?.color ?? style.style.color;
+    expect(color, Colors.white);
   });
 }

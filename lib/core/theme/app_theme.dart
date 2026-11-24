@@ -309,7 +309,14 @@ class AppTheme {
                 : AppColors.navyDark),
         yearBackgroundColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected) ? AppColors.navy : null),
-        todayForegroundColor: const WidgetStatePropertyAll(AppColors.navy),
+        // Today uses its own colours even when it is the selected day, so
+        // they must flip to white-on-navy too or the number disappears.
+        todayForegroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : AppColors.navy),
+        todayBackgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? AppColors.navy : null),
         todayBorder: const BorderSide(color: AppColors.olive, width: 1.6),
         cancelButtonStyle:
             TextButton.styleFrom(foregroundColor: AppColors.muted),
