@@ -8,6 +8,7 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/lesson.dart';
+import '../attendance/break_sheet.dart';
 import 'lesson_editor.dart';
 import '../../data/repositories/lesson_repository.dart';
 import '../../state/session_controller.dart';
@@ -67,15 +68,21 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
     if (saved == true) await _sectionKey.currentState?.reload();
   }
 
-  Future<void> _apply(String action, DateTime day) {
-    switch (action) {
-      case 'postpone':
-        return _repository.setBreak(day, shift: true);
-      case 'cancel':
-        return _repository.setBreak(day, shift: false);
-      default:
-        return _repository.clearBreak(day);
-    }
+  /// أمين الخدمة: the same sheet as the attendance screen: normal day,
+  /// إجازة or نشاط ترفيهي, and whether the lesson is postponed or cancelled.
+  Future<void> _setBreak(LessonProgramme programme, DateTime day) async {
+    final kind = programme.breakKindOn(day);
+    final picked = await showBreakSheet(
+      context,
+      date: day,
+      current: kind == null
+          ? null
+          : LessonBreak(kind: kind, shift: programme.breakOn(day) ?? true),
+    );
+    if (picked == null || !mounted) return;
+    await _change(() => picked.kind == null
+        ? _repository.clearBreak(day)
+        : _repository.setBreak(day, shift: picked.shift, kind: picked.kind));
   }
 
   @override
@@ -189,6 +196,7 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
                                   upcoming: isUpcoming,
                                   past: isPast,
                                   broken: brk != null,
+                                  breakKind: programme.breakKindOn(day),
                                 ),
                                 const SizedBox(height: 10),
                                 LessonBlock(
@@ -205,28 +213,19 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
                             PopupMenuButton<String>(
                               onSelected: (value) => value == 'edit'
                                   ? _edit(programme, day, firstDay)
-                                  : _change(() => _apply(value, day)),
+                                  : _setBreak(programme, day),
                               itemBuilder: (_) => [
                                 if (slot != null)
                                   const PopupMenuItem(
                                     value: 'edit',
                                     child: Text(AppStrings.editLesson),
                                   ),
-                                if (brk != true)
-                                  const PopupMenuItem(
-                                    value: 'postpone',
-                                    child: Text(AppStrings.postponeLesson),
-                                  ),
-                                if (brk != false)
-                                  const PopupMenuItem(
-                                    value: 'cancel',
-                                    child: Text(AppStrings.cancelLesson),
-                                  ),
-                                if (brk != null)
-                                  const PopupMenuItem(
-                                    value: 'restore',
-                                    child: Text(AppStrings.restoreLesson),
-                                  ),
+                                PopupMenuItem(
+                                  value: 'break',
+                                  child: Text(brk == null
+                                      ? AppStrings.noLessonThisSaturday
+                                      : AppStrings.changeSaturday),
+                                ),
                               ],
                             ),
                         ],
@@ -260,6 +259,7 @@ class _DayHeader extends StatelessWidget {
     required this.upcoming,
     required this.past,
     required this.broken,
+    this.breakKind,
   });
 
   final DateTime day;
@@ -267,6 +267,9 @@ class _DayHeader extends StatelessWidget {
   final bool upcoming;
   final bool past;
   final bool broken;
+
+  /// Why there is no lesson (a chip instead of the generic «بلا درس»).
+  final LessonBreakKind? breakKind;
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +329,12 @@ class _DayHeader extends StatelessWidget {
         if (upcoming)
           _Badge(AppStrings.lessonUpcoming, AppColors.gold)
         else if (broken)
-          _Badge(AppStrings.lessonNoClass, AppColors.coral)
+          _Badge(
+            breakKind?.label ?? AppStrings.lessonNoClass,
+            breakKind == LessonBreakKind.activity
+                ? AppColors.gold
+                : AppColors.coral,
+          )
         else if (past)
           const Icon(Icons.check_circle_outline_rounded,
               size: 18, color: AppColors.muted),

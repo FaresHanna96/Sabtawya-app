@@ -1,4 +1,29 @@
+import '../../core/l10n/app_strings.dart';
 import 'parsers.dart';
+
+/// Why a Saturday has no lesson.
+enum LessonBreakKind {
+  holiday('holiday', AppStrings.breakHoliday),
+  activity('activity', AppStrings.breakActivity);
+
+  const LessonBreakKind(this.wire, this.label);
+
+  final String wire;
+  final String label;
+
+  static LessonBreakKind fromWire(Object? v) =>
+      v == 'activity' ? LessonBreakKind.activity : LessonBreakKind.holiday;
+}
+
+/// A Saturday with no lesson.
+class LessonBreak {
+  const LessonBreak({required this.kind, required this.shift});
+
+  final LessonBreakKind kind;
+
+  /// The later lessons move a week (postponed), or keep their dates.
+  final bool shift;
+}
 
 /// Where a lesson sits in the programme: the sheet's Coptic month (1 = توت …
 /// 12 = مسرى) and week 1-4 inside it.
@@ -80,6 +105,7 @@ class LessonProgramme {
     this._lessons,
     this._extras, [
     this._breaks = const <String, bool>{},
+    this._breakKinds = const <String, LessonBreakKind>{},
   ]);
 
   static const empty =
@@ -94,12 +120,21 @@ class LessonProgramme {
   /// (true = postponed, later lessons move on; false = cancelled).
   final Map<String, bool> _breaks;
 
+  /// Why each of those weeks has no lesson (إجازة or نشاط ترفيهي), same keys.
+  final Map<String, LessonBreakKind> _breakKinds;
+
   static String keyOf(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
   /// null = a normal week, true = postponed, false = cancelled.
   bool? breakOn(DateTime saturday) => _breaks[keyOf(saturday)];
+
+  /// Why [saturday] has no lesson; null for a normal week.
+  LessonBreakKind? breakKindOn(DateTime saturday) =>
+      _breaks.containsKey(keyOf(saturday))
+          ? (_breakKinds[keyOf(saturday)] ?? LessonBreakKind.holiday)
+          : null;
 
   bool get isEmpty => _lessons.isEmpty;
 

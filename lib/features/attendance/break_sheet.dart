@@ -13,8 +13,9 @@ class BreakChoice {
   final bool shift;
 }
 
-/// "هل يوجد درس هذا السبت؟": إجازة, نشاط ترفيهي, or a normal day, and
-/// whether the later lessons move a week. Null when closed without saving.
+/// "فيه درس السبت ده؟": a normal day, إجازة or نشاط ترفيهي, and what happens
+/// to the lesson (postponed a week, or cancelled). The one place both the
+/// attendance screen and the lessons tab use. Null when closed without saving.
 Future<BreakChoice?> showBreakSheet(
   BuildContext context, {
   required DateTime date,
@@ -56,52 +57,90 @@ class _BreakSheetState extends State<BreakSheet> {
       widget.current?.kind ?? LessonBreakKind.activity;
   late bool _shift = widget.current?.shift ?? true;
 
-  @override
-  Widget build(BuildContext context) {
-    Widget option(LessonBreakKind? kind, IconData icon, String label) {
-      final selected = _kind == kind;
-      return Padding(
+  /// A tinted, rounded choice: [selected] shows the check and the border.
+  Widget _choice({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String hint,
+    required bool selected,
+    required VoidCallback onTap,
+    Key? key,
+  }) =>
+      Padding(
+        key: key,
         padding: const EdgeInsets.only(bottom: 8),
         child: Material(
-          color: selected
-              ? AppColors.navy.withValues(alpha: 0.08)
-              : Colors.transparent,
+          color: selected ? color.withValues(alpha: 0.10) : Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             side: BorderSide(
               color: selected
-                  ? AppColors.navy.withValues(alpha: 0.4)
+                  ? color.withValues(alpha: 0.7)
                   : AppColors.muted.withValues(alpha: 0.25),
+              width: selected ? 1.6 : 1,
             ),
           ),
-          child: ListTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: AppColors.readable(color)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          hint,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (selected)
+                    const Icon(Icons.check_circle, color: AppColors.success),
+                ],
+              ),
             ),
-            leading: Icon(icon, color: AppColors.navy),
-            title: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            trailing: selected
-                ? const Icon(Icons.check_circle, color: AppColors.success)
-                : null,
-            onTap: () => setState(() => _kind = kind),
           ),
         ),
       );
-    }
 
+  @override
+  Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            const Text(
               AppStrings.breakSheetTitle,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 2),
             Text(
@@ -109,22 +148,55 @@ class _BreakSheetState extends State<BreakSheet> {
               style: const TextStyle(fontSize: 13, color: AppColors.muted),
             ),
             const SizedBox(height: 12),
-            option(LessonBreakKind.activity, Icons.celebration_rounded,
-                AppStrings.breakActivity),
-            option(LessonBreakKind.holiday, Icons.beach_access_rounded,
-                AppStrings.breakHoliday),
             if (widget.current != null)
-              option(null, Icons.menu_book_rounded, AppStrings.breakNone),
+              _choice(
+                icon: Icons.menu_book_rounded,
+                color: AppColors.olive,
+                title: AppStrings.breakNone,
+                hint: AppStrings.breakNoneHint,
+                selected: _kind == null,
+                onTap: () => setState(() => _kind = null),
+              ),
+            _choice(
+              icon: Icons.celebration_rounded,
+              color: AppColors.gold,
+              title: AppStrings.breakActivity,
+              hint: AppStrings.breakActivityHint,
+              selected: _kind == LessonBreakKind.activity,
+              onTap: () => setState(() => _kind = LessonBreakKind.activity),
+            ),
+            _choice(
+              icon: Icons.beach_access_rounded,
+              color: AppColors.sky,
+              title: AppStrings.breakHoliday,
+              hint: AppStrings.breakHolidayHint,
+              selected: _kind == LessonBreakKind.holiday,
+              onTap: () => setState(() => _kind = LessonBreakKind.holiday),
+            ),
             if (_kind != null) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _shift,
-                onChanged: (v) => setState(() => _shift = v),
-                title: const Text(AppStrings.breakShift),
-                subtitle: const Text(
-                  AppStrings.breakShiftHint,
-                  style: TextStyle(fontSize: 12),
-                ),
+              const SizedBox(height: 6),
+              const Text(
+                AppStrings.breakWhatNext,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              _choice(
+                key: const ValueKey('breakPostpone'),
+                icon: Icons.east_rounded,
+                color: AppColors.navy,
+                title: AppStrings.breakPostponeTitle,
+                hint: AppStrings.breakPostponeHint,
+                selected: _shift,
+                onTap: () => setState(() => _shift = true),
+              ),
+              _choice(
+                key: const ValueKey('breakCancel'),
+                icon: Icons.block_rounded,
+                color: AppColors.coral,
+                title: AppStrings.breakCancelTitle,
+                hint: AppStrings.breakCancelHint,
+                selected: !_shift,
+                onTap: () => setState(() => _shift = false),
               ),
               if (widget.hasRecords)
                 Padding(

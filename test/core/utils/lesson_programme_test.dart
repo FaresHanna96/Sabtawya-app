@@ -80,6 +80,7 @@ void main() {
       const [],
       const {},
       const {'2026-11-07': true, '2026-11-28': false},
+      const {'2026-11-28': LessonBreakKind.activity},
     );
 
     test('a postponed week has no lesson and pushes the next ones back', () {
@@ -106,6 +107,15 @@ void main() {
       expect(withBreaks.breakOn(DateTime(2026, 11, 7)), isTrue);
       expect(withBreaks.breakOn(DateTime(2026, 11, 28)), isFalse);
       expect(withBreaks.breakOn(DateTime(2026, 11, 14)), isNull);
+    });
+
+    test('breakKindOn says why: the saved reason, a holiday when unknown', () {
+      expect(withBreaks.breakKindOn(DateTime(2026, 11, 28)),
+          LessonBreakKind.activity);
+      // 7 Nov has no saved reason (a database from before the kind column).
+      expect(withBreaks.breakKindOn(DateTime(2026, 11, 7)),
+          LessonBreakKind.holiday);
+      expect(withBreaks.breakKindOn(DateTime(2026, 11, 14)), isNull);
     });
   });
 }

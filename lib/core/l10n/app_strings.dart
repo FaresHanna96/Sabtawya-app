@@ -855,9 +855,20 @@ class AppStrings {
   static const breakNone = 'يوم درس عادي';
   static const markNoLesson = 'إجازة / نشاط ترفيهي';
   static const breakSheetTitle = 'فيه درس السبت ده؟';
-  static const breakShift = 'أجّل الدروس أسبوع';
-  static const breakShiftHint =
-      'الدروس بعد السبت ده هتتأجل أسبوع. اقفله لو الدرس اتلغى بس.';
+  static const breakNoneHint = 'السبت ده فيه درس زي العادة';
+  static const breakActivityHint = 'رحلة أو يوم نشاط';
+  static const breakHolidayHint = 'عيد أو إجازة';
+  static const breakWhatNext = 'إيه اللي يحصل للدرس؟';
+  static const breakPostponeTitle = 'الدرس يتأجل أسبوع';
+  static const breakPostponeHint = 'الدروس اللي بعده كلها تتأخر أسبوع.';
+  static const breakCancelTitle = 'الدرس يتلغى';
+  static const breakCancelHint = 'باقي الدروس في مواعيدها.';
+  static String breakSummary(String reason, {required bool postponed}) =>
+      postponed
+          ? '$reason — الدرس اتأجل للأسبوع اللي بعده'
+          : '$reason — الدرس اتلغى';
+  static const changeSaturday = 'تغيير حالة السبت';
+  static const noLessonThisSaturday = 'لا درس هذا السبت';
   static const breakHasRecords =
       'اتسجّل حضور اليوم ده قبل كده: مش هيتحسب في أبطال الالتزام ولا الغياب.';
   static const change = 'تغيير';
@@ -894,11 +905,6 @@ class AppStrings {
   static const pulpit = 'المنبر';
   static const hymns = 'الترانيم / الألحان';
   static const lessonForPrep = 'الدرس المطلوب تحضيره';
-  static const lessonPostponed = 'مفيش درس الأسبوع ده (اتأجل للأسبوع اللي بعده)';
-  static const lessonCancelled = 'مفيش درس الأسبوع ده (اتلغى)';
-  static const postponeLesson = 'تأجيل للأسبوع التالي';
-  static const cancelLesson = 'إلغاء الدرس';
-  static const restoreLesson = 'إرجاع الدرس';
   static const editLesson = 'تعديل الدرس';
   static const lessonTitleLabel = 'عنوان الدرس';
   static const lessonPageLabel = 'الصفحة';

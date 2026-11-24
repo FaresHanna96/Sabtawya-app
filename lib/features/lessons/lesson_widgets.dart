@@ -160,8 +160,11 @@ class LessonBlock extends StatelessWidget {
         if (!hasAny)
           Text(
             switch (programme.breakOn(date)) {
-              true => AppStrings.lessonPostponed,
-              false => AppStrings.lessonCancelled,
+              final shift? => AppStrings.breakSummary(
+                  (programme.breakKindOn(date) ?? LessonBreakKind.holiday)
+                      .label,
+                  postponed: shift,
+                ),
               null => AppStrings.noLessonThisWeek,
             },
             style: const TextStyle(fontSize: 13, color: AppColors.muted),

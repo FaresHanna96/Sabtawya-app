@@ -102,6 +102,51 @@ void main() {
     expect(LessonBreakKind.fromWire('activity'), LessonBreakKind.activity);
   });
 
+  group('the lesson after a break', () {
+    testWidgets('is postponed by default and the choice is explained',
+        (tester) async {
+      final c = await _open(tester, interact: () async {
+        expect(find.text(AppStrings.breakPostponeTitle), findsOneWidget);
+        expect(find.text(AppStrings.breakCancelTitle), findsOneWidget);
+        await tester.tap(find.text(AppStrings.save));
+      });
+      expect(c?.shift, isTrue);
+    });
+
+    testWidgets('can go back to postponing after cancelling', (tester) async {
+      final c = await _open(tester, interact: () async {
+        await tester.tap(find.text(AppStrings.breakCancelTitle));
+        await tester.pump();
+        await tester.tap(find.text(AppStrings.breakPostponeTitle));
+        await tester.pump();
+        await tester.tap(find.text(AppStrings.save));
+      });
+      expect(c?.shift, isTrue);
+    });
+
+    testWidgets('a normal day hides the question', (tester) async {
+      final c = await _open(
+        tester,
+        current: const LessonBreak(kind: LessonBreakKind.holiday, shift: false),
+        interact: () async {
+          expect(find.text(AppStrings.breakCancelTitle), findsOneWidget);
+          await tester.tap(find.text(AppStrings.breakNone));
+          await tester.pump();
+          expect(find.text(AppStrings.breakCancelTitle), findsNothing);
+          await tester.tap(find.text(AppStrings.save));
+        },
+      );
+      expect(c?.kind, isNull);
+    });
+
+    test('the summary names the reason and the outcome', () {
+      expect(AppStrings.breakSummary('إجازة', postponed: true),
+          contains('اتأجل'));
+      expect(AppStrings.breakSummary('نشاط ترفيهي', postponed: false),
+          'نشاط ترفيهي — الدرس اتلغى');
+    });
+  });
+
   group('the admin marks a Saturday', () {
     testWidgets('as نشاط ترفيهي, postponing the lessons by default',
         (tester) async {
@@ -118,7 +163,7 @@ void main() {
       final c = await _open(tester, interact: () async {
         await tester.tap(find.text(AppStrings.breakHoliday));
         await tester.pump();
-        await tester.tap(find.byType(Switch));
+        await tester.tap(find.text(AppStrings.breakCancelTitle));
         await tester.pump();
         await tester.tap(find.text(AppStrings.save));
       });

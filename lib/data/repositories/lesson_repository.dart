@@ -1,38 +1,16 @@
 import 'package:image_picker/image_picker.dart';
 
-import '../../core/l10n/app_strings.dart';
 import '../../core/utils/app_failure.dart';
 import '../models/lesson.dart';
+
+// The break types live with the programme; callers keep importing them from here.
+export '../models/lesson.dart' show LessonBreak, LessonBreakKind;
 import '../models/parsers.dart';
 import '../services/photo_service.dart';
 import '../supabase/db.dart';
 
 /// The weekly lesson programme. It is small and static, so it is read whole;
 /// the offline layer keeps the last copy for use without a connection.
-/// Why a Saturday has no lesson.
-enum LessonBreakKind {
-  holiday('holiday', AppStrings.breakHoliday),
-  activity('activity', AppStrings.breakActivity);
-
-  const LessonBreakKind(this.wire, this.label);
-
-  final String wire;
-  final String label;
-
-  static LessonBreakKind fromWire(Object? v) =>
-      v == 'activity' ? LessonBreakKind.activity : LessonBreakKind.holiday;
-}
-
-/// A Saturday with no lesson.
-class LessonBreak {
-  const LessonBreak({required this.kind, required this.shift});
-
-  final LessonBreakKind kind;
-
-  /// The later lessons move a week (postponed), or keep their dates.
-  final bool shift;
-}
-
 class LessonRepository {
   const LessonRepository();
 
@@ -50,11 +28,13 @@ class LessonRepository {
           LessonSlot(row['coptic_month'] as int, row['week'] as int):
               LessonExtras.fromMap(row),
       };
-      final breaks = <String, bool>{
-        for (final row in rows(await Db.client.from(Db.tLessonBreaks).select()))
-          asText(row['break_date']): asBool(row['shift'], true),
-      };
-      return LessonProgramme(lessons, extras, breaks);
+      final found = await breaks();
+      return LessonProgramme(
+        lessons,
+        extras,
+        {for (final e in found.entries) e.key: e.value.shift},
+        {for (final e in found.entries) e.key: e.value.kind},
+      );
     } catch (e) {
       throw AppFailure.from(e);
     }
