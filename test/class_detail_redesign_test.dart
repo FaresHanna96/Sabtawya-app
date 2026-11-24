@@ -183,10 +183,10 @@ void main() {
     test('tiers and what is left for the next one', () {
       expect(ChampionTier.of(3).$1, AppStrings.committedTierNear);
       expect(ChampionTier.of(4).$1, AppStrings.tierCommitted);
-      expect(ChampionTier.of(16).$1, AppStrings.tierGold);
+      expect(ChampionTier.of(12).$1, AppStrings.tierGold);
       expect(ChampionTier.nextGoal(3), AppStrings.oneLeftForCommitted);
-      expect(ChampionTier.nextGoal(15), AppStrings.leftForGold(1));
-      expect(ChampionTier.nextGoal(16), isNull);
+      expect(ChampionTier.nextGoal(11), AppStrings.leftForGold(1));
+      expect(ChampionTier.nextGoal(12), isNull);
     });
 
     test('championsOf keeps runs of 3 or more, longest first', () {

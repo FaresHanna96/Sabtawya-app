@@ -304,11 +304,11 @@ class AppStrings {
   static const assignServant = 'تعيين خادم';
   static const committedStreak = 'أبطال الالتزام';
   static const committedStreakHint =
-      '4 سبوت ورا بعض = وسام «ملتزم»، و16 = «ملتزم ذهبي». شجّعهم!';
+      '4 سبوت ورا بعض = وسام «ملتزم»، و12 = «ملتزم ذهبي». شجّعهم!';
   static const committedTierNear = 'على الطريق';
   static const committedTierNearSub = '3 سبوت';
   static const committedTierSub4 = '4+ سبوت';
-  static const committedTierSub16 = '16+ سبت';
+  static const committedTierSub16 = '12+ سبت';
   static const oneLeftForCommitted = 'باقي سبت على وسام «ملتزم»';
   static String leftForGold(int n) =>
       n == 1 ? 'باقي سبت على «ملتزم ذهبي»' : 'باقي $n على «ملتزم ذهبي»';
@@ -755,17 +755,17 @@ class AppStrings {
       '4 سبوت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
   static const badgeMassMonth = 'قداسي كامل';
   static const badgeMassMonthRule =
-      'حضر القداس كل سبت في شهر كامل (3 سبوت على الأقل).';
+      'حضر القداس كل أسبوع في شهر كامل (3 سبوت على الأقل).';
   static const badgeFullDay = 'يوم كامل';
   static const badgeFullDayRule =
-      'حضر الأربع ممارسات روحية (مدارس الأحد، العشية، القداس، الاعتراف) في نفس السبت 5 مرات.';
+      'حضر مدارس الأحد والعشية والقداس في نفس السبت 5 مرات.';
   static const badgeConfession3 = 'قلب نقي';
   static const badgeConfession3Rule = 'اعترف كل شهر، 3 شهور ورا بعض.';
   static const badgeStarMonth = 'نجم الشهر';
   static const badgeStarMonthRule = 'الأول في الفصل في طايوهات شهر خلص.';
   static const badgeStreak16 = 'ملتزم ذهبي';
   static const badgeStreak16Rule =
-      '16 سبت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
+      '12 سبت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
   static const classRankingTitle = 'ترتيب الفصل';
   static String classRankingOf(String className) => 'ترتيب فصل $className';
   static const seeAll = 'عرض الكل';

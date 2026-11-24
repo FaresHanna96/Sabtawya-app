@@ -55,7 +55,7 @@ final _six = [
   _b(KidBadge.fullDay, progress: 2, target: 5),
   _b(KidBadge.confession3, progress: 1, target: 3),
   _b(KidBadge.starMonth, target: 1),
-  _b(KidBadge.streak16, progress: 6, target: 16),
+  _b(KidBadge.streak16, progress: 6, target: 12),
 ];
 
 void main() {
@@ -98,7 +98,7 @@ void main() {
     });
 
     test('share is clamped and safe with no target', () {
-      expect(_b(KidBadge.streak16, progress: 8, target: 16).share, 0.5);
+      expect(_b(KidBadge.streak16, progress: 6, target: 12).share, 0.5);
       expect(_b(KidBadge.streak4, progress: 9, target: 4).share, 1);
       expect(_b(KidBadge.starMonth, target: 0).share, 0);
     });

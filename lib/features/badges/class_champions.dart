@@ -56,18 +56,18 @@ class RunBadge extends StatelessWidget {
 class ChampionTier {
   const ChampionTier._();
 
-  /// على الطريق (3), ملتزم (4–15) or ملتزم ذهبي (16+).
+  /// على الطريق (3), ملتزم (4–11) or ملتزم ذهبي (12+).
   static (String, Color) of(int run) {
-    if (run >= 16) return (AppStrings.tierGold, AppColors.gold);
+    if (run >= 12) return (AppStrings.tierGold, AppColors.gold);
     if (run >= 4) return (AppStrings.tierCommitted, AppColors.success);
     return (AppStrings.committedTierNear, AppColors.sky);
   }
 
   /// What the run is still short of: the «ملتزم» badge below 4, «ملتزم
-  /// ذهبي» from 4 to 15; null once it is gold.
+  /// ذهبي» from 4 to 11; null once it is gold.
   static String? nextGoal(int run) {
     if (run < 4) return AppStrings.oneLeftForCommitted;
-    if (run < 16) return AppStrings.leftForGold(16 - run);
+    if (run < 12) return AppStrings.leftForGold(12 - run);
     return null;
   }
 }

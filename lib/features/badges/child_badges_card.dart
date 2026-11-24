@@ -165,7 +165,7 @@ class _ChildBadgesCardState extends State<ChildBadgesCard> {
 }
 
 /// The Saturdays in a row still going: the long-streak badge carries it,
-/// uncapped up to 16.
+/// uncapped up to 12.
 int currentRun(List<ChildBadge> badges) => badges
     .where((b) => b.badge == KidBadge.streak16)
     .map((b) => b.progress)
