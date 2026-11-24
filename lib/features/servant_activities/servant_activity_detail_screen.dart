@@ -99,6 +99,8 @@ class _ServantActivityDetailScreenState
       marks('servant_meeting'),
       marks('mass'),
       marks('confession'),
+      // Preps the admin ticked by hand count like uploaded ones.
+      marks('lesson_prep'),
       // One row per Saturday of the year (no-lesson days left out): a
       // servant is marked per date, so a class servant and a خادم عام (no
       // class) get the same list.
@@ -112,7 +114,9 @@ class _ServantActivityDetailScreenState
       servantMeeting: results[2] as List<ServantAttendance>,
       mass: results[3] as List<ServantAttendance>,
       confession: results[4] as List<ServantAttendance>,
-      dates: _heldNewestFirst(results[5] as List<DateTime>),
+      prepMarks: results[5] as List<ServantAttendance>,
+      yearDates: results[6] as List<DateTime>,
+      dates: _heldNewestFirst(results[6] as List<DateTime>),
       isClassServant: (await info).$1,
       mobile: (await info).$2,
       names: (await info).$3,
@@ -217,6 +221,7 @@ class _ServantActivityDetailScreenState
           ...data.servantMeeting,
           ...data.mass,
           ...data.confession,
+          ...data.prepMarks,
         ],
         preps: data.preps,
         today: DateTime.now(),
@@ -238,7 +243,13 @@ class _ServantActivityDetailScreenState
         year,
         widget.servantId,
         month,
-        prepsSent: preps.length,
+        prepsSent: prepSaturdays(
+          preps: preps,
+          marks: [
+            for (final m in data.prepMarks)
+              if (m.date.year == month.year && m.date.month == month.month) m,
+          ],
+        ),
         prepsAccepted: preps.where((p) => p.isAccepted).length,
       );
     }
@@ -265,7 +276,12 @@ class _ServantActivityDetailScreenState
       servantMeeting: data.servantMeeting.length,
       mass: data.mass.length,
       confession: data.confession.length,
-      preps: preps.length,
+      // Uploaded, or ticked by the admin: once per Saturday.
+      preps: prepSaturdays(
+        preps: preps,
+        marks: data.prepMarks,
+        dates: data.yearDates,
+      ),
       pendingPreps: preps.where((p) => p.isPending).length,
       heldSessions: held,
     );
@@ -849,6 +865,8 @@ class _DetailData {
     required this.mass,
     required this.confession,
     required this.dates,
+    this.prepMarks = const [],
+    this.yearDates = const [],
     this.isClassServant = false,
     this.mobile,
     this.names = const {},
@@ -866,6 +884,12 @@ class _DetailData {
   final List<ServantAttendance> servantMeeting;
   final List<ServantAttendance> mass;
   final List<ServantAttendance> confession;
+
+  /// Preps the admin ticked by hand («تحضير الدرس» marks).
+  final List<ServantAttendance> prepMarks;
+
+  /// Every Saturday of the year with a lesson, held or not.
+  final List<DateTime> yearDates;
 
   /// The Saturdays held so far, the latest first (one per date).
   final List<DateTime> dates;

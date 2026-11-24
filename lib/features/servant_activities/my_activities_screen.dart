@@ -214,7 +214,15 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     servantMeeting: data.servantMeeting,
                     mass: data.mass,
                     confession: data.confession,
-                    preps: data.preps.length,
+                    // Uploaded, or ticked by the admin: once per Saturday.
+                    preps: prepSaturdays(
+                      preps: data.preps,
+                      marks: data.marks,
+                      dates: [
+                        ...data.yearDates,
+                        for (final s in data.sessions) s.sessionDate,
+                      ],
+                    ),
                     pendingPreps:
                         data.preps.where((p) => p.status == 'pending').length,
                     heldSessions: held.map((s) => s.sessionDate).toSet().length,

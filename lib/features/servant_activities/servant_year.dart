@@ -35,6 +35,26 @@ class ServantBadgeState {
   int get target => badge.target;
 }
 
+/// How many Saturdays have a prep: one the servant uploaded, or one the admin
+/// ticked by hand («تحضير الدرس» in the servant's marks), counted once per
+/// Saturday. Only [dates] (the Saturdays with a lesson, no إجازة / نشاط
+/// ترفيهي) count; an empty [dates] (not loaded) leaves every date in.
+int prepSaturdays({
+  required Iterable<LessonPrep> preps,
+  required Iterable<ServantAttendance> marks,
+  Iterable<DateTime> dates = const [],
+}) {
+  String key(DateTime d) => '${d.year}-${d.month}-${d.day}';
+  final allowed = {for (final d in dates) key(d)};
+  bool ok(DateTime d) => allowed.isEmpty || allowed.contains(key(d));
+  return {
+    for (final p in preps)
+      if (ok(p.sessionDate)) key(p.sessionDate),
+    for (final m in marks)
+      if (m.activityType == 'lesson_prep' && ok(m.date)) key(m.date),
+  }.length;
+}
+
 /// Why a servant is on «محتاج متابعة».
 enum ServantFollowUpReason { absent, preps }
 

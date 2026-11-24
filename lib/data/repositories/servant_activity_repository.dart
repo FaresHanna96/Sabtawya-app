@@ -658,7 +658,7 @@ class ServantActivityRepository {
               await Db.client
                   .from(Db.tServantLessonPreps)
                   .select(
-                    'servant_id, '
+                    'servant_id, attendance_sessions!inner(session_date), '
                     'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
                   )
                   .inFilter('session_id', sessionIds),
@@ -687,12 +687,28 @@ class ServantActivityRepository {
         }
       }
 
+      // A Saturday has a prep when the servant uploaded one or the admin
+      // ticked «تحضير الدرس» for them: counted once per Saturday.
+      final prepDays = <String, Set<String>>{};
       for (final row in prepData) {
         final id = row['servant_id'] as String;
         final profile = row['profiles'] as Map<String, dynamic>?;
         final name = profile?['full_name']?.toString() ?? '';
         map.putIfAbsent(id, () => _MonthBuilder(id, name));
-        map[id]!.prepsCount++;
+        final session = row['attendance_sessions'] as Map<String, dynamic>?;
+        (prepDays[id] ??= {}).add(session?['session_date']?.toString() ?? '');
+      }
+      for (final row in rows(attData)) {
+        if (row['activity_type'] != 'lesson_prep') continue;
+        if (breakDays.contains(row['date']?.toString())) continue;
+        final id = row['servant_id'] as String;
+        final profile = row['profiles'] as Map<String, dynamic>?;
+        final name = profile?['full_name']?.toString() ?? '';
+        map.putIfAbsent(id, () => _MonthBuilder(id, name));
+        (prepDays[id] ??= {}).add(row['date']?.toString() ?? '');
+      }
+      for (final e in prepDays.entries) {
+        map[e.key]!.prepsCount = e.value.length;
       }
 
       return map.values

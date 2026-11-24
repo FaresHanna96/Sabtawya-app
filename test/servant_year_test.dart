@@ -196,4 +196,42 @@ void main() {
       expect(s.progress, 2);
     });
   });
+
+  group('prepSaturdays', () {
+    test('an admin-ticked prep counts like an uploaded one', () {
+      final n = prepSaturdays(
+        preps: [_p('a', _sats[0])],
+        marks: [_m('a', 'lesson_prep', _sats[1])],
+        dates: _sats,
+      );
+      expect(n, 2);
+    });
+
+    test('uploaded and ticked on the same Saturday is one', () {
+      final n = prepSaturdays(
+        preps: [_p('a', _sats[0])],
+        marks: [_m('a', 'lesson_prep', _sats[0])],
+        dates: _sats,
+      );
+      expect(n, 1);
+    });
+
+    test('other marks are not preps', () {
+      final n = prepSaturdays(
+        preps: const [],
+        marks: [_m('a', 'mass', _sats[0])],
+        dates: _sats,
+      );
+      expect(n, 0);
+    });
+
+    test('a no-lesson Saturday (not in dates) counts for nothing', () {
+      final n = prepSaturdays(
+        preps: [_p('a', _sats[0])],
+        marks: [_m('a', 'lesson_prep', _sats[0]), _m('a', 'lesson_prep', _sats[1])],
+        dates: _sats.skip(1),
+      );
+      expect(n, 1);
+    });
+  });
 }

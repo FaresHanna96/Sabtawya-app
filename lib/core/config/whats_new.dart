@@ -15,6 +15,8 @@ const Map<int, List<WhatsNewItem>> kWhatsNew = {
   57: [
     WhatsNewItem(Icons.beach_access_rounded, 'الإجازة مش بتتحسب',
         'السبت اللي اتعلّم إجازة أو نشاط ترفيهي مبقاش بيدخل في الأوسمة ولا طايوهات الفصل ولا تحضيرات الخدام.'),
+    WhatsNewItem(Icons.assignment_turned_in_outlined, 'عدّاد التحضير',
+        'بقى بيحسب التحضير اللي الخادم رفعه واللي الأمين علّمه له بإيده، مرة واحدة لكل سبت.'),
   ],
   56: [
     WhatsNewItem(Icons.event_rounded, 'تاريخ السبت كامل',
