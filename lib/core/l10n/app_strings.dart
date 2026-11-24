@@ -712,6 +712,8 @@ class AppStrings {
   static const servantBadgeConfessionRule = 'اعتراف كل شهر، 3 شهور ورا بعض';
   static const badgeEarnedShort = 'اتاخد ✓';
   static const monthReportTitle = 'تقرير الشهر';
+  static const monthReportHint =
+      'ملخّص حضور الشهر وتحضيراته، وابعته للخادم على واتساب';
   static String reportHeader(String month, String name) =>
       'تقرير $month لـ $name:';
   static String reportPreps(int sent, int accepted) =>
@@ -867,6 +869,19 @@ class AppStrings {
       postponed
           ? '$reason — الدرس اتأجل للأسبوع اللي بعده'
           : '$reason — الدرس اتلغى';
+  static const breakAttendanceQuestion = 'حضور الأطفال في اليوم ده؟';
+  static const breakAttendanceTakenTitle = 'هيتسجّل ويتحسب';
+  static const breakAttendanceTakenHint =
+      'الحضور بيتحسب في المستوى والأوسمة زي أي سبت.';
+  static const breakAttendanceNotTakenTitle = 'مش هيتسجّل';
+  static const breakAttendanceNotTakenHint =
+      'اليوم ده بيطلع من كل حسابات الأطفال.';
+  static const activityCountedBanner =
+      'نشاط ترفيهي: مفيش درس، لكن الحضور بيتسجّل وبيتحسب.';
+  static const activityDayTag = 'نشاط';
+  static const activityServantsBanner =
+      'نشاط ترفيهي: حضور الخدام بيتسجّل وبيتحسب زي أي سبت، لكن مفيش تحضير.';
+  static const prepNotNeeded = 'مفيش تحضير في النشاط';
   static const changeSaturday = 'تغيير حالة السبت';
   static const noLessonThisSaturday = 'لا درس هذا السبت';
   static const breakHasRecords =

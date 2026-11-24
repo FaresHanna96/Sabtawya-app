@@ -475,12 +475,7 @@ class ServantActivityRepository {
   /// All unique session dates for the year, newest first (deduped across classes).
   Future<List<DateTime>> sessionDatesForYear(String yearId) async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceSessions)
-          .select('session_date')
-          .eq('year_id', yearId)
-          .eq('is_break', false)
-          .order('session_date', ascending: true);
+      final data = await _heldSessionRows(yearId, orderAsc: true);
       final seen = <String>{};
       final dates = <DateTime>[];
       for (final row in rows(data)) {
@@ -490,6 +485,51 @@ class ServantActivityRepository {
         }
       }
       return dates;
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The session dates of [yearId] that count for the servants' attendance.
+  /// A holiday counts for nothing; a نشاط ترفيهي counts (but has no prep: see
+  /// activityDatesForYear). A database from before `servants_off` (migration
+  /// 20261124008) falls back to «every day with a lesson».
+  Future<dynamic> _heldSessionRows(
+    String yearId, {
+    bool orderAsc = false,
+    String? upTo,
+  }) async {
+    dynamic build(bool legacy) {
+      var q = Db.client
+          .from(Db.tAttendanceSessions)
+          .select('session_date')
+          .eq('year_id', yearId)
+          .eq(legacy ? 'is_break' : 'servants_off', false);
+      if (upTo != null) q = q.lte('session_date', upTo);
+      return orderAsc ? q.order('session_date', ascending: true) : q;
+    }
+
+    try {
+      return await build(false);
+    } catch (_) {
+      return await build(true);
+    }
+  }
+
+  /// The نشاط ترفيهي Saturdays of [yearId]: servant attendance counts, but
+  /// there is no lesson, so no prep is expected or counted.
+  Future<List<DateTime>> activityDatesForYear(String yearId) async {
+    try {
+      final data = await Db.client
+          .from(Db.tAttendanceSessions)
+          .select('session_date')
+          .eq('year_id', yearId)
+          .eq('is_break', true)
+          .eq('servants_off', false)
+          .order('session_date', ascending: true);
+      return {
+        for (final row in rows(data)) row['session_date'] as String,
+      }.map(DateTime.parse).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -589,13 +629,9 @@ class ServantActivityRepository {
   /// this is the base of every servant percentage.
   Future<int> sessionCountForYear(String yearId) async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceSessions)
-          .select('session_date')
-          .eq('year_id', yearId)
-          .eq('is_break', false)
-          // Only sessions already held, so percentages are "so far".
-          .lte('session_date', isoDate(DateTime.now()));
+      // Only sessions already held, so percentages are "so far".
+      final data =
+          await _heldSessionRows(yearId, upTo: isoDate(DateTime.now()));
       return distinctDates(rows(data));
     } catch (e) {
       throw AppFailure.from(e);
@@ -631,14 +667,19 @@ class ServantActivityRepository {
           .gte('date', from)
           .lte('date', to);
 
-      // Days marked إجازة / نشاط ترفيهي count for nothing.
+      // A holiday counts for nothing. A نشاط ترفيهي counts for the four
+      // activities, but there is no prep that day.
+      final breakRows = rows(await Db.client
+          .from(Db.tLessonBreaks)
+          .select('break_date, kind')
+          .gte('break_date', from)
+          .lte('break_date', to));
       final breakDays = {
-        for (final b in rows(await Db.client
-            .from(Db.tLessonBreaks)
-            .select('break_date')
-            .gte('break_date', from)
-            .lte('break_date', to)))
-          b['break_date']?.toString(),
+        for (final b in breakRows) b['break_date']?.toString(),
+      };
+      final holidays = {
+        for (final b in breakRows)
+          if (b['kind'] != 'activity') b['break_date']?.toString(),
       };
 
       // Sessions in this month
@@ -667,7 +708,11 @@ class ServantActivityRepository {
       final Map<String, _MonthBuilder> map = {};
 
       for (final row in rows(attData)) {
-        if (breakDays.contains(row['date']?.toString())) continue;
+        final day = row['date']?.toString();
+        if (holidays.contains(day)) continue;
+        if (row['activity_type'] == 'lesson_prep' && breakDays.contains(day)) {
+          continue;
+        }
         final id = row['servant_id'] as String;
         final profile = row['profiles'] as Map<String, dynamic>?;
         final name = profile?['full_name']?.toString() ?? '';
@@ -775,20 +820,29 @@ class ServantActivityRepository {
       }
       var attendanceQuery = Db.client
           .from(Db.tServantAttendances)
-          .select('servant_id, activity_type');
+          .select('servant_id, activity_type, date');
       if (from != null) {
         attendanceQuery = attendanceQuery.gte('date', isoDate(from));
       }
       if (to != null) attendanceQuery = attendanceQuery.lte('date', isoDate(to));
 
-      final (profileData, prepData, attendanceData) = await (
+      // A holiday counts for nothing, as in the database function.
+      final holidayQuery =
+          Db.client.from(Db.tLessonBreaks).select('break_date, kind');
+
+      final (profileData, prepData, attendanceData, breakData) = await (
         // ALL servant profiles, so servants with zero activity still appear.
         Db.client.from(Db.tProfiles).select('id, full_name, role').order(
               'full_name',
             ),
         prepQuery,
         attendanceQuery,
+        holidayQuery.catchError((Object _) => <dynamic>[]),
       ).wait;
+      final holidays = {
+        for (final b in rows(breakData))
+          if (b['kind'] != 'activity') b['break_date']?.toString(),
+      };
 
       final prepRows = rows(prepData);
       final attendanceRows = rows(attendanceData);
@@ -818,6 +872,7 @@ class ServantActivityRepository {
       }
 
       for (final row in attendanceRows) {
+        if (holidays.contains(row['date']?.toString())) continue;
         final id = row['servant_id'] as String;
         map.putIfAbsent(id, () => _SummaryBuilder(id, names[id] ?? ''));
         switch (row['activity_type'] as String?) {

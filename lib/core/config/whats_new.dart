@@ -12,6 +12,12 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  59: [
+    WhatsNewItem(Icons.celebration_rounded, 'نشاط ترفيهي بحضور',
+        'الأمين يقدر يختار إن حضور الأطفال بيتسجّل في النشاط الترفيهي ويتحسب زي أي سبت. حضور الخدام بيتحسب دايمًا، والتحضير لأ.'),
+    WhatsNewItem(Icons.speed_rounded, 'ثبات أكتر',
+        'تحسينات صغيرة عشان الشاشات تفضل شغالة حتى لو التحديث لسه واصل لقاعدة البيانات.'),
+  ],
   58: [
     WhatsNewItem(Icons.event_busy_rounded, 'السبت اللي مفيهوش درس',
         'إجازة ونشاط ترفيهي وتأجيل وإلغاء الدرس بقوا في شاشة واحدة سهلة، من تبويب الدروس ومن الحضور، ومكتوب على السبت سببه.'),

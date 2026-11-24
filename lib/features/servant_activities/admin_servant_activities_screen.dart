@@ -222,6 +222,9 @@ class _SummaryTabState extends State<_SummaryTab>
     // The follow-up card and the trends: best effort, the list stands
     // without them.
     ServantYear? servantYear;
+    // The نشاط ترفيهي Saturdays held so far: counted for attendance, but no
+    // prep is expected on them.
+    var activityHeld = 0;
     var people = const <String, Profile>{};
     var classOf = const <String, String>{};
     if (year != null && yearId != null) {
@@ -232,8 +235,15 @@ class _SummaryTabState extends State<_SummaryTab>
           _repo.recentPreps(limit: 1000),
           const ServantRepository().servants(includeInactive: false),
           const ClassRepository().allAssignments(),
+          _repo
+              .activityDatesForYear(yearId)
+              .catchError((Object _) => const <DateTime>[]),
         ]);
+        activityHeld = (extra[5] as List<DateTime>)
+            .where((d) => !d.isAfter(today))
+            .length;
         servantYear = ServantYear(
+          noPrepDays: extra[5] as List<DateTime>,
           heldSaturdays: extra[0] as List<DateTime>,
           marks: extra[1] as List<ServantAttendance>,
           preps: [
@@ -258,6 +268,7 @@ class _SummaryTabState extends State<_SummaryTab>
     return _ScreenData(
       summaries: summaries,
       totalSessions: results[1] as int,
+      activityHeld: activityHeld,
       year: servantYear,
       people: people,
       classOf: classOf,
@@ -311,6 +322,7 @@ class _SummaryTabState extends State<_SummaryTab>
           ],
           _sort,
           held: data.totalSessions,
+          prepHeld: data.prepSessions,
         );
 
         return ListView.builder(
@@ -355,6 +367,7 @@ class _SummaryTabState extends State<_SummaryTab>
               child: ServantRow(
                 summary: s,
                 held: data.totalSessions,
+                prepHeld: data.prepSessions,
                 trend: data.year?.trend(s.servantId),
                 onTap: () => _openDetail(s),
               ),
@@ -387,6 +400,14 @@ class _AttendanceTabState extends State<_AttendanceTab>
   List<DateTime> _sessionDates = [];
   List<Profile> _servants = [];
   DateTime? _selectedDate;
+
+  /// The نشاط ترفيهي Saturdays (yyyy-MM-dd): servants are marked as usual,
+  /// the prep slot is greyed out.
+  Set<String> _activityDays = const {};
+
+  bool get _selectedIsActivity =>
+      _selectedDate != null &&
+      _activityDays.contains(AppDateUtils.toIsoDate(_selectedDate!));
 
   /// The marks of the Saturday shown; a tap flips one at once (see
   /// [ServantMarks]) and only that chip waits for the server.
@@ -570,7 +591,15 @@ class _AttendanceTabState extends State<_AttendanceTab>
         const ClassRepository()
             .allAssignments()
             .catchError((Object _) => const <ClassServant>[]),
+        yearId != null
+            ? _repo
+                .activityDatesForYear(yearId)
+                .catchError((Object _) => const <DateTime>[])
+            : Future.value(<DateTime>[]),
       ]);
+      final activity = {
+        for (final d in results[3] as List<DateTime>) AppDateUtils.toIsoDate(d),
+      };
       final dates = results[0] as List<DateTime>;
       final servants = results[1] as List<Profile>;
       final assignments = results[2] as List<ClassServant>;
@@ -594,6 +623,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
       if (!mounted) return;
       setState(() {
         _sessionDates = dates;
+        _activityDays = activity;
         _servants = servants;
         _classOf = classOf;
         _classIdOf = classIdOf;
@@ -1028,6 +1058,11 @@ class _AttendanceTabState extends State<_AttendanceTab>
               ),
             ),
           ),
+        if (_selectedIsActivity)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: ActivityDayBanner(),
+          ),
         if (context.read<SessionController>().myClasses.length > 1)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -1120,6 +1155,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
                                 label: AppStrings.chipPrep,
                                 icon: look.icon,
                                 color: look.color,
+                                enabled: !_selectedIsActivity,
                                 on: prep != null || lp != null,
                                 busy: _marks.isBusy(servant.id, 'lesson_prep'),
                                 semantics:
@@ -1184,12 +1220,19 @@ class _ScreenData {
   const _ScreenData({
     required this.summaries,
     required this.totalSessions,
+    this.activityHeld = 0,
     this.year,
     this.people = const {},
     this.classOf = const {},
   });
   final List<ServantActivitySummary> summaries;
   final int totalSessions;
+
+  /// Saturdays held that were a نشاط ترفيهي (no prep expected).
+  final int activityHeld;
+
+  /// The Saturdays a class servant is expected to prepare for.
+  int get prepSessions => totalSessions - activityHeld;
 
   /// The year's marks and preps (follow-up, trends); null when not loaded.
   final ServantYear? year;
@@ -1330,6 +1373,7 @@ List<ServantActivitySummary> sortServants(
   List<ServantActivitySummary> list,
   ServantSort sort, {
   required int held,
+  int? prepHeld,
   bool onlyPending = false,
 }) {
   final out = [
@@ -1349,7 +1393,7 @@ List<ServantActivitySummary> sortServants(
     // send (a خادم عام) goes last, as there is nothing to be short of.
     ServantSort.leastPrep => (a, b) {
         double? rate(ServantActivitySummary s) {
-          final expected = s.expectedPreps(held);
+          final expected = s.expectedPreps(prepHeld ?? held);
           return expected == null || expected == 0
               ? null
               : s.totalPreps / expected;
@@ -1398,6 +1442,7 @@ class ServantRow extends StatelessWidget {
     super.key,
     required this.summary,
     required this.held,
+    this.prepHeld,
     required this.onTap,
     this.trend,
   });
@@ -1406,6 +1451,10 @@ class ServantRow extends StatelessWidget {
 
   /// Saturdays held so far this year.
   final int held;
+
+  /// Of those, the ones a prep is expected for (no نشاط ترفيهي); [held] when
+  /// not given.
+  final int? prepHeld;
   final VoidCallback onTap;
 
   /// This month's attendance against last month's, in points; an arrow
@@ -1414,7 +1463,7 @@ class ServantRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final expected = summary.expectedPreps(held);
+    final expected = summary.expectedPreps(prepHeld ?? held);
     final prepColor = expected == null || expected == 0
         ? AppColors.navy
         : _level(summary.totalPreps / expected);

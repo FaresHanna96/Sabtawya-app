@@ -108,7 +108,8 @@ class _ClassesScreenState extends State<ClassesScreen>
         weeks: weeks,
         health: health,
         prepClasses: preps,
-        noLesson: breaks.containsKey(AppDateUtils.toIsoDate(saturday)),
+        noLesson: LessonRepository.childrenOff(
+            breaks, AppDateUtils.toIsoDate(saturday)),
       ),
     );
   }

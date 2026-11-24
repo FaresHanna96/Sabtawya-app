@@ -78,7 +78,9 @@ class ServantYear {
     required List<LessonPrep> preps,
     required this.today,
     Set<String> classServantIds = const {},
+    Iterable<DateTime> noPrepDays = const [],
   })  : _classServants = classServantIds,
+        _noPrep = {for (final d in noPrepDays) _key(_day(d))},
         held = (heldSaturdays
             .map(_day)
             .where((d) => !d.isAfter(_day(today)))
@@ -93,6 +95,10 @@ class ServantYear {
   final List<DateTime> held;
   final DateTime today;
   final Set<String> _classServants;
+
+  /// Saturdays with no prep expected (a نشاط ترفيهي): the servant's marks
+  /// count, a prep does not.
+  final Set<String> _noPrep;
   final Map<String, Map<String, Set<String>>> _marks;
   final List<LessonPrep> _preps;
 
@@ -137,7 +143,12 @@ class ServantYear {
   /// only; 0 for a general servant).
   int missedRecentPreps(String servantId) {
     if (!_expectsPrep(servantId)) return 0;
-    final last = held.length <= 3 ? held : held.sublist(held.length - 3);
+    final needing = [
+      for (final d in held)
+        if (!_noPrep.contains(_key(d))) d,
+    ];
+    final last =
+        needing.length <= 3 ? needing : needing.sublist(needing.length - 3);
     return last.where((d) => !prepOn(servantId, d)).length;
   }
 
@@ -200,7 +211,7 @@ class ServantYear {
     var best = 0;
     for (final d in held) {
       final ok = typesOn(id, d).contains('sunday_school') &&
-          (!_expectsPrep(id) || prepOn(id, d));
+          (!_expectsPrep(id) || _noPrep.contains(_key(d)) || prepOn(id, d));
       run = ok ? run + 1 : 0;
       if (run > best) best = run;
     }
@@ -212,7 +223,10 @@ class ServantYear {
   ServantBadgeState _greatPrep(String id) {
     // Only Saturdays held: a prep for a no-lesson day (إجازة / نشاط ترفيهي)
     // is not in [held] and counts for nothing.
-    final heldKeys = {for (final d in held) _key(d)};
+    final heldKeys = {
+      for (final d in held)
+        if (!_noPrep.contains(_key(d))) _key(d),
+    };
     final accepted = _preps
         .where((p) =>
             p.servantId == id &&

@@ -95,7 +95,8 @@ class AttendanceSession {
         sessionDate: asDate(map['session_date']),
         isLocked: asBool(map['is_locked']),
         notes: asTextOrNull(map['notes']),
-        isBreak: asBool(map['is_break']),
+        // The children's view of the day: a counted نشاط ترفيهي is not off.
+        isBreak: asBool(map['children_off'] ?? map['is_break']),
       );
 }
 

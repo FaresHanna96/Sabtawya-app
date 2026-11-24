@@ -17,6 +17,7 @@ class ServantSummaryCard extends StatelessWidget {
     required this.preps,
     required this.pendingPreps,
     required this.heldSessions,
+    this.prepSessions,
   });
 
   final int sundaySchool;
@@ -29,8 +30,16 @@ class ServantSummaryCard extends StatelessWidget {
   /// Sessions already held (one per date): the base of every percentage.
   final int heldSessions;
 
-  String _pct(int n) =>
-      heldSessions == 0 ? '' : ' (${(n / heldSessions * 100).round()}%)';
+  /// Of those, the Saturdays a prep is expected for (no نشاط ترفيهي);
+  /// [heldSessions] when not given.
+  final int? prepSessions;
+
+  int get _prepBase => prepSessions ?? heldSessions;
+
+  String _pct(int n, [int? base]) {
+    final b = base ?? heldSessions;
+    return b == 0 ? '' : ' (${(n / b * 100).round()}%)';
+  }
 
   Widget _row(Widget a, Widget b) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
@@ -78,8 +87,8 @@ class ServantSummaryCard extends StatelessWidget {
           ),
           _row(
             StatTile(
-              label: '${AppStrings.lessonPrep}${_pct(preps)}',
-              value: '$preps/$heldSessions',
+              label: '${AppStrings.lessonPrep}${_pct(preps, _prepBase)}',
+              value: '$preps/$_prepBase',
               color: AppColors.navy,
               icon: Icons.assignment_outlined,
             ),

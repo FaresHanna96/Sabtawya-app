@@ -117,10 +117,14 @@ class ServantSlot extends StatelessWidget {
     required this.onTap,
     this.busy = false,
     this.semantics,
+    this.enabled = true,
   });
 
   final String label;
   final IconData icon;
+
+  /// False greys the slot out and ignores taps (a prep on a نشاط ترفيهي).
+  final bool enabled;
 
   /// The slot's colour when on (green for an activity; the prep's status
   /// colour for تحضير).
@@ -135,6 +139,49 @@ class ServantSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tint = on ? color : AppColors.muted;
+    if (!enabled) {
+      return Semantics(
+        label: semantics ?? label,
+        excludeSemantics: true,
+        child: Opacity(
+          opacity: 0.38,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.muted.withValues(alpha: 0.4),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: const Icon(Icons.remove_rounded,
+                      size: 18, color: AppColors.muted),
+                ),
+                const SizedBox(height: 3),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Semantics(
       button: true,
       toggled: on,
@@ -272,6 +319,137 @@ class ServantDayRow extends StatelessWidget {
             ),
             if (footer != null) footer!,
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// A small gold «🎉 نشاط» pill next to a Saturday that was a نشاط ترفيهي.
+class ActivityDayTag extends StatelessWidget {
+  const ActivityDayTag({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.celebration_rounded,
+              size: 12, color: AppColors.readable(AppColors.gold)),
+          const SizedBox(width: 3),
+          Text(
+            AppStrings.activityDayTag,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.readable(AppColors.gold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The friendly note on a نشاط ترفيهي in «حضور الخدام»: servants are marked
+/// as usual, there is just no prep.
+class ActivityDayBanner extends StatelessWidget {
+  const ActivityDayBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.celebration_rounded, color: AppColors.gold),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              AppStrings.activityServantsBanner,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.readable(AppColors.gold),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// «تقرير الشهر» as a clear card on the servant's page (it used to hide
+/// behind a small icon in the app bar): a tap opens the report to read or
+/// send on WhatsApp.
+class ServantReportEntryCard extends StatelessWidget {
+  const ServantReportEntryCard({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.navy.withValues(alpha: 0.18)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.navy.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.summarize_rounded,
+                    size: 22, color: AppColors.navy),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.monthReportTitle,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      AppStrings.monthReportHint,
+                      style: TextStyle(fontSize: 12, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
+            ],
+          ),
         ),
       ),
     );

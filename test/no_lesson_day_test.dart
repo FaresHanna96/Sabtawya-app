@@ -49,6 +49,10 @@ Future<BreakChoice?> _open(
   bool hasRecords = false,
   required Future<void> Function() interact,
 }) async {
+  // The sheet is taller than the default test screen.
+  tester.view.physicalSize = const Size(800, 1800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   BreakChoice? result;
   var closed = false;
   await tester.pumpWidget(MaterialApp(
@@ -100,6 +104,81 @@ void main() {
   test('a break from before the kind column reads as a holiday', () {
     expect(LessonBreakKind.fromWire(null), LessonBreakKind.holiday);
     expect(LessonBreakKind.fromWire('activity'), LessonBreakKind.activity);
+  });
+
+  group('attendance on a نشاط ترفيهي', () {
+    testWidgets('is not taken by default', (tester) async {
+      final c = await _open(tester, interact: () async {
+        expect(find.text(AppStrings.breakAttendanceQuestion), findsOneWidget);
+        await tester.tap(find.text(AppStrings.save));
+      });
+      expect(c?.kind, LessonBreakKind.activity);
+      expect(c?.attendanceTaken, isFalse);
+    });
+
+    testWidgets('can be taken and counted', (tester) async {
+      final c = await _open(tester, interact: () async {
+        await tester.tap(find.text(AppStrings.breakAttendanceTakenTitle));
+        await tester.pump();
+        await tester.tap(find.text(AppStrings.save));
+      });
+      expect(c?.attendanceTaken, isTrue);
+    });
+
+    testWidgets('an إجازة never takes attendance', (tester) async {
+      final c = await _open(
+        tester,
+        current: const LessonBreak(
+          kind: LessonBreakKind.activity,
+          shift: true,
+          attendanceTaken: true,
+        ),
+        interact: () async {
+          await tester.tap(find.text(AppStrings.breakHoliday));
+          await tester.pump();
+          expect(find.text(AppStrings.breakAttendanceQuestion), findsNothing);
+          await tester.tap(find.text(AppStrings.save));
+        },
+      );
+      expect(c?.kind, LessonBreakKind.holiday);
+      expect(c?.attendanceTaken, isFalse);
+    });
+
+    testWidgets('the records warning goes away when the day counts',
+        (tester) async {
+      await _open(
+        tester,
+        current: const LessonBreak(
+          kind: LessonBreakKind.activity,
+          shift: true,
+        ),
+        hasRecords: true,
+        interact: () async {
+          expect(find.text(AppStrings.breakHasRecords), findsOneWidget);
+          await tester.tap(find.text(AppStrings.breakAttendanceTakenTitle));
+          await tester.pump();
+          expect(find.text(AppStrings.breakHasRecords), findsNothing);
+          await tester.tap(find.text(AppStrings.save));
+        },
+      );
+    });
+
+    test('only a counted نشاط ترفيهي stays in the children numbers', () {
+      const holiday = LessonBreak(kind: LessonBreakKind.holiday, shift: true);
+      const activity = LessonBreak(kind: LessonBreakKind.activity, shift: true);
+      const counted = LessonBreak(
+        kind: LessonBreakKind.activity,
+        shift: true,
+        attendanceTaken: true,
+      );
+      expect(holiday.excludesChildren, isTrue);
+      expect(activity.excludesChildren, isTrue);
+      expect(counted.excludesChildren, isFalse);
+      final map = {'2026-11-14': counted, '2026-11-21': holiday};
+      expect(LessonRepository.childrenOff(map, '2026-11-14'), isFalse);
+      expect(LessonRepository.childrenOff(map, '2026-11-21'), isTrue);
+      expect(LessonRepository.childrenOff(map, '2026-11-28'), isFalse);
+    });
   });
 
   group('the lesson after a break', () {

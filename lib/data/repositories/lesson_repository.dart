@@ -34,6 +34,10 @@ class LessonRepository {
         extras,
         {for (final e in found.entries) e.key: e.value.shift},
         {for (final e in found.entries) e.key: e.value.kind},
+        {
+          for (final e in found.entries)
+            if (e.value.attendanceTaken) e.key,
+        },
       );
     } catch (e) {
       throw AppFailure.from(e);
@@ -49,24 +53,37 @@ class LessonRepository {
       try {
         data = rows(await Db.client
             .from(Db.tLessonBreaks)
-            .select('break_date, shift, kind'));
+            .select('break_date, shift, kind, attendance_taken'));
       } catch (_) {
-        // A database from before the kind column: every break a holiday.
-        data = rows(await Db.client
-            .from(Db.tLessonBreaks)
-            .select('break_date, shift'));
+        try {
+          // A database from before «الحضور بيتحسب»: no day takes attendance.
+          data = rows(await Db.client
+              .from(Db.tLessonBreaks)
+              .select('break_date, shift, kind'));
+        } catch (_) {
+          // A database from before the kind column: every break a holiday.
+          data = rows(await Db.client
+              .from(Db.tLessonBreaks)
+              .select('break_date, shift'));
+        }
       }
       return {
         for (final row in data)
           asText(row['break_date']): LessonBreak(
             kind: LessonBreakKind.fromWire(row['kind']),
             shift: asBool(row['shift'], true),
+            attendanceTaken: asBool(row['attendance_taken']),
           ),
       };
     } catch (e) {
       throw AppFailure.from(e);
     }
   }
+
+  /// Whether [iso] (yyyy-MM-dd) is out of the children's numbers: a break
+  /// that is not a نشاط ترفيهي with attendance taken.
+  static bool childrenOff(Map<String, LessonBreak> breaks, String iso) =>
+      breaks[iso]?.excludesChildren ?? false;
 
   /// أمين الخدمة: corrects a lesson's title and page for one grade.
   Future<void> updateLesson({
@@ -113,12 +130,16 @@ class LessonRepository {
     DateTime saturday, {
     required bool shift,
     LessonBreakKind? kind,
+    bool attendanceTaken = false,
   }) async {
     try {
       await Db.client.from(Db.tLessonBreaks).upsert(<String, dynamic>{
         'break_date': LessonProgramme.keyOf(saturday),
         'shift': shift,
         if (kind != null) 'kind': kind.wire,
+        // Only a نشاط ترفيهي can take attendance.
+        'attendance_taken':
+            attendanceTaken && kind == LessonBreakKind.activity,
       }, onConflict: 'break_date');
     } catch (e) {
       throw AppFailure.from(e);

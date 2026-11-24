@@ -53,7 +53,8 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
       );
     }
 
-    final (sessions, preps, marks, yearDates, subs, people) = await (
+    final (sessions, preps, marks, yearDates, activityDays, subs, people) =
+        await (
       _repo.sessionsForClasses(classIds, yearId: year.id),
       // Status and Saturday only; a prep's page loads its files.
       _repo.myPrepsSummary(),
@@ -68,6 +69,10 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
       // no class sessions of their own); best effort.
       _repo
           .sessionDatesForYear(year.id)
+          .catchError((Object _) => const <DateTime>[]),
+      // The نشاط ترفيهي days among them: no prep that day.
+      _repo
+          .activityDatesForYear(year.id)
           .catchError((Object _) => const <DateTime>[]),
       // «التغطيات», with names from the servants' directory; best effort.
       _repo
@@ -99,6 +104,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
       mass: counts['mass'] ?? 0,
       confession: counts['confession'] ?? 0,
       yearDates: yearDates,
+      activityDays: activityDays,
       isClassServant: classIds.isNotEmpty,
       subs: subs,
       names: {for (final p in people) p.id: p.fullName},
@@ -164,6 +170,16 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                 .length;
             final total = held.length;
 
+            // The Saturdays the servant's attendance counts: the class's
+            // lesson days plus the whole year's (a نشاط ترفيهي has no lesson
+            // but is counted), one per date.
+            DateTime dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
+            final heldDays = <DateTime>{
+              for (final s in held) dayOf(s.sessionDate),
+              for (final d in data.yearDates)
+                if (!d.isAfter(today)) dayOf(d),
+            }.toList();
+
             final g = PrepGroups.of(
               data.sessions,
               hasPrep: (id) => data.prepFor(id) != null,
@@ -225,15 +241,17 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     ),
                     pendingPreps:
                         data.preps.where((p) => p.status == 'pending').length,
-                    heldSessions: held.map((s) => s.sessionDate).toSet().length,
+                    heldSessions: heldDays.length,
+                    prepSessions: heldDays
+                        .where((d) => !data.activityDays.any((a) => dayOf(a) == d))
+                        .length,
                   ),
                 ),
                 const SizedBox(height: 12),
                 MyAttendanceCard(
-                  held: [
-                    for (final d in {for (final s in held) s.sessionDate}) d,
-                  ],
+                  held: heldDays,
                   marks: data.marks,
+                  activityDays: data.activityDays,
                 ),
                 const SizedBox(height: 12),
                 ServantBadgesCard(
@@ -248,6 +266,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     classServantIds: {
                       if (data.isClassServant && Db.userId != null) Db.userId!,
                     },
+                    noPrepDays: data.activityDays,
                   ).badges(Db.userId ?? ''),
                 ),
                 if (data.subs.isNotEmpty) ...[
@@ -678,6 +697,7 @@ class _ActivitiesData {
     required this.mass,
     required this.confession,
     this.yearDates = const [],
+    this.activityDays = const [],
     this.isClassServant = false,
     this.subs = const [],
     this.names = const {},
@@ -688,6 +708,9 @@ class _ActivitiesData {
 
   /// Every Saturday of the year held or not (no breaks), for the badges.
   final List<DateTime> yearDates;
+
+  /// The نشاط ترفيهي Saturdays: servants are marked, there is no prep.
+  final List<DateTime> activityDays;
   final bool isClassServant;
 
   final List<AttendanceSession> sessions;
@@ -837,10 +860,18 @@ class PrepTodoCard extends StatelessWidget {
 /// four small icons each, so "which Saturdays did I miss?" has an answer.
 @visibleForTesting
 class MyAttendanceCard extends StatelessWidget {
-  const MyAttendanceCard({super.key, required this.held, required this.marks});
+  const MyAttendanceCard({
+    super.key,
+    required this.held,
+    required this.marks,
+    this.activityDays = const [],
+  });
 
   /// The Saturdays held so far.
   final List<DateTime> held;
+
+  /// The نشاط ترفيهي ones among them (tagged).
+  final List<DateTime> activityDays;
   final List<ServantAttendance> marks;
 
   static const _activities = <(String, IconData, Color, String)>[
@@ -915,10 +946,22 @@ class MyAttendanceCard extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: 96,
-                    child: Text(
-                      '${d.day} ${AppDateUtils.monthName(d.month)}',
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${d.day} ${AppDateUtils.monthName(d.month)}',
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        if (activityDays.any((a) => _day(a) == _day(d)))
+                          const Padding(
+                            padding: EdgeInsetsDirectional.only(start: 4),
+                            child: Icon(Icons.celebration_rounded,
+                                size: 14, color: AppColors.gold),
+                          ),
+                      ],
                     ),
                   ),
                   for (final a in _activities)

@@ -130,7 +130,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         const ReportRepository().classWeekOn(yearId: yearId, date: saturday),
         const LessonRepository().breaks(),
       ).wait;
-      if (breaks.containsKey(AppDateUtils.toIsoDate(saturday))) return null;
+      if (LessonRepository.childrenOff(
+          breaks, AppDateUtils.toIsoDate(saturday))) {
+        return null;
+      }
       final week = weeks[widget.classId];
       return week == null ? null : _Week(saturday, week);
     } catch (_) {

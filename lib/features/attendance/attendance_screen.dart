@@ -133,8 +133,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   LessonBreak? get _break =>
       _date == null ? null : _breaks[AppDateUtils.toIsoDate(_date!)];
 
+  /// The day is out of the children's numbers and takes no attendance: a
+  /// holiday, or a نشاط ترفيهي whose attendance is not taken.
   bool get _isBreakDay =>
-      _break != null || _sheets.any((s) => s.session.isBreak);
+      (_break?.excludesChildren ?? false) ||
+      _sheets.any((s) => s.session.isBreak);
 
   Future<void> _loadBreaks() async {
     try {
@@ -161,7 +164,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       context,
       () => picked.kind == null
           ? repo.clearBreak(date)
-          : repo.setBreak(date, shift: picked.shift, kind: picked.kind),
+          : repo.setBreak(
+              date,
+              shift: picked.shift,
+              kind: picked.kind,
+              attendanceTaken: picked.attendanceTaken,
+            ),
       successMessage: AppStrings.saved,
     );
     if (ok) {
@@ -1471,7 +1479,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 alignment: AlignmentDirectional.centerEnd,
                 child: _headerMenu(),
               ),
-            if (_isBreakDay) ...[
+            if (_isBreakDay || _break != null) ...[
               const SizedBox(height: 8),
               _breakLine(),
             ],
@@ -1527,11 +1535,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   /// «إجازة» or «نشاط ترفيهي» on this Saturday, with «تغيير» for the admin.
+  /// A نشاط ترفيهي whose attendance is taken says the day counts.
   Widget _breakLine() {
+    final counted = !_isBreakDay;
+    final tone = counted ? AppColors.success : AppColors.warning;
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(10, 2, 2, 2),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.12),
+        color: tone.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1541,20 +1552,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ? Icons.celebration_rounded
                 : Icons.beach_access_rounded,
             size: 18,
-            color: AppColors.warning,
+            color: tone,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Text(
-                AppStrings.breakDayBanner(
-                  (_break?.kind ?? LessonBreakKind.holiday).label,
-                ),
-                style: const TextStyle(
+                counted
+                    ? AppStrings.activityCountedBanner
+                    : AppStrings.breakDayBanner(
+                        (_break?.kind ?? LessonBreakKind.holiday).label,
+                      ),
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.warningText,
+                  color: counted ? AppColors.success : AppColors.warningText,
                 ),
               ),
             ),

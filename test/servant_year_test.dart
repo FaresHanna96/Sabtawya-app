@@ -234,4 +234,78 @@ void main() {
       expect(n, 1);
     });
   });
+
+  group('a نشاط ترفيهي day (no prep expected)', () {
+    // _sats[3] is a نشاط ترفيهي: servants are marked, nobody sends a prep.
+    ServantYear withActivity({
+      List<ServantAttendance> marks = const [],
+      List<LessonPrep> preps = const [],
+    }) =>
+        ServantYear(
+          heldSaturdays: _sats,
+          marks: marks,
+          preps: preps,
+          today: _today,
+          classServantIds: const {'a'},
+          noPrepDays: [_sats[3]],
+        );
+
+    test('خادم أمين: the streak is not broken by the missing prep', () {
+      final y = withActivity(
+        marks: [
+          for (final d in _sats.take(5)) _m('a', 'sunday_school', d),
+        ],
+        preps: [
+          for (final d in _sats.take(5))
+            if (d != _sats[3]) _p('a', d),
+        ],
+      );
+      final b = y.badges('a').firstWhere((s) => s.badge == ServantBadge.faithful);
+      expect(b.earned, isTrue);
+    });
+
+    test('without the exemption the same week breaks the streak', () {
+      final y = _year(
+        marks: [
+          for (final d in _sats.take(5)) _m('a', 'sunday_school', d),
+        ],
+        preps: [
+          for (final d in _sats.take(5))
+            if (d != _sats[3]) _p('a', d),
+        ],
+      );
+      final b = y.badges('a').firstWhere((s) => s.badge == ServantBadge.faithful);
+      expect(b.earned, isFalse);
+    });
+
+    test('the missing prep is not counted as missed', () {
+      // The last three held Saturdays: _sats[5], [6], [7]; none is the
+      // activity, so use a year that ends on it.
+      final y = ServantYear(
+        heldSaturdays: _sats.take(4).toList(),
+        marks: const [],
+        preps: [_p('a', _sats[1]), _p('a', _sats[2])],
+        today: _today,
+        classServantIds: const {'a'},
+        noPrepDays: [_sats[3]],
+      );
+      expect(y.missedRecentPreps('a'), 1); // only _sats[0] of the last three
+    });
+
+    test('تحضير متميّز: a prep on that day does not count', () {
+      final y = withActivity(preps: [
+        for (final d in _sats.take(5)) _p('a', d, status: 'accepted'),
+      ]);
+      final b =
+          y.badges('a').firstWhere((s) => s.badge == ServantBadge.greatPrep);
+      expect(b.progress, 4);
+      expect(b.earned, isFalse);
+    });
+
+    test('the servant marks still count on that day', () {
+      final y = withActivity(marks: [_m('a', 'mass', _sats[3])]);
+      expect(y.typesOn('a', _sats[3]), contains('mass'));
+      expect(y.held, contains(_sats[3]));
+    });
+  });
 }

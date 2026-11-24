@@ -81,6 +81,7 @@ void main() {
       const {},
       const {'2026-11-07': true, '2026-11-28': false},
       const {'2026-11-28': LessonBreakKind.activity},
+      const {'2026-11-28'},
     );
 
     test('a postponed week has no lesson and pushes the next ones back', () {
@@ -116,6 +117,12 @@ void main() {
       expect(withBreaks.breakKindOn(DateTime(2026, 11, 7)),
           LessonBreakKind.holiday);
       expect(withBreaks.breakKindOn(DateTime(2026, 11, 14)), isNull);
+    });
+
+    test('attendanceTakenOn is true only for the days marked as taken', () {
+      expect(withBreaks.attendanceTakenOn(DateTime(2026, 11, 28)), isTrue);
+      expect(withBreaks.attendanceTakenOn(DateTime(2026, 11, 7)), isFalse);
+      expect(withBreaks.attendanceTakenOn(DateTime(2026, 11, 14)), isFalse);
     });
   });
 }

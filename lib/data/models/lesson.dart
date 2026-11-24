@@ -17,9 +17,22 @@ enum LessonBreakKind {
 
 /// A Saturday with no lesson.
 class LessonBreak {
-  const LessonBreak({required this.kind, required this.shift});
+  const LessonBreak({
+    required this.kind,
+    required this.shift,
+    this.attendanceTaken = false,
+  });
 
   final LessonBreakKind kind;
+
+  /// A نشاط ترفيهي whose children's attendance IS taken: the day counts for
+  /// the children like a normal day. Never true for an إجازة.
+  final bool attendanceTaken;
+
+  /// The day is out of every number about the children (levels, badges,
+  /// ranking, reports) and takes no attendance.
+  bool get excludesChildren =>
+      !(kind == LessonBreakKind.activity && attendanceTaken);
 
   /// The later lessons move a week (postponed), or keep their dates.
   final bool shift;
@@ -106,6 +119,7 @@ class LessonProgramme {
     this._extras, [
     this._breaks = const <String, bool>{},
     this._breakKinds = const <String, LessonBreakKind>{},
+    this._attendanceTakenDays = const <String>{},
   ]);
 
   static const empty =
@@ -123,12 +137,19 @@ class LessonProgramme {
   /// Why each of those weeks has no lesson (إجازة or نشاط ترفيهي), same keys.
   final Map<String, LessonBreakKind> _breakKinds;
 
+  /// The نشاط ترفيهي weeks whose children's attendance is taken (same keys).
+  final Set<String> _attendanceTakenDays;
+
   static String keyOf(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
   /// null = a normal week, true = postponed, false = cancelled.
   bool? breakOn(DateTime saturday) => _breaks[keyOf(saturday)];
+
+  /// A نشاط ترفيهي on [saturday] that takes the children's attendance.
+  bool attendanceTakenOn(DateTime saturday) =>
+      _attendanceTakenDays.contains(keyOf(saturday));
 
   /// Why [saturday] has no lesson; null for a normal week.
   LessonBreakKind? breakKindOn(DateTime saturday) =>

@@ -7,10 +7,17 @@ import '../../data/repositories/lesson_repository.dart';
 
 /// What the admin chose for a Saturday: [kind] null is a normal lesson day.
 class BreakChoice {
-  const BreakChoice({required this.kind, required this.shift});
+  const BreakChoice({
+    required this.kind,
+    required this.shift,
+    this.attendanceTaken = false,
+  });
 
   final LessonBreakKind? kind;
   final bool shift;
+
+  /// A نشاط ترفيهي whose children's attendance is taken and counted.
+  final bool attendanceTaken;
 }
 
 /// "فيه درس السبت ده؟": a normal day, إجازة or نشاط ترفيهي, and what happens
@@ -56,6 +63,7 @@ class _BreakSheetState extends State<BreakSheet> {
   late LessonBreakKind? _kind =
       widget.current?.kind ?? LessonBreakKind.activity;
   late bool _shift = widget.current?.shift ?? true;
+  late bool _taken = widget.current?.attendanceTaken ?? false;
 
   /// A tinted, rounded choice: [selected] shows the check and the border.
   Widget _choice({
@@ -198,7 +206,33 @@ class _BreakSheetState extends State<BreakSheet> {
                 selected: !_shift,
                 onTap: () => setState(() => _shift = false),
               ),
-              if (widget.hasRecords)
+              if (_kind == LessonBreakKind.activity) ...[
+                const SizedBox(height: 6),
+                const Text(
+                  AppStrings.breakAttendanceQuestion,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                _choice(
+                  key: const ValueKey('breakAttendanceTaken'),
+                  icon: Icons.how_to_reg_rounded,
+                  color: AppColors.success,
+                  title: AppStrings.breakAttendanceTakenTitle,
+                  hint: AppStrings.breakAttendanceTakenHint,
+                  selected: _taken,
+                  onTap: () => setState(() => _taken = true),
+                ),
+                _choice(
+                  key: const ValueKey('breakAttendanceNotTaken'),
+                  icon: Icons.person_off_rounded,
+                  color: AppColors.muted,
+                  title: AppStrings.breakAttendanceNotTakenTitle,
+                  hint: AppStrings.breakAttendanceNotTakenHint,
+                  selected: !_taken,
+                  onTap: () => setState(() => _taken = false),
+                ),
+              ],
+              if (widget.hasRecords && !(_kind == LessonBreakKind.activity && _taken))
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
@@ -214,7 +248,11 @@ class _BreakSheetState extends State<BreakSheet> {
             const SizedBox(height: 4),
             FilledButton(
               onPressed: () => Navigator.of(context)
-                  .pop(BreakChoice(kind: _kind, shift: _shift)),
+                  .pop(BreakChoice(
+                kind: _kind,
+                shift: _shift,
+                attendanceTaken: _kind == LessonBreakKind.activity && _taken,
+              )),
               child: const Text(AppStrings.save),
             ),
           ],

@@ -202,14 +202,28 @@ class ReportRepository {
             .gte('session_date', from)
             .lte('session_date', iso)
             .order('session_date', ascending: true),
-        Db.client
-            .from(Db.tLessonBreaks)
-            .select('break_date')
-            .gte('break_date', from)
-            .lte('break_date', iso),
+        // A database from before «الحضور بيتحسب» has no attendance_taken.
+        Future<dynamic>.sync(() async {
+          try {
+            return await Db.client
+                .from(Db.tLessonBreaks)
+                .select('break_date, kind, attendance_taken')
+                .gte('break_date', from)
+                .lte('break_date', iso);
+          } catch (_) {
+            return await Db.client
+                .from(Db.tLessonBreaks)
+                .select('break_date')
+                .gte('break_date', from)
+                .lte('break_date', iso);
+          }
+        }),
       ]);
+      // A نشاط ترفيهي whose attendance is taken counts like a normal week.
       final breaks = {
-        for (final r in rows(results[1])) asText(r['break_date'])
+        for (final r in rows(results[1]))
+          if (!(r['kind'] == 'activity' && asBool(r['attendance_taken'])))
+            asText(r['break_date'])
       };
       final byDate = <String, List<ClassWeek>>{};
       for (final r in rows(results[0])) {

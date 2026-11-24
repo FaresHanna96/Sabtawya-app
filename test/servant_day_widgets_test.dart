@@ -140,4 +140,56 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  group('a نشاط ترفيهي in «حضور الخدام»', () {
+    testWidgets('the prep slot is greyed out and ignores taps', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_app(
+        ServantSlot(
+          label: AppStrings.chipPrep,
+          icon: Icons.circle_outlined,
+          color: AppColors.success,
+          on: false,
+          enabled: false,
+          onTap: () => taps++,
+        ),
+      ));
+      await tester.tap(find.text(AppStrings.chipPrep), warnIfMissed: false);
+      expect(taps, 0);
+      expect(find.byIcon(Icons.remove_rounded), findsOneWidget);
+    });
+
+    testWidgets('an enabled slot still reacts', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_app(_slot('خدمة', onTap: () => taps++)));
+      await tester.tap(find.text('خدمة'));
+      expect(taps, 1);
+    });
+
+    testWidgets('the banner and the tag fit a small phone at large text',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        const Column(children: [ActivityDayBanner(), ActivityDayTag()]),
+        scale: 1.6,
+      ));
+      expect(find.text(AppStrings.activityServantsBanner), findsOneWidget);
+      expect(find.text(AppStrings.activityDayTag), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('the monthly report entry', () {
+    testWidgets('is a clear card that opens the report', (tester) async {
+      var opened = 0;
+      await tester.pumpWidget(_app(
+        ServantReportEntryCard(onTap: () => opened++),
+        scale: 1.6,
+      ));
+      expect(find.text(AppStrings.monthReportTitle), findsOneWidget);
+      expect(find.text(AppStrings.monthReportHint), findsOneWidget);
+      await tester.tap(find.text(AppStrings.monthReportTitle));
+      expect(opened, 1);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

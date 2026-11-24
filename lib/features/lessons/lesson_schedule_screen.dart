@@ -77,12 +77,21 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
       date: day,
       current: kind == null
           ? null
-          : LessonBreak(kind: kind, shift: programme.breakOn(day) ?? true),
+          : LessonBreak(
+              kind: kind,
+              shift: programme.breakOn(day) ?? true,
+              attendanceTaken: programme.attendanceTakenOn(day),
+            ),
     );
     if (picked == null || !mounted) return;
     await _change(() => picked.kind == null
         ? _repository.clearBreak(day)
-        : _repository.setBreak(day, shift: picked.shift, kind: picked.kind));
+        : _repository.setBreak(
+            day,
+            shift: picked.shift,
+            kind: picked.kind,
+            attendanceTaken: picked.attendanceTaken,
+          ));
   }
 
   @override

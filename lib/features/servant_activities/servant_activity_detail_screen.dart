@@ -23,6 +23,8 @@ import '../../data/supabase/db.dart';
 import '../../state/session_controller.dart';
 import 'servant_badges.dart';
 import 'servant_covers.dart';
+import 'servant_day_widgets.dart'
+    show ActivityDayTag, ServantReportEntryCard;
 import 'servant_year.dart';
 
 /// Admin view of one servant's activities: lesson preps + two attendance types.
@@ -101,12 +103,18 @@ class _ServantActivityDetailScreenState
       marks('confession'),
       // Preps the admin ticked by hand count like uploaded ones.
       marks('lesson_prep'),
-      // One row per Saturday of the year (no-lesson days left out): a
-      // servant is marked per date, so a class servant and a خادم عام (no
-      // class) get the same list.
+      // One row per Saturday of the year (holidays left out; a نشاط ترفيهي
+      // stays): a servant is marked per date, so a class servant and a خادم
+      // عام (no class) get the same list.
       yearId == null
           ? Future.value(const <DateTime>[])
           : _repo.sessionDatesForYear(yearId),
+      // The نشاط ترفيهي days among them: no prep that day.
+      yearId == null
+          ? Future.value(const <DateTime>[])
+          : _repo
+              .activityDatesForYear(yearId)
+              .catchError((Object _) => const <DateTime>[]),
     ]);
     return _DetailData(
       preps: results[0] as List<LessonPrep>,
@@ -116,6 +124,7 @@ class _ServantActivityDetailScreenState
       confession: results[4] as List<ServantAttendance>,
       prepMarks: results[5] as List<ServantAttendance>,
       yearDates: results[6] as List<DateTime>,
+      activityDays: results[7] as List<DateTime>,
       dates: _heldNewestFirst(results[6] as List<DateTime>),
       isClassServant: (await info).$1,
       mobile: (await info).$2,
@@ -226,6 +235,7 @@ class _ServantActivityDetailScreenState
         preps: data.preps,
         today: DateTime.now(),
         classServantIds: {if (data.isClassServant) widget.servantId},
+        noPrepDays: data.activityDays,
       );
 
   void _openReport() {
@@ -284,22 +294,15 @@ class _ServantActivityDetailScreenState
       ),
       pendingPreps: preps.where((p) => p.isPending).length,
       heldSessions: held,
+      prepSessions:
+          data.dates.where((d) => !data.isActivityDay(d)).length,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.servantName),
-        actions: [
-          IconButton(
-            tooltip: AppStrings.monthReportTitle,
-            icon: const Icon(Icons.summarize_outlined),
-            onPressed: _openReport,
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(widget.servantName)),
       body: SafeArea(
         child: AsyncSection<_DetailData>(
           key: _sectionKey,
@@ -310,6 +313,8 @@ class _ServantActivityDetailScreenState
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
               children: [
                 _summary(data),
+                const SizedBox(height: 12),
+                ServantReportEntryCard(onTap: _openReport),
                 const SizedBox(height: 12),
                 ServantBadgesCard(
                   badges: _year(data).badges(widget.servantId),
@@ -361,6 +366,7 @@ class _ServantActivityDetailScreenState
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _AttendanceSessionCard(
                         date: date,
+                        activity: data.isActivityDay(date),
                         sundaySchoolPresent: data.sundaySchoolFor(date) != null,
                         servantMeetingPresent:
                             data.servantMeetingFor(date) != null,
@@ -465,6 +471,7 @@ class _PrepRow extends StatelessWidget {
 class _AttendanceSessionCard extends StatelessWidget {
   const _AttendanceSessionCard({
     required this.date,
+    this.activity = false,
     required this.sundaySchoolPresent,
     required this.servantMeetingPresent,
     required this.massPresent,
@@ -476,6 +483,9 @@ class _AttendanceSessionCard extends StatelessWidget {
   });
 
   final DateTime date;
+
+  /// A نشاط ترفيهي: tagged, servants are marked as usual.
+  final bool activity;
   final bool sundaySchoolPresent;
   final bool servantMeetingPresent;
   final bool massPresent;
@@ -510,13 +520,19 @@ class _AttendanceSessionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  AppDateUtils.formatDayDate(date),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    AppDateUtils.formatDayDate(date),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
+                if (activity) ...[
+                  const SizedBox(width: 8),
+                  const ActivityDayTag(),
+                ],
               ],
             ),
             const SizedBox(height: 10),
@@ -867,6 +883,7 @@ class _DetailData {
     required this.dates,
     this.prepMarks = const [],
     this.yearDates = const [],
+    this.activityDays = const [],
     this.isClassServant = false,
     this.mobile,
     this.names = const {},
@@ -890,6 +907,11 @@ class _DetailData {
 
   /// Every Saturday of the year with a lesson, held or not.
   final List<DateTime> yearDates;
+
+  /// The نشاط ترفيهي Saturdays: servants are marked, there is no prep.
+  final List<DateTime> activityDays;
+
+  bool isActivityDay(DateTime d) => activityDays.any((a) => _key(a) == _key(d));
 
   /// The Saturdays held so far, the latest first (one per date).
   final List<DateTime> dates;
