@@ -314,6 +314,7 @@ class _BirthDateField extends StatelessWidget {
       initialDate: value ?? DateTime(now.year - 25, now.month, now.day),
       firstDate: DateTime(1950),
       lastDate: now,
+      initialDatePickerMode: DatePickerMode.year,
       helpText: AppStrings.pickBirthDate,
     );
     if (picked != null) onChanged(picked);

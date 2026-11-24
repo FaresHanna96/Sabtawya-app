@@ -46,6 +46,7 @@ class ServantDataFields extends StatelessWidget {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
+      initialDatePickerMode: DatePickerMode.year,
       initialDate: controllers.birthDate ?? DateTime(now.year - 20),
       firstDate: DateTime(1940),
       lastDate: now,

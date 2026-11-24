@@ -122,6 +122,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       initialDate: _birthDate ?? DateTime(now.year - 10, now.month, now.day),
       firstDate: DateTime(1950),
       lastDate: now,
+      initialDatePickerMode: DatePickerMode.year,
       helpText: AppStrings.pickBirthDate,
     );
     if (picked != null) {
@@ -341,6 +342,17 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
           title:
               Text(widget.isEdit ? AppStrings.editChild : AppStrings.addChild),
         ),
+        // The save button stays in reach however far down the form is.
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            child: FilledButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.check),
+              label: const Text(AppStrings.save),
+            ),
+          ),
+        ),
         body: AsyncSection<List<SchoolClass>>(
           load: () => _classes.list(),
           enableRefresh: false,
@@ -371,10 +383,10 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                 if (!_dirty) setState(() => _dirty = true);
               },
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                 children: staggerAll([
                   _photoPicker(),
-                  _group(AppStrings.personalInfo, [
+                  _group(AppStrings.personalInfo, Icons.badge_rounded, AppColors.navy, [
                     DropdownButtonFormField<String>(
                       initialValue: _classId,
                       decoration: const InputDecoration(
@@ -416,26 +428,43 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                       icon: Icons.phone_outlined,
                       isPhone: true,
                     ),
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: AppStrings.childCode,
-                        helperText: AppStrings.childCodeHint,
-                        prefixIcon: Icon(Icons.tag),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.navy.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        (widget.child?.code?.isNotEmpty ?? false)
-                            ? widget.child!.code!
-                            : AppStrings.childCodePending,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: (widget.child?.code?.isNotEmpty ?? false)
-                              ? null
-                              : AppColors.muted,
-                        ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.tag,
+                              size: 20, color: AppColors.muted),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  (widget.child?.code?.isNotEmpty ?? false)
+                                      ? '${AppStrings.childCode}: ${widget.child!.code!}'
+                                      : '${AppStrings.childCode}: ${AppStrings.childCodePending}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5),
+                                ),
+                                const Text(
+                                  AppStrings.childCodeHint,
+                                  style: TextStyle(
+                                      fontSize: 11.5, color: AppColors.muted),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ]),
-                  _group(AppStrings.parentsInfo, [
+                  _group(AppStrings.parentsInfo, Icons.family_restroom_rounded, AppColors.olive, [
                     _field(
                       controller: _motherName,
                       label: AppStrings.motherName,
@@ -459,7 +488,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                       isPhone: true,
                     ),
                   ]),
-                  _group(AppStrings.churchInfo, [
+                  _group(AppStrings.churchInfo, Icons.church_rounded, AppColors.maroon, [
                     _field(
                       controller: _confessionFather,
                       label: AppStrings.confessionFather,
@@ -479,7 +508,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                         controlAffinity: ListTileControlAffinity.leading,
                       ),
                   ]),
-                  _group(AppStrings.schoolInfo, [
+                  _group(AppStrings.schoolInfo, Icons.school_rounded, AppColors.sky, [
                     _field(
                       controller: _school,
                       label: AppStrings.school,
@@ -504,12 +533,6 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                       maxLines: 3,
                     ),
                   ]),
-                  const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: _save,
-                    icon: const Icon(Icons.check),
-                    label: const Text(AppStrings.save),
-                  ),
                 ]),
               ),
             );
@@ -570,32 +593,61 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
   }
 
   Widget _genderPicker() {
-    return InputDecorator(
-      decoration: const InputDecoration(
-        labelText: AppStrings.gender,
-        prefixIcon: Icon(Icons.wc_outlined),
-      ),
-      child: SegmentedButton<Gender>(
-        segments: Gender.values
-            .map(
-              (gender) => ButtonSegment<Gender>(
-                value: gender,
-                label: Text(gender.label),
-                icon: Icon(
-                  gender == Gender.boy
-                      ? Icons.boy_outlined
-                      : Icons.girl_outlined,
-                ),
+    Widget tile(Gender gender, IconData icon, Color color) {
+      final on = _gender == gender;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() {
+            _dirty = true;
+            _gender = gender;
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: on ? color.withValues(alpha: 0.14) : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: on ? color : AppColors.muted.withValues(alpha: 0.3),
+                width: on ? 2 : 1,
               ),
-            )
-            .toList(),
-        selected: <Gender>{_gender},
-        showSelectedIcon: false,
-        onSelectionChanged: (selection) => setState(() {
-          _dirty = true;
-          _gender = selection.first;
-        }),
-      ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: on ? color : AppColors.muted),
+                const SizedBox(width: 6),
+                Text(
+                  gender.label,
+                  style: TextStyle(
+                    fontWeight: on ? FontWeight.w800 : FontWeight.w600,
+                    color: on ? AppColors.readable(color) : AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 6, right: 4),
+          child: Text(AppStrings.gender,
+              style: TextStyle(fontSize: 12.5, color: AppColors.muted)),
+        ),
+        Row(
+          children: [
+            tile(Gender.boy, Icons.boy_rounded, AppColors.sky),
+            const SizedBox(width: 10),
+            tile(Gender.girl, Icons.girl_rounded, AppColors.coral),
+          ],
+        ),
+      ],
     );
   }
 
@@ -643,30 +695,53 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
     );
   }
 
-  Widget _group(String title, List<Widget> children) {
+  /// A section as its own card: a coloured icon and title, then its fields.
+  Widget _group(
+      String title, IconData icon, Color color, List<Widget> children) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10, right: 4),
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navy,
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 2),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 18, color: color),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.readable(color),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          ...children.map(
-            (child) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: child,
+            ...children.map(
+              (child) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: child,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

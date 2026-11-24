@@ -274,6 +274,48 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
+      // Every date picker in the app: white and rounded like the other
+      // dialogs, a navy header with white text (the grey default read as
+      // disabled), a navy selected day, and an olive ring on today.
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        headerBackgroundColor: AppColors.navy,
+        headerForegroundColor: Colors.white,
+        headerHeadlineStyle:
+            const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+        headerHelpStyle:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        weekdayStyle: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.muted),
+        dayStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        yearStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return Colors.white;
+          if (states.contains(WidgetState.disabled)) {
+            return AppColors.muted.withValues(alpha: 0.45);
+          }
+          return AppColors.navyDark;
+        }),
+        dayBackgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? AppColors.navy : null),
+        yearForegroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : AppColors.navyDark),
+        yearBackgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? AppColors.navy : null),
+        todayForegroundColor: const WidgetStatePropertyAll(AppColors.navy),
+        todayBorder: const BorderSide(color: AppColors.olive, width: 1.6),
+        cancelButtonStyle:
+            TextButton.styleFrom(foregroundColor: AppColors.muted),
+        confirmButtonStyle:
+            TextButton.styleFrom(foregroundColor: AppColors.navy),
+      ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
