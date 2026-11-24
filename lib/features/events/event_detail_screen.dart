@@ -275,8 +275,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 balances.fold<double>(0, (s, b) => s + b.totalPaid);
             final totalExpected =
                 balances.fold<double>(0, (s, b) => s + b.cost);
-            final progress =
-                totalExpected > 0 ? totalCollected / totalExpected : 0.0;
 
             // Same rules as the counts and the Excel export.
             List<ChildEventBalance> tab(String name) =>
@@ -300,79 +298,12 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 // Summary card
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                '${AppStrings.collected}: ',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.oliveText,
-                                ),
-                              ),
-                              // The collected amount counts up.
-                              TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0, end: totalCollected),
-                                duration: const Duration(milliseconds: 900),
-                                curve: Curves.easeOutCubic,
-                                builder: (_, v, __) => Text(
-                                  '${v.toStringAsFixed(0)} ج.م',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.oliveText,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${AppStrings.expected}: ${totalExpected.toStringAsFixed(0)} ج.م',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.muted,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            // The bar fills up when the trip opens.
-                            child: TweenAnimationBuilder<double>(
-                              tween: Tween(
-                                begin: 0,
-                                end: progress.clamp(0.0, 1.0),
-                              ),
-                              duration: const Duration(milliseconds: 900),
-                              curve: Curves.easeOutCubic,
-                              builder: (_, v, __) => LinearProgressIndicator(
-                                value: v,
-                                minHeight: 8,
-                                backgroundColor:
-                                    AppColors.navy.withValues(alpha: 0.1),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppColors.olive,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (_byChild.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              _methodLine(_methodSum()),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                  child: _CollectionSummary(
+                    collected: totalCollected,
+                    expected: totalExpected,
+                    methods: _byChild.isNotEmpty
+                        ? _methodLine(_methodSum())
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -573,6 +504,148 @@ Tab _countTab(int count, String label) => Tab(
 
 // ---------------------------------------------------------------------------
 
+/// How much of the cost is collected: a ring with the %, the amount in big
+/// type, and what is still to collect (or that everything is in).
+class _CollectionSummary extends StatelessWidget {
+  const _CollectionSummary({
+    required this.collected,
+    required this.expected,
+    this.methods,
+  });
+
+  final double collected;
+  final double expected;
+
+  /// "كاش 54 • كيتي 5": how the money came in; null when not known yet.
+  final String? methods;
+
+  @override
+  Widget build(BuildContext context) {
+    final share = expected > 0 ? (collected / expected).clamp(0.0, 1.0) : 0.0;
+    final left = (expected - collected).clamp(0.0, double.infinity);
+    final done = expected > 0 && left <= 0;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: share),
+                        duration: const Duration(milliseconds: 900),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, v, __) => SizedBox.expand(
+                          child: CircularProgressIndicator(
+                            value: v,
+                            strokeWidth: 7,
+                            strokeCap: StrokeCap.round,
+                            color: done ? AppColors.success : AppColors.olive,
+                            backgroundColor:
+                                AppColors.navy.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${(share * 100).round()}%',
+                        textDirection: TextDirection.ltr,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        AppStrings.collected,
+                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                      ),
+                      // The collected amount counts up.
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: collected),
+                        duration: const Duration(milliseconds: 900),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, v, __) => Text(
+                          '${v.toStringAsFixed(0)} ج.م',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.oliveText,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${AppStrings.expected}: ${expected.toStringAsFixed(0)} ج.م',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: (done ? AppColors.success : AppColors.danger)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    done
+                        ? AppStrings.allCollected
+                        : '${AppStrings.remaining}: ${left.toStringAsFixed(0)} ج.م',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: done ? AppColors.success : AppColors.danger,
+                    ),
+                  ),
+                ),
+                if (methods != null && methods!.isNotEmpty)
+                  Text(
+                    methods!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One child's line: an initial on the colour of their state, the name, how
+/// much of the cost is paid (a thin bar), and what is left.
 class _BalanceRow extends StatelessWidget {
   const _BalanceRow({
     required this.balance,
@@ -592,11 +665,31 @@ class _BalanceRow extends StatelessWidget {
     final isPartial = !isPaid && balance.totalPaid > 0;
     final reservedOnly = balance.reserved && balance.totalPaid == 0;
 
-    final chipColor = isPaid
+    final color = isPaid
         ? AppColors.olive
         : isPartial
             ? AppColors.warning
             : AppColors.danger;
+    final share = balance.cost > 0
+        ? (balance.totalPaid / balance.cost).clamp(0.0, 1.0)
+        : (isPaid ? 1.0 : 0.0);
+    final name = balance.childName.trim();
+
+    Widget chip(String text, Color c) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: c.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.readable(c),
+            ),
+          ),
+        );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -604,79 +697,78 @@ class _BalanceRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
           child: Row(
             children: [
-              Expanded(
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: color.withValues(alpha: 0.14),
                 child: Text(
-                  balance.childName,
-                  style: const TextStyle(fontSize: 14),
+                  name.isEmpty ? '؟' : name.characters.first,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.readable(color),
+                  ),
                 ),
               ),
-              if (reservedOnly) ...[
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.sky.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    AppStrings.reservedBadge,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.skyText,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              if (isPaid)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: chipColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    AppStrings.paidInFull,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: chipColor,
-                    ),
-                  ),
-                )
-              else ...[
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${balance.totalPaid.toStringAsFixed(0)} / ${balance.cost.toStringAsFixed(0)} ج.م',
-                      style: const TextStyle(fontSize: 13),
+                      balance.childName,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: chipColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${AppStrings.remaining}: ${balance.remaining.toStringAsFixed(0)} ج.م',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: chipColor,
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: share,
+                              minHeight: 5,
+                              color: color,
+                              backgroundColor: color.withValues(alpha: 0.14),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${balance.totalPaid.toStringAsFixed(0)} / ${balance.cost.toStringAsFixed(0)}',
+                          textDirection: TextDirection.ltr,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isPaid)
+                    chip(AppStrings.paidInFull, AppColors.olive)
+                  else
+                    chip(
+                      '${AppStrings.remaining}: ${balance.remaining.toStringAsFixed(0)}',
+                      color,
+                    ),
+                  if (reservedOnly) ...[
+                    const SizedBox(height: 4),
+                    chip(AppStrings.reservedBadge, AppColors.sky),
+                  ],
+                ],
+              ),
               if (phone != null)
                 IconButton(
                   icon: const Icon(Icons.call, size: 20),
@@ -686,8 +778,9 @@ class _BalanceRow extends StatelessWidget {
                       const BoxConstraints(minWidth: 36, minHeight: 36),
                   tooltip: AppStrings.call,
                   onPressed: () => callNumber(phone!),
-                ),
-              const SizedBox(width: 8),
+                )
+              else
+                const SizedBox(width: 4),
               const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
             ],
           ),

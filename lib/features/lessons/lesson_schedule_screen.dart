@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
-import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/lesson.dart';
 import 'lesson_editor.dart';
@@ -27,6 +27,22 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
   static const _repository = LessonRepository();
 
   final _sectionKey = GlobalKey<AsyncSectionState<LessonProgramme>>();
+
+  /// The card of the coming Saturday: opened on at first, and the button's
+  /// target.
+  final _upcomingKey = GlobalKey();
+  bool _scrolled = false;
+
+  void _showUpcoming({bool animate = true}) {
+    final ctx = _upcomingKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.1,
+      duration: animate ? const Duration(milliseconds: 450) : Duration.zero,
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   Future<void> _change(Future<void> Function() action) async {
     final ok = await Ui.runGuarded(
@@ -74,6 +90,12 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.lessonSchedule)),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
+        onPressed: _showUpcoming,
+        icon: const Icon(Icons.my_location_rounded),
+        label: const Text(AppStrings.jumpToUpcomingLesson),
+      ),
       body: SafeArea(
         child: AsyncSection<LessonProgramme>(
           key: _sectionKey,
@@ -107,31 +129,76 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
               d = DateTime(d.year, d.month, d.day + 7);
             }
 
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-              itemCount: days.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, i) =>
-                  staggered(i, Builder(builder: (context) {
-                final day = days[i];
-                final brk = programme.breakOn(day);
-                return Opacity(
-                  opacity: day.isBefore(today) ? 0.6 : 1,
+            // Open on the coming Saturday, once.
+            if (!_scrolled) {
+              _scrolled = true;
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _showUpcoming(animate: false),
+              );
+            }
+
+            final children = <Widget>[];
+            int? lastMonth;
+            for (final (i, day) in days.indexed) {
+              if (day.month != lastMonth) {
+                lastMonth = day.month;
+                children.add(Padding(
+                  padding: EdgeInsets.only(top: i == 0 ? 0 : 12, bottom: 8),
+                  child: Text(
+                    AppDateUtils.formatMonth(day),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ));
+              }
+              final brk = programme.breakOn(day);
+              final isUpcoming = day == upcoming;
+              final isPast = day.isBefore(today);
+              final slot = programme.slotOn(day, firstDay);
+              children.add(Padding(
+                key: isUpcoming ? _upcomingKey : null,
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Opacity(
+                  opacity: isPast ? 0.62 : 1,
                   child: Card(
                     margin: EdgeInsets.zero,
-                    color: day == upcoming ? AppColors.goldTint : null,
+                    color: isUpcoming ? AppColors.goldTint : null,
+                    shape: isUpcoming
+                        ? RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(
+                                color: AppColors.gold, width: 1.5),
+                          )
+                        : null,
                     child: Padding(
                       padding:
-                          const EdgeInsetsDirectional.fromSTEB(14, 14, 6, 14),
+                          const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: LessonBlock(
-                              date: day,
-                              firstDay: firstDay,
-                              grades: grades,
-                              programme: programme,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _DayHeader(
+                                  day: day,
+                                  slotLabel: slot?.label,
+                                  upcoming: isUpcoming,
+                                  past: isPast,
+                                  broken: brk != null,
+                                ),
+                                const SizedBox(height: 10),
+                                LessonBlock(
+                                  date: day,
+                                  firstDay: firstDay,
+                                  grades: grades,
+                                  programme: programme,
+                                  showDate: false,
+                                ),
+                              ],
                             ),
                           ),
                           if (session.isAdmin)
@@ -140,7 +207,7 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
                                   ? _edit(programme, day, firstDay)
                                   : _change(() => _apply(value, day)),
                               itemBuilder: (_) => [
-                                if (programme.slotOn(day, firstDay) != null)
+                                if (slot != null)
                                   const PopupMenuItem(
                                     value: 'edit',
                                     child: Text(AppStrings.editLesson),
@@ -166,12 +233,128 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
                       ),
                     ),
                   ),
-                );
-              })),
+                ),
+              ));
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
             );
           },
         ),
       ),
     );
   }
+}
+
+/// The top of a week's card: the day on a tinted square, the programme's
+/// month and week, and whether it is the coming one, past, or has no lesson.
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({
+    required this.day,
+    required this.slotLabel,
+    required this.upcoming,
+    required this.past,
+    required this.broken,
+  });
+
+  final DateTime day;
+  final String? slotLabel;
+  final bool upcoming;
+  final bool past;
+  final bool broken;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = upcoming ? AppColors.gold : AppColors.olive;
+    return Row(
+      children: [
+        Container(
+          width: 46,
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '${day.day}',
+                style: TextStyle(
+                  fontSize: 18,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.readable(color),
+                ),
+              ),
+              Text(
+                AppDateUtils.monthName(day.month),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: AppColors.readable(color),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppDateUtils.weekdayName(day),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (slotLabel != null)
+                Text(
+                  slotLabel!,
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                ),
+            ],
+          ),
+        ),
+        if (upcoming)
+          _Badge(AppStrings.lessonUpcoming, AppColors.gold)
+        else if (broken)
+          _Badge(AppStrings.lessonNoClass, AppColors.coral)
+        else if (past)
+          const Icon(Icons.check_circle_outline_rounded,
+              size: 18, color: AppColors.muted),
+      ],
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge(this.text, this.color);
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: AppColors.readable(color),
+          ),
+        ),
+      );
 }

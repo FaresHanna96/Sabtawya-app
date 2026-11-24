@@ -126,6 +126,7 @@ class LessonBlock extends StatelessWidget {
     required this.grades,
     required this.programme,
     this.showExtras = true,
+    this.showDate = true,
   });
 
   final DateTime date;
@@ -133,6 +134,9 @@ class LessonBlock extends StatelessWidget {
   final List<int> grades;
   final LessonProgramme programme;
   final bool showExtras;
+
+  /// The date line on top; the programme page draws its own header.
+  final bool showDate;
 
   @override
   Widget build(BuildContext context) {
@@ -146,11 +150,13 @@ class LessonBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          dateLine(date, firstDay, programme),
-          style: const TextStyle(fontSize: 12, color: AppColors.muted),
-        ),
-        const SizedBox(height: 8),
+        if (showDate) ...[
+          Text(
+            dateLine(date, firstDay, programme),
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+          const SizedBox(height: 8),
+        ],
         if (!hasAny)
           Text(
             switch (programme.breakOn(date)) {
@@ -163,13 +169,13 @@ class LessonBlock extends StatelessWidget {
         for (final entry in lessons.entries)
           if (entry.value != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 26,
-                    height: 26,
+                    width: 28,
+                    height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: AppColors.olive.withValues(alpha: 0.14),
@@ -200,28 +206,35 @@ class LessonBlock extends StatelessWidget {
                           ),
                         ),
                         // What أمين الخدمة attached, and shared preps.
-                        InkWell(
-                          onTap: () => showLessonMaterials(
-                            context,
-                            lesson: entry.value!,
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.attach_file_rounded,
-                                    size: 14, color: AppColors.sky),
-                                SizedBox(width: 2),
-                                Text(
-                                  AppStrings.materialsLink,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.skyText,
-                                    fontWeight: FontWeight.w700,
+                        const SizedBox(height: 4),
+                        Material(
+                          color: AppColors.skyTint,
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () => showLessonMaterials(
+                              context,
+                              lesson: entry.value!,
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.attach_file_rounded,
+                                      size: 14, color: AppColors.skyText),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    AppStrings.materialsLink,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.skyText,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),

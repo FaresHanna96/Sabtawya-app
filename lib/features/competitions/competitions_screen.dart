@@ -237,7 +237,19 @@ class _ListTabState extends State<_ListTab> with AutomaticKeepAliveClientMixin {
 
   final _sectionKey = GlobalKey<AsyncSectionState<List<Competition>>>();
 
-  Future<List<Competition>> _load() => _repository.listCompetitions();
+  /// Whether there is at least one competition: the add button then floats
+  /// over the list (with none, the empty page has its own).
+  bool _hasAny = false;
+
+  Future<List<Competition>> _load() async {
+    final list = await _repository.listCompetitions();
+    if (mounted && _hasAny != list.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _hasAny = list.isNotEmpty);
+      });
+    }
+    return list;
+  }
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
 
@@ -299,12 +311,21 @@ class _ListTabState extends State<_ListTab> with AutomaticKeepAliveClientMixin {
           builder: (context, competitions, reload) {
             if (competitions.isEmpty) {
               return ListView(
-                children: const [
-                  SizedBox(height: 60),
+                children: [
+                  const SizedBox(height: 60),
                   EmptyState(
                     icon: Icons.emoji_events_outlined,
                     title: AppStrings.noCompetitions,
-                    body: AppStrings.noCompetitionsBody,
+                    body: widget.canManage
+                        ? AppStrings.noCompetitionsBody
+                        : AppStrings.noCompetitionsViewer,
+                    action: widget.canManage
+                        ? FilledButton.icon(
+                            onPressed: _add,
+                            icon: const Icon(Icons.add),
+                            label: const Text(AppStrings.addCompetition),
+                          )
+                        : null,
                   ),
                 ],
               );
@@ -331,11 +352,10 @@ class _ListTabState extends State<_ListTab> with AutomaticKeepAliveClientMixin {
             );
           },
         ),
-        if (widget.canManage)
-          Positioned(
+        if (widget.canManage && _hasAny)
+          PositionedDirectional(
             bottom: 24,
-            left: 16,
-            right: 16,
+            end: 16,
             child: FloatingActionButton.extended(
               onPressed: _add,
               icon: const Icon(Icons.add),
@@ -362,90 +382,150 @@ class _ScoresTab extends StatelessWidget {
       load: () => _repository.cumulativeScores(),
       builder: (context, scores, reload) {
         if (scores.isEmpty) {
-          return const Center(
-            child: EmptyState(
-              icon: Icons.leaderboard_outlined,
-              title: AppStrings.noCompetitions,
-              body: AppStrings.noCompetitionsBody,
-            ),
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 60),
+              EmptyState(
+                icon: Icons.leaderboard_outlined,
+                title: AppStrings.noScoresYet,
+                body: AppStrings.noScoresYetBody,
+              ),
+            ],
           );
         }
 
+        final best = scores.first.totalMarks;
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           itemCount: scores.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (context, index) {
-            final score = scores[index];
-            final rank = index + 1;
-            return Card(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 32,
-                      child: Text(
-                        '$rank',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color:
-                              rank <= 3 ? AppColors.warning : AppColors.muted,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            score.childName,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${AppStrings.avgMark}: ${score.avgMark}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${score.totalMarks}',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                        Text(
-                          '${score.competitionsCount} ${AppStrings.weeklyCompetition}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+          itemBuilder: (context, index) => FadeSlideIn(
+            index: index,
+            child: _ScoreRow(
+              score: scores[index],
+              rank: index + 1,
+              share: best <= 0 ? 0 : scores[index].totalMarks / best,
+            ),
+          ),
         );
       },
+    );
+  }
+}
+
+/// One child in the cumulative ranking: a medal for the first three, the
+/// name, a bar against the leader, and the total with how many competitions.
+class _ScoreRow extends StatelessWidget {
+  const _ScoreRow({
+    required this.score,
+    required this.rank,
+    required this.share,
+  });
+
+  final ChildCompetitionScore score;
+  final int rank;
+
+  /// 0-1: this child's total against the first place.
+  final double share;
+
+  static const _silver = Color(0xFF8A94A6);
+  static const _bronze = Color(0xFFB0703A);
+
+  @override
+  Widget build(BuildContext context) {
+    final medal = switch (rank) {
+      1 => AppColors.gold,
+      2 => _silver,
+      3 => _bronze,
+      _ => null,
+    };
+    final bar = medal ?? AppColors.navyLight;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: (medal ?? AppColors.muted).withValues(alpha: 0.16),
+                shape: BoxShape.circle,
+              ),
+              child: medal == null
+                  ? Text(
+                      '$rank',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.muted,
+                      ),
+                    )
+                  : Icon(Icons.emoji_events_rounded, color: medal, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    score.childName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: share.clamp(0.0, 1.0),
+                      minHeight: 5,
+                      color: bar,
+                      backgroundColor: bar.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${AppStrings.avgMark}: ${score.avgMark.toStringAsFixed(1)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${score.totalMarks}',
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
+                  ),
+                ),
+                Text(
+                  AppStrings.competitionsCountLabel(score.competitionsCount),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -467,9 +547,21 @@ class _CompetitionTile extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
+  /// «النهارده» / «جاية» for a competition not yet past; null once it is.
+  String? get _status {
+    final today = AppDateUtils.dateOnly(DateTime.now());
+    final day = AppDateUtils.dateOnly(competition.weekDate);
+    if (day.isAtSameMomentAs(today)) return AppStrings.competitionToday;
+    if (day.isAfter(today)) return AppStrings.competitionUpcoming;
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final status = _status;
+    final statusColor = status == null ? AppColors.navy : AppColors.olive;
     return Card(
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -477,18 +569,7 @@ class _CompetitionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.navy.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.emoji_events_outlined,
-                  color: AppColors.navy,
-                  size: 22,
-                ),
-              ),
+              _DateBlock(date: competition.weekDate, color: statusColor),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -503,10 +584,17 @@ class _CompetitionTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      AppDateUtils.formatDate(competition.weekDate),
-                      style: const TextStyle(
+                      [
+                        AppDateUtils.weekdayName(competition.weekDate),
+                        if (status != null) status,
+                      ].join(' • '),
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.muted,
+                        color: status == null
+                            ? AppColors.muted
+                            : AppColors.readable(statusColor),
+                        fontWeight:
+                            status == null ? FontWeight.w400 : FontWeight.w700,
                       ),
                     ),
                   ],
@@ -564,6 +652,46 @@ class _CompetitionTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The day on a tinted square: its number over the month's name.
+class _DateBlock extends StatelessWidget {
+  const _DateBlock({required this.date, required this.color});
+
+  final DateTime date;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 52,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${date.day}',
+            style: TextStyle(
+              fontSize: 20,
+              height: 1.1,
+              fontWeight: FontWeight.w800,
+              color: AppColors.readable(color),
+            ),
+          ),
+          Text(
+            AppDateUtils.monthName(date.month),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 11, color: AppColors.readable(color)),
+          ),
+        ],
       ),
     );
   }

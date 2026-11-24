@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/class_colors.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
@@ -121,67 +122,306 @@ class _ServantAssignmentsScreenState extends State<ServantAssignmentsScreen> {
               );
             }
 
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-              itemCount: data.classes.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) =>
-                  staggered(index, Builder(builder: (context) {
-                final schoolClass = data.classes[index];
-                final servants = data.assignments
-                    .where((item) => item.classId == schoolClass.id)
-                    .toList();
+            final assigned = {for (final x in data.assignments) x.servantId};
+            // Class servants not yet given a class (a خادم عام or the
+            // admin has none by design).
+            final unassigned = [
+              for (final sv in data.servants)
+                if (sv.role == AppRole.servant && !assigned.contains(sv.id)) sv,
+            ];
+            final emptyClasses = [
+              for (final c in data.classes)
+                if (!data.assignments.any((x) => x.classId == c.id)) c,
+            ];
 
-                return SectionCard(
-                  title: schoolClass.name,
-                  trailing: IconButton(
-                    tooltip: AppStrings.assignServant,
-                    icon: const Icon(Icons.person_add_alt, size: 20),
-                    onPressed: () => _assign(schoolClass, data),
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              children: [
+                _AssignmentsSummary(
+                  classes: data.classes.length,
+                  servants: assigned.length,
+                  withoutServant: emptyClasses.length,
+                  withoutClass: unassigned.length,
+                ),
+                if (unassigned.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _UnassignedCard(servants: unassigned),
+                ],
+                const SizedBox(height: 12),
+                for (final (index, schoolClass) in data.classes.indexed) ...[
+                  if (index > 0) const SizedBox(height: 12),
+                  staggered(
+                    index,
+                    _ClassAssignmentsCard(
+                      schoolClass: schoolClass,
+                      accent: classAccent(schoolClass.id),
+                      servants: data.assignments
+                          .where((item) => item.classId == schoolClass.id)
+                          .toList(),
+                      onAssign: () => _assign(schoolClass, data),
+                      onRemove: _remove,
+                    ),
                   ),
-                  child: servants.isEmpty
-                      ? const Text(
-                          AppStrings.noServants,
-                          style:
-                              TextStyle(fontSize: 13, color: AppColors.muted),
-                        )
-                      : Column(
-                          children: servants
-                              .map(
-                                (assignment) => ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  dense: true,
-                                  leading: const Icon(
-                                    Icons.person_outline,
-                                    size: 20,
-                                  ),
-                                  title: Text(
-                                    assignment.servantName,
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                  subtitle: assignment.servantEmail == null
-                                      ? null
-                                      : Text(
-                                          assignment.servantEmail!,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                  trailing: IconButton(
-                                    tooltip: AppStrings.removeServant,
-                                    icon: const Icon(
-                                      Icons.link_off,
-                                      color: AppColors.danger,
-                                      size: 20,
-                                    ),
-                                    onPressed: () => _remove(assignment),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                );
-              })),
+                ],
+              ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// The picture at a glance: classes, servants placed, and what is missing.
+class _AssignmentsSummary extends StatelessWidget {
+  const _AssignmentsSummary({
+    required this.classes,
+    required this.servants,
+    required this.withoutServant,
+    required this.withoutClass,
+  });
+
+  final int classes;
+  final int servants;
+  final int withoutServant;
+  final int withoutClass;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget cell(int n, String label, IconData icon, Color color) => Expanded(
+          child: Column(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(height: 4),
+              Text(
+                '$n',
+                style: TextStyle(
+                  fontSize: 20,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.readable(color),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+              ),
+            ],
+          ),
+        );
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 14, 8, 12),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              cell(classes, AppStrings.totalClasses, Icons.class_outlined,
+                  AppColors.olive),
+              cell(servants, 'خدام معيّنين',
+                  Icons.volunteer_activism_outlined, AppColors.navyLight),
+              cell(
+                  withoutServant,
+                  AppStrings.classesWithoutServant,
+                  Icons.person_off_outlined,
+                  withoutServant > 0 ? AppColors.warning : AppColors.success),
+              cell(
+                  withoutClass,
+                  AppStrings.servantsWithoutClass,
+                  Icons.link_off,
+                  withoutClass > 0 ? AppColors.warning : AppColors.success),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Class servants who are in no class yet, so the admin sees who is left.
+class _UnassignedCard extends StatelessWidget {
+  const _UnassignedCard({required this.servants});
+
+  final List<Profile> servants;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: AppStrings.servantsWithoutClassTitle,
+      icon: Icons.person_search_outlined,
+      accent: AppColors.warning,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final sv in servants)
+            Chip(
+              avatar: const Icon(Icons.person_outline, size: 16),
+              label: Text(sv.fullName),
+              visualDensity: VisualDensity.compact,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One class: its colour, who serves in it, and a clear button to add one.
+class _ClassAssignmentsCard extends StatelessWidget {
+  const _ClassAssignmentsCard({
+    required this.schoolClass,
+    required this.accent,
+    required this.servants,
+    required this.onAssign,
+    required this.onRemove,
+  });
+
+  final SchoolClass schoolClass;
+  final Color accent;
+  final List<ClassServant> servants;
+  final VoidCallback onAssign;
+  final void Function(ClassServant) onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 5, color: accent),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            schoolClass.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (servants.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsetsDirectional.only(end: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              AppStrings.servantsCountOf(servants.length),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.readable(accent),
+                              ),
+                            ),
+                          ),
+                        TextButton.icon(
+                          onPressed: onAssign,
+                          icon: const Icon(Icons.person_add_alt, size: 18),
+                          label: const Text(AppStrings.assignServant),
+                        ),
+                      ],
+                    ),
+                    if (servants.isEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4, left: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline,
+                                size: 16, color: AppColors.warning),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                AppStrings.classHasNoServant,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.readable(AppColors.warning),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      for (final a in servants)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: accent.withValues(alpha: 0.16),
+                                child: Text(
+                                  a.servantName.trim().isEmpty
+                                      ? '؟'
+                                      : a.servantName.trim().characters.first,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.readable(accent),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      a.servantName,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (a.servantEmail != null)
+                                      Text(
+                                        a.servantEmail!,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.muted,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: AppStrings.removeServant,
+                                icon: const Icon(
+                                  Icons.link_off,
+                                  color: AppColors.danger,
+                                  size: 20,
+                                ),
+                                onPressed: () => onRemove(a),
+                              ),
+                            ],
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

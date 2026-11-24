@@ -283,6 +283,13 @@ class AppStrings {
   static const servantOneClass = 'الخادم يُعيَّن على فصل واحد فقط.';
   static const deleteInvite = 'حذف الدعوة';
   static const noServants = 'لا يوجد خدام';
+  static const classesWithoutServant = 'فصول بلا خادم';
+  static const servantsWithoutClass = 'خدام بلا فصل';
+  static const servantsWithoutClassTitle = 'خدام لسه من غير فصل';
+  static const classHasNoServant = 'مفيش خادم في الفصل ده لسه';
+  static String servantsCountOf(int n) =>
+      n == 1 ? 'خادم واحد' : '$n خدام';
+  static const allCollected = 'اتحصّل المبلغ كله';
   static const noServantsHint = 'لا يوجد خدام في هذا الفصل بعد. أمين الخدمة هو من يعيّن الخدام.';
   static const classFollowUp = 'متابعة الفصل';
   static String pointsOf(int n) => '$n طايو';
@@ -865,6 +872,9 @@ class AppStrings {
   static const textSmaller = 'تصغير الخط';
   static const copy = 'نسخ';
   static const noLessonThisWeek = 'لا يوجد درس في هذا الأسبوع';
+  static const jumpToUpcomingLesson = 'الأسبوع الجاي';
+  static const lessonUpcoming = 'القادم';
+  static const lessonNoClass = 'بلا درس';
   static const page = 'ص';
   static const pulpit = 'المنبر';
   static const hymns = 'الترانيم / الألحان';
@@ -1128,6 +1138,14 @@ class AppStrings {
   static const cumulativeScores = 'المجموع التراكمي';
   static const noCompetitions = 'لا توجد مسابقات';
   static const noCompetitionsBody = 'أضف مسابقة أسبوعية للبدء.';
+  static const noCompetitionsViewer = 'لسه مفيش مسابقات اتسجلت.';
+  static const noScoresYet = 'لسه مفيش درجات';
+  static const noScoresYetBody =
+      'الترتيب بيظهر بعد ما تتسجل درجات أول مسابقة.';
+  static const competitionToday = 'النهارده';
+  static const competitionUpcoming = 'جاية';
+  static String competitionsCountLabel(int n) =>
+      n == 1 ? 'مسابقة واحدة' : '$n مسابقات';
   static const noMarkEntered = 'لم تُسجَّل علامة';
   static const markSaved = 'تم حفظ العلامات';
   static const totalMarks = 'مجموع العلامات';
