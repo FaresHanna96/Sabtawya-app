@@ -857,6 +857,10 @@ class AppStrings {
   // صلوات (المزيد): the servants' prayers before and after the lesson.
   static const prayersTitle = 'صلوات';
   static const prayerCopied = 'تم نسخ الصلاة';
+  static const prayersIntro =
+      'صلّي قبل ما تبدأ خدمتك وبعد ما تخلصها. اقراها بهدوء، أو بصوت عالي مع الخدام.';
+  static String prayerReadTime(int n) =>
+      n == 1 ? 'قراءة دقيقة' : 'قراءة $n دقايق';
   static const textBigger = 'تكبير الخط';
   static const textSmaller = 'تصغير الخط';
   static const copy = 'نسخ';

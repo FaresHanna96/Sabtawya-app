@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart';
+
+import '../../core/theme/app_theme.dart';
+
 /// A prayer a servant says, kept in the app so it is at hand on any phone.
 class Prayer {
   const Prayer({
@@ -5,6 +9,8 @@ class Prayer {
     required this.title,
     required this.when,
     required this.paragraphs,
+    required this.icon,
+    required this.color,
   });
 
   final String id;
@@ -15,6 +21,20 @@ class Prayer {
 
   /// The text, split where a pause reads naturally.
   final List<String> paragraphs;
+
+  /// How it looks in the list and at the top of the page: the morning sun
+  /// in gold before the service, the evening moon in navy after it.
+  final IconData icon;
+  final Color color;
+
+  /// A calm reading time, from about 110 words a minute (never under one).
+  int get readMinutes {
+    final words = paragraphs
+        .expand((p) => p.split(RegExp(r'\s+')))
+        .where((w) => w.trim().isNotEmpty && w != '...')
+        .length;
+    return (words / 110).ceil().clamp(1, 99);
+  }
 }
 
 /// The servants' prayers before and after the lesson.
@@ -25,6 +45,8 @@ class Prayers {
     id: 'before',
     title: 'صلاة قبل الخدمة',
     when: 'قبل أن تبدأ خدمتك',
+    icon: Icons.wb_sunny_rounded,
+    color: AppColors.gold,
     paragraphs: [
       'أيها الرب العارف قلب كل أحد ... الفاحص القلوب والكُلى ... إذ وأنا '
           'غير مستحق دعوتني لخدمتك المقدسة هذه ... لأنك قلت بفمك القدوس: '
@@ -49,6 +71,8 @@ class Prayers {
     id: 'after',
     title: 'صلاة بعد الخدمة',
     when: 'بعد أن تنتهي من خدمتك',
+    icon: Icons.nights_stay_rounded,
+    color: AppColors.navyLight,
     paragraphs: [
       'أيها الرب الإله الذي يحب كل أحد ... الذي دعاني بنعمته وأنا غير '
           'مستحق إلى خدمته ... أشكرك أيها الطويل الأناة إذ حسبتني في هذا '

@@ -37,6 +37,33 @@ void main() {
       }
     });
 
+    test('each prayer has a reading time of at least a minute', () {
+      for (final p in Prayers.all) {
+        expect(p.readMinutes, inInclusiveRange(1, 5), reason: p.id);
+      }
+    });
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('the list and a prayer fit a small phone at text x$scale',
+          (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        Widget scaled(Widget child) => MediaQuery(
+              data: MediaQueryData(
+                  size: const Size(320, 640), textScaler: TextScaler.linear(scale)),
+              child: _app(child),
+            );
+        await tester.pumpWidget(scaled(const PrayersScreen()));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(
+            scaled(const PrayerScreen(prayer: Prayers.afterService)));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('the list opens a prayer', (tester) async {
       await tester.pumpWidget(_app(const PrayersScreen()));
       expect(find.text('صلاة قبل الخدمة'), findsOneWidget);
