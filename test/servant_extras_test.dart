@@ -116,7 +116,7 @@ void main() {
       expect(find.text(AppStrings.badgesOf(1, 4)), findsOneWidget);
       expect(find.text(AppStrings.servantBadgeFaithful), findsOneWidget);
       expect(find.text(AppStrings.progressOf(2, 5)), findsOneWidget);
-      expect(find.byIcon(Icons.lock_outline_rounded), findsNWidgets(3));
+      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(3));
     });
 
     testWidgets('fits 320 px at 1.5× text', (tester) async {

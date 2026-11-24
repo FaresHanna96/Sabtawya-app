@@ -41,8 +41,9 @@ extension ServantBadgeLook on ServantBadge {
       };
 }
 
-/// The servant's four badges in a row: earned in colour, the others grey
-/// with how far along; a tap explains the rule.
+/// The servant's four badges, one row each: the badge in its own colour
+/// (faded with a small lock until earned), its rule in words, and how far
+/// along — so nothing needs a tap to be understood.
 class ServantBadgesCard extends StatelessWidget {
   const ServantBadgesCard({super.key, required this.badges});
 
@@ -59,67 +60,138 @@ class ServantBadgesCard extends StatelessWidget {
         AppStrings.badgesOf(earned, badges.length),
         style: const TextStyle(fontSize: 13, color: AppColors.muted),
       ),
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Column(
         children: [
-          for (final b in badges) Expanded(child: _Medal(state: b)),
+          for (final (i, b) in badges.indexed) ...[
+            if (i > 0) const SizedBox(height: 8),
+            _BadgeRow(state: b),
+          ],
         ],
       ),
     );
   }
 }
 
-class _Medal extends StatelessWidget {
-  const _Medal({required this.state});
+class _BadgeRow extends StatelessWidget {
+  const _BadgeRow({required this.state});
 
   final ServantBadgeState state;
 
   @override
   Widget build(BuildContext context) {
     final b = state.badge;
-    final color = state.earned ? b.color : AppColors.muted;
-    return Tooltip(
-      message:
-          '${b.rule}\n${state.earned ? AppStrings.badgeEarnedShort : AppStrings.progressOf(state.progress, state.target)}',
-      triggerMode: TooltipTriggerMode.tap,
-      child: Semantics(
-        label:
-            '${b.title}: ${state.earned ? AppStrings.badgeEarnedShort : AppStrings.notYet}',
-        excludeSemantics: true,
-        child: Column(
+    final earned = state.earned;
+    final color = b.color;
+    final share = state.target <= 0
+        ? 0.0
+        : (state.progress / state.target).clamp(0, 1).toDouble();
+    return Semantics(
+      label: '${b.title}: ${earned ? AppStrings.badgeEarnedShort : AppStrings.progressOf(state.progress, state.target)}',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: earned
+              ? color.withValues(alpha: 0.08)
+              : AppColors.muted.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: earned
+                ? color.withValues(alpha: 0.3)
+                : AppColors.muted.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Row(
           children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: state.earned
-                    ? statusTint(b.color, 0.16)
-                    : AppColors.muted.withValues(alpha: 0.10),
-              ),
-              child: Icon(
-                state.earned ? b.icon : Icons.lock_outline_rounded,
-                color: color,
-                size: 26,
-              ),
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                b.title,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: state.earned ? AppColors.navy : AppColors.muted,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: earned ? 0.18 : 0.10),
+                  ),
+                  child: Icon(
+                    b.icon,
+                    size: 24,
+                    color: earned ? color : color.withValues(alpha: 0.45),
+                  ),
                 ),
+                if (!earned)
+                  Positioned(
+                    bottom: -2,
+                    left: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.lock_rounded,
+                          size: 11, color: AppColors.muted),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    b.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: earned ? AppColors.navy : AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    b.rule,
+                    style: const TextStyle(
+                        fontSize: 12, height: 1.35, color: AppColors.muted),
+                  ),
+                  if (!earned) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: share),
+                              duration: const Duration(milliseconds: 700),
+                              curve: Curves.easeOutCubic,
+                              builder: (_, v, __) => LinearProgressIndicator(
+                                value: v,
+                                minHeight: 6,
+                                backgroundColor:
+                                    color.withValues(alpha: 0.12),
+                                valueColor: AlwaysStoppedAnimation(color),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppStrings.progressOf(state.progress, state.target),
+                          style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.muted),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (!state.earned)
-              Text(
-                AppStrings.progressOf(state.progress, state.target),
-                style: const TextStyle(fontSize: 11, color: AppColors.muted),
-              ),
+            if (earned)
+              Icon(Icons.check_circle_rounded, color: color, size: 24),
           ],
         ),
       ),

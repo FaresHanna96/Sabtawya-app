@@ -27,9 +27,9 @@ class AppStrings {
   static const loading = 'بيتحمّل…';
   static const noData = 'مفيش بيانات';
   static const all = 'الكل';
-  static const badgeFilter = 'شارة';
-  static const allBadges = 'كل الشارات';
-  static const badgeFilterLoadFailed = 'مقدرناش نحمّل الشارات. جرّب تاني.';
+  static const badgeFilter = 'وسام';
+  static const allBadges = 'كل الأوسمة';
+  static const badgeFilterLoadFailed = 'مقدرناش نحمّل الأوسمة دلوقتي. جرّب تاني.';
   static const active = 'نشط';
   static const inactive = 'غير نشط';
   static const optional = 'اختياري';
@@ -776,7 +776,7 @@ class AppStrings {
   static const badgeVespersMonthRule =
       'حضر العشية كل أسبوع في شهر كامل (3 سبوت على الأقل).';
   static const badgeMassMonthPending =
-      'الشهر لسه ما خلصش. الشارة بتتسجّل أول ما يخلص لو فضل حاضر كل سبت.';
+      'الشهر لسه ما خلصش. الوسام بيتسجّل أول ما يخلص لو فضل حاضر كل سبت.';
   static const badgeFullDay = 'يوم كامل';
   static const badgeFullDayRule =
       'حضر مدارس الأحد والعشية والقداس في نفس السبت 5 مرات.';
