@@ -13,6 +13,12 @@ class WhatsNewItem {
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
   54: [
+    WhatsNewItem(Icons.military_tech_rounded, 'أوسمة جديدة',
+        'ليتورجي وعشية للي بيحضر كل سبت في شهر كامل، ونجم السنة ونجم مدارس الأحد في آخر السنة. وأمين الخدمة يقدر يفلتر المخدومين بالوسام.'),
+    WhatsNewItem(Icons.palette_outlined, 'شكل جديد',
+        'أيقونات ملونة ومتحركة في الشريط تحت، وشكل أوضح لأوسمة الخدام وفورم إضافة مخدوم.'),
+    WhatsNewItem(Icons.event_rounded, 'اختار التاريخ بضغطة',
+        'التقويم بقى يختار اليوم أول ما تضغط عليه من غير زرار «حسنًا».'),
     WhatsNewItem(Icons.bookmark_add_outlined, 'احجز للنشاط من الحضور',
         'وانت بتسجل الحضور، اضغط «حجز» على أي مخدوم يتحجز له في النشاط الترفيهي الجاي، ومكتوب فوق كام واحد حجز.'),
   ],
