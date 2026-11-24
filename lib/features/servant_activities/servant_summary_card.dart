@@ -78,8 +78,8 @@ class ServantSummaryCard extends StatelessWidget {
           ),
           _row(
             StatTile(
-              label: AppStrings.lessonPrep,
-              value: '$preps',
+              label: '${AppStrings.lessonPrep}${_pct(preps)}',
+              value: '$preps/$heldSessions',
               color: AppColors.navy,
               icon: Icons.assignment_outlined,
             ),
