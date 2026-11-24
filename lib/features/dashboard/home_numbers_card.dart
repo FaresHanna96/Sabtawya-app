@@ -42,28 +42,28 @@ class HomeNumbersCard extends StatelessWidget {
                   _Number(
                     value: children,
                     label: AppStrings.totalChildren,
-                    icon: Icons.groups_outlined,
+                    icon: Icons.diversity_3,
                     color: AppColors.navy,
                   ),
                   const _Divider(),
                   _Number(
                     value: classes,
                     label: AppStrings.totalClasses,
-                    icon: Icons.class_outlined,
+                    icon: Icons.school,
                     color: AppColors.olive,
                   ),
                   const _Divider(),
                   _Number(
                     value: servants,
                     label: AppStrings.totalServants,
-                    icon: Icons.volunteer_activism_outlined,
+                    icon: Icons.supervisor_account,
                     color: AppColors.navyLight,
                   ),
                   const _Divider(),
                   _Number(
                     value: admins,
                     label: AppStrings.adminsShort,
-                    icon: Icons.admin_panel_settings_outlined,
+                    icon: Icons.admin_panel_settings,
                     color: AppColors.gold,
                   ),
                 ],
@@ -161,8 +161,21 @@ class _Number extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: 4),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.4, end: 1),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.elasticOut,
+            builder: (_, v, child) => Transform.scale(scale: v, child: child),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 18, color: color),
+            ),
+          ),
+          const SizedBox(height: 6),
           AnimatedCount(
             value: value,
             style: TextStyle(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -198,7 +199,9 @@ class _HomeShellState extends State<HomeShell>
       _Tab(
         label: AppStrings.dashboard,
         icon: Icons.home_outlined,
-        selectedIcon: Icons.home,
+        selectedIcon: Icons.home_rounded,
+        color: AppColors.navy,
+        motion: _TabMotion.bounce,
         child: isAdmin || isGeneralServant
             ? const AdminDashboardScreen()
             : const ServantDashboardScreen(),
@@ -207,35 +210,45 @@ class _HomeShellState extends State<HomeShell>
         label: (isAdmin || isGeneralServant)
             ? AppStrings.classesNav
             : AppStrings.myClasses,
-        icon: Icons.class_outlined,
-        selectedIcon: Icons.class_,
+        icon: Icons.school_outlined,
+        selectedIcon: Icons.school,
+        color: AppColors.gold,
+        motion: _TabMotion.swing,
         child: const ClassesScreen(),
       ),
       const _Tab(
         label: AppStrings.childrenNav,
-        icon: Icons.groups_outlined,
-        selectedIcon: Icons.groups,
+        icon: Icons.diversity_3_outlined,
+        selectedIcon: Icons.diversity_3,
+        color: AppColors.sky,
+        motion: _TabMotion.pop,
         child: ChildrenScreen(),
       ),
       const _Tab(
         label: AppStrings.attendanceNav,
-        icon: Icons.fact_check_outlined,
-        selectedIcon: Icons.fact_check,
+        icon: Icons.how_to_reg_outlined,
+        selectedIcon: Icons.how_to_reg,
+        color: AppColors.success,
+        motion: _TabMotion.tick,
         child: AttendanceScreen(),
       ),
       if (!isGeneralServant)
         _Tab(
           label: isAdmin ? AppStrings.activitiesNav : AppStrings.myActivities,
-          icon: Icons.volunteer_activism_outlined,
-          selectedIcon: Icons.volunteer_activism,
+          icon: Icons.supervisor_account_outlined,
+          selectedIcon: Icons.supervisor_account,
+          color: AppColors.coral,
+          motion: _TabMotion.pulse,
           child: isAdmin
               ? const AdminServantActivitiesScreen(showAppBar: false)
               : const MyActivitiesScreen(),
         ),
       _Tab(
         label: AppStrings.more,
-        icon: Icons.more_horiz_outlined,
-        selectedIcon: Icons.more_horiz,
+        icon: Icons.apps_outlined,
+        selectedIcon: Icons.apps,
+        color: AppColors.olive,
+        motion: _TabMotion.spin,
         // Brings the banner back even if it was closed (or the forced screen).
         child: MoreScreen(onUpdateFound: (u) => setState(() => _update = u)),
       ),
@@ -247,22 +260,21 @@ class _HomeShellState extends State<HomeShell>
     final wide = isWideLayout(context);
 
     Widget tabIcon(int i) => i != _attendanceTab
-        ? Icon(tabs[i].icon)
+        ? Icon(tabs[i].icon, color: tabs[i].color.withValues(alpha: 0.8))
         : ValueListenableBuilder<bool>(
             valueListenable: AttendanceScreen.unsavedInTab,
             builder: (_, unsaved, __) => AttendanceTabIcon(
               icon: tabs[i].icon,
+              color: tabs[i].color.withValues(alpha: 0.8),
               pendingCount: pendingCount,
               unsaved: unsaved,
             ),
           );
 
-    Widget selectedTabIcon(int i) => TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.6, end: 1),
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.elasticOut,
-          builder: (_, v, child) => Transform.scale(scale: v, child: child),
-          child: Icon(tabs[i].selectedIcon, color: AppColors.navy),
+    Widget selectedTabIcon(int i) => _AnimatedTabIcon(
+          icon: tabs[i].selectedIcon,
+          color: tabs[i].color,
+          motion: tabs[i].motion,
         );
 
     Widget tabBody(int i, Widget child) => wide
@@ -451,11 +463,13 @@ class AttendanceTabIcon extends StatelessWidget {
   const AttendanceTabIcon({
     super.key,
     required this.icon,
+    this.color,
     required this.pendingCount,
     required this.unsaved,
   });
 
   final IconData icon;
+  final Color? color;
   final int pendingCount;
   final bool unsaved;
 
@@ -467,7 +481,7 @@ class AttendanceTabIcon extends StatelessWidget {
         value: pendingCount,
         child: Badge(
           label: AnimatedCount(value: pendingCount),
-          child: Icon(icon),
+          child: Icon(icon, color: color),
         ),
       );
     }
@@ -475,7 +489,7 @@ class AttendanceTabIcon extends StatelessWidget {
       isLabelVisible: unsaved,
       backgroundColor: AppColors.warning,
       smallSize: 9,
-      child: Icon(icon),
+      child: Icon(icon, color: color),
     );
   }
 }
@@ -485,13 +499,77 @@ class _Tab {
     required this.label,
     required this.icon,
     required this.selectedIcon,
+    required this.color,
+    required this.motion,
     required this.child,
   });
 
   final String label;
   final IconData icon;
   final IconData selectedIcon;
+  final Color color;
+  final _TabMotion motion;
   final Widget child;
+}
+
+/// How a tab's icon plays when its tab is selected.
+enum _TabMotion { bounce, swing, pop, tick, pulse, spin }
+
+class _AnimatedTabIcon extends StatelessWidget {
+  const _AnimatedTabIcon({
+    required this.icon,
+    required this.color,
+    required this.motion,
+  });
+
+  final IconData icon;
+  final Color color;
+  final _TabMotion motion;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Icon(icon, color: color);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 800),
+      builder: (_, t, __) {
+        final decay = 1 - t;
+        switch (motion) {
+          case _TabMotion.bounce:
+            return Transform.translate(
+              offset: Offset(0, -10 * math.sin(t * math.pi * 3) * decay),
+              child: child,
+            );
+          case _TabMotion.swing:
+            return Transform.rotate(
+              angle: 0.5 * math.sin(t * math.pi * 4) * decay,
+              alignment: Alignment.topCenter,
+              child: child,
+            );
+          case _TabMotion.pop:
+            return Transform.scale(
+              scale: Curves.elasticOut.transform(t) * 0.5 + 0.5,
+              child: child,
+            );
+          case _TabMotion.tick:
+            return Transform.rotate(
+              angle: -0.35 * math.sin(t * math.pi * 3) * decay,
+              child: Transform.scale(scale: 1 + 0.25 * math.sin(t * math.pi), child: child),
+            );
+          case _TabMotion.pulse:
+            return Transform.scale(
+              scale: 1 + 0.3 * math.sin(t * math.pi * 2) * decay,
+              child: child,
+            );
+          case _TabMotion.spin:
+            return Transform.rotate(
+              angle: Curves.easeOutBack.transform(t) * math.pi * 2,
+              child: child,
+            );
+        }
+      },
+    );
+  }
 }
 
 /// The saves waiting to be sent have all gone: online, none refused.

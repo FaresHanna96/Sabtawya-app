@@ -484,7 +484,14 @@ class _Tile extends StatelessWidget {
                       color: color.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(entry.icon, size: 22, color: color),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.4, end: 1),
+                      duration: const Duration(milliseconds: 650),
+                      curve: Curves.elasticOut,
+                      builder: (_, v, child) =>
+                          Transform.scale(scale: v, child: child),
+                      child: Icon(entry.icon, size: 22, color: color),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -111,7 +111,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'birthdays',
-      icon: Icons.cake_outlined,
+      icon: Icons.cake_rounded,
       title: AppStrings.birthdaysTitle,
       color: AppColors.warning,
       group: MoreGroup.followUp,
@@ -122,7 +122,7 @@ class MoreCatalog {
     // ── التقارير والإكسل
     MoreEntry(
       id: 'reports',
-      icon: Icons.insert_chart_outlined,
+      icon: Icons.insert_chart_rounded,
       title: AppStrings.reportsTitle,
       color: AppColors.sky,
       group: MoreGroup.reports,
@@ -142,7 +142,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'attendanceHistory',
-      icon: Icons.history,
+      icon: Icons.history_rounded,
       title: AppStrings.attendanceHistory,
       color: AppColors.navyLight,
       group: MoreGroup.reports,
@@ -151,7 +151,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'export',
-      icon: Icons.ios_share,
+      icon: Icons.ios_share_rounded,
       title: AppStrings.excelReportsTitle,
       color: AppColors.navyLight,
       group: MoreGroup.reports,
@@ -161,7 +161,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'import',
-      icon: Icons.upload_file,
+      icon: Icons.upload_file_rounded,
       title: AppStrings.importChildren,
       color: AppColors.navyLight,
       group: MoreGroup.reports,
@@ -172,7 +172,7 @@ class MoreCatalog {
     // ── الخدمة
     MoreEntry(
       id: 'lessonSchedule',
-      icon: Icons.menu_book_outlined,
+      icon: Icons.menu_book_rounded,
       title: AppStrings.lessonSchedule,
       color: AppColors.olive,
       group: MoreGroup.service,
@@ -191,7 +191,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'calendar',
-      icon: Icons.calendar_month_outlined,
+      icon: Icons.calendar_month_rounded,
       title: AppStrings.calendarTitle,
       color: AppColors.gold,
       group: MoreGroup.service,
@@ -200,7 +200,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'events',
-      icon: Icons.event_outlined,
+      icon: Icons.event_rounded,
       title: AppStrings.events,
       color: AppColors.olive,
       group: MoreGroup.service,
@@ -210,7 +210,7 @@ class MoreCatalog {
     // A servant of a class has no competitions.
     MoreEntry(
       id: 'competitions',
-      icon: Icons.emoji_events_outlined,
+      icon: Icons.emoji_events_rounded,
       title: AppStrings.competitions,
       color: AppColors.gold,
       group: MoreGroup.service,
@@ -232,7 +232,7 @@ class MoreCatalog {
     // ── الإدارة
     MoreEntry(
       id: 'servants',
-      icon: Icons.volunteer_activism_outlined,
+      icon: Icons.supervisor_account_rounded,
       title: AppStrings.servantsTitle,
       color: AppColors.maroon,
       group: MoreGroup.admin,
@@ -255,7 +255,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'assignments',
-      icon: Icons.link,
+      icon: Icons.link_rounded,
       title: AppStrings.assignmentsTitle,
       color: AppColors.maroon,
       group: MoreGroup.admin,
@@ -265,7 +265,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'announcements',
-      icon: Icons.campaign_outlined,
+      icon: Icons.campaign_rounded,
       title: AppStrings.announcementsMoreTitle,
       color: AppColors.maroon,
       group: MoreGroup.admin,
@@ -325,7 +325,7 @@ class MoreCatalog {
     ),
     MoreEntry(
       id: 'settings',
-      icon: Icons.settings_outlined,
+      icon: Icons.settings_rounded,
       title: AppStrings.settingsTitle,
       color: AppColors.muted,
       group: MoreGroup.app,
