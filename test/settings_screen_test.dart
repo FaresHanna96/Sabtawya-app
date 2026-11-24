@@ -69,7 +69,11 @@ void main() {
     expect(find.text(AppStrings.changePassword), findsOneWidget);
     expect(find.text(AppStrings.logout), findsOneWidget);
     expect(find.text(AppStrings.moreApp), findsOneWidget);
+    // Always listed; on the website (the test) it is off, with the reason.
+    expect(find.text(AppStrings.callerIdSwitch), findsOneWidget);
     expect(find.text(AppStrings.tourMenu), findsOneWidget);
+    // The update check lives in المزيد only.
+    expect(find.text(AppStrings.checkForUpdates), findsNothing);
     // The admin's groups are not shown to a servant.
     expect(find.text(AppStrings.absenceAlertSettings), findsNothing);
     expect(find.text(AppStrings.maxPoints), findsNothing);
@@ -85,5 +89,7 @@ void main() {
     expect(find.text(AppStrings.absenceAlertSettings), findsOneWidget);
     expect(find.text(AppStrings.maxPoints), findsOneWidget);
     expect(find.text('20'), findsOneWidget);
+    // 26 Sep 2026 -> 25 Sep 2027 holds 53 Saturdays (both ends are Saturdays).
+    expect(find.text('53 سبت'), findsOneWidget);
   });
 }

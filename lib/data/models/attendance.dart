@@ -43,6 +43,19 @@ class AttendanceYear {
         isCurrent: asBool(map['is_current']),
       );
 
+  /// How many session days (every [sessionWeekday], a Saturday by default)
+  /// fall in the year, both ends included.
+  int get sessionCount {
+    var day = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day);
+    var n = 0;
+    while (!day.isAfter(end)) {
+      if (day.weekday == sessionWeekday) n++;
+      day = DateTime(day.year, day.month, day.day + 1);
+    }
+    return n;
+  }
+
   /// Whether [date]'s calendar day falls in this year (both ends included).
   bool contains(DateTime date) {
     final d = DateTime(date.year, date.month, date.day);

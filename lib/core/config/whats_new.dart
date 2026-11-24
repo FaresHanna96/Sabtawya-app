@@ -12,6 +12,12 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  56: [
+    WhatsNewItem(Icons.event_rounded, 'تاريخ السبت كامل',
+        'في شاشة الحضور بقى التاريخ ياخد عرضه كله ومش بيتقطع.'),
+    WhatsNewItem(Icons.calendar_month_rounded, 'سنة الحضور',
+        'وفي سنة الحضور بقى مكتوب كام سبت في السنة.'),
+  ],
   55: [
     WhatsNewItem(Icons.settings_rounded, 'الإعدادات مترتبة',
         'اسمك فوق، وبعده «الحساب» و«التطبيق»، وللأمين بس تنبيهات الغياب وسنة الحضور.'),

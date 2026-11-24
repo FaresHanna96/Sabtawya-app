@@ -50,7 +50,9 @@ class _CallerIdTileState extends State<CallerIdTile> {
 
   @override
   Widget build(BuildContext context) {
-    if (!CallerIdService.supported) return const SizedBox.shrink();
+    // Where it cannot work (the website) the row stays, switched off, with
+    // the reason, so the setting is always findable.
+    final supported = CallerIdService.supported;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -66,15 +68,20 @@ class _CallerIdTileState extends State<CallerIdTile> {
                   style: TextStyle(fontSize: 14.5),
                 ),
               ),
-              Switch(value: _on, onChanged: _busy ? null : _toggle),
+              Switch(
+                value: supported && _on,
+                onChanged: supported && !_busy ? _toggle : null,
+              ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsetsDirectional.only(start: 46, bottom: 4),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 46, bottom: 4),
             child: Text(
-              AppStrings.callerIdBody,
-              style:
-                  TextStyle(fontSize: 12, height: 1.6, color: AppColors.muted),
+              supported
+                  ? AppStrings.callerIdBody
+                  : 'متاح في تطبيق الأندرويد بس، مش في الموقع.',
+              style: const TextStyle(
+                  fontSize: 12, height: 1.6, color: AppColors.muted),
             ),
           ),
         ],

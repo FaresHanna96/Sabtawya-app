@@ -7,7 +7,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/motion.dart';
-import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../auth/change_password_screen.dart';
 import '../home/welcome_tour.dart';
@@ -83,7 +82,7 @@ class SettingsScreen extends StatelessWidget {
             ]),
             const _GroupTitle(AppStrings.moreApp),
             _GroupCard(children: [
-              if (CallerIdService.supported) const CallerIdTile(),
+              const CallerIdTile(),
               _SettingsRow(
                 icon: Icons.school_rounded,
                 color: AppColors.navyLight,
@@ -102,8 +101,9 @@ class SettingsScreen extends StatelessWidget {
                   icon: Icons.calendar_month_rounded,
                   color: AppColors.sky,
                   title: year.name,
-                  trailingText: '${AppDateUtils.formatDate(year.startDate)}'
+                  subtitle: '${AppDateUtils.formatDate(year.startDate)}'
                       ' ← ${AppDateUtils.formatDate(year.endDate)}',
+                  trailingText: '${year.sessionCount} سبت',
                 ),
                 _SettingsRow(
                   icon: Icons.star_rounded,
@@ -277,6 +277,7 @@ class _SettingsRow extends StatelessWidget {
     required this.title,
     this.onTap,
     this.trailingText,
+    this.subtitle,
     this.danger = false,
     this.bold = false,
   });
@@ -284,6 +285,7 @@ class _SettingsRow extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String title;
+  final String? subtitle;
   final VoidCallback? onTap;
   final String? trailingText;
   final bool danger;
@@ -300,12 +302,25 @@ class _SettingsRow extends StatelessWidget {
             SettingsIcon(icon, color),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  color: danger ? AppColors.danger : null,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      color: danger ? AppColors.danger : null,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                ],
               ),
             ),
             if (trailingText != null)
