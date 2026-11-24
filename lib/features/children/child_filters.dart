@@ -252,20 +252,25 @@ class ChildFilterBar extends StatelessWidget {
     final picked = filter.badge;
     return Padding(
       padding: const EdgeInsets.only(left: 8),
-      child: PopupMenuButton<KidBadge?>(
+      // Ids, not a nullable value: a menu never reports a null choice, so
+      // «كل الشارات» could not be picked.
+      child: PopupMenuButton<String>(
         tooltip: AppStrings.badgeFilter,
-        initialValue: picked,
-        onSelected: (b) => onChanged(
-          b == null ? filter.copyWith(clearBadge: true) : filter.copyWith(badge: b),
-        ),
+        initialValue: picked?.id ?? '',
+        onSelected: (id) {
+          final b = KidBadge.fromId(id);
+          onChanged(b == null
+              ? filter.copyWith(clearBadge: true)
+              : filter.copyWith(badge: b));
+        },
         itemBuilder: (context) => [
-          const PopupMenuItem<KidBadge?>(
-            value: null,
+          const PopupMenuItem<String>(
+            value: '',
             child: Text(AppStrings.allBadges),
           ),
           for (final b in KidBadge.values)
-            PopupMenuItem<KidBadge?>(
-              value: b,
+            PopupMenuItem<String>(
+              value: b.id,
               child: Row(
                 children: [
                   Icon(b.icon, size: 20, color: b.color),

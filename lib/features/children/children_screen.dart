@@ -171,10 +171,11 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                       all.any((c) => c.gender == Gender.girl),
                   showBadges: session.isAdmin || session.isGeneralServant,
                   onChanged: (next) {
-                    if (next.badge != _filter.badge) _pickBadge(next.badge);
+                    final badgeChanged = next.badge != _filter.badge;
                     final refetch =
                         next.includeInactive != _filter.includeInactive;
                     setState(() => _filter = next);
+                    if (badgeChanged) _pickBadge(next.badge);
                     // Turning inactive children on needs them fetched.
                     if (refetch) _reload();
                   },

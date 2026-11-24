@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sabtawya/data/models/badges.dart';
 import 'package:sabtawya/data/models/child.dart';
 import 'package:sabtawya/features/children/child_filters.dart';
 
@@ -138,6 +139,37 @@ void main() {
 
       expect(child.code, 'C001');
       expect(child.toWriteMap().containsKey('code'), isFalse);
+    });
+  });
+
+  group('badge filter', () {
+    final kids = [_child(name: 'مينا'), _child(name: 'مارك'), _child(name: 'بيتر')];
+
+    test('keeps only the holders of the picked badge', () {
+      const filter = ChildFilter(badge: KidBadge.vespersMonth);
+      expect(
+        filter.apply(kids, holders: {'مارك'}).map((c) => c.id),
+        ['مارك'],
+      );
+      // Another badge, another holder set: it narrows again.
+      const other = ChildFilter(badge: KidBadge.starSchool);
+      expect(
+        other.apply(kids, holders: {'بيتر', 'مينا'}).map((c) => c.id).toSet(),
+        {'بيتر', 'مينا'},
+      );
+    });
+
+    test('shows everyone while the holders are still loading', () {
+      const filter = ChildFilter(badge: KidBadge.starYear);
+      expect(filter.apply(kids).length, 3);
+    });
+
+    test('clearBadge removes it and isNarrowing follows', () {
+      const filter = ChildFilter(badge: KidBadge.starYear);
+      expect(filter.isNarrowing, isTrue);
+      final cleared = filter.copyWith(clearBadge: true);
+      expect(cleared.badge, isNull);
+      expect(cleared.isNarrowing, isFalse);
     });
   });
 }
