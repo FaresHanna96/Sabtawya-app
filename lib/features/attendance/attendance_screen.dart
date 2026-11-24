@@ -1659,8 +1659,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         arrow(AppIcons.back, canBack, -1),
         Expanded(
           child: Material(
-            color: AppColors.navy.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.navy.withValues(alpha: 0.06),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: AppColors.navy.withValues(alpha: 0.14)),
+            ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: _pickSession,
@@ -1675,6 +1678,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        const Icon(Icons.event_rounded,
+                            size: 16, color: AppColors.navy),
+                        const SizedBox(width: 5),
                         Flexible(
                           child: Text(
                             _date == null
@@ -1859,6 +1865,20 @@ class AttendanceProgressLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final ratio = total == 0 ? 0.0 : present / total;
     final (statusText, statusColor) = status(recorded, total);
+    // Green from three quarters, gold from half, coral below: the bar says
+    // how the day is going before the number is read.
+    final barColor = total == 0 || recorded == 0
+        ? AppColors.muted
+        : ratio >= 0.75
+            ? AppColors.success
+            : ratio >= 0.5
+                ? AppColors.gold
+                : AppColors.coral;
+    final statusIcon = recorded == 0
+        ? Icons.hourglass_empty_rounded
+        : recorded < total
+            ? Icons.timelapse_rounded
+            : Icons.check_circle_rounded;
     final count = Text.rich(
       TextSpan(
         style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
@@ -1882,6 +1902,14 @@ class AttendanceProgressLine extends StatelessWidget {
             ),
           ),
           TextSpan(text: ' ${AppStrings.ofWord} $total'),
+          if (total > 0)
+            TextSpan(
+              text: '  •  ${(ratio * 100).round()}%',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: AppColors.readable(barColor),
+              ),
+            ),
         ],
       ),
     );
@@ -1904,13 +1932,21 @@ class AttendanceProgressLine extends StatelessWidget {
                 color: statusColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.readable(statusColor),
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(statusIcon,
+                      size: 13, color: AppColors.readable(statusColor)),
+                  const SizedBox(width: 4),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.readable(statusColor),
+                    ),
+                  ),
+                ],
               ),
             ),
             if (trailing != null) trailing!,
@@ -1924,9 +1960,9 @@ class AttendanceProgressLine extends StatelessWidget {
             curve: Curves.easeOutCubic,
             builder: (_, v, __) => LinearProgressIndicator(
               value: v,
-              minHeight: 4,
+              minHeight: 6,
               backgroundColor: AppColors.navy.withValues(alpha: 0.08),
-              valueColor: const AlwaysStoppedAnimation(AppColors.success),
+              valueColor: AlwaysStoppedAnimation(barColor),
             ),
           ),
         ),
