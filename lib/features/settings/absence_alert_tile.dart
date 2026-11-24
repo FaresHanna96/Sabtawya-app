@@ -128,9 +128,6 @@ class _AbsenceAlertTileState extends State<AbsenceAlertTile> {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: AppStrings.absenceAlertSettings,
-      icon: Icons.notifications_active_outlined,
-      accent: AppColors.coral,
       child: _loading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
           : _failed

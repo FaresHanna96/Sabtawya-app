@@ -6,10 +6,12 @@ import '../../core/services/sync_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
-import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
+import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../auth/change_password_screen.dart';
+import '../home/welcome_tour.dart';
+import '../profile/my_profile_screen.dart';
 import 'absence_alert_tile.dart';
 import 'caller_id_tile.dart';
 
@@ -30,13 +32,27 @@ Future<void> confirmLogout(BuildContext context) async {
   await context.read<SessionController>().signOut();
 }
 
+/// Settings in clear groups: the profile on top, then الحساب, التطبيق and,
+/// for the admin only, تنبيهات الغياب and سنة الحضور.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  static void _push(BuildContext context, Widget screen) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(builder: (_) => screen),
+      );
 
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
     final profile = session.profile;
+    final year = session.currentYear;
+    final name = profile?.fullName ?? session.displayName;
+    final email = profile?.email;
+    final who = [
+      if (profile != null) profile.roleLabel,
+      if (email != null && email.isNotEmpty) email,
+    ].join(' • ');
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.settingsTitle)),
@@ -44,164 +60,266 @@ class SettingsScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: staggerAll([
-            SectionCard(
-              title: AppStrings.myProfile,
-              icon: Icons.person_rounded,
-              accent: AppColors.navyLight,
-              child: Column(
-                children: [
-                  InfoRow(
-                    label: AppStrings.servantName,
-                    value: profile?.fullName,
-                    icon: Icons.person_outline,
-                  ),
-                  InfoRow(
-                    label: AppStrings.email,
-                    value: profile?.email,
-                    icon: Icons.alternate_email,
-                  ),
-                  InfoRow(
-                    label: AppStrings.mobile,
-                    value: profile?.mobile,
-                    icon: Icons.phone_outlined,
-                  ),
-                  InfoRow(
-                    label: AppStrings.birthDate,
-                    value: profile?.birthDate == null
-                        ? null
-                        : AppDateUtils.formatDate(profile!.birthDate!),
-                    icon: Icons.cake_outlined,
-                  ),
-                  InfoRow(
-                    label: AppStrings.role,
-                    value: profile?.roleLabel,
-                    icon: Icons.shield_outlined,
-                  ),
-                  InfoRow(
-                    label: AppStrings.assignedClasses,
-                    value: session.myClasses.isEmpty
-                        ? null
-                        : session.myClasses
-                            .map((item) => item.className)
-                            .join('، '),
-                    icon: Icons.class_outlined,
-                  ),
-                ],
-              ),
+            _ProfileCard(
+              name: name,
+              subtitle: who,
+              onTap: () => _push(context, const MyProfileScreen()),
             ),
-            const SizedBox(height: 16),
-            SectionCard(
-              title: AppStrings.attendanceYear,
-              icon: Icons.calendar_month_rounded,
-              accent: AppColors.olive,
-              child: Column(
-                children: [
-                  InfoRow(
-                    label: AppStrings.yearName,
-                    value: session.currentYear?.name,
-                    icon: Icons.calendar_month_outlined,
-                  ),
-                  InfoRow(
-                    label: AppStrings.startDate,
-                    value: session.currentYear == null
-                        ? null
-                        : AppDateUtils.formatDate(
-                            session.currentYear!.startDate,
-                          ),
-                    icon: Icons.play_arrow_outlined,
-                  ),
-                  InfoRow(
-                    label: AppStrings.endDate,
-                    value: session.currentYear == null
-                        ? null
-                        : AppDateUtils.formatDate(session.currentYear!.endDate),
-                    icon: Icons.stop_outlined,
-                  ),
-                  InfoRow(
-                    label: AppStrings.maxPoints,
-                    value: session.currentYear == null
-                        ? null
-                        : '${session.currentYear!.maxPointsPerSession} '
-                            '${AppStrings.points}',
-                    icon: Icons.star_outline,
-                  ),
-                ],
+            const _GroupTitle(AppStrings.account),
+            _GroupCard(children: [
+              _SettingsRow(
+                icon: Icons.key_rounded,
+                color: AppColors.gold,
+                title: AppStrings.changePassword,
+                onTap: () => _push(context, const ChangePasswordScreen()),
               ),
-            ),
-            const SizedBox(height: 16),
-            const CallerIdTile(),
+              _SettingsRow(
+                icon: Icons.logout_rounded,
+                color: AppColors.danger,
+                title: AppStrings.logout,
+                danger: true,
+                onTap: () => confirmLogout(context),
+              ),
+            ]),
+            const _GroupTitle(AppStrings.moreApp),
+            _GroupCard(children: [
+              if (CallerIdService.supported) const CallerIdTile(),
+              _SettingsRow(
+                icon: Icons.school_rounded,
+                color: AppColors.navyLight,
+                title: AppStrings.tourMenu,
+                onTap: () => _push(context, const WelcomeTourScreen()),
+              ),
+            ]),
             if (session.isAdmin) ...[
-              const SizedBox(height: 16),
+              const _GroupTitle(AppStrings.absenceAlertSettings),
               const AbsenceAlertTile(),
-              const SizedBox(height: 16),
             ],
-            SectionCard(
-              title: AppStrings.about,
-              icon: Icons.info_rounded,
-              accent: AppColors.gold,
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const AppLogo(size: 40),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              AppStrings.appTitle,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            Text(
-                              AppStrings.appSubtitle,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+            if (session.isAdmin && year != null) ...[
+              const _GroupTitle('${AppStrings.attendanceYear} (للأمين)'),
+              _GroupCard(children: [
+                _SettingsRow(
+                  icon: Icons.calendar_month_rounded,
+                  color: AppColors.sky,
+                  title: year.name,
+                  trailingText: '${AppDateUtils.formatDate(year.startDate)}'
+                      ' ← ${AppDateUtils.formatDate(year.endDate)}',
+                ),
+                _SettingsRow(
+                  icon: Icons.star_rounded,
+                  color: AppColors.gold,
+                  title: AppStrings.maxPoints,
+                  trailingText: '${year.maxPointsPerSession}',
+                  bold: true,
+                ),
+              ]),
+            ],
+            const SizedBox(height: 20),
+            const Center(
+              child: Text(
+                AppStrings.appTitle,
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
               ),
-            ),
-            const SizedBox(height: 16),
-            SectionCard(
-              title: AppStrings.account,
-              icon: Icons.lock_rounded,
-              accent: AppColors.maroon,
-              child: Column(
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.lock_outline),
-                    title: const Text(AppStrings.changePassword),
-                    trailing: const Icon(AppIcons.forward),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const ChangePasswordScreen(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.danger,
-              ),
-              onPressed: () => confirmLogout(context),
-              icon: const Icon(Icons.logout),
-              label: const Text(AppStrings.logout),
             ),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({
+    required this.name,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String name;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  static String _initial(String name) {
+    final t = name.trim();
+    return t.isEmpty ? '؟' : t.characters.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 23,
+                backgroundColor: AppColors.navy,
+                child: Text(
+                  _initial(name),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Text(
+                AppStrings.edit,
+                style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+              ),
+              const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupTitle extends StatelessWidget {
+  const _GroupTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 18, 4, 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w900,
+            color: AppColors.muted,
+          ),
+        ),
+      );
+}
+
+/// A white card holding rows separated by hairlines.
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Column(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) const Divider(height: 1),
+              children[i],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The coloured icon badge shared by every settings row.
+class SettingsIcon extends StatelessWidget {
+  const SettingsIcon(this.icon, this.color, {super.key});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 19, color: color),
+      );
+}
+
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({
+    required this.icon,
+    required this.color,
+    required this.title,
+    this.onTap,
+    this.trailingText,
+    this.danger = false,
+    this.bold = false,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final VoidCallback? onTap;
+  final String? trailingText;
+  final bool danger;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        child: Row(
+          children: [
+            SettingsIcon(icon, color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  color: danger ? AppColors.danger : null,
+                ),
+              ),
+            ),
+            if (trailingText != null)
+              Text(
+                trailingText!,
+                style: TextStyle(
+                  fontSize: bold ? 15 : 12.5,
+                  fontWeight: bold ? FontWeight.w800 : null,
+                  color: bold ? null : AppColors.muted,
+                ),
+              ),
+            if (onTap != null && !danger)
+              const Icon(AppIcons.forward, size: 18, color: AppColors.muted),
+          ],
         ),
       ),
     );

@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
-import '../../core/widgets/app_widgets.dart';
 import '../../data/services/caller_id_service.dart';
+import 'settings_screen.dart';
 
-/// The "show caller name" switch. Hidden on the website, where it cannot work.
+/// The "show caller name" switch row. Hidden on the website, where it cannot
+/// work.
 class CallerIdTile extends StatefulWidget {
   const CallerIdTile({super.key});
 
@@ -51,26 +52,32 @@ class _CallerIdTileState extends State<CallerIdTile> {
   Widget build(BuildContext context) {
     if (!CallerIdService.supported) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: SectionCard(
-        title: AppStrings.callerIdTitle,
-        icon: Icons.phone_callback_rounded,
-        accent: AppColors.olive,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text(AppStrings.callerIdSwitch),
-              value: _on,
-              onChanged: _busy ? null : _toggle,
-            ),
-            const Text(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const SettingsIcon(Icons.phone_callback_rounded, AppColors.coral),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  AppStrings.callerIdSwitch,
+                  style: TextStyle(fontSize: 14.5),
+                ),
+              ),
+              Switch(value: _on, onChanged: _busy ? null : _toggle),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsetsDirectional.only(start: 46, bottom: 4),
+            child: Text(
               AppStrings.callerIdBody,
-              style: TextStyle(fontSize: 12, height: 1.6, color: AppColors.muted),
+              style:
+                  TextStyle(fontSize: 12, height: 1.6, color: AppColors.muted),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
