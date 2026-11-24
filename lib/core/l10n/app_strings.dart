@@ -748,10 +748,11 @@ class AppStrings {
   static const topLevelReached = 'وصلت لأعلى مستوى';
   static String saturdaysInARow(int n) => '$n سبوت';
   static const inARow = 'ورا بعض';
-  static String rankInClass(int rank) => switch (rank) {
-        1 => 'الأولى',
-        2 => 'التانية',
-        3 => 'التالتة',
+  /// «الأول» for a boy, «الأولى» for a girl.
+  static String rankInClass(int rank, {bool girl = false}) => switch (rank) {
+        1 => girl ? 'الأولى' : 'الأول',
+        2 => girl ? 'التانية' : 'التاني',
+        3 => girl ? 'التالتة' : 'التالت',
         _ => 'رقم $rank',
       };
   static const inClassLink = 'في الفصل ›';

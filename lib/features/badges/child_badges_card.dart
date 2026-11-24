@@ -185,8 +185,11 @@ class GamePointsPanel extends StatelessWidget {
     this.framed = true,
     this.attendancePct,
     this.onOpenAttendance,
+    this.girl = false,
   });
 
+  /// Girl: the place reads «الأولى», not «الأول».
+  final bool girl;
   final int points;
   final int run;
   final int? rank;
@@ -334,7 +337,7 @@ class GamePointsPanel extends StatelessWidget {
                 Expanded(
                   child: _Chip(
                     icon: Icons.emoji_events_rounded,
-                    value: AppStrings.rankInClass(rank!),
+                    value: AppStrings.rankInClass(rank!, girl: girl),
                     label: AppStrings.inClassLink,
                     onTap: onOpenRanking,
                   ),

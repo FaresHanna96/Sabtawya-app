@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/class_filter_chips.dart';
-import '../../core/widgets/skeleton.dart';
 import '../../data/models/child.dart';
 import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
@@ -85,7 +84,6 @@ class _ChampionsEntryScreenState extends State<ChampionsEntryScreen> {
       body: SafeArea(
         child: AsyncSection<ChampionsData>(
           load: _load,
-          loading: const SkeletonList(),
           builder: (context, data, reload) {
             final options = [
               for (final c in data.classes)

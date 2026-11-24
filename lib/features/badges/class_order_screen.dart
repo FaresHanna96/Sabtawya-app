@@ -5,7 +5,6 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
-import '../../core/widgets/skeleton.dart';
 import '../../data/models/badges.dart';
 import '../../data/repositories/badge_repository.dart';
 import '../../state/session_controller.dart';
@@ -44,7 +43,6 @@ class ClassOrderScreen extends StatelessWidget {
       body: SafeArea(
         child: AsyncSection<List<LeaderboardRow>>(
           load: load ?? () => _load(context),
-          loading: const SkeletonList(),
           builder: (context, rows, reload) {
             if (rows.isEmpty || rows.first.gamePoints == 0) {
               return ListView(

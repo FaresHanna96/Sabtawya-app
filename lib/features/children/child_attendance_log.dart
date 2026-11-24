@@ -173,9 +173,14 @@ class ChildAttendanceLog extends StatefulWidget {
     this.breakDates = const {},
     this.lastActivity,
     this.points,
+    this.gamePoints,
     this.badges = const <ChildBadge>[],
     this.today,
   });
+
+  /// The year's طايو with the badges' bonus, as the class ranking counts it
+  /// (the profile header's number). Wins over [points] + the bonus.
+  final int? gamePoints;
 
   final List<ChildSessionScore> history;
 
@@ -262,7 +267,9 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
   @override
   Widget build(BuildContext context) {
     final totals = LogTotals.of(_months);
-    final points =
+    // The same figure as the profile's header when it is known, so the two
+    // can never differ; otherwise the attendance points plus the badge bonus.
+    final points = widget.gamePoints ??
         (widget.points ?? widget.history.fold<int>(0, (sum, h) => sum + h.score)) +
             _bonusByMonth.values.fold<int>(0, (a, b) => a + b);
 

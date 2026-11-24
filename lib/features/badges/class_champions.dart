@@ -6,7 +6,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/motion.dart';
-import '../../core/widgets/skeleton.dart';
 import '../../data/models/child.dart';
 import '../../data/models/reports.dart';
 import '../../data/repositories/badge_repository.dart';
@@ -214,7 +213,6 @@ class ClassChampionsScreen extends StatelessWidget {
         child: AsyncSection<
             (List<ChildStreak>, Map<String, Child>, Map<String, int>)>(
           load: load ?? () => _load(context),
-          loading: const SkeletonList(),
           builder: (context, data, reload) => ChampionsView(
             streaks: data.$1,
             children: data.$2,
