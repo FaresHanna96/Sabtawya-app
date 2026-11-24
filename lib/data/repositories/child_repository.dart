@@ -371,7 +371,7 @@ class ChildRepository {
           .eq('id', id)
           .select('id');
       if (rows(deleted).isEmpty) {
-        throw AppFailure('لا يمكنك حذف هذا الافتقاد (سجّله خادم آخر)');
+        throw AppFailure('ما ينفعش تحذف الافتقاد ده (سجّله خادم تاني)');
       }
     } catch (e) {
       throw AppFailure.from(e);

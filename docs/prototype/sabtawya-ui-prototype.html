@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سبتاوية — نموذج تصميم الشاشات</title>
+<style>
+:root{
+  --navy:#1B3A6B;--navy-dark:#12284A;--navy-light:#3D63A0;--olive:#8A9A2B;--olive-tint:#F1F4DC;--olive-text:#5E6B14;
+  --gold:#E8A93B;--gold-tint:#FDF3DE;--gold-text:#906211;--coral:#E76F51;--coral-tint:#FCE9E3;--coral-text:#B93919;
+  --sky:#4FA3D1;--sky-tint:#E3F1F9;--sky-text:#276E95;--success:#2E7D4F;--success-tint:#E3F3EA;--danger:#B3261E;--danger-tint:#FBE7E5;
+  --muted:#6B7280;--surface:#F7F7FB;--card:#fff;--line:#E6E8F0;--page:#E9ECF3;--ink:#16213a;
+}
+@media (prefers-color-scheme: dark){
+  :root{--page:#0e1424;--ink:#e8ecf6}
+  .notes{color:#cfd6e6}
+  .notes h2{color:#fff}
+  .chip-nav a{background:#1b2540;color:#dfe6f7;border-color:#2b3a63}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Cairo","Segoe UI","Tahoma",system-ui,sans-serif;line-height:1.6}
+header.top{background:linear-gradient(135deg,var(--navy-dark),var(--navy-light));color:#fff;padding:28px 20px 22px}
+header.top h1{margin:0 0 6px;font-size:26px}
+header.top p{margin:0;opacity:.85;max-width:760px}
+.chip-nav{position:sticky;top:0;z-index:20;background:var(--page);padding:10px 16px;display:flex;gap:8px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.chip-nav a{flex:none;text-decoration:none;font-size:13px;font-weight:700;color:var(--navy);background:#fff;border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+section.proto{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;justify-content:center;padding:34px 16px;border-bottom:1px solid var(--line)}
+.notes{flex:1 1 320px;max-width:460px}
+.notes h2{margin:0 0 4px;font-size:21px;color:var(--navy)}
+.notes .tag{display:inline-block;font-size:12px;font-weight:800;background:var(--gold-tint);color:var(--gold-text);padding:2px 10px;border-radius:999px;margin-bottom:10px}
+.notes ul{padding-inline-start:20px;margin:8px 0}
+.notes li{margin:5px 0}
+.notes .try{margin-top:12px;font-size:13px;background:var(--sky-tint);color:var(--sky-text);padding:8px 12px;border-radius:12px}
+/* phone */
+.phone{width:360px;background:var(--surface);border-radius:34px;border:9px solid #1d2438;box-shadow:0 18px 50px rgba(10,20,50,.28);overflow:hidden;flex:none;position:relative;color:#16213a}
+.appbar{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+.appbar .sp{flex:1}
+.appbar .ic{width:22px;height:22px;opacity:.9}
+.tabs{display:flex;background:var(--navy);padding:0 6px}
+.tabs div{flex:1;text-align:center;color:rgba(255,255,255,.65);font-weight:700;font-size:13px;padding:9px 0;border-bottom:3px solid transparent}
+.tabs .on{color:#fff;border-color:#fff}
+.body{padding:12px 14px 18px;min-height:560px;position:relative}
+.bottom{display:flex;background:#fff;border-top:1px solid var(--line);padding:6px 4px}
+.bottom div{flex:1;text-align:center;font-size:10.5px;color:var(--muted);padding:4px 0}
+.bottom div b{display:block;font-size:19px;line-height:1.1}
+.bottom .on{color:var(--navy);font-weight:800}
+.bottom .on b{background:var(--olive-tint);border-radius:14px;padding:2px 0;margin:0 14px 2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
+.card h4{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:6px}
+.muted{color:var(--muted);font-size:12px}
+.row{display:flex;align-items:center;gap:10px}
+.sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:999px}
+.p-coral{background:var(--coral-tint);color:var(--coral-text)}
+.p-gold{background:var(--gold-tint);color:var(--gold-text)}
+.p-sky{background:var(--sky-tint);color:var(--sky-text)}
+.p-olive{background:var(--olive-tint);color:var(--olive-text)}
+.p-success{background:var(--success-tint);color:var(--success)}
+.p-danger{background:var(--danger-tint);color:var(--danger)}
+.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:15px;flex:none}
+.bar{height:7px;border-radius:5px;background:#e7e9f1;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:5px;transition:width .35s}
+.btn{border:0;border-radius:12px;padding:9px 14px;font:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-soft{background:var(--olive-tint);color:var(--olive-text)}
+.btn-wa{background:#e3f6e8;color:#1c7a3e}
+.btn-call{background:var(--sky-tint);color:var(--sky-text)}
+.ring{--p:60;width:62px;height:62px;border-radius:50%;background:conic-gradient(var(--olive) calc(var(--p)*1%),#e6e8ef 0);display:grid;place-items:center;flex:none}
+.ring span{width:48px;height:48px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:900;color:var(--navy);font-size:14px}
+.dateblock{width:50px;border-radius:12px;text-align:center;padding:5px 0;flex:none}
+.dateblock b{display:block;font-size:19px;line-height:1.1}
+.dateblock small{font-size:10.5px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px}
+.chip{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:12px;font-weight:700;padding:5px 11px;color:var(--navy);cursor:pointer;user-select:none}
+.chip.on{background:var(--olive-tint);border-color:#cfd98a;color:var(--olive-text)}
+.search{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;color:var(--muted);font-size:13px;margin-bottom:8px}
+.fab{position:absolute;bottom:14px;inset-inline-end:14px;background:var(--gold);color:#3a2905;font-weight:900;border-radius:16px;padding:11px 16px;box-shadow:0 6px 18px rgba(232,169,59,.45);font-size:13px}
+.snack{position:absolute;bottom:12px;inset-inline:12px;background:#243255;color:#fff;border-radius:12px;padding:10px 12px;display:flex;align-items:center;font-size:13px;opacity:0;transform:translateY(12px);transition:.25s;pointer-events:none}
+.snack.show{opacity:1;transform:none;pointer-events:auto}
+.snack u{margin-inline-start:auto;color:var(--gold);font-weight:800;text-decoration:none;cursor:pointer}
+.sw{position:relative;overflow:hidden;border-radius:16px;margin-bottom:8px}
+.sw .acts{position:absolute;inset:0;display:flex;align-items:stretch;justify-content:flex-start}
+.sw .acts div{width:64px;display:grid;place-items:center;font-size:20px}
+.sw .front{position:relative;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:10px;transition:transform .3s}
+.sw.open .front{transform:translateX(130px)}
+.act{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#f0f2f8;font-size:15px;cursor:pointer;border:0}
+.med{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:13px}
+.set-g{margin:14px 0 6px;font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.3px}
+.set-i{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.set-i:last-child{border:0}
+.tog{width:40px;height:23px;border-radius:14px;background:#cfd4e2;position:relative;cursor:pointer;flex:none;transition:.2s}
+.tog:after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.2s}
+.tog.on{background:var(--olive)}
+.tog.on:after{inset-inline-start:20px}
+.hero{background:linear-gradient(160deg,var(--navy-dark),var(--navy-light));color:#fff;padding:16px 16px 14px;text-align:center}
+.hero .av{width:74px;height:74px;border-radius:50%;margin:0 auto 8px;background:var(--coral-tint);color:var(--coral-text);display:grid;place-items:center;font-size:30px;font-weight:900;border:3px solid rgba(255,255,255,.5)}
+.hero .acts{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.hero .acts button{flex:1;border:0;border-radius:14px;padding:9px 4px;font:inherit;font-weight:800;font-size:12.5px;cursor:pointer;background:rgba(255,255,255,.16);color:#fff}
+.skel{background:linear-gradient(90deg,#e7e9f1,#f4f5fa,#e7e9f1);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:8px}
+@keyframes sh{to{background-position:-200% 0}}
+.okpop{width:78px;height:78px;border-radius:50%;background:var(--success-tint);display:grid;place-items:center;margin:8px auto;transform:scale(0)}
+.okpop.go{animation:pop .6s forwards}
+@keyframes pop{60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.okpop svg{width:42px;height:42px;stroke:var(--success);stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:50;stroke-dashoffset:50}
+.okpop.go svg{animation:dash .5s .25s forwards}
+@keyframes dash{to{stroke-dashoffset:0}}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
+.compare div{border-radius:10px;padding:8px}
+.compare .b{background:var(--danger-tint)}
+.compare .a{background:var(--success-tint)}
+footer{padding:26px 16px 40px;text-align:center;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>سبتاوية — نموذج تصميم الشاشات المقترحة</h1>
+  <p>نموذج تفاعلي للتحسينات المقترحة في باقي التطبيق (ما عدا الشاشات اللي اتعدّلت فعلاً). اضغط واسحب وجرّب جوه كل موبايل. ده تصميم مقترح مش النسخة الشغّالة.</p>
+</header>
+<nav class="chip-nav">
+  <a href="#home">الرئيسية</a><a href="#children">المخدومين</a><a href="#profile">ملف المخدوم</a><a href="#attendance">الحضور</a>
+  <a href="#reports">التقارير</a><a href="#followup">متابعة الغياب</a><a href="#calendar">التقويم والنشاطات</a><a href="#settings">الإعدادات</a><a href="#parts">المكوّنات والإحساس</a>
+</nav>
+
+<!-- 1 HOME -->
+<section class="proto" id="home">
+  <div class="notes">
+    <span class="tag">اقتراح 7 — الرئيسية للأمين</span>
+    <h2>الرئيسية: شريط «محتاج متابعة»</h2>
+    <ul>
+      <li>صف رفيع فيه الأرقام اللي محتاجة تصرّف: الغياب، البيانات الناقصة، التحضيرات المستنية، طلبات الانضمام.</li>
+      <li>كل رقم بيفتح شاشته على طول، من غير ما تدخل «المزيد».</li>
+      <li>كارت «درس السبت الجاي» بيوري حالة كل فصل (سجّل / لسه).</li>
+    </ul>
+    <div class="try">جرّب: اضغط على أي رقم في الشريط.</div>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span>🔍</span><span>🔔</span><span class="sp"></span><span>سبتاوية</span></div>
+    <div class="body">
+      <div class="card" style="background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;border:0">
+        <div style="font-size:13px;opacity:.85">صباح الخير يا مينا 👋</div>
+        <div style="font-weight:900;font-size:17px">سنة 2026 / 2027</div>
+        <div class="row" style="margin-top:10px;text-align:center">
+          <div class="sp"><b style="font-size:20px">80</b><div style="font-size:11px;opacity:.8">مخدوم</div></div>
+          <div class="sp"><b style="font-size:20px">8</b><div style="font-size:11px;opacity:.8">فصول</div></div>
+          <div class="sp"><b style="font-size:20px">12</b><div style="font-size:11px;opacity:.8">خدام</div></div>
+          <div class="sp"><b style="font-size:20px">2</b><div style="font-size:11px;opacity:.8">أمناء</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h4>⚠️ محتاج متابعة</h4>
+        <div class="row" style="flex-wrap:wrap;gap:8px" id="attn">
+          <span class="pill p-coral" style="padding:7px 12px;cursor:pointer" onclick="flash(this)">📞 غياب متكرر · 77</span>
+          <span class="pill p-gold" style="padding:7px 12px;cursor:pointer" onclick="flash(this)">📝 بيانات ناقصة · 80</span>
+          <span class="pill p-sky" style="padding:7px 12px;cursor:pointer" onclick="flash(this)">📋 تحضيرات · 3</span>
+          <span class="pill p-olive" style="padding:7px 12px;cursor:pointer" onclick="flash(this)">👤 طلبات انضمام · 1</span>
+        </div>
+      </div>
+      <div class="card">
+        <h4>📖 درس السبت الجاي</h4>
+        <div class="muted">هاتور - الأسبوع 3 • 28 نوفمبر</div>
+        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+          <span class="pill p-success">5 ولاد ✓</span><span class="pill p-success">5 بنات ✓</span><span class="pill p-gold">6 ولاد · لسه</span><span class="pill p-gold">6 بنات · لسه</span>
+        </div>
+      </div>
+      <div class="card">
+        <h4>📈 الحضور كل سبت</h4>
+        <div class="row" style="align-items:flex-end;height:70px;gap:7px">
+          <div class="sp" style="height:35%;background:var(--coral);border-radius:6px"></div><div class="sp" style="height:52%;background:var(--gold);border-radius:6px"></div>
+          <div class="sp" style="height:70%;background:var(--olive);border-radius:6px"></div><div class="sp" style="height:64%;background:var(--olive);border-radius:6px"></div>
+          <div class="sp" style="height:88%;background:var(--success);border-radius:6px"></div><div class="sp" style="height:13%;background:#dcdfe9;border-radius:6px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom"><div class="on"><b>🏠</b>الرئيسية</div><div><b>🏫</b>الفصول</div><div><b>👥</b>المخدومين</div><div><b>✅</b>الحضور</div><div><b>⋯</b>المزيد</div></div>
+  </div>
+</section>
+
+<!-- 2 CHILDREN -->
+<section class="proto" id="children">
+  <div class="notes">
+    <span class="tag">اقتراح 6 — قائمة المخدومين</span>
+    <h2>المخدومين: اسحب للاتصال + فلاتر سريعة</h2>
+    <ul>
+      <li>اسحب الصف يمين: اتصال وواتساب من غير ما تفتح الملف.</li>
+      <li>شرايح سريعة: غايب، عيد ميلاده الشهر ده، بيانات ناقصة.</li>
+      <li>لون الأفاتار حسب لون الفصل، وسطر تاني بآخر حضور.</li>
+    </ul>
+    <div class="try">جرّب: اضغط على الصف الأول عشان تشوف الأزرار.</div>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span>🔍</span><span>🔔</span><span class="sp"></span><span>المخدومين</span></div>
+    <div class="body">
+      <div class="search">🔍 ابحث بالاسم أو الموبايل أو الكود</div>
+      <div class="chips" id="cchips">
+        <div class="chip on" onclick="chipOne(this,'cchips')">الكل 80</div><div class="chip" onclick="chipOne(this,'cchips')">أولاد</div><div class="chip" onclick="chipOne(this,'cchips')">بنات</div>
+        <div class="chip" onclick="chipOne(this,'cchips')">غايب 🔴</div><div class="chip" onclick="chipOne(this,'cchips')">عيد ميلاده الشهر ده 🎂</div><div class="chip" onclick="chipOne(this,'cchips')">بيانات ناقصة</div>
+      </div>
+      <div class="sw" onclick="this.classList.toggle('open')">
+        <div class="acts"><div style="background:#1c7a3e;color:#fff">💬</div><div style="background:var(--sky);color:#fff">📞</div></div>
+        <div class="front"><div class="avatar" style="background:var(--coral-tint);color:var(--coral-text)">إ</div>
+          <div class="sp"><b>إيريني رأفت</b><div class="muted">5 بنات • آخر حضور من 3 سبوت</div></div><span class="pill p-coral">غايبة 3</span></div>
+      </div>
+      <div class="sw"><div class="front"><div class="avatar" style="background:var(--sky-tint);color:var(--sky-text)">م</div>
+        <div class="sp"><b>مينا جورج</b><div class="muted">5 ولاد • حضر السبت اللي فات</div></div><span class="pill p-olive">🔥 5</span></div></div>
+      <div class="sw"><div class="front"><div class="avatar" style="background:var(--gold-tint);color:var(--gold-text)">ج</div>
+        <div class="sp"><b>جوليا سامي</b><div class="muted">6 بنات • عيد ميلادها بكرة 🎂</div></div><span class="pill p-gold">بيانات ناقصة</span></div></div>
+      <div class="sw"><div class="front"><div class="avatar" style="background:var(--olive-tint);color:var(--olive-text)">د</div>
+        <div class="sp"><b>دميانة فادي</b><div class="muted">6 بنات • حضر السبت اللي فات</div></div><span class="pill p-success">100%</span></div></div>
+      <div class="fab">＋ إضافة مخدوم</div>
+    </div>
+    <div class="bottom"><div><b>🏠</b>الرئيسية</div><div><b>🏫</b>الفصول</div><div class="on"><b>👥</b>المخدومين</div><div><b>✅</b>الحضور</div><div><b>⋯</b>المزيد</div></div>
+  </div>
+</section>
+
+<!-- 3 PROFILE -->
+<section class="proto" id="profile">
+  <div class="notes">
+    <span class="tag">اقتراح 13 — ملف المخدوم</span>
+    <h2>ملف المخدوم: هيدر فيه كل حاجة</h2>
+    <ul>
+      <li>الصورة، الفصل، المستوى (نبتة) وشريط الطايو للمستوى اللي بعده.</li>
+      <li>أزرار اتصال / واتساب / افتقاد ثابتة تحت الاسم، مش مدفونة في تاب.</li>
+      <li>التابات تحت الهيدر زي ما هي (نظرة عامة، الحضور، البيانات، المتابعة).</li>
+    </ul>
+  </div>
+  <div class="phone">
+    <div class="hero">
+      <div class="av">إ</div>
+      <div style="font-weight:900;font-size:19px">إيريني رأفت تجريبي</div>
+      <div style="opacity:.85;font-size:13px">5 بنات • 11 سنة</div>
+      <div class="card" style="margin:12px 0 0;text-align:right;background:rgba(255,255,255,.13);border:0;color:#fff">
+        <div class="row"><span>🌱 <b>نبتة</b></span><span class="sp"></span><span style="font-size:13px">135 طايو</span></div>
+        <div class="bar" style="background:rgba(255,255,255,.25);margin:7px 0 4px"><i style="width:68%;background:var(--gold)"></i></div>
+        <div style="font-size:12px;opacity:.9">باقي 65 طايو وتبقى «شجرة»</div>
+      </div>
+      <div class="acts"><button>📞 اتصال</button><button>💬 واتساب</button><button>🏠 افتقاد</button></div>
+    </div>
+    <div class="tabs" style="background:#fff;border-bottom:1px solid var(--line)"><div class="on" style="color:var(--navy);border-color:var(--navy)">نظرة عامة</div><div style="color:var(--muted)">الحضور</div><div style="color:var(--muted)">البيانات</div><div style="color:var(--muted)">المتابعة</div></div>
+    <div class="body" style="min-height:300px">
+      <div class="card"><h4>✅ حضور السنة</h4><div class="row"><div class="ring" style="--p:82"><span>82%</span></div><div class="sp"><b>حضر 9 من 11 سبت</b><div class="muted">آخر حضور: السبت اللي فات</div></div></div></div>
+      <div class="card"><h4>🏅 الأوسمة</h4><div class="row" style="gap:8px"><div class="med" style="background:var(--gold-tint)">🔥</div><div class="med" style="background:var(--sky-tint)">⛪</div><div class="med" style="background:#eee;opacity:.5">🔒</div><div class="med" style="background:#eee;opacity:.5">🔒</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 ATTENDANCE -->
+<section class="proto" id="attendance">
+  <div class="notes">
+    <span class="tag">اقتراح 12 — الحضور (الشاشة الأهم)</span>
+    <h2>الحضور: شريط ملخص ثابت + «الكل حاضر» مع تراجع</h2>
+    <ul>
+      <li>شريط ثابت فوق: «حاضر 12 من 18» وتقدّم الحفظ، بيفضل ظاهر وانت بتنزل.</li>
+      <li>زر «الكل حاضر» واحد، ولو غلطت بتتراجع من الشريط التحتاني.</li>
+      <li>الممارسات الأربعة أزرار واضحة بحجم 44px، واللمسة بتعمل هزّة خفيفة.</li>
+    </ul>
+    <div class="try">جرّب: اضغط على الممارسات، أو «الكل حاضر» ثم «تراجع».</div>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span>🔍</span><span class="sp"></span><span>الحضور</span></div>
+    <div class="body" id="att" style="padding-top:0">
+      <div style="position:sticky;top:0;background:var(--surface);padding:10px 0 8px;z-index:3">
+        <div class="row"><b id="attn1">حاضر 0 من 4</b><span class="sp"></span><span class="pill p-olive" id="attpct">0%</span></div>
+        <div class="bar" style="margin:6px 0 8px"><i id="attbar" style="width:0;background:var(--olive)"></i></div>
+        <div class="row"><span class="muted">السبت 28 نوفمبر • 5 بنات</span><span class="sp"></span><button class="btn btn-soft" onclick="allPresent()">✓ الكل حاضر</button></div>
+      </div>
+      <div id="attlist"></div>
+      <div class="snack" id="snack">اتعلّم الكل حاضر <u onclick="undoAll()">تراجع</u></div>
+    </div>
+    <div class="bottom"><div><b>🏠</b>الرئيسية</div><div><b>🏫</b>الفصول</div><div><b>👥</b>المخدومين</div><div class="on"><b>✅</b>الحضور</div><div><b>⋯</b>المزيد</div></div>
+  </div>
+</section>
+
+<!-- 5 REPORTS -->
+<section class="proto" id="reports">
+  <div class="notes">
+    <span class="tag">اقتراح 8 — التقارير</span>
+    <h2>التقارير: الخلاصة الأول</h2>
+    <ul>
+      <li>كارت فوق: نسبة الحضور، إجمالي الطايوهات، عدد المخدومين.</li>
+      <li>منصّة لأول 3 بدل ما يبقوا سطور عادية.</li>
+      <li>الفلاتر مطويّة في صف واحد زي دلوقتي، والتابات تحت.</li>
+    </ul>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span>⤴</span><span class="sp"></span><span>التقارير</span></div>
+    <div class="tabs"><div class="on">العام</div><div>الفصول</div><div>الشهري</div><div>الممارسات الروحية</div></div>
+    <div class="body">
+      <div class="card"><div class="row" style="text-align:center">
+        <div class="sp"><b style="font-size:22px;color:var(--success)">78%</b><div class="muted">نسبة الحضور</div></div>
+        <div class="sp"><b style="font-size:22px;color:var(--gold-text)">1,240</b><div class="muted">طايوهات</div></div>
+        <div class="sp"><b style="font-size:22px;color:var(--navy)">80</b><div class="muted">مخدوم</div></div></div></div>
+      <div class="row" style="align-items:flex-end;justify-content:center;gap:8px;margin:6px 0 12px">
+        <div style="text-align:center"><div class="med" style="margin:auto;background:#e4e7ee;color:#566">2</div><div style="font-size:12px;font-weight:800">جوليا</div><div style="background:#e4e7ee;height:46px;width:76px;border-radius:10px 10px 0 0;display:grid;place-items:center;font-weight:900">170</div></div>
+        <div style="text-align:center"><div class="med" style="margin:auto;background:var(--gold);color:#fff">1</div><div style="font-size:12px;font-weight:800">إيريني</div><div style="background:var(--gold-tint);height:70px;width:84px;border-radius:10px 10px 0 0;display:grid;place-items:center;font-weight:900;color:var(--gold-text)">185</div></div>
+        <div style="text-align:center"><div class="med" style="margin:auto;background:#f0d8c0;color:#a0612b">3</div><div style="font-size:12px;font-weight:800">دميانة</div><div style="background:#f6e8da;height:36px;width:76px;border-radius:10px 10px 0 0;display:grid;place-items:center;font-weight:900;color:#a0612b">150</div></div>
+      </div>
+      <div class="card row"><div class="med" style="background:#eef0f6">4</div><div class="sp"><b>سارة نبيل</b><div class="bar" style="margin-top:5px"><i style="width:80%;background:var(--olive)"></i></div></div><b>140 طايو</b></div>
+      <div class="card row"><div class="med" style="background:#eef0f6">5</div><div class="sp"><b>فيرينا رأفت</b><div class="bar" style="margin-top:5px"><i style="width:70%;background:var(--olive)"></i></div></div><b>125 طايو</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 FOLLOW-UP -->
+<section class="proto" id="followup">
+  <div class="notes">
+    <span class="tag">اقتراح 9 — متابعة الغياب</span>
+    <h2>متابعة الغياب: شريط تقدّم «اتفتقد النهارده»</h2>
+    <ul>
+      <li>تحس إنك بتخلّص: «اتفتقد 1 من 4» والشريط بيتملّي.</li>
+      <li>أول ما تضغط «تم الافتقاد» الكارت بيروح للأسفل مع علامة ✓.</li>
+      <li>الاتصال والواتساب في نفس الكارت.</li>
+    </ul>
+    <div class="try">جرّب: اضغط «تم الافتقاد».</div>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span>⤴</span><span class="sp"></span><span>متابعة الغياب</span></div>
+    <div class="body" id="fu">
+      <div class="card"><div class="row"><b id="fucount">اتفتقد 0 من 4 النهارده</b></div><div class="bar" style="margin-top:7px"><i id="fubar" style="width:0;background:var(--success)"></i></div></div>
+      <div class="chips"><div class="chip on">2 سبوت</div><div class="chip">3</div><div class="chip">4+</div></div>
+      <div id="fulist"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 CALENDAR -->
+<section class="proto" id="calendar">
+  <div class="notes">
+    <span class="tag">اقتراح 10 — التقويم والنشاطات</span>
+    <h2>التقويم والنشاطات بنفس كروت التاريخ</h2>
+    <ul>
+      <li>نفس مكعّب التاريخ (رقم اليوم فوق الشهر) اللي في المسابقات والدروس.</li>
+      <li>على النشاطات: شارة «3 لسه ما دفعوش» تظهر مباشرة في القائمة.</li>
+      <li>لون المكعّب بيفرّق النوع: ميلاد 🎂 ذهبي، نشاط أخضر، رحلة سماوي.</li>
+    </ul>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span>⤴</span><span class="sp"></span><span>نشاطات ترفيهية</span></div>
+    <div class="body">
+      <div class="card row"><div class="dateblock" style="background:var(--sky-tint);color:var(--sky-text)"><b>28</b><small>نوفمبر</small></div>
+        <div class="sp"><b>رحلة تجريبية</b><div class="muted">السبت • الأسبوع الجاي</div><div class="bar" style="margin-top:6px"><i style="width:35%;background:var(--olive)"></i></div></div>
+        <div style="text-align:left"><span class="pill p-coral">3 لسه ما دفعوش</span><div class="muted" style="margin-top:3px">59 / 8000 ج.م</div></div></div>
+      <div class="card row"><div class="dateblock" style="background:var(--gold-tint);color:var(--gold-text)"><b>5</b><small>ديسمبر</small></div>
+        <div class="sp"><b>حفلة الميلاد</b><div class="muted">السبت</div></div><span class="pill p-success">كله دفع ✓</span></div>
+      <div class="card row" style="opacity:.65"><div class="dateblock" style="background:#eceef4;color:var(--muted)"><b>14</b><small>نوفمبر</small></div>
+        <div class="sp"><b>يوم رياضي</b><div class="muted">عدّى</div></div><span class="pill p-olive">خلص</span></div>
+      <div class="fab">＋ إضافة نشاط</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 SETTINGS -->
+<section class="proto" id="settings">
+  <div class="notes">
+    <span class="tag">اقتراح 11 — الإعدادات</span>
+    <h2>الإعدادات: مجموعات واضحة</h2>
+    <ul>
+      <li>«الحساب»، «التطبيق»، «سنة الحضور» (للأمين بس) بدل كروت متفرقة.</li>
+      <li>المفاتيح بتتبدّل في مكانها، وتفضل محفوظة.</li>
+      <li>تغيير كلمة المرور وتسجيل الخروج تحت الحساب مباشرة.</li>
+    </ul>
+    <div class="try">جرّب: اضغط المفاتيح.</div>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span>⤴</span><span class="sp"></span><span>الإعدادات</span></div>
+    <div class="body">
+      <div class="card row"><div class="avatar" style="background:var(--navy);color:#fff;width:46px;height:46px">م</div><div class="sp"><b>مينا فادي</b><div class="muted">أمين الخدمة • mina@example.com</div></div><span class="muted">تعديل ›</span></div>
+      <div class="set-g">الحساب</div>
+      <div class="card" style="padding:4px 12px"><div class="set-i">🔑<span class="sp">تغيير كلمة المرور</span>›</div><div class="set-i" style="color:var(--danger)">⎋<span class="sp">تسجيل الخروج</span></div></div>
+      <div class="set-g">التطبيق</div>
+      <div class="card" style="padding:4px 12px">
+        <div class="set-i">📞<span class="sp">إظهار اسم المتصل</span><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="set-i">🔔<span class="sp">تنبيهات الغياب</span><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="set-i">🆕<span class="sp">شوف التحديثات</span>›</div>
+        <div class="set-i">🎓<span class="sp">جولة في التطبيق</span>›</div>
+      </div>
+      <div class="set-g">سنة الحضور (للأمين)</div>
+      <div class="card" style="padding:4px 12px"><div class="set-i">📅<span class="sp">2026 / 2027</span><span class="muted">49 سبت</span></div><div class="set-i">⭐<span class="sp">طايوهات كل ممارسة</span><b>5</b></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 PARTS -->
+<section class="proto" id="parts">
+  <div class="notes">
+    <span class="tag">اقتراحات 2–5 — المكوّنات والإحساس</span>
+    <h2>مكوّنات مشتركة وإحساس أفضل</h2>
+    <ul>
+      <li><b>مكوّنات واحدة:</b> مكعّب التاريخ، الأفاتار، الشارة، حلقة النسبة — ملف واحد يستخدمه الكل.</li>
+      <li><b>هياكل تحميل (Skeleton)</b> في كل القوائم بدل الدوّارة.</li>
+      <li><b>تأكيد الحفظ:</b> علامة ✓ بتظهر وبتهتز اهتزاز خفيف.</li>
+      <li><b>قراءة أريح:</b> الرمادي الصغير أغمق، وأهداف الضغط 44px على الأقل.</li>
+    </ul>
+    <div class="compare"><div class="b"><b>دلوقتي</b><br>رمادي فاتح 11px · زر 32px · دوّارة</div><div class="a"><b>المقترح</b><br>رمادي أغمق 12px · زر 44px · هيكل تحميل</div></div>
+    <div class="try">جرّب: اضغط «احفظ» تحت.</div>
+  </div>
+  <div class="phone">
+    <div class="appbar"><span class="sp"></span><span>المكوّنات</span></div>
+    <div class="body" style="min-height:520px">
+      <div class="card"><h4>هيكل التحميل</h4>
+        <div class="row" style="margin-bottom:8px"><div class="skel" style="width:38px;height:38px;border-radius:50%"></div><div class="sp"><div class="skel" style="height:12px;width:70%;margin-bottom:6px"></div><div class="skel" style="height:10px;width:45%"></div></div></div>
+        <div class="row"><div class="skel" style="width:38px;height:38px;border-radius:50%"></div><div class="sp"><div class="skel" style="height:12px;width:60%;margin-bottom:6px"></div><div class="skel" style="height:10px;width:35%"></div></div></div></div>
+      <div class="card" style="text-align:center"><h4 style="justify-content:center">تأكيد الحفظ</h4>
+        <div class="okpop" id="okpop"><svg viewBox="0 0 48 48"><path d="M10 25l9 9 19-20"/></svg></div>
+        <div class="muted" id="oktxt">اضغط احفظ</div>
+        <button class="btn btn-navy" style="margin-top:8px;min-height:44px;min-width:130px" onclick="saveDemo()">احفظ الحضور</button></div>
+      <div class="card"><h4>مكوّنات</h4>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><div class="dateblock" style="background:var(--olive-tint);color:var(--olive-text)"><b>14</b><small>نوفمبر</small></div>
+          <div class="avatar" style="background:var(--coral-tint);color:var(--coral-text)">إ</div><span class="pill p-gold">شارة</span><div class="ring" style="--p:72;width:48px;height:48px"><span style="width:36px;height:36px;font-size:11px">72%</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<footer>نموذج تصميم للمراجعة فقط — مش جزء من التطبيق الشغّال. الألوان والأسماء من هوية سبتاوية الحالية.</footer>
+
+<script>
+function chipOne(el,id){document.querySelectorAll('#'+id+' .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on')}
+function flash(el){el.style.transform='scale(.94)';setTimeout(()=>el.style.transform='',160)}
+/* attendance */
+const kids=['إيريني رأفت','جوليا سامي','دميانة فادي','سارة نبيل'];
+const acts=['مدارس الأحد','عشية','قداس','اعتراف'];
+let marks=kids.map(()=>[false,false,false,false]);let prev=null;
+function renderAtt(){
+  const list=document.getElementById('attlist');list.innerHTML='';
+  kids.forEach((k,i)=>{
+    const d=document.createElement('div');d.className='card';
+    d.innerHTML='<div class="row"><div class="avatar" style="background:var(--olive-tint);color:var(--olive-text)">'+k[0]+'</div><b class="sp">'+k+'</b><span class="pill '+(marks[i].some(Boolean)?'p-success':'p-danger')+'">'+(marks[i].some(Boolean)?'حاضر':'غايب')+'</span></div><div class="row" style="margin-top:9px;gap:6px">'+
+      acts.map((a,j)=>'<button class="btn" style="flex:1;min-height:44px;padding:4px;font-size:11.5px;'+(marks[i][j]?'background:var(--olive);color:#fff':'background:#eef0f6;color:#44506b')+'" onclick="tap('+i+','+j+')">'+a+'</button>').join('')+'</div>';
+    list.appendChild(d)});
+  const present=marks.filter(m=>m.some(Boolean)).length;
+  document.getElementById('attn1').textContent='حاضر '+present+' من '+kids.length;
+  const pct=Math.round(present/kids.length*100);
+  document.getElementById('attpct').textContent=pct+'%';document.getElementById('attbar').style.width=pct+'%';
+}
+function tap(i,j){marks[i][j]=!marks[i][j];if(navigator.vibrate)navigator.vibrate(10);renderAtt()}
+function allPresent(){prev=JSON.stringify(marks);marks=kids.map(()=>[true,true,true,false]);renderAtt();const s=document.getElementById('snack');s.classList.add('show');setTimeout(()=>s.classList.remove('show'),4500)}
+function undoAll(){if(prev){marks=JSON.parse(prev);renderAtt()}document.getElementById('snack').classList.remove('show')}
+renderAtt();
+/* follow-up */
+const fu=[['أندرو مينا','5 ولاد','3 سبوت'],['ماريا جرجس','6 بنات','2 سبوت'],['كيرلس هاني','5 ولاد','2 سبوت'],['مريم عادل','6 بنات','4 سبوت']];
+let done=new Set();
+function renderFu(){
+  const l=document.getElementById('fulist');l.innerHTML='';
+  const order=[...fu.keys()].sort((a,b)=>done.has(a)-done.has(b));
+  order.forEach(i=>{const [n,c,s]=fu[i];const d=document.createElement('div');d.className='card';d.style.opacity=done.has(i)?.6:1;
+    d.innerHTML='<div class="row"><div class="avatar" style="background:var(--coral-tint);color:var(--coral-text)">'+n[0]+'</div><div class="sp"><b>'+n+'</b><div class="muted">'+c+' • غايب '+s+'</div></div>'+(done.has(i)?'<span class="pill p-success">اتفتقد ✓</span>':'<span class="pill p-coral">محتاج</span>')+'</div>'+
+    (done.has(i)?'':'<div class="row" style="margin-top:9px"><button class="btn btn-call sp">📞 اتصال</button><button class="btn btn-wa sp">💬 واتساب</button><button class="btn btn-navy sp" onclick="markFu('+i+')">تم الافتقاد</button></div>');
+    l.appendChild(d)});
+  document.getElementById('fucount').textContent='اتفتقد '+done.size+' من '+fu.length+' النهارده';
+  document.getElementById('fubar').style.width=(done.size/fu.length*100)+'%';
+}
+function markFu(i){done.add(i);renderFu()}
+renderFu();
+function saveDemo(){const p=document.getElementById('okpop');p.classList.remove('go');void p.offsetWidth;p.classList.add('go');document.getElementById('oktxt').textContent='اتسجّل الحضور ✓';if(navigator.vibrate)navigator.vibrate(18)}
+</script>
+</body>
+</html>

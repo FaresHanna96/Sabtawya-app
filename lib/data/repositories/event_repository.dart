@@ -43,7 +43,7 @@ class EventRepository {
   }) async {
     try {
       final userId = Db.userId;
-      if (userId == null) throw AppFailure('لم يتم التحقق من الهوية');
+      if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
       final data = await Db.client
           .from(Db.tEvents)
           .insert({
@@ -159,7 +159,7 @@ class EventRepository {
   }) async {
     try {
       final userId = Db.userId;
-      if (userId == null) throw AppFailure('لم يتم التحقق من الهوية');
+      if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
       await Db.client.from(Db.tEventPayments).insert({
         'event_id': eventId,
         'child_id': childId,
@@ -197,7 +197,7 @@ class EventRepository {
           .eq('child_id', childId)
           .select('child_id');
       if (rows(deleted).isEmpty) {
-        throw AppFailure('لا يمكنك إلغاء هذا الحجز (سجّله خادم آخر)');
+        throw AppFailure('ما ينفعش تلغي الحجز ده (سجّله خادم تاني)');
       }
     } catch (e) {
       throw AppFailure.from(e);

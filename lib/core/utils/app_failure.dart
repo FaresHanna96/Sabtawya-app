@@ -36,7 +36,7 @@ class AppFailure implements Exception {
       }
       if (message.contains('email not confirmed')) {
         return AppFailure(
-          'لم يتم تأكيد البريد الإلكتروني بعد.',
+          'البريد الإلكتروني لسه ما اتأكدش.',
           code: error.statusCode,
         );
       }
@@ -72,7 +72,7 @@ class AppFailure implements Exception {
           return AppFailure('هذه البيانات موجودة بالفعل.', code: error.code);
         case '23503': // foreign_key_violation
           return AppFailure(
-            'لا يمكن إتمام العملية لوجود بيانات مرتبطة.',
+            'ما ينفعش تتم العملية لأن فيه بيانات مرتبطة.',
             code: error.code,
           );
         case '23514': // check_violation, raised by our integrity triggers

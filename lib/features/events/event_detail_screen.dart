@@ -345,7 +345,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         return const Center(
                           child: EmptyState(
                             icon: Icons.payments_outlined,
-                            title: 'لا يوجد',
+                            title: 'مفيش',
                             body: '',
                           ),
                         );

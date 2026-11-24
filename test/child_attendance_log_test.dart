@@ -168,8 +168,8 @@ void main() {
 
       expect(find.text('نوفمبر 2026'), findsOneWidget);
       expect(find.text('حضر 1 من 2'), findsOneWidget);
-      expect(find.text('20 طايو · سبت لم يُسجَّل'), findsOneWidget);
-      expect(find.text('5 طايو · 4 سبوت لم تُسجَّل'), findsOneWidget);
+      expect(find.text('20 طايو · سبت ما اتسجّلش'), findsOneWidget);
+      expect(find.text('5 طايو · 4 سبوت ما اتسجّلوش'), findsOneWidget);
     });
 
     testWidgets('each badge adds 10 to the year and to the month it was earned',
@@ -200,15 +200,15 @@ void main() {
         ),
       ));
       expect(find.text('35'), findsOneWidget); // 25 + 10
-      expect(find.text('30 طايو · سبت لم يُسجَّل'), findsOneWidget); // Nov
-      expect(find.text('5 طايو · 4 سبوت لم تُسجَّل'), findsOneWidget); // Oct
+      expect(find.text('30 طايو · سبت ما اتسجّلش'), findsOneWidget); // Nov
+      expect(find.text('5 طايو · 4 سبوت ما اتسجّلوش'), findsOneWidget); // Oct
     });
 
     testWidgets('a Saturday nobody recorded is not listed', (tester) async {
       await tester.pumpWidget(app());
       expect(find.text('14 نوفمبر'), findsOneWidget);
       expect(find.text('21 نوفمبر'), findsNothing);
-      expect(find.text('لم يُسجَّل'), findsNothing);
+      expect(find.text('ما اتسجّلش'), findsNothing);
     });
 
     testWidgets('only the newest month starts open; a tap opens another',

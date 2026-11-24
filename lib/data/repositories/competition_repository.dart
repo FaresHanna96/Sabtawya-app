@@ -26,7 +26,7 @@ class CompetitionRepository {
   }) async {
     try {
       final userId = Db.userId;
-      if (userId == null) throw AppFailure('لم يتم التحقق من الهوية');
+      if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
       final data = await Db.client
           .from(Db.tCompetitions)
           .insert({
@@ -119,7 +119,7 @@ class CompetitionRepository {
       String competitionId, String childId, int mark) async {
     try {
       final userId = Db.userId;
-      if (userId == null) throw AppFailure('لم يتم التحقق من الهوية');
+      if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
       await Db.client.from(Db.tCompetitionMarks).upsert(
         {
           'competition_id': competitionId,

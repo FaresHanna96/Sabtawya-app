@@ -81,7 +81,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(ListTile), findsNothing);
-    expect(find.text('لا توجد نتائج'), findsOneWidget);
+    expect(find.text('مفيش نتايج'), findsOneWidget);
   });
 
   testWidgets('tapping a child closes the sheet with that child',

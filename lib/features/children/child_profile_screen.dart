@@ -79,7 +79,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
     final child = await _children.byId(widget.childId);
     if (child == null) {
-      throw AppFailure('لم يتم العثور على المخدوم');
+      throw AppFailure('مش لاقيين المخدوم');
     }
 
     // Trips and competitions: extras on نظرة عامة, left out when they fail.

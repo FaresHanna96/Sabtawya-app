@@ -179,7 +179,7 @@ void main() {
           onRecord: () => opened++,
         ),
       )));
-      expect(find.text('لم يُسجَّل حضور 21 نوفمبر بعد'), findsOneWidget);
+      expect(find.text('لسه ما اتسجّلش حضور 21 نوفمبر'), findsOneWidget);
       await tester.tap(find.text(AppStrings.recordNow));
       expect(opened, 1);
     });

@@ -60,7 +60,7 @@ void main() {
         save: (_, __) async {},
       )));
       await tester.pumpAndSettle();
-      expect(find.text('لا توجد ملاحظات'), findsOneWidget);
+      expect(find.text('مفيش ملاحظات'), findsOneWidget);
     });
 
     testWidgets('editing shows a cancel and a save button that fit',
@@ -95,7 +95,7 @@ void main() {
         save: (_, __) async {},
       )));
       await tester.pumpAndSettle();
-      expect(find.text('لا توجد ملاحظات'), findsNothing);
+      expect(find.text('مفيش ملاحظات'), findsNothing);
       await tester.tap(find.byIcon(Icons.refresh));
       await tester.pumpAndSettle();
       expect(find.text('ربو'), findsOneWidget);
