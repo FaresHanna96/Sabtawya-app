@@ -154,6 +154,22 @@ void main() {
       expect(badge(y, ServantBadge.greatPrep).earned, isTrue);
     });
 
+    test('تحضير متميّز: a prep on a no-lesson Saturday does not count', () {
+      // _sats[0] was marked إجازة: it is not among the held Saturdays.
+      final held = _sats.skip(1).toList();
+      final y = ServantYear(
+        heldSaturdays: held,
+        marks: const [],
+        preps: [
+          for (final d in _sats.take(5)) _p('a', d, status: 'accepted'),
+        ],
+        today: DateTime(2026, 11, 22),
+      );
+      final b = badge(y, ServantBadge.greatPrep);
+      expect(b.earned, isFalse);
+      expect(b.progress, 4);
+    });
+
     test('اجتماع ثابت: every Saturday of a finished month', () {
       final y = _year(marks: [
         for (final d in _sats.where((d) => d.month == 10))

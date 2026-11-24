@@ -124,6 +124,8 @@ class ServantActivityRepository {
               'reviewed_at, created_at, shared_at, '
               'attendance_sessions!inner(session_date, classes(name))')
           .eq('servant_id', Db.userId!)
+          // A Saturday marked إجازة / نشاط ترفيهي counts for nothing.
+          .eq('attendance_sessions.is_break', false)
           .order('created_at', ascending: false);
       return rows(data).map(LessonPrep.fromMap).toList();
     } catch (e) {
@@ -190,6 +192,7 @@ class ServantActivityRepository {
           .from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .eq('servant_id', servantId)
+          .eq('attendance_sessions.is_break', false)
           .order('created_at', ascending: false);
       return rows(data).map(LessonPrep.fromMap).toList();
     } catch (e) {
@@ -217,6 +220,7 @@ class ServantActivityRepository {
       final data = await Db.client
           .from(Db.tServantLessonPreps)
           .select(_prepSelect)
+          .eq('attendance_sessions.is_break', false)
           .order('created_at', ascending: false)
           .limit(limit);
       return rows(data).map(LessonPrep.fromMap).toList();
@@ -621,11 +625,21 @@ class ServantActivityRepository {
       final attData = await Db.client
           .from(Db.tServantAttendances)
           .select(
-            'servant_id, activity_type, '
+            'servant_id, activity_type, date, '
             'profiles!servant_attendances_servant_id_fkey(full_name)',
           )
           .gte('date', from)
           .lte('date', to);
+
+      // Days marked إجازة / نشاط ترفيهي count for nothing.
+      final breakDays = {
+        for (final b in rows(await Db.client
+            .from(Db.tLessonBreaks)
+            .select('break_date')
+            .gte('break_date', from)
+            .lte('break_date', to)))
+          b['break_date']?.toString(),
+      };
 
       // Sessions in this month
       final sessionData = await Db.client
@@ -653,6 +667,7 @@ class ServantActivityRepository {
       final Map<String, _MonthBuilder> map = {};
 
       for (final row in rows(attData)) {
+        if (breakDays.contains(row['date']?.toString())) continue;
         final id = row['servant_id'] as String;
         final profile = row['profiles'] as Map<String, dynamic>?;
         final name = profile?['full_name']?.toString() ?? '';
@@ -733,7 +748,7 @@ class ServantActivityRepository {
             'servant_id, status, '
             'attendance_sessions!inner(session_date), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-          );
+          ).eq('attendance_sessions.is_break', false);
       if (from != null) {
         prepQuery =
             prepQuery.gte('attendance_sessions.session_date', isoDate(from));

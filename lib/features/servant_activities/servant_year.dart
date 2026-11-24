@@ -190,8 +190,14 @@ class ServantYear {
   }
 
   ServantBadgeState _greatPrep(String id) {
+    // Only Saturdays held: a prep for a no-lesson day (إجازة / نشاط ترفيهي)
+    // is not in [held] and counts for nothing.
+    final heldKeys = {for (final d in held) _key(d)};
     final accepted = _preps
-        .where((p) => p.servantId == id && p.isAccepted)
+        .where((p) =>
+            p.servantId == id &&
+            p.isAccepted &&
+            heldKeys.contains(_key(p.sessionDate)))
         .map((p) => _key(p.sessionDate))
         .toSet()
         .length;
