@@ -161,6 +161,18 @@ void main() {
           .take(2), ['خادم عام', 'أندرو']);
     });
 
+    test('least prepared first, a خادم عام (no preps) last', () {
+      final names = sortServants(list, ServantSort.leastPrep, held: 8)
+          .map((s) => s.servantName)
+          .toList();
+      expect(names.last, 'خادم عام');
+      final rates = [
+        for (final s in sortServants(list, ServantSort.leastPrep, held: 8))
+          if (s.expectedPreps(8) != null) s.totalPreps / s.expectedPreps(8)!,
+      ];
+      expect(rates, [...rates]..sort());
+    });
+
     test('most waiting for review first, or only those', () {
       expect(
           sortServants(list, ServantSort.pending, held: 8)

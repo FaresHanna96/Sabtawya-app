@@ -1314,6 +1314,7 @@ class _Divider extends StatelessWidget {
 enum ServantSort {
   name(AppStrings.sortServantName),
   lowest(AppStrings.sortServantLowest),
+  leastPrep(AppStrings.sortServantLeastPrep),
   pending(AppStrings.sortServantPending);
 
   const ServantSort(this.label);
@@ -1342,6 +1343,24 @@ List<ServantActivitySummary> sortServants(
     ServantSort.lowest => (a, b) {
         final c =
             (a.averageRate(held) ?? 0).compareTo(b.averageRate(held) ?? 0);
+        return c != 0 ? c : byName(a, b);
+      },
+    // The fewest preps sent of those expected; a servant with no prep to
+    // send (a خادم عام) goes last, as there is nothing to be short of.
+    ServantSort.leastPrep => (a, b) {
+        double? rate(ServantActivitySummary s) {
+          final expected = s.expectedPreps(held);
+          return expected == null || expected == 0
+              ? null
+              : s.totalPreps / expected;
+        }
+
+        final ra = rate(a), rb = rate(b);
+        if (ra == null || rb == null) {
+          if (ra != rb) return ra == null ? 1 : -1;
+          return byName(a, b);
+        }
+        final c = ra.compareTo(rb);
         return c != 0 ? c : byName(a, b);
       },
     ServantSort.pending => (a, b) {

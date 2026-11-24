@@ -1054,6 +1054,7 @@ class AppStrings {
   static const statSaturdays = 'سبت';
   static const sortServantName = 'الاسم';
   static const sortServantLowest = 'الأقل حضوراً';
+  static const sortServantLeastPrep = 'الأقل تحضيراً';
   static const sortServantPending = 'قيد المراجعة';
   static const onlyPendingPreps = 'عندهم تحضير قيد المراجعة';
   static const allServantsCame = 'الكل حضروا';
