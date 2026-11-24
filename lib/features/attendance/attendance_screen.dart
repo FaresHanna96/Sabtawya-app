@@ -1507,7 +1507,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           );
     return LayoutBuilder(
       builder: (context, box) {
-        if (box.maxWidth < 300) {
+        // Side by side leaves the Saturday pill about 90 px (the date was cut
+        // to "21 نو…"), so it stacks on every normal phone width.
+        if (box.maxWidth < 520) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [classes, const SizedBox(height: 8), _dateNavigator()],
@@ -1682,17 +1684,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             size: 16, color: AppColors.navy),
                         const SizedBox(width: 5),
                         Flexible(
-                          child: Text(
-                            _date == null
-                                ? AppStrings.selectSaturday
-                                : '${_date!.day} '
-                                    '${AppDateUtils.monthName(_date!.month)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              height: 1.2,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _date == null
+                                  ? AppStrings.selectSaturday
+                                  : '${_date!.day} '
+                                      '${AppDateUtils.monthName(_date!.month)}',
+                              maxLines: 1,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                              ),
                             ),
                           ),
                         ),
