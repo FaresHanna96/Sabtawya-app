@@ -7,8 +7,10 @@ import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/class_group_header.dart';
+import '../../data/models/badges.dart';
 import '../../data/models/child.dart';
 import '../../data/models/school_class.dart';
+import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/child_repository.dart';
 import '../../state/session_controller.dart';
 import '../excel/import_children_screen.dart';
@@ -38,6 +40,11 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
 
   ChildFilter _filter = const ChildFilter();
 
+  /// Ids of the children who earned the badge picked in the filter; null
+  /// until it has loaded.
+  Set<String>? _badgeHolders;
+  List<ChildBadge>? _schoolBadges;
+
   /// The classes chosen; empty is all of them.
   Set<String> _classFilter = <String>{};
 
@@ -57,6 +64,31 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
     );
     if (_classFilter.length <= 1) return all;
     return all.where((c) => _classFilter.contains(c.classId)).toList();
+  }
+
+  Future<void> _pickBadge(KidBadge? badge) async {
+    if (badge == null) {
+      setState(() => _badgeHolders = null);
+      return;
+    }
+    setState(() => _badgeHolders = null);
+    final yearId = context.read<SessionController>().currentYear?.id;
+    if (yearId == null) return;
+    try {
+      _schoolBadges ??=
+          await const BadgeRepository().forSchool(yearId: yearId);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.badgeFilterLoadFailed)));
+      setState(() => _filter = _filter.copyWith(clearBadge: true));
+      return;
+    }
+    if (!mounted || _filter.badge != badge) return;
+    setState(() => _badgeHolders = {
+          for (final b in _schoolBadges!)
+            if (b.badge == badge && b.earned) b.childId,
+        });
   }
 
   Future<void> _reload() =>
@@ -121,7 +153,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
           key: _sectionKey,
           load: _load,
           builder: (context, all, reload) {
-            final visible = _filter.apply(all);
+            final visible = _filter.apply(all, holders: _badgeHolders);
             final totalVisible = all
                 .where((child) => _filter.includeInactive || child.isActive)
                 .length;
@@ -137,7 +169,9 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                   // Only offer boys / girls when the list holds both.
                   showGender: all.any((c) => c.gender == Gender.boy) &&
                       all.any((c) => c.gender == Gender.girl),
+                  showBadges: session.isAdmin || session.isGeneralServant,
                   onChanged: (next) {
+                    if (next.badge != _filter.badge) _pickBadge(next.badge);
                     final refetch =
                         next.includeInactive != _filter.includeInactive;
                     setState(() => _filter = next);

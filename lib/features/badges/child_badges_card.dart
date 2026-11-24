@@ -522,6 +522,20 @@ class _BadgeDetail extends StatelessWidget {
             badge.badge.rule,
             style: const TextStyle(fontSize: 13, color: AppColors.muted),
           ),
+          if (!earned &&
+              (badge.badge == KidBadge.massMonth ||
+                  badge.badge == KidBadge.vespersMonth) &&
+              badge.progress >= badge.target) ...[
+            const SizedBox(height: 6),
+            Text(
+              AppStrings.badgeMassMonthPending,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
+            ),
+          ],
           if (!earned) ...[
             const SizedBox(height: 8),
             Row(

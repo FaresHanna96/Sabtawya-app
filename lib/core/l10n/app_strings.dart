@@ -27,6 +27,9 @@ class AppStrings {
   static const loading = 'بيتحمّل…';
   static const noData = 'مفيش بيانات';
   static const all = 'الكل';
+  static const badgeFilter = 'شارة';
+  static const allBadges = 'كل الشارات';
+  static const badgeFilterLoadFailed = 'مقدرناش نحمّل الشارات. جرّب تاني.';
   static const active = 'نشط';
   static const inactive = 'غير نشط';
   static const optional = 'اختياري';
@@ -760,9 +763,20 @@ class AppStrings {
   static const badgeStreak4 = 'ملتزم';
   static const badgeStreak4Rule =
       '4 سبوت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
-  static const badgeMassMonth = 'قداسي كامل';
+  static const badgeMassMonth = 'ليتورجي';
   static const badgeMassMonthRule =
       'حضر القداس كل أسبوع في شهر كامل (3 سبوت على الأقل).';
+  static const badgeStarYear = 'نجم السنة';
+  static const badgeStarYearRule =
+      'الأول في فصله بس على مدار السنة كلها (بتتحدد لما السنة تخلص).';
+  static const badgeStarSchool = 'نجم مدارس الأحد';
+  static const badgeStarSchoolRule =
+      'الأول في مدارس الأحد كلها (كل الفصول) على مدار السنة (بتتحدد لما السنة تخلص).';
+  static const badgeVespersMonth = 'عشية';
+  static const badgeVespersMonthRule =
+      'حضر العشية كل أسبوع في شهر كامل (3 سبوت على الأقل).';
+  static const badgeMassMonthPending =
+      'الشهر لسه ما خلصش. الشارة بتتسجّل أول ما يخلص لو فضل حاضر كل سبت.';
   static const badgeFullDay = 'يوم كامل';
   static const badgeFullDayRule =
       'حضر مدارس الأحد والعشية والقداس في نفس السبت 5 مرات.';

@@ -394,16 +394,44 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       isScrollable: false,
                       labelColor: AppColors.navy,
                       unselectedLabelColor: AppColors.muted,
-                      indicatorColor: AppColors.navy,
+                      // A soft pill under the open tab; no hover/press grey.
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicatorPadding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 5),
+                      indicator: BoxDecoration(
+                        color: AppColors.navy.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      dividerColor: AppColors.navy.withValues(alpha: 0.08),
+                      overlayColor:
+                          const WidgetStatePropertyAll(Colors.transparent),
+                      splashFactory: NoSplash.splashFactory,
+                      labelPadding: EdgeInsets.zero,
                       labelStyle: const TextStyle(
-                          fontSize: 13.5, fontWeight: FontWeight.w800),
+                          fontSize: 12, fontWeight: FontWeight.w800),
                       unselectedLabelStyle: const TextStyle(
-                          fontSize: 13.5, fontWeight: FontWeight.w600),
+                          fontSize: 12, fontWeight: FontWeight.w600),
                       tabs: const [
-                        Tab(text: AppStrings.profileTabOverview),
-                        Tab(text: AppStrings.profileTabAttendance),
-                        Tab(text: AppStrings.profileTabData),
-                        Tab(text: AppStrings.profileTabFollowUp),
+                        Tab(
+                            height: 58,
+                            icon: Icon(Icons.dashboard_rounded, size: 21),
+                            iconMargin: EdgeInsets.only(bottom: 3),
+                            text: AppStrings.profileTabOverview),
+                        Tab(
+                            height: 58,
+                            icon: Icon(Icons.how_to_reg_rounded, size: 21),
+                            iconMargin: EdgeInsets.only(bottom: 3),
+                            text: AppStrings.profileTabAttendance),
+                        Tab(
+                            height: 58,
+                            icon: Icon(Icons.badge_rounded, size: 21),
+                            iconMargin: EdgeInsets.only(bottom: 3),
+                            text: AppStrings.profileTabData),
+                        Tab(
+                            height: 58,
+                            icon: Icon(Icons.support_agent_rounded, size: 21),
+                            iconMargin: EdgeInsets.only(bottom: 3),
+                            text: AppStrings.profileTabFollowUp),
                       ],
                     ),
                   ),

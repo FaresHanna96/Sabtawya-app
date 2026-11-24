@@ -9,27 +9,36 @@ extension KidBadgeLook on KidBadge {
   String get title => switch (this) {
         KidBadge.streak4 => AppStrings.badgeStreak4,
         KidBadge.massMonth => AppStrings.badgeMassMonth,
+        KidBadge.vespersMonth => AppStrings.badgeVespersMonth,
         KidBadge.fullDay => AppStrings.badgeFullDay,
         KidBadge.confession3 => AppStrings.badgeConfession3,
         KidBadge.starMonth => AppStrings.badgeStarMonth,
+        KidBadge.starYear => AppStrings.badgeStarYear,
+        KidBadge.starSchool => AppStrings.badgeStarSchool,
         KidBadge.streak16 => AppStrings.badgeStreak16,
       };
 
   String get rule => switch (this) {
         KidBadge.streak4 => AppStrings.badgeStreak4Rule,
         KidBadge.massMonth => AppStrings.badgeMassMonthRule,
+        KidBadge.vespersMonth => AppStrings.badgeVespersMonthRule,
         KidBadge.fullDay => AppStrings.badgeFullDayRule,
         KidBadge.confession3 => AppStrings.badgeConfession3Rule,
         KidBadge.starMonth => AppStrings.badgeStarMonthRule,
+        KidBadge.starYear => AppStrings.badgeStarYearRule,
+        KidBadge.starSchool => AppStrings.badgeStarSchoolRule,
         KidBadge.streak16 => AppStrings.badgeStreak16Rule,
       };
 
   IconData get icon => switch (this) {
         KidBadge.streak4 => Icons.local_fire_department_rounded,
         KidBadge.massMonth => Icons.church_rounded,
+        KidBadge.vespersMonth => Icons.wb_twilight_rounded,
         KidBadge.fullDay => Icons.event_available_rounded,
         KidBadge.confession3 => Icons.favorite_rounded,
         KidBadge.starMonth => Icons.star_rounded,
+        KidBadge.starYear => Icons.military_tech_rounded,
+        KidBadge.starSchool => Icons.workspace_premium_rounded,
         KidBadge.streak16 => Icons.whatshot_rounded,
       };
 
@@ -37,9 +46,12 @@ extension KidBadgeLook on KidBadge {
   Color get color => switch (this) {
         KidBadge.streak4 => AppColors.gold,
         KidBadge.massMonth => AppColors.navy,
+        KidBadge.vespersMonth => AppColors.coral,
         KidBadge.fullDay => AppColors.olive,
         KidBadge.confession3 => AppColors.coral,
         KidBadge.starMonth => AppColors.sky,
+        KidBadge.starYear => AppColors.maroon,
+        KidBadge.starSchool => AppColors.gold,
         KidBadge.streak16 => AppColors.gold,
       };
 }

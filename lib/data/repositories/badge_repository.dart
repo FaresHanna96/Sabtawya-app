@@ -29,6 +29,11 @@ class BadgeRepository {
   }) =>
       _badges({'p_year': yearId, 'p_child': childId});
 
+  /// Every active child's badges in the whole school (an admin or a
+  /// general servant sees them all; a servant only their class).
+  Future<List<ChildBadge>> forSchool({required String yearId}) =>
+      _badges({'p_year': yearId});
+
   /// Every active child's badges in [classId].
   Future<List<ChildBadge>> forClass({
     required String yearId,

@@ -5,9 +5,12 @@ import 'parsers.dart';
 enum KidBadge {
   streak4('streak4'),
   massMonth('mass_month'),
+  vespersMonth('vespers_month'),
   fullDay('full_day'),
   confession3('confession3'),
   starMonth('star_month'),
+  starYear('star_year'),
+  starSchool('star_school'),
   streak16('streak16');
 
   const KidBadge(this.id);

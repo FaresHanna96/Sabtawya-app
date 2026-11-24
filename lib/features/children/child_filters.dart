@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/arabic_sort.dart';
+import '../../data/models/badges.dart';
 import '../../data/models/child.dart';
+import '../badges/badge_look.dart';
 
 enum ChildSort {
   name(AppStrings.sortByName),
@@ -23,6 +25,7 @@ class ChildFilter {
     this.query = '',
     this.gender,
     this.includeInactive = false,
+    this.badge,
     this.sort = ChildSort.name,
     this.ascending = true,
   });
@@ -30,18 +33,26 @@ class ChildFilter {
   final String query;
   final Gender? gender;
   final bool includeInactive;
+
+  /// Only the children who earned this badge (admin and general servant).
+  final KidBadge? badge;
   final ChildSort sort;
   final bool ascending;
 
   /// Whether anything beyond the default ordering is narrowing the list.
   bool get isNarrowing =>
-      query.trim().isNotEmpty || gender != null || includeInactive;
+      query.trim().isNotEmpty ||
+      gender != null ||
+      includeInactive ||
+      badge != null;
 
   ChildFilter copyWith({
     String? query,
     Gender? gender,
     bool clearGender = false,
     bool? includeInactive,
+    KidBadge? badge,
+    bool clearBadge = false,
     ChildSort? sort,
     bool? ascending,
   }) =>
@@ -49,6 +60,7 @@ class ChildFilter {
         query: query ?? this.query,
         gender: clearGender ? null : (gender ?? this.gender),
         includeInactive: includeInactive ?? this.includeInactive,
+        badge: clearBadge ? null : (badge ?? this.badge),
         sort: sort ?? this.sort,
         ascending: ascending ?? this.ascending,
       );
@@ -58,10 +70,16 @@ class ChildFilter {
   /// Inactive children are filtered out here as well as in the query, so
   /// toggling the switch does not need a round trip when the caller already
   /// fetched them.
-  List<Child> apply(List<Child> source) {
+  ///
+  /// [holders] are the ids of the children who earned [badge]; while it is
+  /// still loading (null) the badge does not narrow anything.
+  List<Child> apply(List<Child> source, {Set<String>? holders}) {
     final result = source.where((child) {
       if (!includeInactive && !child.isActive) return false;
       if (gender != null && child.gender != gender) return false;
+      if (badge != null && holders != null && !holders.contains(child.id)) {
+        return false;
+      }
       return child.matches(query);
     }).toList();
 
@@ -96,7 +114,11 @@ class ChildFilterBar extends StatelessWidget {
     this.resultCount,
     this.totalCount,
     this.showGender = true,
+    this.showBadges = false,
   });
+
+  /// Offers the badge filter (admin and general servant only).
+  final bool showBadges;
 
   /// Off for a class of only boys or only girls, where the chips do nothing.
   final bool showGender;
@@ -147,6 +169,7 @@ class ChildFilterBar extends StatelessWidget {
                         _genderChip(Gender.boy, AppStrings.boys),
                         _genderChip(Gender.girl, AppStrings.girls),
                       ],
+                      if (showBadges) _badgeChip(),
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: FilterChip(
@@ -221,6 +244,46 @@ class ChildFilterBar extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _badgeChip() {
+    final picked = filter.badge;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: PopupMenuButton<KidBadge?>(
+        tooltip: AppStrings.badgeFilter,
+        initialValue: picked,
+        onSelected: (b) => onChanged(
+          b == null ? filter.copyWith(clearBadge: true) : filter.copyWith(badge: b),
+        ),
+        itemBuilder: (context) => [
+          const PopupMenuItem<KidBadge?>(
+            value: null,
+            child: Text(AppStrings.allBadges),
+          ),
+          for (final b in KidBadge.values)
+            PopupMenuItem<KidBadge?>(
+              value: b,
+              child: Row(
+                children: [
+                  Icon(b.icon, size: 20, color: b.color),
+                  const SizedBox(width: 10),
+                  Text(b.title),
+                ],
+              ),
+            ),
+        ],
+        child: Chip(
+          avatar: Icon(
+            picked?.icon ?? Icons.military_tech_outlined,
+            size: 18,
+            color: picked?.color ?? AppColors.muted,
+          ),
+          label: Text(picked?.title ?? AppStrings.badgeFilter),
+          backgroundColor: picked?.color.withValues(alpha: 0.14),
+        ),
       ),
     );
   }
