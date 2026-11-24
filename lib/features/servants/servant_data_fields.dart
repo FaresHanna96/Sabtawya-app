@@ -4,6 +4,7 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/date_picker.dart';
 
 /// The controllers behind the servant data fields, shared by the add form and
 /// the edit screen so both ask for exactly the same things.
@@ -44,7 +45,7 @@ class ServantDataFields extends StatelessWidget {
 
   Future<void> _pickBirthDate(BuildContext context) async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       initialDatePickerMode: DatePickerMode.year,
       initialDate: controllers.birthDate ?? DateTime(now.year - 20),

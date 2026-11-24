@@ -7,6 +7,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../data/models/event.dart';
 import '../../data/repositories/event_repository.dart';
+import '../../core/widgets/date_picker.dart';
 
 class EventFormScreen extends StatefulWidget {
   const EventFormScreen({super.key, this.event});
@@ -47,7 +48,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       initialDate: _eventDate,
       firstDate: DateTime(2020),

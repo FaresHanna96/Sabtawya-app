@@ -22,6 +22,7 @@ import 'child_avatar.dart';
 import 'child_profile_screen.dart';
 import 'location_editor.dart';
 import 'similar_children_dialog.dart';
+import '../../core/widgets/date_picker.dart';
 
 /// Add or edit a child.
 ///
@@ -117,7 +118,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       initialDate: _birthDate ?? DateTime(now.year - 10, now.month, now.day),
       firstDate: DateTime(1950),

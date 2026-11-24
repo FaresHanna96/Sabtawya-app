@@ -8,6 +8,7 @@ import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../data/models/competition.dart';
 import '../../data/repositories/competition_repository.dart';
+import '../../core/widgets/date_picker.dart';
 
 class CompetitionFormScreen extends StatefulWidget {
   const CompetitionFormScreen({super.key, this.competition});
@@ -42,7 +43,7 @@ class _CompetitionFormScreenState extends State<CompetitionFormScreen> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       initialDate: _weekDate,
       firstDate: DateTime(2020),

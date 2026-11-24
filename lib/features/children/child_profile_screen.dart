@@ -46,6 +46,7 @@ import 'missing_info.dart';
 import 'missing_info_banner.dart';
 import 'profile/child_activities_cards.dart';
 import 'profile/profile_status.dart';
+import '../../core/widgets/date_picker.dart';
 
 /// Everything known about one child: personal, parent, and church details plus
 /// the attendance history and scores derived from them.
@@ -1229,7 +1230,7 @@ class _VisitSectionState extends State<_VisitSection> {
   Future<void> _pickDate({required bool isPhone}) async {
     final current = isPhone ? _phoneDate : _homeDate;
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       initialDate: current ?? now,
       firstDate: DateTime(2000),

@@ -11,6 +11,7 @@ import '../../data/models/child.dart';
 import '../../data/models/profile.dart';
 import '../../state/session_controller.dart';
 import 'login_screen.dart';
+import '../../core/widgets/date_picker.dart';
 
 /// What a person signs up as. خادم and خادمة are the same role with a different
 /// gender (only the wording differs); خادم عام is its own role.
@@ -309,7 +310,7 @@ class _BirthDateField extends StatelessWidget {
 
   Future<void> _pick(BuildContext context) async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       initialDate: value ?? DateTime(now.year - 25, now.month, now.day),
       firstDate: DateTime(1950),

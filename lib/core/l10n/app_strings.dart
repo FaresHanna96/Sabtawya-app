@@ -360,6 +360,7 @@ class AppStrings {
   static const age = 'السن';
   static const years = 'سنة';
   static const birthDateFuture = 'تاريخ الميلاد ما ينفعش يكون في المستقبل';
+  static const pickDateTitle = 'اختر التاريخ';
   static const pickBirthDate = 'اختر تاريخ الميلاد';
   static const childPhoto = 'صورة المخدوم';
   static const addPhoto = 'إضافة صورة';

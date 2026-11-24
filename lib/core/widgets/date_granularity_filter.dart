@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_date_utils.dart';
+import 'date_picker.dart';
 
 // Kept for callers that reference it; the widget no longer exposes it in the UI.
 enum DateGranularity { day, month, year }
@@ -116,7 +117,7 @@ class DateGranularityFilterState extends State<DateGranularityFilter> {
   }
 
   Future<void> _pickFrom() async {
-    final day = await showDatePicker(
+    final day = await pickDate(
       context: context,
       initialDate: _from ?? _firstDate,
       firstDate: _firstDate,
@@ -126,7 +127,7 @@ class DateGranularityFilterState extends State<DateGranularityFilter> {
   }
 
   Future<void> _pickTo() async {
-    final day = await showDatePicker(
+    final day = await pickDate(
       context: context,
       initialDate:
           _to ?? _clamp(DateTime.now(), _from ?? _firstDate, _lastDate),

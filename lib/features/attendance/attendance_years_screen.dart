@@ -14,6 +14,7 @@ import '../../data/models/school_class.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../../data/repositories/class_repository.dart';
 import '../../state/session_controller.dart';
+import '../../core/widgets/date_picker.dart';
 
 /// Admin-only management of attendance years.
 ///
@@ -248,7 +249,7 @@ class _YearFormScreenState extends State<_YearFormScreen> {
 
   Future<void> _pickDate({required bool isStart}) async {
     final initial = isStart ? _start : _end;
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       initialDate: initial,
       firstDate: DateTime(2020),
