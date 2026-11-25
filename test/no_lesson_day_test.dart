@@ -225,6 +225,18 @@ void main() {
       expect(AppStrings.breakSummary('نشاط ترفيهي', postponed: false),
           'نشاط ترفيهي — الدرس اتلغى');
     });
+
+    test('a holiday that postpones nothing just says there is no lesson', () {
+      expect(AppStrings.breakSummary('إجازة', postponed: false, holiday: true),
+          'إجازة — مفيش درس');
+      // An older holiday that did postpone still says so (the programme
+      // still shifts for it).
+      expect(AppStrings.breakSummary('إجازة', postponed: true, holiday: true),
+          contains('اتأجل'));
+      // An activity keeps its outcome.
+      expect(AppStrings.breakSummary('نشاط ترفيهي', postponed: false),
+          contains('اتلغى'));
+    });
   });
 
   group('the admin marks a Saturday', () {

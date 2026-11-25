@@ -163,6 +163,9 @@ class LessonBlock extends StatelessWidget {
               final shift? => AppStrings.breakSummary(
                   (programme.breakKindOn(date) ?? LessonBreakKind.holiday)
                       .label,
+                  holiday: (programme.breakKindOn(date) ??
+                          LessonBreakKind.holiday) ==
+                      LessonBreakKind.holiday,
                   postponed: shift,
                 ),
               null => AppStrings.noLessonThisWeek,

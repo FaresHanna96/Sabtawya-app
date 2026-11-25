@@ -896,10 +896,18 @@ class AppStrings {
   static const breakPostponeHint = 'الدروس اللي بعده كلها تتأخر أسبوع.';
   static const breakCancelTitle = 'الدرس يتلغى';
   static const breakCancelHint = 'باقي الدروس في مواعيدها.';
-  static String breakSummary(String reason, {required bool postponed}) =>
+  /// A holiday that does not postpone is simply a day without a lesson; a نشاط
+  /// ترفيهي says whether its lesson was cancelled or moved.
+  static String breakSummary(
+    String reason, {
+    required bool postponed,
+    bool holiday = false,
+  }) =>
       postponed
           ? '$reason — الدرس اتأجل للأسبوع اللي بعده'
-          : '$reason — الدرس اتلغى';
+          : holiday
+              ? '$reason — مفيش درس'
+              : '$reason — الدرس اتلغى';
   static const breakAttendanceQuestion = 'حضور الأطفال في اليوم ده؟';
   static const breakAttendanceTakenTitle = 'هيتسجّل ويتحسب';
   static const breakAttendanceTakenHint =
