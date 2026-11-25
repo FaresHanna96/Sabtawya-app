@@ -26,10 +26,9 @@ class ChildTrip {
     return balance.reserved ? TripState.reserved : TripState.open;
   }
 
-  /// The trips worth showing for this year: every one the child booked, and
-  /// the ones still to come they could book. Past trips they skipped are
-  /// left out. Coming ones first (nearest first), then the past (newest
-  /// first).
+  /// The trips on the child's profile: this year's still to come (today
+  /// counts), nearest first, booked or not. Past ones are left out; they stay
+  /// on the activity's own page.
   static List<ChildTrip> of({
     required List<Event> events,
     required List<ChildEventBalance> balances,
@@ -46,17 +45,13 @@ class ChildTrip {
     }
 
     final coming = <ChildTrip>[];
-    final past = <ChildTrip>[];
     for (final e in events) {
       final b = byEvent[e.id];
-      if (b == null || !inYear(e)) continue;
-      final isComing = !e.eventDate.isBefore(day);
-      if (!b.isBooked && !isComing) continue;
-      (isComing ? coming : past).add(ChildTrip(e, b));
+      if (b == null || !inYear(e) || e.eventDate.isBefore(day)) continue;
+      coming.add(ChildTrip(e, b));
     }
     coming.sort((a, b) => a.event.eventDate.compareTo(b.event.eventDate));
-    past.sort((a, b) => b.event.eventDate.compareTo(a.event.eventDate));
-    return [...coming, ...past];
+    return coming;
   }
 
   /// What is still owed over the booked trips.

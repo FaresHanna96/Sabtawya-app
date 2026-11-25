@@ -90,14 +90,15 @@ void main() {
       _bal('other-year', paid: 100),
     ];
 
-    test('keeps booked trips and coming ones, this year only', () {
+    test('keeps only the coming ones of this year, nearest first', () {
       final trips = ChildTrip.of(
         events: events,
         balances: balances,
         today: _today,
         year: _year,
       );
-      expect(trips.map((t) => t.event.id), ['soon', 'later', 'past-booked']);
+      // The past trip the child booked and paid is not listed any more.
+      expect(trips.map((t) => t.event.id), ['soon', 'later']);
     });
 
     test('a trip today still counts as coming', () {

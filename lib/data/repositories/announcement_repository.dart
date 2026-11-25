@@ -24,21 +24,43 @@ class AnnouncementRepository {
     required String body,
     required AnnouncementAudience audience,
     List<String> classIds = const <String>[],
+    List<String> servantIds = const <String>[],
   }) async {
     try {
-      final result = await Db.client.rpc('send_announcement', params: {
-        'p_title': title.trim(),
-        'p_body': body.trim(),
-        'p_audience': audience.value,
-        'p_class_ids':
-            audience == AnnouncementAudience.classes ? classIds : <String>[],
-      });
+      final result = await Db.client.rpc('send_announcement',
+          params: sendParams(
+            title: title,
+            body: body,
+            audience: audience,
+            classIds: classIds,
+            servantIds: servantIds,
+          ));
       final map = result is Map ? result : const <String, dynamic>{};
       return (map['recipients'] as num?)?.toInt() ?? 0;
     } catch (e) {
       throw AppFailure.from(e);
     }
   }
+
+  /// The arguments of `send_announcement`. The chosen people are sent only for
+  /// that audience, so the other ones still work on a database that does not
+  /// have it yet.
+  static Map<String, Object> sendParams({
+    required String title,
+    required String body,
+    required AnnouncementAudience audience,
+    List<String> classIds = const <String>[],
+    List<String> servantIds = const <String>[],
+  }) =>
+      {
+        'p_title': title.trim(),
+        'p_body': body.trim(),
+        'p_audience': audience.value,
+        'p_class_ids':
+            audience == AnnouncementAudience.classes ? classIds : <String>[],
+        if (audience == AnnouncementAudience.people)
+          'p_servant_ids': servantIds,
+      };
 
   /// Everyone who got [announcementId], those who have not read it first.
   Future<List<AnnouncementRead>> reads(String announcementId) async {

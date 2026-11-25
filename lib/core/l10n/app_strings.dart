@@ -1422,6 +1422,14 @@ class AppStrings {
   static const audienceAll = 'كل الخدام';
   static const audienceServants = 'خدام الفصول';
   static const audienceGeneral = 'الخدام العامين';
+  static const audiencePeople = 'خدام بالاسم';
+  static const pickPeople = 'اختار الخدام';
+  static const pickPeopleFirst = 'اختار خادم واحد على الأقل';
+  static const searchServants = 'دوّر بالاسم';
+  static String peopleChosen(int n) => 'اخترت $n';
+  static const peopleDone = 'تمام';
+  static const noServantMatch = 'مفيش خادم بالاسم ده';
+  static String andOthers(int n) => 'و$n غيرهم';
   static const audienceClasses = 'فصول محددة';
   static const pickClassesFirst = 'اختر فصلًا واحدًا على الأقل';
   static const sendAnnouncement = 'إرسال الإعلان';
