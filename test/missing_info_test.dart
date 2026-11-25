@@ -40,6 +40,15 @@ Child _full({
 
 void main() {
   group('what is missing from a child', () {
+    test('the parent names are not asked for any more', () {
+      expect(MissingField.values.map((f) => f.label),
+          isNot(containsAll(['اسم الأم', 'اسم الأب'])));
+      expect(
+        MissingInfo.of(_full(mother: null, father: '  ')),
+        isEmpty,
+      );
+    });
+
     test('a complete record misses nothing', () {
       expect(MissingInfo.of(_full()), isEmpty);
     });
@@ -51,14 +60,10 @@ void main() {
     test('a blank or spaces-only text counts as missing', () {
       expect(
         MissingInfo.of(_full(
-            mother: '   ',
-            father: '',
-            confession: null,
+            confession: '   ',
             school: ' ',
             address: '')),
         [
-          MissingField.mother,
-          MissingField.father,
           MissingField.confessionFather,
           MissingField.school,
           MissingField.address,
@@ -81,8 +86,8 @@ void main() {
 
     test('several gaps come in the order the list shows them', () {
       expect(
-        MissingInfo.of(_full(noBirth: true, school: null, mother: null)),
-        [MissingField.birthDate, MissingField.mother, MissingField.school],
+        MissingInfo.of(_full(noBirth: true, school: null, address: null)),
+        [MissingField.birthDate, MissingField.school, MissingField.address],
       );
     });
   });

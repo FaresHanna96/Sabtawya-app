@@ -26,9 +26,7 @@ void main() {
       'gender',
       'birth_date',
       'mobile',
-      'mother_name',
       'mother_mobile',
-      'father_name',
       'father_mobile',
       'confession_father',
       'school',
@@ -38,7 +36,9 @@ void main() {
     expect(row['full_name'], 'مينا عادل');
     expect(row['gender'], 'boy');
     expect(row['birth_date'], '2016-03-09');
-    expect(row['mother_name'], isNull);
+    // The parents' names are not part of an import any more.
+    expect(row.containsKey('mother_name'), isFalse);
+    expect(row.containsKey('father_name'), isFalse);
   });
 
   test('visit dates, active flag, deacon flag and code are never written', () {

@@ -36,9 +36,7 @@ class ImportRow {
     this.birthDate,
     this.code,
     this.mobile,
-    this.motherName,
     this.motherMobile,
-    this.fatherName,
     this.fatherMobile,
     this.confessionFather,
     this.school,
@@ -52,9 +50,7 @@ class ImportRow {
   final DateTime? birthDate;
   final String? code;
   final String? mobile;
-  final String? motherName;
   final String? motherMobile;
-  final String? fatherName;
   final String? fatherMobile;
   final String? confessionFather;
   final String? school;
@@ -115,9 +111,7 @@ class ImportRow {
         birthDate: birthDate,
         code: code,
         mobile: mobile,
-        motherName: motherName,
         motherMobile: motherMobile,
-        fatherName: fatherName,
         fatherMobile: fatherMobile,
         confessionFather: confessionFather,
         school: school,
@@ -138,9 +132,10 @@ class ImportRow {
         birthDate: birthDate ?? current.birthDate,
         code: code ?? current.code,
         mobile: mobile ?? current.mobile,
-        motherName: motherName ?? current.motherName,
+        // The parents' names are no longer asked for: what is stored stays.
+        motherName: current.motherName,
         motherMobile: motherMobile ?? current.motherMobile,
-        fatherName: fatherName ?? current.fatherName,
+        fatherName: current.fatherName,
         fatherMobile: fatherMobile ?? current.fatherMobile,
         confessionFather: confessionFather ?? current.confessionFather,
         isDeacon: current.isDeacon,
@@ -233,9 +228,7 @@ class ExcelService {
     AppStrings.gender,
     AppStrings.birthDate,
     AppStrings.childMobile,
-    AppStrings.motherName,
     AppStrings.motherMobile,
-    AppStrings.fatherName,
     AppStrings.fatherMobile,
     AppStrings.confessionFather,
     AppStrings.school,
@@ -290,23 +283,11 @@ class ExcelService {
       'mobile',
       'phone',
     ],
-    'mother_name': <String>[
-      'اسم الام',
-      'الام',
-      'mother name',
-      'mother',
-    ],
     'mother_mobile': <String>[
       'موبايل الام',
       'تليفون الام',
       'mother mobile',
       'mother phone',
-    ],
-    'father_name': <String>[
-      'اسم الاب',
-      'الاب',
-      'father name',
-      'father',
     ],
     'father_mobile': <String>[
       'موبايل الاب',
@@ -386,9 +367,7 @@ class ExcelService {
         birthDate: _dateAt(cells, columns['birth_date']),
         code: _nullableAt(cells, columns['code']),
         mobile: _nullableAt(cells, columns['mobile']),
-        motherName: _nullableAt(cells, columns['mother_name']),
         motherMobile: _nullableAt(cells, columns['mother_mobile']),
-        fatherName: _nullableAt(cells, columns['father_name']),
         fatherMobile: _nullableAt(cells, columns['father_mobile']),
         confessionFather: _nullableAt(cells, columns['confession_father']),
         school: _nullableAt(cells, columns['school']),
@@ -534,9 +513,7 @@ class ExcelService {
       _text(AppStrings.boy),
       _text('2015-03-14'),
       _text('01000000000'),
-      _text('مريم'),
       _text('01100000000'),
-      _text('جورج'),
       _text('01200000000'),
       _text('أبونا يوسف'),
       _text('مدرسة النيل'),
@@ -571,9 +548,7 @@ class ExcelService {
             ? ''
             : AppDateUtils.toIsoDate(child.birthDate!)),
         _text(child.mobile),
-        _text(child.motherName),
         _text(child.motherMobile),
-        _text(child.fatherName),
         _text(child.fatherMobile),
         _text(child.confessionFather),
         _text(child.school),

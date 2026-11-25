@@ -646,7 +646,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     SessionController session,
     bool canEdit,
   ) {
-    String? orNull(String? s) => (s == null || s.trim().isEmpty) ? null : s;
     return [
       SectionCard(
         title: AppStrings.personalInfo,
@@ -665,16 +664,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               label: AppStrings.childCode,
               value: child.code,
               icon: Icons.tag,
-            ),
-            InfoRow(
-              label: AppStrings.motherName,
-              value: orNull(child.motherName),
-              icon: Icons.woman_outlined,
-            ),
-            InfoRow(
-              label: AppStrings.fatherName,
-              value: orNull(child.fatherName),
-              icon: Icons.man_outlined,
             ),
           ],
         ),

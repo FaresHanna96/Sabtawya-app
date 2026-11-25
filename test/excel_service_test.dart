@@ -31,8 +31,8 @@ void main() {
 
     test('matches headers that differ by hamza, ة, or ى', () {
       final bytes = _workbook([
-        <String>['الإسم', 'النوع', 'اسم الأم', 'المدرسة'],
-        <String>['مريم', 'بنت', 'سارة', 'مدرسة النيل'],
+        <String>['الإسم', 'النوع', 'المدرسه', 'أب الإعتراف'],
+        <String>['مريم', 'بنت', 'مدرسة النيل', 'أبونا يوسف'],
       ]);
 
       final result = ExcelService.parseChildren(bytes);
@@ -41,8 +41,8 @@ void main() {
       final row = result.rows.single;
       expect(row.name, 'مريم');
       expect(row.gender, Gender.girl);
-      expect(row.motherName, 'سارة');
       expect(row.school, 'مدرسة النيل');
+      expect(row.confessionFather, 'أبونا يوسف');
     });
 
     test('accepts English headers from an older spreadsheet', () {

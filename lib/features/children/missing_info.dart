@@ -7,8 +7,6 @@ import '../../data/models/child.dart';
 enum MissingField {
   birthDate('تاريخ الميلاد', Icons.cake_outlined),
   phone('رقم تليفون', Icons.phone_disabled_outlined),
-  mother('اسم الأم', Icons.woman_outlined),
-  father('اسم الأب', Icons.man_outlined),
   confessionFather('أب الاعتراف', Icons.church_outlined),
   school('المدرسة', Icons.school_outlined),
   address('العنوان', Icons.home_outlined);
@@ -28,8 +26,6 @@ enum MissingField {
       MissingField.phone => blank(child.mobile) &&
           blank(child.motherMobile) &&
           blank(child.fatherMobile),
-      MissingField.mother => blank(child.motherName),
-      MissingField.father => blank(child.fatherName),
       MissingField.confessionFather => blank(child.confessionFather),
       MissingField.school => blank(child.school),
       MissingField.address => blank(child.address),

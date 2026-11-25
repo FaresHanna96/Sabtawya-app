@@ -54,12 +54,8 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       TextEditingController(text: widget.child?.fullName ?? '');
   late final TextEditingController _mobile =
       TextEditingController(text: widget.child?.mobile ?? '');
-  late final TextEditingController _motherName =
-      TextEditingController(text: widget.child?.motherName ?? '');
   late final TextEditingController _motherMobile =
       TextEditingController(text: widget.child?.motherMobile ?? '');
-  late final TextEditingController _fatherName =
-      TextEditingController(text: widget.child?.fatherName ?? '');
   late final TextEditingController _fatherMobile =
       TextEditingController(text: widget.child?.fatherMobile ?? '');
   late final TextEditingController _confessionFather =
@@ -102,9 +98,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
     for (final controller in <TextEditingController>[
       _name,
       _mobile,
-      _motherName,
       _motherMobile,
-      _fatherName,
       _fatherMobile,
       _confessionFather,
       _school,
@@ -291,9 +285,9 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       birthDate: _birthDate,
       code: target?.code,
       mobile: _mobile.text,
-      motherName: _motherName.text,
+      motherName: target?.motherName,
       motherMobile: _motherMobile.text,
-      fatherName: _fatherName.text,
+      fatherName: target?.fatherName,
       fatherMobile: _fatherMobile.text,
       confessionFather: _confessionFather.text,
       isDeacon: _gender == Gender.boy && _isDeacon,
@@ -467,20 +461,10 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                   ]),
                   _group(AppStrings.parentsInfo, Icons.family_restroom_rounded, AppColors.olive, [
                     _field(
-                      controller: _motherName,
-                      label: AppStrings.motherName,
-                      icon: Icons.woman_outlined,
-                    ),
-                    _field(
                       controller: _motherMobile,
                       label: AppStrings.motherMobile,
                       icon: Icons.phone_outlined,
                       isPhone: true,
-                    ),
-                    _field(
-                      controller: _fatherName,
-                      label: AppStrings.fatherName,
-                      icon: Icons.man_outlined,
                     ),
                     _field(
                       controller: _fatherMobile,
