@@ -508,26 +508,11 @@ class _Overview extends StatelessWidget {
             label: AppStrings.averageAttendance,
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: StatTile(
-                  label: AppStrings.attendedSessions,
-                  value: '${totals.attended}/$held',
-                  color: AppColors.navy,
-                  icon: Icons.event_available_rounded,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: StatTile(
-                  label: AppStrings.totalPoints,
-                  value: '$points',
-                  color: AppColors.olive,
-                  icon: Icons.star_rounded,
-                ),
-              ),
-            ],
+          StatTile(
+            label: AppStrings.totalPoints,
+            value: '$points',
+            color: AppColors.olive,
+            icon: Icons.star_rounded,
           ),
           const SizedBox(height: 8),
         ],

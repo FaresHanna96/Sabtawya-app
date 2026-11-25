@@ -163,6 +163,8 @@ void main() {
       expect(find.text('سجل الحضور'), findsOneWidget);
       expect(find.text('2/3'), findsWidgets); // attended, and mass
       expect(find.text('25'), findsOneWidget); // points
+      // Attended-out-of-held is not repeated: the activities show it.
+      expect(find.text('السبوت المحضورة'), findsNothing);
       expect(find.textContaining('آخر مرة'), findsOneWidget); // mass only
       expect(find.text('لم يحضر بعد'), findsNWidgets(3));
 
