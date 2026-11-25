@@ -206,7 +206,8 @@ void main() {
     testWidgets('a normal day hides the question', (tester) async {
       final c = await _open(
         tester,
-        current: const LessonBreak(kind: LessonBreakKind.holiday, shift: false),
+        current:
+            const LessonBreak(kind: LessonBreakKind.activity, shift: false),
         interact: () async {
           expect(find.text(AppStrings.breakCancelTitle), findsOneWidget);
           await tester.tap(find.text(AppStrings.breakNone));
@@ -238,16 +239,56 @@ void main() {
       expect(find.text(AppStrings.breakNone), findsNothing);
     });
 
-    testWidgets('as إجازة, keeping the lessons in place', (tester) async {
+    testWidgets('as إجازة: no lesson question, the lessons stay in place',
+        (tester) async {
       final c = await _open(tester, interact: () async {
         await tester.tap(find.text(AppStrings.breakHoliday));
         await tester.pump();
-        await tester.tap(find.text(AppStrings.breakCancelTitle));
-        await tester.pump();
+        // A holiday is just no lesson that day: nothing to ask.
+        expect(find.text(AppStrings.breakWhatNext), findsNothing);
+        expect(find.text(AppStrings.breakPostponeTitle), findsNothing);
+        expect(find.text(AppStrings.breakCancelTitle), findsNothing);
         await tester.tap(find.text(AppStrings.save));
       });
       expect(c?.kind, LessonBreakKind.holiday);
       expect(c?.shift, isFalse);
+    });
+
+    testWidgets('an old إجازة that postponed saves as not postponing',
+        (tester) async {
+      final c = await _open(
+        tester,
+        current: const LessonBreak(kind: LessonBreakKind.holiday, shift: true),
+        interact: () async {
+          expect(find.text(AppStrings.breakWhatNext), findsNothing);
+          await tester.tap(find.text(AppStrings.save));
+        },
+      );
+      expect(c?.kind, LessonBreakKind.holiday);
+      expect(c?.shift, isFalse);
+    });
+
+    testWidgets('an إجازة on a day with records still warns they stop counting',
+        (tester) async {
+      await _open(
+        tester,
+        current: const LessonBreak(kind: LessonBreakKind.holiday, shift: false),
+        hasRecords: true,
+        interact: () async {
+          expect(find.text(AppStrings.breakHasRecords), findsOneWidget);
+          await tester.tap(find.text(AppStrings.save));
+        },
+      );
+    });
+
+    testWidgets('a نشاط ترفيهي still asks what happens to the lesson',
+        (tester) async {
+      await _open(tester, interact: () async {
+        await tester.tap(find.text(AppStrings.breakActivity));
+        await tester.pump();
+        expect(find.text(AppStrings.breakWhatNext), findsOneWidget);
+        await tester.tap(find.text(AppStrings.save));
+      });
     });
 
     testWidgets('back to a normal day', (tester) async {

@@ -181,7 +181,9 @@ class _BreakSheetState extends State<BreakSheet> {
               selected: _kind == LessonBreakKind.holiday,
               onTap: () => setState(() => _kind = LessonBreakKind.holiday),
             ),
-            if (_kind != null) ...[
+            // A holiday is simply no lesson that day: nothing to ask. Only an
+            // activity asks what becomes of the lesson (and about attendance).
+            if (_kind == LessonBreakKind.activity) ...[
               const SizedBox(height: 6),
               const Text(
                 AppStrings.breakWhatNext,
@@ -232,25 +234,28 @@ class _BreakSheetState extends State<BreakSheet> {
                   onTap: () => setState(() => _taken = false),
                 ),
               ],
-              if (widget.hasRecords && !(_kind == LessonBreakKind.activity && _taken))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    AppStrings.breakHasRecords,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.warningText,
-                      fontWeight: FontWeight.w700,
-                    ),
+            ],
+            if (_kind != null &&
+                widget.hasRecords &&
+                !(_kind == LessonBreakKind.activity && _taken))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  AppStrings.breakHasRecords,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.warningText,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-            ],
+              ),
             const SizedBox(height: 4),
             FilledButton(
               onPressed: () => Navigator.of(context)
                   .pop(BreakChoice(
                 kind: _kind,
-                shift: _shift,
+                // A holiday asks nothing: its lesson is just not given.
+                shift: _kind == LessonBreakKind.holiday ? false : _shift,
                 attendanceTaken: _kind == LessonBreakKind.activity && _taken,
               )),
               child: const Text(AppStrings.save),
