@@ -11,7 +11,38 @@ import '../../core/config/app_version.dart';
 class AccessLog {
   const AccessLog._();
 
-  static Future<void> appOpened() async {
+  static Future<void> appOpened() => _event(
+        'app_open',
+        kIsWeb ? 'web' : defaultTargetPlatform.name,
+      );
+
+  /// The platform an update downloaded from inside the app is logged under, so
+  /// the stats page can tell it from a download off the download page.
+  static const updatePlatform = 'update';
+
+  static bool _updateLogged = false;
+
+  /// Tests watch the event instead of sending it.
+  @visibleForTesting
+  static void Function()? debugOnUpdateDownload;
+
+  /// The in-app updater began downloading the new version: counted as a
+  /// download, once per run of the app (retries are the same person).
+  static void updateDownloadStarted() {
+    if (_updateLogged) return;
+    _updateLogged = true;
+    final hook = debugOnUpdateDownload;
+    if (hook != null) {
+      hook();
+      return;
+    }
+    _event('apk_download', updatePlatform);
+  }
+
+  @visibleForTesting
+  static void debugResetUpdateLogged() => _updateLogged = false;
+
+  static Future<void> _event(String kind, String platform) async {
     try {
       await http
           .post(
@@ -22,8 +53,7 @@ class AccessLog {
               'Content-Type': 'application/json',
               'Prefer': 'return=minimal',
             },
-            body:
-                '{"kind":"app_open","platform":"${kIsWeb ? 'web' : defaultTargetPlatform.name}"}',
+            body: '{"kind":"$kind","platform":"$platform"}',
           )
           .timeout(const Duration(seconds: 8));
     } catch (_) {}

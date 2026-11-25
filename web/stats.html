@@ -114,7 +114,7 @@
   <div class="err" id="err"></div>
 
   <div class="tot loading" id="tot">
-    <div class="t a"><b data-k="apk_download">0</b><span>بدأ التحميل</span><span class="dl" data-d="apk_download"></span></div>
+    <div class="t a"><b data-k="apk_download">0</b><span>بدأ التحميل</span><span class="dl" data-d="apk_download"></span><small id="updNote" style="display:block;color:var(--muted,#6b7280);margin-top:4px"></small></div>
     <div class="t b"><b data-k="apk_page">0</b><span>زيارة صفحة التحميل</span><span class="dl" data-d="apk_page"></span></div>
     <div class="t c"><b data-k="app_open">0</b><span>فتح التطبيق/الموقع</span><span class="dl" data-d="app_open"></span></div>
   </div>
@@ -148,7 +148,7 @@
     <div id="whoList" hidden></div>
   </div>
 
-  <p class="note">«بدأ التحميل» = زيارة بدأ فيها تحميل التطبيق (مرة واحدة لكل زيارة، من 12 نوفمبر 2026؛ قبلها كانت كل ضغطة تُحسب). «زيارة صفحة التحميل» = فتح رابط apk.html من أي جهاز. «فتح التطبيق/الموقع» = تشغيل التطبيق أو فتح الموقع نفسه، ويشمل المستخدمين القدامى، لذلك لا يُحسب كتثبيت جديد. الأسهم تقارن بالفترة السابقة بنفس الطول. الأوقات بتوقيت القاهرة.</p>
+  <p class="note">«بدأ التحميل» = زيارة بدأ فيها تحميل التطبيق (مرة واحدة لكل زيارة، من 12 نوفمبر 2026؛ قبلها كانت كل ضغطة تُحسب)، ويشمل التحديث اللي التطبيق بيحمّله بنفسه (من الإصدار اللي بعد 1.0.60، مرة لكل تشغيل). مسار الزيارة إلى التحميل بيحسب تحميلات الصفحة بس. «زيارة صفحة التحميل» = فتح رابط apk.html من أي جهاز. «فتح التطبيق/الموقع» = تشغيل التطبيق أو فتح الموقع نفسه، ويشمل المستخدمين القدامى، لذلك لا يُحسب كتثبيت جديد. الأسهم تقارن بالفترة السابقة بنفس الطول. الأوقات بتوقيت القاهرة.</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -162,8 +162,8 @@
   var days = 1;
   var TABS = [[1, 'اليوم'], [7, 'أسبوع'], [30, 'شهر'], [90, '3 شهور']];
   var PREV = {1: 'عن أمس', 7: 'عن الأسبوع السابق', 30: 'عن الشهر السابق', 90: 'عن الـ3 شهور السابقة'};
-  var PLAT = {android: 'أندرويد', ios: 'آيفون', web: 'الموقع', other: 'كمبيوتر'};
-  var ORDER = ['android', 'ios', 'web', 'other'];
+  var PLAT = {android: 'أندرويد', ios: 'آيفون', web: 'الموقع', other: 'كمبيوتر', update: 'تحديث من التطبيق'};
+  var ORDER = ['android', 'ios', 'web', 'other', 'update'];
   var KINDS = [['apk_download', 'k-a'], ['apk_page', 'k-b'], ['app_open', 'k-c']];
   var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -291,10 +291,12 @@
     // last 7 days including today, and so on.
     var today = cairoToday();
     var since = dayBack(today, days - 1), prevSince = dayBack(today, days * 2 - 1);
-    var tot = blank(), prev = blank(), dev = {}, byDay = {};
+    var tot = blank(), prev = blank(), dev = {}, byDay = {}, updates = 0;
     (r.data || []).forEach(function (x) {
       if (x.day >= since) {
         tot[x.kind] += x.n;
+        // Downloads the app made itself to update (not from the page).
+        if (x.kind === 'apk_download' && x.platform === 'update') updates += x.n;
         (dev[x.platform] = dev[x.platform] || blank())[x.kind] += x.n;
         (byDay[x.day] = byDay[x.day] || blank())[x.kind] += x.n;
       } else if (x.day >= prevSince) {
@@ -309,20 +311,23 @@
     });
     $('cmp').textContent = 'الأسهم: الفرق ' + PREV[days];
 
-    renderFunnel(tot, animate);
+    $('updNote').textContent = updates ? 'منهم ' + updates + ' تحديث من جوه التطبيق' : '';
+    renderFunnel(tot, updates, animate);
     renderDevices(dev, animate);
     renderHours(hourly, animate);
     renderDays(byDay, animate);
     loadWho();
   }
 
-  function renderFunnel(tot, animate) {
-    var pct = tot.apk_page ? Math.min(100, Math.round(tot.apk_download / tot.apk_page * 100)) : 0;
+  function renderFunnel(tot, updates, animate) {
+    // Visit to download is about the page, so updates made by the app are out.
+    var got = tot.apk_download - updates;
+    var pct = tot.apk_page ? Math.min(100, Math.round(got / tot.apk_page * 100)) : 0;
     $('funnel').innerHTML =
       '<div class="fn' + (animate ? rise(0) : '') + '">' +
         '<div class="st"><b style="color:var(--sky)">' + tot.apk_page + '</b><span>زيارة الصفحة</span></div>' +
         '<div class="ar"><i>←</i>' + (tot.apk_page ? pct + '%' : '—') + '</div>' +
-        '<div class="st"><b style="color:var(--maroon)">' + tot.apk_download + '</b><span>بدأ التحميل</span></div>' +
+        '<div class="st"><b style="color:var(--maroon)">' + got + '</b><span>بدأ التحميل من الصفحة</span></div>' +
       '</div><div class="fbar"><div data-w="' + pct + '"' + (animate ? '' : ' style="width:' + pct + '%"') + '></div></div>';
     if (animate) grow($('funnel'), 'width');
   }

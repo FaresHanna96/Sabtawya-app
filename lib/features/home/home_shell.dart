@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:ota_update/ota_update.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../data/services/access_log.dart';
 import '../../core/config/app_version.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
@@ -765,6 +766,7 @@ mixin _InstallLogic<T extends StatefulWidget> on State<T> {
     if (!mounted) return;
     switch (e.status) {
       case OtaStatus.DOWNLOADING:
+        AccessLog.updateDownloadStarted();
         setState(() => _progress = int.tryParse(e.value ?? '') ?? _progress);
       case OtaStatus.INSTALLING:
       case OtaStatus.INSTALLATION_DONE:

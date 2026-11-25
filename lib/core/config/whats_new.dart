@@ -12,6 +12,10 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  62: [
+    WhatsNewItem(Icons.tune_rounded, 'تحسينات صغيرة',
+        'عدد الأمناء في الرئيسية بقى مظبوط، وتحسينات في متابعة التحديثات.'),
+  ],
   61: [
     WhatsNewItem(Icons.dashboard_customize_rounded, 'رئيسية أخف وأوضح',
         'كارت واحد فيه الاسم والأرقام، و«محتاج متابعة» بأرقامه، وأعياد الميلاد في سطر، و«السبت الجاي» فيه الدرس والتحضير. ونفس الشكل للأمين والخادم.'),
