@@ -987,6 +987,18 @@ class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
+                    // Always there: an installer that is cancelled or never
+                    // opens tells the app nothing, and this screen has no
+                    // other way out. The web page installs the same APK.
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _openPage,
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        minimumSize: const Size(200, 44),
+                      ),
+                      child: const Text(AppStrings.updateManual),
+                    ),
                   ],
                 ),
               ),

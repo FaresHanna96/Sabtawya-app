@@ -12,6 +12,18 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  61: [
+    WhatsNewItem(Icons.dashboard_customize_rounded, 'رئيسية أخف وأوضح',
+        'كارت واحد فيه الاسم والأرقام، و«محتاج متابعة» بأرقامه، وأعياد الميلاد في سطر، و«السبت الجاي» فيه الدرس والتحضير. ونفس الشكل للأمين والخادم.'),
+    WhatsNewItem(Icons.undo_rounded, 'تراجع بعد «تحضير الجميع»',
+        'لو ضغطت غلط تقدر ترجّع العلامات بضغطة، ومتابعة الغياب فيها شريط «اتفتقد X من Y».'),
+    WhatsNewItem(Icons.filter_alt_rounded, 'فلاتر سريعة للمخدومين',
+        'غايب، عيد ميلاده الشهر ده، بيانات ناقصة. وتحت كل مخدوم آخر مرة حضر فيها.'),
+    WhatsNewItem(Icons.phone_in_talk_rounded, 'الاتصال والواتساب',
+        'الرقم بيتاخد من المخدوم نفسه، وبعدين الأم، وبعدين الأب، في كل مكان. واتشال اسم الأم واسم الأب من البيانات.'),
+    WhatsNewItem(Icons.beach_access_rounded, 'الإجازة أبسط',
+        'لما تعلّم السبت إجازة مبقاش بيسألك إيه اللي يحصل للدرس.'),
+  ],
   60: [
     WhatsNewItem(Icons.emoji_events_rounded, 'ترتيب المخدوم',
         'الترتيب في كارت المخدوم بقى «الأول» و«التاني» للولد و«الأولى» و«التانية» للبنت.'),

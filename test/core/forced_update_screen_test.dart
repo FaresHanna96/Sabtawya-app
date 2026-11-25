@@ -50,6 +50,23 @@ void main() {
     return c;
   }
 
+  testWidgets('the web page link is always there, whatever the state',
+      (tester) async {
+    final c = await open(tester);
+    // Downloading, installer open, then a failure: the link never goes away.
+    expect(find.text(AppStrings.updateManual), findsOneWidget);
+    c.add(OtaEvent(OtaStatus.DOWNLOADING, '40'));
+    await tester.pump();
+    expect(find.text(AppStrings.updateManual), findsOneWidget);
+    c.add(OtaEvent(OtaStatus.INSTALLING, ''));
+    await tester.pump();
+    expect(find.text(AppStrings.updateInstalling), findsOneWidget);
+    expect(find.text(AppStrings.updateManual), findsOneWidget);
+    c.add(OtaEvent(OtaStatus.DOWNLOAD_ERROR, ''));
+    await tester.pump();
+    expect(find.text(AppStrings.updateManual), findsOneWidget);
+  });
+
   testWidgets('a cancelled installer offers a retry after a while',
       (tester) async {
     final c = await open(tester);

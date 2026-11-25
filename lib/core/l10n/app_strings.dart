@@ -557,6 +557,7 @@ class AppStrings {
   static const updateNotFinished =
       'التثبيت ما كملش. اضغط «حدّث دلوقتي» وجرّب تاني';
   static const updateOpenPage = 'صفحة التحميل';
+  static const updateManual = 'مش بيكمل؟ حمّله من الصفحة';
   static const checkForUpdates = 'شوف التحديثات';
   static const checkingForUpdates = 'بندوّر على تحديثات…';
   static String upToDate(String v) => 'معاك آخر إصدار ($v)';
