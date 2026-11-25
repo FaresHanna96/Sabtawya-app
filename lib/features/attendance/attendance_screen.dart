@@ -879,6 +879,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void _markAll(bool present, {AttendanceActivity? only}) {
     if (!_canEdit) return;
     HapticFeedback.mediumImpact();
+    final before = AttendanceDraft.snapshot(_entries);
     setState(() {
       markAllEntries(
         _entries,
@@ -888,6 +889,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     });
     _queueDraft();
+    // A slip on the big button is one tap away from being undone.
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+            present ? AppStrings.markedAllPresent : AppStrings.markedAllCleared),
+        duration: const Duration(seconds: 6),
+        persist: false,
+        // Above the save button, which a plain snack bar would cover.
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 72),
+        action: SnackBarAction(
+          label: AppStrings.undo,
+          onPressed: () {
+            if (!mounted || before.length != _entries.length) return;
+            setState(() => AttendanceDraft.restoreSnapshot(_entries, before));
+            _queueDraft();
+          },
+        ),
+      ),
+    );
   }
 
   /// "تحضير الجميع": which activity, or all of them.

@@ -217,32 +217,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _reload();
   }
 
-  (IconData, Color) _look(String kind) => switch (kind) {
-        'signup' => (Icons.how_to_reg_outlined, AppColors.maroon),
-        'announcement' => (Icons.campaign_rounded, AppColors.maroon),
-        'decision' => (Icons.verified_outlined, AppColors.olive),
-        'prep_submitted' => (Icons.menu_book_outlined, AppColors.sky),
-        'prep_reviewed' => (Icons.rate_review_outlined, AppColors.gold),
-        'lesson_changed' => (Icons.event_repeat_outlined, AppColors.coral),
-        'birthdays' => (Icons.cake_outlined, AppColors.coral),
-        'child_added' => (Icons.child_care_outlined, AppColors.olive),
-        'attendance_taken' => (Icons.fact_check_outlined, AppColors.navy),
-        'event_added' => (Icons.celebration_outlined, AppColors.olive),
-        'competition_added' => (Icons.emoji_events_outlined, AppColors.gold),
-        'class_assigned' => (Icons.class_outlined, AppColors.sky),
-        'class_activity' => (Icons.edit_note_rounded, AppColors.sky),
-        'missing_info' => (Icons.rule_rounded, AppColors.gold),
-        'absence_followup' => (
-            Icons.volunteer_activism_rounded,
-            AppColors.coral
-          ),
-        'absence_child' => (Icons.person_off_outlined, AppColors.coral),
-        'class_removed' => (Icons.person_remove_outlined, AppColors.coral),
-        'event_today' => (Icons.celebration_rounded, AppColors.gold),
-        'attendance_missing' => (Icons.alarm_rounded, AppColors.coral),
-        _ => (Icons.notifications_none_rounded, AppColors.navy),
-      };
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -273,15 +247,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemCount: items.length,
               itemBuilder: (context, i) {
                 final n = items[i];
-                final (icon, color) = _look(n.kind);
+                final (icon, color) = notificationLook(n.kind);
                 final card = Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       color: n.isRead ? null : color.withValues(alpha: 0.07),
                       child: ListTile(
                         onTap: () => _open(n),
                         leading: CircleAvatar(
-                          backgroundColor: color.withValues(alpha: 0.15),
-                          child: Icon(icon, color: color, size: 20),
+                          radius: 22,
+                          backgroundColor: color.withValues(alpha: 0.16),
+                          child: Icon(
+                            icon,
+                            color: AppColors.readable(color),
+                            size: 24,
+                          ),
                         ),
                         title: Text(
                           n.title,
@@ -373,3 +352,29 @@ class _ReadSwipe extends StatelessWidget {
     );
   }
 }
+
+/// The icon and colour of a notification kind. One rounded style throughout,
+/// and no two kinds share an icon (being added to a class used the same book
+/// as a lesson prep, and was easy to mistake for it).
+(IconData, Color) notificationLook(String kind) => switch (kind) {
+      'signup' => (Icons.how_to_reg_rounded, AppColors.maroon),
+      'announcement' => (Icons.campaign_rounded, AppColors.maroon),
+      'decision' => (Icons.verified_rounded, AppColors.olive),
+      'prep_submitted' => (Icons.menu_book_rounded, AppColors.sky),
+      'prep_reviewed' => (Icons.rate_review_rounded, AppColors.gold),
+      'lesson_changed' => (Icons.event_repeat_rounded, AppColors.coral),
+      'birthdays' => (Icons.cake_rounded, AppColors.gold),
+      'child_added' => (Icons.child_care_rounded, AppColors.olive),
+      'attendance_taken' => (Icons.fact_check_rounded, AppColors.navy),
+      'event_added' => (Icons.celebration_rounded, AppColors.olive),
+      'competition_added' => (Icons.emoji_events_rounded, AppColors.gold),
+      'class_assigned' => (Icons.group_add_rounded, AppColors.sky),
+      'class_activity' => (Icons.edit_note_rounded, AppColors.sky),
+      'missing_info' => (Icons.rule_rounded, AppColors.gold),
+      'absence_followup' => (Icons.volunteer_activism_rounded, AppColors.coral),
+      'absence_child' => (Icons.person_off_rounded, AppColors.coral),
+      'class_removed' => (Icons.person_remove_rounded, AppColors.coral),
+      'event_today' => (Icons.event_available_rounded, AppColors.gold),
+      'attendance_missing' => (Icons.alarm_rounded, AppColors.coral),
+      _ => (Icons.notifications_rounded, AppColors.navy),
+    };

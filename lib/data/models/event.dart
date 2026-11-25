@@ -139,3 +139,44 @@ class ChildEventBalance {
         reserved: map['reserved'] == true,
       );
 }
+
+/// How one activity stands on money: who booked, who still owes, and what has
+/// come in against what the booked children owe in all.
+class EventPaymentSummary {
+  const EventPaymentSummary({
+    this.booked = 0,
+    this.unpaid = 0,
+    this.collected = 0,
+    this.expected = 0,
+  });
+
+  /// Children who reserved or paid something.
+  final int booked;
+
+  /// Booked children who still owe part of the cost.
+  final int unpaid;
+  final double collected;
+  final double expected;
+
+  /// Somebody booked and everybody who did has paid in full.
+  bool get allPaid => booked > 0 && unpaid == 0;
+
+  /// The summary of one activity from its children's balance lines.
+  factory EventPaymentSummary.of(Iterable<ChildEventBalance> lines) {
+    var booked = 0, unpaid = 0;
+    var collected = 0.0, expected = 0.0;
+    for (final b in lines) {
+      if (!b.isBooked) continue;
+      booked++;
+      collected += b.totalPaid;
+      expected += b.cost;
+      if (b.remaining > 0) unpaid++;
+    }
+    return EventPaymentSummary(
+      booked: booked,
+      unpaid: unpaid,
+      collected: collected,
+      expected: expected,
+    );
+  }
+}

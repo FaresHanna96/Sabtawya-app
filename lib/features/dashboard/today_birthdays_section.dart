@@ -21,7 +21,12 @@ class TodayBirthdaysSection extends StatefulWidget {
     super.key,
     this.reloadToken = 0,
     this.hideWhenEmpty = false,
+    this.compact = false,
   });
+
+  /// One line («🎂 أعياد ميلاد النهارده · 2 مخدوم») that opens the lists on a
+  /// tap, instead of the tiles and the open list.
+  final bool compact;
 
   /// No line at all on a day without birthdays (the admin home).
   final bool hideWhenEmpty;
@@ -42,6 +47,44 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
 
   static Future<(List<Child>, List<Profile>)> _fetch() =>
       (_childRepo.all(), _servantRepo.servantsWithBirthdayToday()).wait;
+
+  /// The two-tile card, or (compact) the one folded line whose lists show
+  /// directly when it opens: no second fold inside the first.
+  Widget _body({
+    required int kids,
+    required int servants,
+    required Widget childContent,
+    required Widget servantContent,
+  }) {
+    if (!widget.compact) {
+      return _BirthdayTiles(
+        childCount: kids,
+        servantCount: servants,
+        childContent: childContent,
+        servantContent: servantContent,
+      );
+    }
+    return CompactBirthdays(
+      childCount: kids,
+      servantCount: servants,
+      details: BirthdaySections(
+        children: [
+          if (kids > 0)
+            (
+              title: AppStrings.childBirthdaysTitle,
+              count: kids,
+              content: childContent,
+            ),
+          if (servants > 0)
+            (
+              title: AppStrings.servantBirthdays,
+              count: servants,
+              content: servantContent,
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   void didUpdateWidget(TodayBirthdaysSection old) {
@@ -78,9 +121,9 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: _BirthdayTiles(
-            childCount: childBirthdays.length,
-            servantCount: servantBirthdays.length,
+          child: _body(
+            kids: childBirthdays.length,
+            servants: servantBirthdays.length,
             childContent: session.isAdmin
                 ? _GroupedBirthdays(
                     birthdays: childBirthdays,
@@ -91,6 +134,165 @@ class _TodayBirthdaysSectionState extends State<TodayBirthdaysSection> {
           ),
         );
       },
+    );
+  }
+}
+
+// --------------------------------------------------------------- sections
+
+/// One group of today's birthdays: its title, how many, and its list.
+typedef BirthdayGroup = ({String title, int count, Widget content});
+
+/// The groups one under another, each with a small heading: what shows when
+/// the compact line opens (nothing to tap open inside).
+class BirthdaySections extends StatelessWidget {
+  const BirthdaySections({super.key, required this.children});
+
+  final List<BirthdayGroup> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.navy.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 20,
+                color: AppColors.navy.withValues(alpha: 0.08),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    children[i].title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${children[i].count}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.goldText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            children[i].content,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// --------------------------------------------------------------- compact line
+
+/// The birthdays folded to one tappable line; the tiles open under it.
+class CompactBirthdays extends StatefulWidget {
+  const CompactBirthdays({
+    super.key,
+    required this.childCount,
+    required this.servantCount,
+    required this.details,
+  });
+
+  final int childCount;
+  final int servantCount;
+  final Widget details;
+
+  @override
+  State<CompactBirthdays> createState() => _CompactBirthdaysState();
+}
+
+class _CompactBirthdaysState extends State<CompactBirthdays> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => setState(() => _open = !_open),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border:
+                    Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cake_rounded,
+                      size: 20, color: AppColors.goldText),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(children: [
+                        const TextSpan(
+                          text: AppStrings.birthdaysToday,
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        TextSpan(
+                          text: '  •  ${AppStrings.birthdaysSummary(widget.childCount, widget.servantCount)}',
+                          style: const TextStyle(
+                            color: AppColors.goldText,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ]),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  Icon(
+                    _open
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: AppColors.muted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _open
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: widget.details,
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+      ],
     );
   }
 }
@@ -456,7 +658,8 @@ class _BirthdayRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final birth = child.birthDate!;
     final age = DateTime.now().year - birth.year;
-    final hasPhone = child.mobile != null && child.mobile!.isNotEmpty;
+    final callTo = callNumberFor(child);
+    final hasPhone = callTo != null;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -501,8 +704,7 @@ class _BirthdayRow extends StatelessWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: AppStrings.call,
-              onPressed: () =>
-                  callNumber(child.mobile!),
+              onPressed: () => callNumber(callTo),
             ),
         ],
       ),

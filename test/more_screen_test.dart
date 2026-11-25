@@ -44,10 +44,10 @@ void main() {
     expect(list.physics, isA<AlwaysScrollableScrollPhysics>());
   });
 
-  testWidgets('the header shows the name, initials and role', (tester) async {
+  testWidgets('the header shows the name, the first letter and role', (tester) async {
     await _pump(tester);
     expect(find.text('مينا فايز'), findsOneWidget);
-    expect(find.text('م ف'), findsOneWidget);
+    expect(find.text('م'), findsOneWidget);
     expect(find.text('أمين الخدمة'), findsOneWidget);
     expect(find.text('2026 - 2027'), findsOneWidget);
   });

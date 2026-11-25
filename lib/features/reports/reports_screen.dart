@@ -806,8 +806,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(width: 8),
               _StatTile(
                 icon: Icons.trending_up_rounded,
-                value: all.isEmpty ? '0' : (points / all.length).toStringAsFixed(1),
-                label: AppStrings.avgMark,
+                value: '${overallAttendancePct(
+                  all.fold<int>(0, (a, r) => a + r.sessionsAttended),
+                  all.fold<int>(0, (a, r) => a + r.sessionsTotal),
+                ).round()}%',
+                label: AppStrings.attendanceRate,
                 color: AppColors.olive,
               ),
               const SizedBox(width: 8),
@@ -1145,6 +1148,11 @@ class _ClassScore {
   /// Attendance: Saturdays came over Saturdays held.
   double get percentage => held > 0 ? attended / held * 100 : 0;
 }
+
+/// Saturdays came over Saturdays held, as a percentage; 0 when none held.
+@visibleForTesting
+double overallAttendancePct(int attended, int held) =>
+    held > 0 ? attended / held * 100 : 0;
 
 /// Best attendance first, points breaking ties: the order every ranking in
 /// the reports uses, so the rank matches the % shown.

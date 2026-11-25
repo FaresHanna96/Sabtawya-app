@@ -40,6 +40,8 @@ Future<void> _pump(
   List<WeeklyAttendance> weeks, {
   Map<DateTime, double> benchmark = const {},
   void Function(String, DateTime)? onRecord,
+  bool showHeadline = true,
+  Map<String, String> names = _names,
 }) async {
   tester.view.physicalSize = const Size(360, 1400);
   tester.view.devicePixelRatio = 1;
@@ -52,9 +54,10 @@ Future<void> _pump(
           padding: const EdgeInsets.all(16),
           child: WeeklyAttendanceChart(
             weeks: weeks,
-            classNames: _names,
+            classNames: names,
             benchmark: benchmark,
             onRecord: onRecord,
+            showHeadline: showHeadline,
           ),
         ),
       ),
@@ -216,5 +219,44 @@ void main() {
     expect(WeeklyAttendanceChart.levelColor(60), AppColors.success);
     expect(WeeklyAttendanceChart.levelColor(45), AppColors.warning);
     expect(WeeklyAttendanceChart.levelColor(39), AppColors.danger);
+  });
+
+  group('under the home status card', () {
+    final weeks = [
+      _week(oct31, [_c('b3', 5, 10)]),
+      _week(nov7, [_c('b3', 8, 10), _c('g3', 3, 10), _c('g6', 6, 10)]),
+    ];
+
+    testWidgets('the headline numbers are not repeated', (tester) async {
+      await _pump(tester, weeks, showHeadline: false);
+      expect(find.text(AppStrings.attendedOn('7/11')), findsNothing);
+      expect(find.text(AppStrings.attendedOf(17, 30)), findsNothing);
+      // The chart itself and the tapped Saturday's detail stay.
+      expect(find.text(AppStrings.weeklyAttendance), findsOneWidget);
+      expect(find.text('3 بنات'), findsOneWidget);
+    });
+
+    testWidgets('by default the headline is still there', (tester) async {
+      await _pump(tester, weeks);
+      expect(find.text(AppStrings.attendedOn('7/11')), findsOneWidget);
+    });
+
+    testWidgets('eight classes take four rows of two, not eight', (tester) async {
+      final names = {for (var i = 0; i < 8; i++) 'c$i': 'فصل $i'};
+      await _pump(
+        tester,
+        [
+          _week(nov7, [for (var i = 0; i < 8; i++) _c('c$i', i + 1, 10)]),
+        ],
+        showHeadline: false,
+        names: names,
+      );
+      final ys = {
+        for (var i = 0; i < 8; i++)
+          tester.getTopLeft(find.text('فصل $i')).dy.round(),
+      };
+      expect(ys.length, 4);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

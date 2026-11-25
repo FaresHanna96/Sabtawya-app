@@ -56,26 +56,26 @@ void main() {
   });
 
   group('which number is used', () {
-    test('the mother first, then the father, then the child', () {
+    test('the child first, then the mother, then the father', () {
       expect(
         WhatsApp.numberFor(_child(
             mobile: '01011111111',
             mother: '01022222222',
             father: '01033333333')),
-        '201022222222',
+        '201011111111',
       );
       expect(
         WhatsApp.numberFor(
-            _child(mobile: '01011111111', father: '01033333333')),
-        '201033333333',
+            _child(mother: '01022222222', father: '01033333333')),
+        '201022222222',
       );
-      expect(WhatsApp.numberFor(_child(mobile: '01011111111')), '201011111111');
+      expect(WhatsApp.numberFor(_child(father: '01033333333')), '201033333333');
     });
 
     test('a number that cannot be used is skipped, not given up on', () {
       expect(
         WhatsApp.numberFor(
-            _child(mother: '0222222222', father: '01033333333', mobile: 'x')),
+            _child(mobile: 'x', mother: '0222222222', father: '01033333333')),
         '201033333333',
       );
     });

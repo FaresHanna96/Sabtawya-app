@@ -136,7 +136,16 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
                     AbsenceFollowUpScreen.inChip(s.absentStreak, _min) &&
                     (_classIds.isEmpty || _classIds.contains(s.classId)))
                 .toList()
-              ..sort((a, b) => b.absentStreak.compareTo(a.absentStreak));
+              ..sort((a, b) {
+                // Followed up ones sink to the bottom, worst streak first.
+                final fa = isFollowedUp(a, data.children[a.childId]);
+                final fb = isFollowedUp(b, data.children[b.childId]);
+                if (fa != fb) return fa ? 1 : -1;
+                return b.absentStreak.compareTo(a.absentStreak);
+              });
+            final followedCount = rows
+                .where((s) => isFollowedUp(s, data.children[s.childId]))
+                .length;
             final several = _classIds.length > 1 ||
                 (_classIds.isEmpty && classes.length > 1);
 
@@ -178,6 +187,8 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
                       onChanged: (ids) => setState(() => _classIds = ids),
                     ),
                   ),
+                if (rows.isNotEmpty)
+                  FollowUpProgressStrip(done: followedCount, total: rows.length),
                 Expanded(
                   child: rows.isEmpty
                       ? ListView(
@@ -223,6 +234,65 @@ class _AbsenceFollowUpScreenState extends State<AbsenceFollowUpScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// The last phone or home visit of [child], whichever is newer.
+DateTime? lastVisitOf(Child? child) {
+  final a = child?.lastPhoneVisitDate;
+  final b = child?.lastHomeVisitDate;
+  if (a == null) return b;
+  if (b == null) return a;
+  return a.isAfter(b) ? a : b;
+}
+
+/// Followed up already: someone visited after the last time they came.
+@visibleForTesting
+bool isFollowedUp(ChildStreak s, Child? child) {
+  final visit = lastVisitOf(child);
+  final lastPresent = s.lastPresentDate;
+  return visit != null && (lastPresent == null || !visit.isBefore(lastPresent));
+}
+
+/// "اتفتقد 2 من 4 النهارده" with a bar that fills as cards are done.
+@visibleForTesting
+class FollowUpProgressStrip extends StatelessWidget {
+  const FollowUpProgressStrip(
+      {super.key, required this.done, required this.total});
+
+  final int done;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total == 0 ? 0.0 : done / total;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            AppStrings.followedUpProgress(done, total),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: ratio),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, __) => LinearProgressIndicator(
+                value: v,
+                minHeight: 7,
+                color: AppColors.success,
+                backgroundColor: AppColors.navy.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -300,21 +370,9 @@ class _AbsenceTile extends StatelessWidget {
   final VoidCallback onFollowedUp;
   final VoidCallback onOpen;
 
-  /// The last phone or home visit, whichever is newer.
-  DateTime? get _lastVisit {
-    final a = child?.lastPhoneVisitDate;
-    final b = child?.lastHomeVisitDate;
-    if (a == null) return b;
-    if (b == null) return a;
-    return a.isAfter(b) ? a : b;
-  }
+  DateTime? get _lastVisit => lastVisitOf(child);
 
-  String? get _phone {
-    for (final n in [child?.mobile, child?.motherMobile, child?.fatherMobile]) {
-      if ((n ?? '').trim().isNotEmpty) return n!.trim();
-    }
-    return null;
-  }
+  String? get _phone => callNumberFor(child);
 
   @override
   Widget build(BuildContext context) {

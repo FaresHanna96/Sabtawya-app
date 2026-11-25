@@ -36,7 +36,7 @@ class AppColors {
   static const Color success = Color(0xFF2E7D4F);
   static const Color warning = Color(0xFFB7791F);
   static const Color danger = Color(0xFFB3261E);
-  static const Color muted = Color(0xFF6B7280);
+  static const Color muted = Color(0xFF566070);
 
   /// The same hues, darkened so TEXT in them is readable: at least 4.5:1 on
   /// white, on the cream background and on their own light tint up to 20%

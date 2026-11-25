@@ -172,4 +172,48 @@ void main() {
       expect(cleared.isNarrowing, isFalse);
     });
   });
+
+  group('quick chips', () {
+    final now = DateTime(2026, 11, 25);
+    final kids = [
+      Child(
+        id: 'أ',
+        classId: 'class-1',
+        fullName: 'أ',
+        gender: Gender.boy,
+        isActive: true,
+        birthDate: DateTime(2016, 11, 3),
+        mobile: '010',
+        motherName: 'م',
+        fatherName: 'ب',
+        confessionFather: 'أبونا',
+        school: 'مدرسة',
+        address: 'عنوان',
+      ),
+      _child(name: 'ب', birthDate: DateTime(2016, 5, 3)),
+      _child(name: 'ج'),
+    ];
+
+    test('birthday this month keeps only that month', () {
+      const f = ChildFilter(quick: QuickFilter.birthdayMonth);
+      expect(f.apply(kids, now: now).map((c) => c.id), ['أ']);
+    });
+
+    test('missing data keeps children with an empty field', () {
+      const f = ChildFilter(quick: QuickFilter.missingInfo);
+      expect(f.apply(kids).map((c) => c.id).toSet(), {'ب', 'ج'});
+    });
+
+    test('absent uses the ids, and waits while they load', () {
+      const f = ChildFilter(quick: QuickFilter.absent);
+      expect(f.apply(kids, absentIds: {'ج'}).map((c) => c.id), ['ج']);
+      expect(f.apply(kids).length, 3);
+    });
+
+    test('a chip narrows, and clearQuick removes it', () {
+      const f = ChildFilter(quick: QuickFilter.absent);
+      expect(f.isNarrowing, isTrue);
+      expect(f.copyWith(clearQuick: true).isNarrowing, isFalse);
+    });
+  });
 }

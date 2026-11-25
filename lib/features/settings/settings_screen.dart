@@ -9,7 +9,6 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/motion.dart';
 import '../../state/session_controller.dart';
 import '../auth/change_password_screen.dart';
-import '../home/welcome_tour.dart';
 import '../profile/my_profile_screen.dart';
 import 'absence_alert_tile.dart';
 import 'caller_id_tile.dart';
@@ -83,12 +82,6 @@ class SettingsScreen extends StatelessWidget {
             const _GroupTitle(AppStrings.moreApp),
             _GroupCard(children: [
               const CallerIdTile(),
-              _SettingsRow(
-                icon: Icons.school_rounded,
-                color: AppColors.navyLight,
-                title: AppStrings.tourMenu,
-                onTap: () => _push(context, const WelcomeTourScreen()),
-              ),
             ]),
             if (session.isAdmin) ...[
               const _GroupTitle(AppStrings.absenceAlertSettings),

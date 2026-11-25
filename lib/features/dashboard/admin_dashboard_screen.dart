@@ -14,8 +14,9 @@ import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
 import '../children/child_form_screen.dart';
 import '../calendar/calendar_screen.dart';
-import '../lessons/lesson_widgets.dart';
-import 'home_numbers_card.dart';
+import 'home_status_card.dart';
+import 'needs_attention_strip.dart';
+import 'next_saturday_prep_card.dart';
 import 'quick_action_grid.dart';
 import 'weekly_attendance_chart.dart';
 import 'today_birthdays_section.dart';
@@ -34,9 +35,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<_AdminDashboard>>();
 
-  /// "عرض الكل" on the activity feed.
-  bool _showAllActivity = false;
-
   /// Counts the loads: the birthdays, missing-info and lesson cards load on
   /// their own, and fetch again whenever it changes.
   int _loads = 0;
@@ -48,20 +46,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     // The reads do not depend on each other, so run them side by side
     // instead of one after another (the dashboard waited for each in turn).
     if (yearId == null) {
-      final (stats, activity) =
-          await (_reports.adminStats(), _reports.recentActivity()).wait;
-      return _AdminDashboard(stats: stats, activity: activity);
+      return _AdminDashboard(stats: await _reports.adminStats());
     }
 
     // صحة الفصول (with the class scores it needs) moved to the Classes tab,
     // so the home no longer downloads either.
-    final (stats, activity, weeks) = await (
+    final (stats, weeks) = await (
       _reports.adminStats(),
-      _reports.recentActivity(),
       _reports.weeklyAttendance(yearId),
     ).wait;
 
-    return _AdminDashboard(stats: stats, activity: activity, weeks: weeks);
+    return _AdminDashboard(stats: stats, weeks: weeks);
   }
 
   Future<void> _reload() =>
@@ -80,6 +75,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     );
     if (mounted) context.read<SessionController>().markChanged();
+  }
+
+  /// «سجّل الحضور» while today's attendance still has a class to record.
+  VoidCallback? _recordNow(List<WeeklyAttendance> weeks) {
+    if (weeks.isEmpty || !weeks.last.inProgress) return null;
+    final date = weeks.last.date;
+    return () async {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => AttendanceScreen(showAppBar: true, initialDate: date),
+        ),
+      );
+      if (mounted) context.read<SessionController>().markChanged();
+    };
   }
 
   Future<void> _push(Widget screen) async {
@@ -109,43 +118,59 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           // activity feed move beside it.
           child: TwoColumns(
             main: [
-              // A slim greeting and every number in one card, then what is
-              // waiting (محتاج متابعة), today (birthdays, if any; the lesson,
-              // closed), the shortcuts and the details.
+              // The week at a glance in one card (who, how the last Saturday
+              // went, the totals), then what needs doing (محتاج متابعة,
+              // today's birthdays on one line), the Saturday ahead (lesson and
+              // prep in one card) and the shortcuts. The chart is the detail.
               FadeSlideIn(
                 index: 0,
-                child:
-                    _greeting(session.displayName, session.currentYear?.name),
-              ),
-              const SizedBox(height: 12),
-              FadeSlideIn(
-                index: 1,
-                child: HomeNumbersCard(
-                  children: stats.childrenCount,
-                  classes: stats.classesCount,
-                  servants: stats.servantsCount,
-                  admins: stats.adminsCount,
-                  boys: stats.boysCount,
-                  girls: stats.girlsCount,
+                child: HomeStatusCard(
+                  name: session.displayName,
+                  yearName: session.currentYear?.name,
+                  onRecord: _recordNow(data.weeks),
+                  totals: [
+                    HomeTotal(
+                      value: stats.childrenCount,
+                      label: AppStrings.totalChildren,
+                      icon: Icons.groups_rounded,
+                      sub: '${stats.boysCount} ${AppStrings.boys} • '
+                          '${stats.girlsCount} ${AppStrings.girls}',
+                    ),
+                    HomeTotal(
+                      value: stats.classesCount,
+                      label: AppStrings.totalClasses,
+                      icon: Icons.class_rounded,
+                    ),
+                    HomeTotal(
+                      value: stats.servantsCount,
+                      label: AppStrings.totalServants,
+                      icon: Icons.supervisor_account_rounded,
+                      sub: '${stats.adminsCount} ${AppStrings.adminsShort}',
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               FadeSlideIn(
-                index: 3,
+                index: 1,
+                child: NeedsAttentionSection(reloadToken: _loads),
+              ),
+              FadeSlideIn(
+                index: 2,
                 child: TodayBirthdaysSection(
                   reloadToken: _loads,
                   hideWhenEmpty: true,
+                  compact: true,
                 ),
               ),
               FadeSlideIn(
-                index: 4,
-                child: LessonOfDay(
-                  date: upcomingSaturday(),
+                index: 3,
+                child: NextSaturdaySection(
                   reloadToken: _loads,
-                  initiallyExpanded: false,
+                  showPrep: true,
                 ),
               ),
-              FadeSlideIn(index: 5, child: _quickActions()),
+              FadeSlideIn(index: 4, child: _quickActions()),
               const SizedBox(height: 16),
             ],
             side: [
@@ -165,9 +190,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       )
                     : SectionCard(child: _lastSaturday(stats)),
               ),
-              const SizedBox(height: 16),
-              if (data.activity.isNotEmpty)
-                FadeSlideIn(index: 7, child: _activity(data.activity)),
             ],
           ),
         );
@@ -186,100 +208,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         icon: Icons.event_available_outlined,
       );
 
-  /// Recent activity as a small timeline: an icon per kind of change and how
-  /// long ago it happened. Three at first, the rest behind "عرض الكل".
-  Widget _activity(List<ActivityLogEntry> all) {
-    final shown = _showAllActivity ? all : all.take(3).toList();
-    return SectionCard(
-      title: AppStrings.recentActivity,
-      icon: Icons.history_rounded,
-      accent: AppColors.sky,
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        alignment: Alignment.topCenter,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < shown.length; i++)
-              _activityRow(shown[i], last: i == shown.length - 1),
-            if (all.length > 3)
-              TextButton(
-                onPressed: () =>
-                    setState(() => _showAllActivity = !_showAllActivity),
-                child: Text(
-                  _showAllActivity ? AppStrings.showLess : AppStrings.showAll,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _activityRow(ActivityLogEntry entry, {required bool last}) {
-    final (icon, color) = switch (entry.entity) {
-      'attendance_records' => (Icons.fact_check_rounded, AppColors.success),
-      'children' => (Icons.child_care_rounded, AppColors.navy),
-      'class_servants' => (Icons.group_add_rounded, AppColors.olive),
-      'profiles' => (Icons.person_add_alt_1_rounded, AppColors.sky),
-      'event_payments' => (Icons.payments_rounded, AppColors.gold),
-      _ => (Icons.history_rounded, AppColors.muted),
-    };
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // The dot and the line joining it to the next entry.
-          Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 14, color: color),
-              ),
-              if (!last)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: AppColors.muted.withValues(alpha: 0.18),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 12, top: 2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(entry.description, style: const TextStyle(fontSize: 13)),
-                  const SizedBox(height: 2),
-                  Text(
-                    AppDateUtils.agoLabel(entry.createdAt),
-                    style:
-                        const TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _greeting(String name, String? yearName) =>
-      GreetingBanner(name: name, subtitle: yearName, dense: true);
-
   Widget _quickActions() {
     // خادم عام sees everything but does not add or import children.
     final canEditChildren = !context.read<SessionController>().isGeneralServant;
     return QuickActionGrid(
+      compact: true,
       actions: [
         // Attendance is a bottom tab and the import is in Children and
         // المزيد, so they are not repeated here.
@@ -304,12 +237,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 class _AdminDashboard {
   const _AdminDashboard({
     required this.stats,
-    required this.activity,
     this.weeks = const <WeeklyAttendance>[],
   });
 
   final AdminStats stats;
-  final List<ActivityLogEntry> activity;
 
   /// Attendance per Saturday, for the weekly chart.
   final List<WeeklyAttendance> weeks;

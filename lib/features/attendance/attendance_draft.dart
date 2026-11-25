@@ -107,6 +107,28 @@ class AttendanceDraft {
         e.confession,
       ].map((on) => on ? '1' : '0').join();
 
+  /// Every entry's four marks right now, to put back with [restoreSnapshot]
+  /// (the undo after «تحضير الجميع»).
+  static List<String> snapshot(List<AttendanceEntry> entries) =>
+      [for (final e in entries) marksOf(e)];
+
+  /// Puts the marks of [snapshot] back on [entries] (same order and length).
+  static void restoreSnapshot(
+    List<AttendanceEntry> entries,
+    List<String> snapshot,
+  ) {
+    if (entries.length != snapshot.length) return;
+    for (var i = 0; i < entries.length; i++) {
+      final m = snapshot[i];
+      if (m.length != 4) continue;
+      entries[i]
+        ..sundaySchool = m[0] == '1'
+        ..vespers = m[1] == '1'
+        ..mass = m[2] == '1'
+        ..confession = m[3] == '1';
+    }
+  }
+
   /// The children whose marks differ from [originals], as "before>after".
   static Map<String, String> changes(
     List<AttendanceEntry> entries,

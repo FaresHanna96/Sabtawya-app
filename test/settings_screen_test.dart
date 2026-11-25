@@ -71,8 +71,8 @@ void main() {
     expect(find.text(AppStrings.moreApp), findsOneWidget);
     // Always listed; on the website (the test) it is off, with the reason.
     expect(find.text(AppStrings.callerIdSwitch), findsOneWidget);
-    expect(find.text(AppStrings.tourMenu), findsOneWidget);
-    // The update check lives in المزيد only.
+    // The tour and the update check live in المزيد only (not repeated here).
+    expect(find.text(AppStrings.tourMenu), findsNothing);
     expect(find.text(AppStrings.checkForUpdates), findsNothing);
     // The admin's groups are not shown to a servant.
     expect(find.text(AppStrings.absenceAlertSettings), findsNothing);

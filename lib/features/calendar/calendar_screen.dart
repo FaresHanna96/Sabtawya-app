@@ -101,8 +101,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
 
   /// The birthday's two ways to reach the person: the WhatsApp greeting and a
-  /// call. The call needs the person's own number; the greeting may go to a
-  /// parent for a child with none.
+  /// call. Both go to the child's own number, else the mother's, else the
+  /// father's; a servant has only their own.
   Widget _birthdayActions({
     required String name,
     required String me,
@@ -110,7 +110,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Child? child,
     bool girl = false,
   }) {
-    final number = (mobile ?? '').trim();
+    // A child with no number of their own: the mother's, then the father's.
+    final number = child != null
+        ? (callNumberFor(child) ?? '')
+        : (mobile ?? '').trim();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

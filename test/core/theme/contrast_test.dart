@@ -75,4 +75,22 @@ void main() {
       }
     });
   });
+
+  group('muted grey for small text', () {
+    test('reads at 5.5:1 or better on every background it sits on', () {
+      for (final bg in [Colors.white, AppColors.surface, cream]) {
+        expect(_contrast(AppColors.muted, bg), greaterThanOrEqualTo(5.5));
+      }
+    });
+
+    test('and at AA on the soft tints behind it', () {
+      for (final brand in [AppColors.navy, AppColors.olive, AppColors.gold]) {
+        for (final a in [0.08, 0.12, 0.14]) {
+          expect(_contrast(AppColors.muted, _overWhite(brand, a)),
+              greaterThanOrEqualTo(4.5),
+              reason: '$brand at $a');
+        }
+      }
+    });
+  });
 }

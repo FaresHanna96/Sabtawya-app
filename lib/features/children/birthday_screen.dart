@@ -734,7 +734,11 @@ class _BirthdayTile extends StatelessWidget {
     // Already celebrated this year: still listed, but quieter.
     final passed = daysLeft < 0;
     final nextAge = turningAge(birth, now);
-    final hasPhone = (person.mobile ?? '').trim().isNotEmpty;
+    // A child with no number of their own: the mother's, then the father's.
+    final callTo = person.child != null
+        ? callNumberFor(person.child)
+        : ((person.mobile ?? '').trim().isEmpty ? null : person.mobile!.trim());
+    final hasPhone = callTo != null;
 
     final String status;
     final Color statusColor;
@@ -811,8 +815,7 @@ class _BirthdayTile extends StatelessWidget {
                   tooltip: AppStrings.call,
                   icon: const Icon(Icons.call_rounded, size: 20),
                   color: AppColors.success,
-                  onPressed: () => callNumber(person.mobile!.trim(),
-                  ),
+                  onPressed: () => callNumber(callTo),
                 ),
               if (onTap != null)
                 const Padding(

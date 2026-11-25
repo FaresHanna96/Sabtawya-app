@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/date_cube.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
@@ -569,7 +570,7 @@ class _CompetitionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              _DateBlock(date: competition.weekDate, color: statusColor),
+              DateCube(date: competition.weekDate, color: statusColor),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -652,46 +653,6 @@ class _CompetitionTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// The day on a tinted square: its number over the month's name.
-class _DateBlock extends StatelessWidget {
-  const _DateBlock({required this.date, required this.color});
-
-  final DateTime date;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '${date.day}',
-            style: TextStyle(
-              fontSize: 20,
-              height: 1.1,
-              fontWeight: FontWeight.w800,
-              color: AppColors.readable(color),
-            ),
-          ),
-          Text(
-            AppDateUtils.monthName(date.month),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, color: AppColors.readable(color)),
-          ),
-        ],
       ),
     );
   }

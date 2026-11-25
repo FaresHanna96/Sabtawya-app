@@ -6,10 +6,22 @@ import '../../core/theme/class_colors.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/utils/app_date_utils.dart';
 import '../../data/models/child.dart';
+import '../../data/models/reports.dart';
 import 'child_avatar.dart';
 import 'child_filters.dart';
 import 'contact_cards.dart';
+
+/// The «حضر السبت اللي فات» line: came to the last Saturday, or when they last
+/// came. Null while the streaks are not loaded; «لسه ما حضرش» for none yet.
+String? lastSeenText(ChildStreak? s) {
+  if (s == null) return null;
+  if (s.absentStreak == 0 && s.presentStreak > 0) return AppStrings.cameLastSaturday;
+  final last = s.lastPresentDate;
+  if (last == null) return AppStrings.neverCame;
+  return '${AppStrings.lastPresent} ${AppDateUtils.formatDate(last)}';
+}
 
 /// One child in a list. Shared by the children directory and class details so
 /// both read identically.
@@ -21,6 +33,7 @@ class ChildTile extends StatelessWidget {
     this.className,
     this.presentStreak = 0,
     this.absentStreak = 0,
+    this.lastSeen,
     this.onContact,
   });
 
@@ -33,6 +46,9 @@ class ChildTile extends StatelessWidget {
 
   /// Saturdays missed in a row; a «غاب N» pill shows from 2 up.
   final int absentStreak;
+
+  /// The last-attendance line under the details (see [lastSeenText]).
+  final String? lastSeen;
 
   /// Opens call / WhatsApp for the child and parents. When given and the
   /// child has a number, a phone button replaces the arrow.
@@ -143,16 +159,38 @@ class ChildTile extends StatelessWidget {
                     GenderBadge(gender: child.gender, compact: true),
                   ],
                 ),
-                subtitle: subtitle.isEmpty
+                subtitle: subtitle.isEmpty && lastSeen == null
                     ? null
                     : Padding(
                         padding: const EdgeInsets.only(top: 3),
-                        child: Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.muted),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (subtitle.isNotEmpty)
+                              Text(
+                                subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.muted),
+                              ),
+                            if (lastSeen != null && child.isActive)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  lastSeen!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: absentStreak >= 2
+                                        ? AppColors.coralText
+                                        : AppColors.success,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                 trailing: !child.isActive

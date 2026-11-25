@@ -150,6 +150,29 @@ enum LogActivity {
         LogActivity.confession => s.confession,
       };
 
+  /// When this activity was last done, never later than [today]: a Saturday
+  /// marked ahead of time is not "the last time" (it used to read «اليوم»).
+  /// The database's date [db] is used as it is, unless it lies in the future;
+  /// then the latest Saturday up to today in the child's own [months] where
+  /// the activity was done stands in (null when there is none).
+  DateTime? lastDone(
+    List<LogMonth> months,
+    DateTime? db,
+    DateTime today,
+  ) {
+    if (db == null) return null;
+    final cutoff = DateTime(today.year, today.month, today.day);
+    if (!DateTime(db.year, db.month, db.day).isAfter(cutoff)) return db;
+    DateTime? best;
+    for (final m in months) {
+      for (final s in m.recorded) {
+        if (s.date.isAfter(cutoff) || !on(s.score!)) continue;
+        if (best == null || s.date.isAfter(best)) best = s.date;
+      }
+    }
+    return best;
+  }
+
   DateTime? lastIn(ChildLastActivity a) => switch (this) {
         LogActivity.sundaySchool => a.lastSundaySchool,
         LogActivity.vespers => a.lastVespers,
@@ -284,6 +307,8 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
             totals: totals,
             points: points,
             lastActivity: widget.lastActivity,
+            months: _months,
+            today: widget.today ?? DateTime.now(),
           ),
           if (_months.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -453,11 +478,15 @@ class _Overview extends StatelessWidget {
     required this.totals,
     required this.points,
     required this.lastActivity,
+    required this.months,
+    required this.today,
   });
 
   final LogTotals totals;
   final int points;
   final ChildLastActivity? lastActivity;
+  final List<LogMonth> months;
+  final DateTime today;
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +546,11 @@ class _Overview extends StatelessWidget {
                     activity: a,
                     count: totals.perActivity[a] ?? 0,
                     held: held,
-                    last: lastActivity == null ? null : a.lastIn(lastActivity!),
+                    last: a.lastDone(
+                      months,
+                      lastActivity == null ? null : a.lastIn(lastActivity!),
+                      today,
+                    ),
                   ),
                 ),
               ],

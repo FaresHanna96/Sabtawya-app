@@ -230,6 +230,61 @@ class ServantActivityRepository {
   }
 
   /// How many preps wait for review: ids only, for a badge.
+  /// The classes whose prep is done for the Saturday [date]: any servant of
+  /// the class uploaded one, OR the admin ticked «تحضير الدرس» for any servant
+  /// of the class that day. (An admin sees every class; RLS narrows anyone
+  /// else.)
+  Future<Set<String>> classIdsWithPrep(DateTime date) async {
+    try {
+      final iso = isoDate(date);
+      // Uploaded by a servant: the class of that Saturday's session.
+      final uploaded = await Db.client
+          .from(Db.tServantLessonPreps)
+          .select('id, attendance_sessions!inner(class_id, session_date)')
+          .eq('attendance_sessions.session_date', iso);
+      final uploadedClasses = {
+        for (final r in rows(uploaded))
+          if (r['attendance_sessions'] is Map)
+            '${(r['attendance_sessions'] as Map)['class_id']}',
+      };
+
+      // Ticked by the admin: the servants marked that day, then their classes.
+      final marks = await Db.client
+          .from(Db.tServantAttendances)
+          .select('servant_id')
+          .eq('activity_type', 'lesson_prep')
+          .eq('date', iso);
+      final marked = {for (final r in rows(marks)) '${r['servant_id']}'};
+      var assignments = const <({String servantId, String classId})>[];
+      if (marked.isNotEmpty) {
+        final data = await Db.client
+            .from(Db.tClassServants)
+            .select('servant_id, class_id')
+            .inFilter('servant_id', marked.toList());
+        assignments = [
+          for (final r in rows(data))
+            (servantId: '${r['servant_id']}', classId: '${r['class_id']}'),
+        ];
+      }
+      return classesWithPrep(uploadedClasses, assignments, marked);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
+  /// The rule on its own: a class is done when a prep was uploaded for it, or
+  /// when any servant assigned to it was ticked by the admin.
+  static Set<String> classesWithPrep(
+    Set<String> uploadedClassIds,
+    Iterable<({String servantId, String classId})> assignments,
+    Set<String> markedServantIds,
+  ) =>
+      {
+        ...uploadedClassIds,
+        for (final a in assignments)
+          if (markedServantIds.contains(a.servantId)) a.classId,
+      };
+
   Future<int> pendingPrepsCount() async {
     try {
       final data = await Db.client

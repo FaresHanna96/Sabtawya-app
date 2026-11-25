@@ -17,8 +17,9 @@ import '../children/child_form_screen.dart';
 import '../competitions/competitions_screen.dart';
 import '../events/events_screen.dart';
 import '../calendar/calendar_screen.dart';
-import '../lessons/lesson_widgets.dart';
-import 'missing_info_section.dart';
+import 'home_status_card.dart';
+import 'needs_attention_strip.dart';
+import 'next_saturday_prep_card.dart';
 import 'quick_action_grid.dart';
 import 'today_birthdays_section.dart';
 import 'weekly_attendance_chart.dart';
@@ -80,10 +81,6 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
     }
 
     final currentSession = _currentSession(classes);
-    final totalChildren = classes.fold<int>(
-      0,
-      (sum, item) => sum + item.activeChildren,
-    );
 
     final lastSaturday = InfoRow(
       label: AppStrings.lastAttendance,
@@ -100,7 +97,6 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
         // The chart names its own Saturday; with nothing recorded yet the
         // last Saturday gets a small card instead.
         final hasChart = data.weeks.any((w) => w.recorded);
-        final lastWeek = WeeklyAttendance.headline(data.weeks);
         // Not a lazy ListView: it rebuilt each section as it scrolled back
         // into view, which replayed its entrance (after a delay) every time.
         return SingleChildScrollView(
@@ -110,63 +106,45 @@ class _ServantDashboardScreenState extends State<ServantDashboardScreen> {
           // chart next to the rest), as on the admin home.
           child: TwoColumns(
             main: [
-              // Same order as the admin home: glance (greeting, numbers), today
-              // (birthdays, lesson), then shortcuts and the classes.
+              // Same shape as the admin home: the week at a glance, what needs
+              // doing, the Saturday ahead, then the shortcuts.
               FadeSlideIn(
                 index: 0,
-                child: _WelcomeBanner(
+                child: HomeStatusCard(
                   name: session.displayName,
                   yearName: session.currentYear?.name,
+                  onRecord: data.weeks.isNotEmpty && data.weeks.last.inProgress
+                      ? () => _push(AttendanceScreen(
+                            showAppBar: true,
+                            initialDate: data.weeks.last.date,
+                          ))
+                      : null,
+                  totals: servantHomeTotals(classes),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               FadeSlideIn(
                 index: 1,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                        label: AppStrings.totalChildren,
-                        value: '$totalChildren',
-                        icon: Icons.groups_outlined,
-                        color: AppColors.olive,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      // A servant has one class, so its count says nothing;
-                      // this is how the last finished Saturday went.
-                      child: StatCard(
-                        label: AppStrings.lastSaturdayRate,
-                        value: lastWeek == null
-                            ? '—'
-                            : '${lastWeek.percentage.round()}%',
-                        icon: Icons.how_to_reg_rounded,
-                        color: AppColors.success,
-                      ),
-                    ),
-                  ],
+                child: NeedsAttentionSection(reloadToken: _loads),
+              ),
+              FadeSlideIn(
+                index: 2,
+                child: TodayBirthdaysSection(
+                  reloadToken: _loads,
+                  hideWhenEmpty: true,
+                  compact: true,
                 ),
-              ),
-              const SizedBox(height: 16),
-              FadeSlideIn(
-                index: 2,
-                child: TodayBirthdaysSection(reloadToken: _loads),
-              ),
-              FadeSlideIn(
-                index: 2,
-                child: MissingInfoSection(reloadToken: _loads),
               ),
               FadeSlideIn(
                 index: 3,
-                child: LessonOfDay(
-                  date: upcomingSaturday(),
+                child: NextSaturdaySection(
                   reloadToken: _loads,
                 ),
               ),
               FadeSlideIn(
                 index: 4,
                 child: QuickActionGrid(
+                  compact: true,
                   actions: [
                     // Attendance and «تحضيراتي» are bottom tabs already.
                     QuickAction(
@@ -257,14 +235,47 @@ class _ServantDashboard {
   final Map<DateTime, double> service;
 }
 
-class _WelcomeBanner extends StatelessWidget {
-  const _WelcomeBanner({required this.name, this.yearName});
-
-  final String name;
-  final String? yearName;
-
-  @override
-  Widget build(BuildContext context) {
-    return GreetingBanner(name: name, subtitle: yearName);
-  }
+/// The totals under the status card for a servant: their children with the
+/// boys/girls split, then, for one class, which class it is («فصلك» and its
+/// name: the home never said), or for several (a general servant) how many
+/// classes and how many servants share them. A cell with nothing to say is
+/// left out.
+@visibleForTesting
+List<HomeTotal> servantHomeTotals(List<ClassOverview> classes) {
+  final children = classes.fold<int>(0, (a, c) => a + c.activeChildren);
+  final boys = classes.fold<int>(0, (a, c) => a + c.boysCount);
+  final girls = classes.fold<int>(0, (a, c) => a + c.girlsCount);
+  final servants = classes.fold<int>(0, (a, c) => a + c.servantsCount);
+  return [
+    HomeTotal(
+      value: children,
+      label: AppStrings.totalChildren,
+      icon: Icons.groups_rounded,
+      sub: boys + girls == 0
+          ? null
+          : [
+              if (boys > 0) '$boys ${AppStrings.boys}',
+              if (girls > 0) '$girls ${AppStrings.girls}',
+            ].join(' • '),
+    ),
+    if (classes.length == 1)
+      HomeTotal(
+        text: classes.first.className,
+        label: AppStrings.yourClass,
+        icon: Icons.class_rounded,
+      ),
+    if (classes.length > 1) ...[
+      HomeTotal(
+        value: classes.length,
+        label: AppStrings.totalClasses,
+        icon: Icons.class_rounded,
+      ),
+      if (servants > 0)
+        HomeTotal(
+          value: servants,
+          label: AppStrings.totalServants,
+          icon: Icons.supervisor_account_rounded,
+        ),
+    ],
+  ];
 }

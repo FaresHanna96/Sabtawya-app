@@ -85,12 +85,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
       _childrenById = {for (final c in children) c.id: c};
       final phones = <String, String>{};
       for (final c in children) {
-        for (final n in [c.mobile, c.motherMobile, c.fatherMobile]) {
-          if (n != null && n.trim().isNotEmpty) {
-            phones[c.id] = n.trim();
-            break;
-          }
-        }
+        final n = callNumberFor(c);
+        if (n != null) phones[c.id] = n;
       }
       _phones = phones;
     } catch (_) {

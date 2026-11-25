@@ -23,7 +23,12 @@ class WeeklyAttendanceChart extends StatefulWidget {
     this.classNames = const {},
     this.benchmark = const {},
     this.onRecord,
+    this.showHeadline = true,
   });
+
+  /// The big numbers on top («حضروا سبت 14/11», «6 من 80», the %, the change).
+  /// Off on the home pages, where the status card above already says them.
+  final bool showHeadline;
 
   final List<WeeklyAttendance> weeks;
 
@@ -96,8 +101,10 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _headline(head),
-          if (prev != null) _trend(head, prev),
+          if (widget.showHeadline) ...[
+            _headline(head),
+            if (prev != null) _trend(head, prev),
+          ],
           if (missed.isNotEmpty)
             _note(
               icon: Icons.warning_amber_rounded,
@@ -119,7 +126,7 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
                   : AppStrings.todayNoneYet,
               onTap: () => setState(() => _picked = shown.length - 1),
             ),
-          const SizedBox(height: 14),
+          SizedBox(height: widget.showHeadline ? 14 : 4),
           // Bars read left to right: oldest Saturday on the left.
           Directionality(
             textDirection: TextDirection.ltr,
@@ -327,8 +334,12 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
           // Each class, lowest first, when there is more than one.
           if (recordedClasses.length > 1) ...[
             const SizedBox(height: 8),
-            for (final c in recordedClasses)
-              _ClassLine(name: _name(c.classId), pct: c.percentage),
+            _ClassGrid(
+              lines: [
+                for (final c in recordedClasses)
+                  (name: _name(c.classId), pct: c.percentage),
+              ],
+            ),
           ],
           if (missing.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -369,44 +380,61 @@ class _WeeklyAttendanceChartState extends State<WeeklyAttendanceChart> {
   }
 }
 
-/// "3 ولاد ▬▬▬▬── 40%": one class on the tapped Saturday.
-class _ClassLine extends StatelessWidget {
-  const _ClassLine({required this.name, required this.pct});
+/// One class on the tapped Saturday.
+typedef ClassPct = ({String name, double pct});
 
-  final String name;
-  final double pct;
+/// The classes of the tapped Saturday, lowest first, two to a row: the name
+/// and its % on one line, a thin bar under it. Eight classes take four rows,
+/// not eight. One class (or a very narrow card) is a single column.
+class _ClassGrid extends StatelessWidget {
+  const _ClassGrid({required this.lines});
+
+  final List<ClassPct> lines;
 
   @override
   Widget build(BuildContext context) {
-    final color = WeeklyAttendanceChart.levelColor(pct);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 72,
-            child: Text(
-              name,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (pct / 100).clamp(0, 1),
-                minHeight: 6,
-                color: color,
-                backgroundColor: AppColors.muted.withValues(alpha: 0.12),
+    return LayoutBuilder(
+      builder: (context, box) {
+        const gap = 14.0;
+        final two = lines.length > 1 && box.maxWidth >= 240;
+        final width = two ? (box.maxWidth - gap) / 2 : box.maxWidth;
+        return Wrap(
+          spacing: gap,
+          runSpacing: 8,
+          children: [
+            for (final l in lines)
+              SizedBox(width: width, child: _ClassCell(line: l)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ClassCell extends StatelessWidget {
+  const _ClassCell({required this.line});
+
+  final ClassPct line;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = WeeklyAttendanceChart.levelColor(line.pct);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                line.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
-          ),
-          SizedBox(
-            width: 44,
-            child: Text(
-              '${pct.round()}%',
-              textAlign: TextAlign.end,
+            Text(
+              '${line.pct.round()}%',
               textDirection: TextDirection.ltr,
               style: TextStyle(
                 fontSize: 12,
@@ -414,9 +442,19 @@ class _ClassLine extends StatelessWidget {
                 color: AppColors.readable(color),
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (line.pct / 100).clamp(0, 1),
+            minHeight: 5,
+            color: color,
+            backgroundColor: AppColors.muted.withValues(alpha: 0.14),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -477,7 +515,7 @@ class _Bar extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const maxBar = 110.0;
+  static const maxBar = 84.0;
 
   /// Room above a full bar for its label.
   static const _region = maxBar + 18;

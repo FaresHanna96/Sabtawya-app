@@ -225,4 +225,32 @@ class EventRepository {
       throw AppFailure.from(e);
     }
   }
+
+  /// Money summary per activity (event id -> summary), from the same balance
+  /// lines the activity page uses. RLS limits a servant to their own classes.
+  Future<Map<String, EventPaymentSummary>> paymentSummaries() async {
+    try {
+      final byEvent = <String, List<ChildEventBalance>>{};
+      // The API returns at most 1000 rows a call: read page after page.
+      const page = 1000;
+      for (var from = 0;; from += page) {
+        final data = await Db.client
+            .from(Db.vChildEventBalances)
+            .select()
+            .order('event_id')
+            .order('child_id')
+            .range(from, from + page - 1);
+        final list = rows(data).map(ChildEventBalance.fromMap).toList();
+        for (final b in list) {
+          (byEvent[b.eventId] ??= []).add(b);
+        }
+        if (list.length < page) break;
+      }
+      return {
+        for (final e in byEvent.entries) e.key: EventPaymentSummary.of(e.value),
+      };
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
 }

@@ -28,6 +28,9 @@ class AppStrings {
   static const noData = 'مفيش بيانات';
   static const all = 'الكل';
   static const badgeFilter = 'وسام';
+  static const quickAbsent = 'غايب';
+  static const quickBirthdayMonth = 'عيد ميلاده الشهر ده';
+  static const quickMissingInfo = 'بيانات ناقصة';
   static const allBadges = 'كل الأوسمة';
   static const badgeFilterLoadFailed = 'مقدرناش نحمّل الأوسمة دلوقتي. جرّب تاني.';
   static const active = 'نشط';
@@ -304,6 +307,25 @@ class AppStrings {
   static const tierCommitted = 'ملتزم';
   static const tierGold = 'ملتزم ذهبي';
   static String absentFor(int n) => 'غاب $n';
+  static String unpaidCount(int n) => '$n لسه ما دفعوش';
+  static const everyonePaid = 'كله دفع ✓';
+  static const yourClass = 'فصلك';
+  static const homeRecordNow = 'سجّل الحضور';
+  static const showClasses = 'عرض الفصول';
+  static const hideClasses = 'إخفاء الفصول';
+  static const birthdaysToday = 'أعياد ميلاد النهارده';
+  static String birthdaysSummary(int kids, int servants) => [
+        if (kids > 0) '$kids مخدوم',
+        if (servants > 0) '$servants خادم',
+      ].join(' • ');
+  static const nextSaturdayCard = 'السبت الجاي';
+  static const prepProgressTitle = 'تحضير الفصول';
+  static const showLesson = 'عرض الدرس';
+  static const hideLesson = 'إخفاء الدرس';
+  static const prepNotYet = 'لسه';
+  static String prepDoneOf(int n, int total) => '$n من $total';
+  static const cameLastSaturday = 'حضر السبت اللي فات';
+  static const neverCame = 'لسه ما حضرش';
   static const actionHistory = 'السجل';
   static const actionMessage = 'رسالة';
   static const actionContacts = 'جهات الاتصال';
@@ -651,12 +673,20 @@ class AppStrings {
   static const fullView = 'عرض كامل';
   static const markAllWhich = 'الكل حضروا في:';
   static const allActivities = 'كل الممارسات';
+  static const markedAllPresent = 'اتعلّم الكل حاضر';
+  static const markedAllCleared = 'اتمسحت العلامات';
+  static String followedUpProgress(int done, int total) =>
+      'اتفتقد $done من $total النهارده';
   static String draftRestored(int n) => n == 1
       ? 'رجّعنا علامات مخدوم ما اتحفظتش'
       : 'رجّعنا علامات $n مخدوم ما اتحفظتش';
   static const ignoreDraft = 'تجاهل';
   static const attendanceNotSaved = 'علامات الحضور لسه ما اتحفظتش';
   static const needsAttention = 'محتاج متابعة';
+  static const attnAbsence = 'غياب متكرر';
+  static const attnMissing = 'بيانات ناقصة';
+  static const attnPreps = 'تحضيرات مستنية';
+  static const attnInvites = 'طلبات انضمام';
   static const swipeAllPresent = 'حاضر في الكل';
   static const swipeClear = 'مسح العلامات';
   static const messageSentAgain = 'اتبعتت، ابعتها تاني';
@@ -1462,6 +1492,7 @@ class AppStrings {
   static const materialsTitle = 'وسائل الإيضاح';
   static const materialsLink = 'وسائل الإيضاح';
   static String gradeLabel(int grade) => 'صف $grade';
+  static const gradeWord = 'صف';
   static const noMaterials =
       'لسه مفيش مواد للدرس ده. لو عندك فيديو أو صورة أو ملف ساعدك، ضيفه هنا لباقي الخدام.';
   static const allGrades = 'لكل الصفوف';

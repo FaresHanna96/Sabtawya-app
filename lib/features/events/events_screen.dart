@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/date_cube.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
@@ -27,7 +30,24 @@ class _EventsScreenState extends State<EventsScreen> {
 
   final _sectionKey = GlobalKey<AsyncSectionState<List<Event>>>();
 
-  Future<List<Event>> _load() => _repository.listEvents();
+  /// Money per activity; arrives after the list and fills the badges in. An
+  /// activity with no entry (or a failed load) shows its cost as before.
+  Map<String, EventPaymentSummary> _summaries = const {};
+
+  Future<List<Event>> _load() async {
+    final events = await _repository.listEvents();
+    unawaited(_loadSummaries());
+    return events;
+  }
+
+  Future<void> _loadSummaries() async {
+    try {
+      final s = await _repository.paymentSummaries();
+      if (mounted) setState(() => _summaries = s);
+    } catch (_) {
+      // Just no badges.
+    }
+  }
   Future<void> _reload() =>
       _sectionKey.currentState?.reload() ?? Future.value();
 
@@ -103,6 +123,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       index: index,
                       child: _EventTile(
                         event: e,
+                        summary: _summaries[e.id],
                         isAdmin: isAdmin,
                         onTap: () => _open(e),
                         onEdit: () => _edit(e),
@@ -134,6 +155,7 @@ class _EventsScreenState extends State<EventsScreen> {
 class _EventTile extends StatelessWidget {
   const _EventTile({
     required this.event,
+    this.summary,
     required this.isAdmin,
     required this.onTap,
     required this.onEdit,
@@ -141,6 +163,7 @@ class _EventTile extends StatelessWidget {
   });
 
   final Event event;
+  final EventPaymentSummary? summary;
   final bool isAdmin;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -156,17 +179,9 @@ class _EventTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.goldTint,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.event_rounded,
-                  color: AppColors.gold,
-                  size: 22,
-                ),
+              DateCube(
+                date: event.eventDate,
+                color: AppColors.gold,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -197,21 +212,7 @@ class _EventTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.olive.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${event.cost.toStringAsFixed(0)} ج.م',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.oliveText,
-                  ),
-                ),
-              ),
+              EventMoneyBadge(event: event, summary: summary),
               if (isAdmin) ...[
                 const SizedBox(width: 4),
                 PopupMenuButton<_Action>(
@@ -254,3 +255,67 @@ class _EventTile extends StatelessWidget {
 }
 
 enum _Action { edit, delete }
+
+/// The money on an activity's row: «3 لسه ما دفعوش» (or «كله دفع ✓») over what
+/// has come in against what the booked children owe; the cost per child while
+/// nobody has booked.
+class EventMoneyBadge extends StatelessWidget {
+  const EventMoneyBadge({super.key, required this.event, this.summary});
+
+  final Event event;
+  final EventPaymentSummary? summary;
+
+  static String _money(double v) => v.toStringAsFixed(0);
+
+  @override
+  Widget build(BuildContext context) {
+    final s = summary;
+    if (s == null || s.booked == 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.olive.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          '${_money(event.cost)} ج.م',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.oliveText,
+          ),
+        ),
+      );
+    }
+    final color = s.allPaid ? AppColors.success : AppColors.coral;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            s.allPaid
+                ? AppStrings.everyonePaid
+                : AppStrings.unpaidCount(s.unpaid),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.readable(color),
+            ),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '${_money(s.collected)} / ${_money(s.expected)} ج.م',
+          textDirection: TextDirection.ltr,
+          style: const TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
+      ],
+    );
+  }
+}

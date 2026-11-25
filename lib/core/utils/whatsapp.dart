@@ -38,11 +38,12 @@ class WhatsApp {
     return digits;
   }
 
-  /// The number to write to: the mother's, else the father's, else the
-  /// child's own. Null when none of them is a usable mobile number.
+  /// The number to write to: the child's own, else the mother's, else the
+  /// father's (the order of `callNumberFor`). Null when none of them is a
+  /// usable mobile number; one that is not usable is skipped for the next.
   static String? numberFor(Child? child) {
     if (child == null) return null;
-    for (final n in [child.motherMobile, child.fatherMobile, child.mobile]) {
+    for (final n in [child.mobile, child.motherMobile, child.fatherMobile]) {
       final normal = normalise(n);
       if (normal != null) return normal;
     }

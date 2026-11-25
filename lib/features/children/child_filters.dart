@@ -6,12 +6,24 @@ import '../../core/utils/arabic_sort.dart';
 import '../../data/models/badges.dart';
 import '../../data/models/child.dart';
 import '../badges/badge_look.dart';
+import 'missing_info.dart';
 
 enum ChildSort {
   name(AppStrings.sortByName),
   age(AppStrings.sortByAge);
 
   const ChildSort(this.label);
+
+  final String label;
+}
+
+/// The quick chips under the search box (one at a time).
+enum QuickFilter {
+  absent(AppStrings.quickAbsent),
+  birthdayMonth(AppStrings.quickBirthdayMonth),
+  missingInfo(AppStrings.quickMissingInfo);
+
+  const QuickFilter(this.label);
 
   final String label;
 }
@@ -26,6 +38,7 @@ class ChildFilter {
     this.gender,
     this.includeInactive = false,
     this.badge,
+    this.quick,
     this.sort = ChildSort.name,
     this.ascending = true,
   });
@@ -36,6 +49,9 @@ class ChildFilter {
 
   /// Only the children who earned this badge (admin and general servant).
   final KidBadge? badge;
+
+  /// One of the quick chips: absent, birthday this month, missing data.
+  final QuickFilter? quick;
   final ChildSort sort;
   final bool ascending;
 
@@ -44,7 +60,8 @@ class ChildFilter {
       query.trim().isNotEmpty ||
       gender != null ||
       includeInactive ||
-      badge != null;
+      badge != null ||
+      quick != null;
 
   ChildFilter copyWith({
     String? query,
@@ -53,6 +70,8 @@ class ChildFilter {
     bool? includeInactive,
     KidBadge? badge,
     bool clearBadge = false,
+    QuickFilter? quick,
+    bool clearQuick = false,
     ChildSort? sort,
     bool? ascending,
   }) =>
@@ -61,6 +80,7 @@ class ChildFilter {
         gender: clearGender ? null : (gender ?? this.gender),
         includeInactive: includeInactive ?? this.includeInactive,
         badge: clearBadge ? null : (badge ?? this.badge),
+        quick: clearQuick ? null : (quick ?? this.quick),
         sort: sort ?? this.sort,
         ascending: ascending ?? this.ascending,
       );
@@ -73,12 +93,32 @@ class ChildFilter {
   ///
   /// [holders] are the ids of the children who earned [badge]; while it is
   /// still loading (null) the badge does not narrow anything.
-  List<Child> apply(List<Child> source, {Set<String>? holders}) {
+  ///
+  /// [absentIds] are the children absent two Saturdays or more in a row; while
+  /// they load (null) the «غايب» chip does not narrow anything. [now] is the
+  /// day «عيد ميلاده الشهر ده» counts from.
+  List<Child> apply(
+    List<Child> source, {
+    Set<String>? holders,
+    Set<String>? absentIds,
+    DateTime? now,
+  }) {
+    final month = (now ?? DateTime.now()).month;
     final result = source.where((child) {
       if (!includeInactive && !child.isActive) return false;
       if (gender != null && child.gender != gender) return false;
       if (badge != null && holders != null && !holders.contains(child.id)) {
         return false;
+      }
+      switch (quick) {
+        case QuickFilter.absent:
+          if (absentIds != null && !absentIds.contains(child.id)) return false;
+        case QuickFilter.birthdayMonth:
+          if (child.birthDate?.month != month) return false;
+        case QuickFilter.missingInfo:
+          if (MissingInfo.filter([child], null).isEmpty) return false;
+        case null:
+          break;
       }
       return child.matches(query);
     }).toList();
@@ -170,6 +210,7 @@ class ChildFilterBar extends StatelessWidget {
                         _genderChip(Gender.girl, AppStrings.girls),
                       ],
                       if (showBadges) _badgeChip(),
+                      for (final q in QuickFilter.values) _quickChip(q),
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: FilterChip(
@@ -288,6 +329,19 @@ class ChildFilterBar extends StatelessWidget {
           ),
           label: Text(picked?.title ?? AppStrings.badgeFilter),
           backgroundColor: picked?.color.withValues(alpha: 0.14),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickChip(QuickFilter q) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: FilterChip(
+        label: Text(q.label),
+        selected: filter.quick == q,
+        onSelected: (on) => onChanged(
+          on ? filter.copyWith(quick: q) : filter.copyWith(clearQuick: true),
         ),
       ),
     );

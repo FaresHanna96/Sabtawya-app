@@ -290,6 +290,13 @@ class _MoreViewState extends State<MoreView> {
 
 // --------------------------------------------------------------- header
 
+/// The first letter of the first name: "مينا فايز" -> "م" ("؟" when empty).
+@visibleForTesting
+String profileAvatarLetter(String name) {
+  final t = name.trim();
+  return t.isEmpty ? '؟' : t.characters.first;
+}
+
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.name,
@@ -304,12 +311,6 @@ class _ProfileHeader extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final VoidCallback? onLogout;
-
-  /// The first letter of the first two names: "مينا فايز" -> "م ف".
-  static String initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
-    return parts.take(2).map((p) => p.characters.first).join(' ');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -328,15 +329,35 @@ class _ProfileHeader extends StatelessWidget {
             padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 4, 14),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                // One big letter (the first name's), on a gold-to-olive disc
+                // with a white ring: two spaced letters read as noise in Arabic.
+                Container(
+                  width: 56,
+                  height: 56,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [AppColors.gold, AppColors.olive],
+                    ),
+                    border: Border.all(color: Colors.white, width: 2.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
                   child: Text(
-                    initials(name),
+                    profileAvatarLetter(name),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 26,
+                      height: 1.1,
                     ),
                   ),
                 ),

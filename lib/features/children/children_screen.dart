@@ -9,9 +9,11 @@ import '../../core/widgets/class_filter_chips.dart';
 import '../../core/widgets/class_group_header.dart';
 import '../../data/models/badges.dart';
 import '../../data/models/child.dart';
+import '../../data/models/reports.dart';
 import '../../data/models/school_class.dart';
 import '../../data/repositories/badge_repository.dart';
 import '../../data/repositories/child_repository.dart';
+import '../../data/repositories/report_repository.dart';
 import '../../state/session_controller.dart';
 import '../excel/import_children_screen.dart';
 import 'child_contact_sheet.dart';
@@ -43,6 +45,17 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
   /// Ids of the children who earned the badge picked in the filter; null
   /// until it has loaded.
   Set<String>? _badgeHolders;
+
+  /// Every child's attendance streak (last present date, Saturdays missed in
+  /// a row), by child id: one query after the list opens. Null until it
+  /// arrives; the «غايب» chip and the «حضر ...» line wait for it.
+  Map<String, ChildStreak>? _streaks;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStreaks());
+  }
   List<ChildBadge>? _schoolBadges;
 
   /// The classes chosen; empty is all of them.
@@ -89,6 +102,23 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
           for (final b in _schoolBadges!)
             if (b.badge == badge && b.earned) b.childId,
         });
+  }
+
+  Future<void> _loadStreaks() async {
+    if (_streaks != null || !mounted) return;
+    final yearId = context.read<SessionController>().currentYear?.id;
+    if (yearId == null) return;
+    try {
+      final streaks = await const ReportRepository()
+          .streaks(yearId: yearId, minAbsent: 0, minPresent: 0);
+      if (!mounted) return;
+      setState(() => _streaks = {for (final s in streaks) s.childId: s});
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.badgeFilterLoadFailed)));
+      setState(() => _filter = _filter.copyWith(clearQuick: true));
+    }
   }
 
   Future<void> _reload() =>
@@ -153,7 +183,13 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
           key: _sectionKey,
           load: _load,
           builder: (context, all, reload) {
-            final visible = _filter.apply(all, holders: _badgeHolders);
+            final visible = _filter.apply(all,
+                holders: _badgeHolders, absentIds: _streaks == null
+                    ? null
+                    : {
+                        for (final s in _streaks!.values)
+                          if (s.absentStreak >= 2) s.childId,
+                      });
             final totalVisible = all
                 .where((child) => _filter.includeInactive || child.isActive)
                 .length;
@@ -176,6 +212,7 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
                         next.includeInactive != _filter.includeInactive;
                     setState(() => _filter = next);
                     if (badgeChanged) _pickBadge(next.badge);
+                    if (next.quick == QuickFilter.absent) _loadStreaks();
                     // Turning inactive children on needs them fetched.
                     if (refetch) _reload();
                   },
@@ -271,6 +308,8 @@ class _ChildrenScreenState extends State<ChildrenScreen> {
         child: child,
         // The header already names the class.
         className: grouped ? null : classes.nameOf(child.classId),
+        absentStreak: _streaks?[child.id]?.absentStreak ?? 0,
+        lastSeen: lastSeenText(_streaks?[child.id]),
         onTap: () => _openProfile(child),
         onContact: () => showChildContactSheet(context, child),
       ),
