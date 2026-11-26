@@ -46,6 +46,7 @@ import 'missing_info.dart';
 import 'missing_info_banner.dart';
 import 'profile/child_activities_cards.dart';
 import 'profile/profile_status.dart';
+import 'profile/profile_tabs.dart';
 import '../../core/widgets/date_picker.dart';
 
 /// Everything known about one child: personal, parent, and church details plus
@@ -323,213 +324,192 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             absentSaturdays: absentRun(data.history, data.sessionDates),
             today: DateTime.now(),
           );
-          Widget tab(List<Widget> children) => RefreshIndicator(
-                onRefresh: reload,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                  children: children,
-                ),
-              );
-
           return DefaultTabController(
             length: 4,
-            child: NestedScrollView(
-              headerSliverBuilder: (context, _) => [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        FadeSlideIn(
-                          index: 0,
-                          child: Builder(
-                            builder: (context) => _header(
-                              child,
-                              data.className,
-                              canEdit: canEdit,
-                              isAdmin: isAdmin,
-                              panel: !hasGame
-                                  ? null
-                                  : GamePointsPanel(
-                                      framed: false,
-                                      girl: child.gender == Gender.girl,
-                                      points: data.gamePoints,
-                                      run: currentRun(data.badges!),
-                                      rank: LeaderboardRow.rankOf(
-                                          data.ranking!, child.id),
-                                      onOpenRanking: () =>
-                                          _openRanking(child, data.className),
-                                      attendancePct: data.yearReport == null ||
-                                              data.yearReport!.sessionsTotal ==
-                                                  0
-                                          ? null
-                                          : data.yearReport!.percentage,
-                                      onOpenAttendance: () =>
-                                          DefaultTabController.of(context)
-                                              .animateTo(1),
-                                    ),
-                            ),
-                          ),
+            child: ProfileTabs(
+              onRefresh: reload,
+              header: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FadeSlideIn(
+                      index: 0,
+                      child: Builder(
+                        builder: (context) => _header(
+                          child,
+                          data.className,
+                          canEdit: canEdit,
+                          isAdmin: isAdmin,
+                          panel: !hasGame
+                              ? null
+                              : GamePointsPanel(
+                                  framed: false,
+                                  girl: child.gender == Gender.girl,
+                                  points: data.gamePoints,
+                                  run: currentRun(data.badges!),
+                                  rank: LeaderboardRow.rankOf(
+                                      data.ranking!, child.id),
+                                  onOpenRanking: () =>
+                                      _openRanking(child, data.className),
+                                  attendancePct: data.yearReport == null ||
+                                          data.yearReport!.sessionsTotal == 0
+                                      ? null
+                                      : data.yearReport!.percentage,
+                                  onOpenAttendance: () =>
+                                      DefaultTabController.of(context)
+                                          .animateTo(1),
+                                ),
                         ),
-                        if (alerts.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          FadeSlideIn(
-                            index: 1,
-                            child: ProfileStatusStrip(
-                              alerts: alerts,
-                              onCall: ContactPerson.forChild(child).isEmpty
-                                  ? null
-                                  : () => _callFamily(child),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _TabsHeader(
-                    TabBar(
-                      isScrollable: false,
-                      labelColor: AppColors.navy,
-                      unselectedLabelColor: AppColors.muted,
-                      // A soft pill under the open tab; no hover/press grey.
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      indicatorPadding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 5),
-                      indicator: BoxDecoration(
-                        color: AppColors.navy.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(14),
                       ),
-                      dividerColor: AppColors.navy.withValues(alpha: 0.08),
-                      overlayColor:
-                          const WidgetStatePropertyAll(Colors.transparent),
-                      splashFactory: NoSplash.splashFactory,
-                      labelPadding: EdgeInsets.zero,
-                      labelStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w800),
-                      unselectedLabelStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600),
-                      tabs: const [
-                        Tab(
-                            height: 58,
-                            icon: Icon(Icons.dashboard_rounded, size: 21),
-                            iconMargin: EdgeInsets.only(bottom: 3),
-                            text: AppStrings.profileTabOverview),
-                        Tab(
-                            height: 58,
-                            icon: Icon(Icons.how_to_reg_rounded, size: 21),
-                            iconMargin: EdgeInsets.only(bottom: 3),
-                            text: AppStrings.profileTabAttendance),
-                        Tab(
-                            height: 58,
-                            icon: Icon(Icons.badge_rounded, size: 21),
-                            iconMargin: EdgeInsets.only(bottom: 3),
-                            text: AppStrings.profileTabData),
-                        Tab(
-                            height: 58,
-                            icon: Icon(Icons.support_agent_rounded, size: 21),
-                            iconMargin: EdgeInsets.only(bottom: 3),
-                            text: AppStrings.profileTabFollowUp),
-                      ],
                     ),
-                  ),
-                ),
-              ],
-              body: TabBarView(
-                children: [
-                  // ── نظرة عامة: who to reach, how they are doing.
-                  tab([
-                    _contactBar(child),
-                    if (canEdit && MissingInfo.of(child).isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      MissingInfoBanner(
-                        child: child,
-                        servantName: session.displayName,
-                        canEdit: canEdit,
-                        onEdit: () => _edit(child),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    // The attendance % is in the header with the points;
-                    // without them it keeps a card of its own.
-                    if (!hasGame)
-                      Builder(
-                        builder: (context) => _attendanceGlance(
-                          data,
-                          onOpen: () =>
-                              DefaultTabController.of(context).animateTo(1),
+                    if (alerts.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      FadeSlideIn(
+                        index: 1,
+                        child: ProfileStatusStrip(
+                          alerts: alerts,
+                          onCall: ContactPerson.forChild(child).isEmpty
+                              ? null
+                              : () => _callFamily(child),
                         ),
-                      )
-                    else
-                      ChildBadgesCard(
-                        badges: data.badges!,
-                        gamePoints: data.gamePoints,
-                        showPoints: false,
-                        detailInSheet: true,
-                      ),
-                    if (data.trips.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      ChildTripsCard(trips: data.trips, onOpen: _openEvent),
-                    ],
-                    if (data.competitionMarks.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      ChildCompetitionsCard(
-                        marks: data.competitionMarks,
-                        onOpen: _openCompetition,
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    Builder(
-                      builder: (context) => _lastFollowUp(
-                        data,
-                        onOpen: () =>
-                            DefaultTabController.of(context).animateTo(3),
-                      ),
-                    ),
-                  ]),
-                  // ── الحضور: every Saturday.
-                  tab([
-                    ChildAttendanceLog(
-                      history: data.history,
-                      sessionDates: data.sessionDates,
-                      breakDates: data.breakDates,
-                      lastActivity: data.lastActivity,
-                      badges: data.badges ?? const <ChildBadge>[],
-                    ),
-                  ]),
-                  // ── البيانات: only what is not already above.
-                  tab(_dataTab(child, data, session, canEdit)),
-                  // ── المتابعة: record a call or a visit, then the history.
-                  tab([
-                    if (canEdit) ...[
-                      _VisitSection(
-                        // Re-create when the stored visit changes (saved or a
-                        // history entry deleted), so the fields show the new
-                        // values.
-                        key: ValueKey('${child.id}|${child.lastPhoneVisitDate}|'
-                            '${child.lastPhoneVisitNotes}|'
-                            '${child.lastHomeVisitDate}|'
-                            '${child.lastHomeVisitNotes}'),
-                        child: child,
-                        onSaved: _reload,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    _visitHistoryCard(data, canEdit),
-                    if (data.changes.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      ChangeHistoryCard(
-                        changes: data.changes,
-                        onUndo: canEdit ? _undoChange : null,
-                      ),
-                    ],
-                  ]),
+                  ],
+                ),
+              ),
+              tabBar: TabBar(
+                isScrollable: false,
+                labelColor: AppColors.navy,
+                unselectedLabelColor: AppColors.muted,
+                // A soft pill under the open tab; no hover/press grey.
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                indicator: BoxDecoration(
+                  color: AppColors.navy.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                dividerColor: AppColors.navy.withValues(alpha: 0.08),
+                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+                splashFactory: NoSplash.splashFactory,
+                labelPadding: EdgeInsets.zero,
+                labelStyle:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                unselectedLabelStyle:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                tabs: const [
+                  Tab(
+                      height: 58,
+                      icon: Icon(Icons.dashboard_rounded, size: 21),
+                      iconMargin: EdgeInsets.only(bottom: 3),
+                      text: AppStrings.profileTabOverview),
+                  Tab(
+                      height: 58,
+                      icon: Icon(Icons.how_to_reg_rounded, size: 21),
+                      iconMargin: EdgeInsets.only(bottom: 3),
+                      text: AppStrings.profileTabAttendance),
+                  Tab(
+                      height: 58,
+                      icon: Icon(Icons.badge_rounded, size: 21),
+                      iconMargin: EdgeInsets.only(bottom: 3),
+                      text: AppStrings.profileTabData),
+                  Tab(
+                      height: 58,
+                      icon: Icon(Icons.support_agent_rounded, size: 21),
+                      iconMargin: EdgeInsets.only(bottom: 3),
+                      text: AppStrings.profileTabFollowUp),
                 ],
               ),
+              tabs: [
+                // ── نظرة عامة: who to reach, how they are doing.
+                [
+                  _contactBar(child),
+                  if (canEdit && MissingInfo.of(child).isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    MissingInfoBanner(
+                      child: child,
+                      servantName: session.displayName,
+                      canEdit: canEdit,
+                      onEdit: () => _edit(child),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  // The attendance % is in the header with the points;
+                  // without them it keeps a card of its own.
+                  if (!hasGame)
+                    Builder(
+                      builder: (context) => _attendanceGlance(
+                        data,
+                        onOpen: () =>
+                            DefaultTabController.of(context).animateTo(1),
+                      ),
+                    )
+                  else
+                    ChildBadgesCard(
+                      badges: data.badges!,
+                      gamePoints: data.gamePoints,
+                      showPoints: false,
+                      detailInSheet: true,
+                    ),
+                  if (data.trips.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ChildTripsCard(trips: data.trips, onOpen: _openEvent),
+                  ],
+                  if (data.competitionMarks.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ChildCompetitionsCard(
+                      marks: data.competitionMarks,
+                      onOpen: _openCompetition,
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) => _lastFollowUp(
+                      data,
+                      onOpen: () =>
+                          DefaultTabController.of(context).animateTo(3),
+                    ),
+                  ),
+                ],
+                // ── الحضور: every Saturday.
+                [
+                  ChildAttendanceLog(
+                    history: data.history,
+                    sessionDates: data.sessionDates,
+                    breakDates: data.breakDates,
+                    lastActivity: data.lastActivity,
+                    badges: data.badges ?? const <ChildBadge>[],
+                  ),
+                ],
+                // ── البيانات: only what is not already above.
+                _dataTab(child, data, session, canEdit),
+                // ── المتابعة: record a call or a visit, then the history.
+                [
+                  if (canEdit) ...[
+                    _VisitSection(
+                      // Re-create when the stored visit changes (saved or a
+                      // history entry deleted), so the fields show the new
+                      // values.
+                      key: ValueKey('${child.id}|${child.lastPhoneVisitDate}|'
+                          '${child.lastPhoneVisitNotes}|'
+                          '${child.lastHomeVisitDate}|'
+                          '${child.lastHomeVisitNotes}'),
+                      child: child,
+                      onSaved: _reload,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  _visitHistoryCard(data, canEdit),
+                  if (data.changes.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    ChangeHistoryCard(
+                      changes: data.changes,
+                      onUndo: canEdit ? _undoChange : null,
+                    ),
+                  ],
+                ],
+              ],
             ),
           );
         },
@@ -1480,29 +1460,3 @@ class _MoveChildSheetState extends State<_MoveChildSheet> {
 }
 
 /// The profile's tabs, pinned under the app bar while the header scrolls away.
-class _TabsHeader extends SliverPersistentHeaderDelegate {
-  const _TabsHeader(this.tabs);
-
-  final TabBar tabs;
-
-  @override
-  double get minExtent => tabs.preferredSize.height;
-
-  @override
-  double get maxExtent => tabs.preferredSize.height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) =>
-      Material(
-        color: AppColors.surface,
-        elevation: overlapsContent || shrinkOffset > 0 ? 2 : 0,
-        child: tabs,
-      );
-
-  @override
-  bool shouldRebuild(_TabsHeader old) => old.tabs != tabs;
-}
