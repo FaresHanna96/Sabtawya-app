@@ -21,8 +21,8 @@ if ($linked -ne $prodRef) {
 $verMatch = (Select-String -Path "$PSScriptRoot\pubspec.yaml" -Pattern '^version:\s*(\S+)\+(\d+)').Matches[0]
 $ver = $verMatch.Groups[1].Value
 $build = $verMatch.Groups[2].Value
-$title = 'تحديث جديد لسبتاوية'
-$body = "اضغط لفتح التطبيق وتثبيت النسخة $ver. التحديث مطلوب عشان التطبيق يفضل شغال."
+$title = 'فيه تحديث جديد لسبتاوية ✨'
+$body = "دوس هنا ونزّل النسخة $ver. لازم التحديث عشان التطبيق يفضل شغال."
 
 $select = @"
 select p.id, 'app_update', '$title', '$body'
