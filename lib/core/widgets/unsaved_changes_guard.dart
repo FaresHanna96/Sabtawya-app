@@ -19,6 +19,10 @@ class UnsavedChangesGuard extends StatelessWidget {
   final bool dirty;
   final Widget child;
 
+  /// Counts the times someone chose to keep editing, so a tab asked for from
+  /// the bottom bar is forgotten.
+  static final ValueNotifier<int> kept = ValueNotifier<int>(0);
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -32,7 +36,11 @@ class UnsavedChangesGuard extends StatelessWidget {
           confirmLabel: AppStrings.discard,
           destructive: true,
         );
-        if (discard && context.mounted) Navigator.of(context).pop();
+        if (!discard) {
+          kept.value++;
+        } else if (context.mounted) {
+          Navigator.of(context).pop();
+        }
       },
       child: child,
     );

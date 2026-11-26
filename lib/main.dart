@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
+import 'core/services/push_service.dart';
 import 'core/config/app_config.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/error_reporter.dart';
@@ -12,6 +13,7 @@ import 'data/services/access_log.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PushService.instance.listenForTaps();
 
   await Hive.initFlutter();
   await OfflineStore.init();

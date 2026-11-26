@@ -34,18 +34,21 @@ class AppNotification {
   static final _yearFirst = RegExp(r'(?<!\d)(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)');
 
   /// The day the text is about ("... ليوم 31-10-2026"), so tapping can open
-  /// that day. The database writes it into the body, day first or year
-  /// first depending on when the entry was made. Null when there is none.
-  DateTime? get mentionedDate {
+  /// that day. The database writes it into the body, or into the title of a
+  /// no-lesson Saturday's notice, day first or year first depending on when the
+  /// entry was made. Null when there is none.
+  DateTime? get mentionedDate => _dateIn(body) ?? _dateIn(title);
+
+  static DateTime? _dateIn(String text) {
     int n(RegExpMatch m, int g) => int.parse(m.group(g)!);
     DateTime? valid(int y, int mo, int d) {
       final date = DateTime(y, mo, d);
       return date.year == y && date.month == mo && date.day == d ? date : null;
     }
 
-    final a = _yearFirst.firstMatch(body);
+    final a = _yearFirst.firstMatch(text);
     if (a != null) return valid(n(a, 1), n(a, 2), n(a, 3));
-    final b = _dayFirst.firstMatch(body);
+    final b = _dayFirst.firstMatch(text);
     if (b != null) return valid(n(b, 3), n(b, 2), n(b, 1));
     return null;
   }

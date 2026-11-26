@@ -13,7 +13,10 @@ import '../../data/repositories/servant_repository.dart';
 
 /// أمين الخدمة's inbox for open sign-ups.
 class PendingRequestsScreen extends StatefulWidget {
-  const PendingRequestsScreen({super.key});
+  const PendingRequestsScreen({super.key, this.highlightId});
+
+  /// The person a notification is about: listed first and outlined.
+  final String? highlightId;
 
   @override
   State<PendingRequestsScreen> createState() => _PendingRequestsScreenState();
@@ -59,7 +62,11 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
         loading: const SkeletonList(),
         key: _sectionKey,
         load: _repository.pendingSignups,
-        builder: (context, requests, reload) {
+        builder: (context, loaded, reload) {
+          final requests = [
+            ...loaded.where((r) => r.id == widget.highlightId),
+            ...loaded.where((r) => r.id != widget.highlightId),
+          ];
           if (requests.isEmpty) {
             return ListView(
               children: const [
@@ -83,6 +90,13 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                   index,
                   Card(
                     margin: EdgeInsets.zero,
+                    shape: request.id == widget.highlightId
+                        ? RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(
+                                color: AppColors.maroon, width: 2),
+                          )
+                        : null,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                       child: Column(

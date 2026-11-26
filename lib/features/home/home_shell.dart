@@ -10,6 +10,7 @@ import '../../data/services/access_log.dart';
 import '../../core/config/app_version.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
+import '../../core/services/push_service.dart';
 import '../../core/services/sync_service.dart';
 import '../../core/services/update_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -18,6 +19,8 @@ import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/responsive.dart';
+import '../../data/models/app_notification.dart';
+import '../../data/repositories/notification_repository.dart';
 import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
@@ -29,9 +32,13 @@ import '../dashboard/servant_dashboard_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../servant_activities/admin_servant_activities_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
+import '../notifications/notification_router.dart';
 import '../notifications/notifications_bell.dart';
+import '../notifications/notifications_screen.dart';
 import '../search/app_search.dart';
+import 'app_nav_bar.dart';
 import 'more_screen.dart';
+import 'shell_frame.dart';
 import 'welcome_tour.dart';
 import 'whats_new_popup.dart';
 
@@ -47,6 +54,12 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _index = 0;
+
+  /// The navigator every page opens in, above the bottom bar.
+  final _pages = GlobalKey<NavigatorState>();
+
+  /// On the tabs' page: what opens a page from the shell starts from here.
+  final _homeKey = GlobalKey();
 
   /// Tabs opened so far. The others are not built yet, so opening the app
   /// loads the home only, not every tab's data at once.
@@ -110,6 +123,53 @@ class _HomeShellState extends State<HomeShell>
     WidgetsBinding.instance.addObserver(this);
     _checkUpdate();
     WidgetsBinding.instance.addPostFrameCallback((_) => _welcome());
+    PushService.instance.tapped.addListener(_openTapped);
+    UpdateService.found.addListener(_onUpdateFound);
+    // The tap that started the app is already waiting.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openTapped());
+  }
+
+  void _onUpdateFound() {
+    final update = UpdateService.found.value;
+    if (mounted && update != null) setState(() => _update = update);
+  }
+
+  /// Opens what a tapped notification is about. When its entry cannot be read
+  /// (offline, deleted), the bell's list opens instead.
+  Future<void> _openTapped() async {
+    final tap = PushService.instance.tapped.value;
+    if (tap == null || !mounted || (_update?.forced ?? false)) return;
+    PushService.instance.tapped.value = null;
+
+    AppNotification? entry;
+    final id = tap.notificationId;
+    if (id != null) {
+      const repository = NotificationRepository();
+      try {
+        entry = await repository.byId(id);
+        if (entry != null && !entry.isRead) await repository.markRead(id);
+      } catch (_) {}
+    } else if (tap.kind != null) {
+      entry = AppNotification(
+        id: '',
+        kind: tap.kind!,
+        title: tap.title,
+        body: tap.body,
+        refId: tap.refId,
+        createdAt: DateTime.now(),
+      );
+    }
+    final home = _homeKey.currentContext;
+    if (home == null || !home.mounted) return;
+    if (entry == null) {
+      await Navigator.of(home).push<void>(
+        MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+      );
+    } else {
+      await openNotification(home, entry);
+    }
+    // The bell's count, after one more entry was read.
+    PushService.instance.received.value++;
   }
 
   /// One thing at a time on opening: the welcome tour once on this phone
@@ -179,6 +239,8 @@ class _HomeShellState extends State<HomeShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    PushService.instance.tapped.removeListener(_openTapped);
+    UpdateService.found.removeListener(_onUpdateFound);
     _sync?.removeListener(_onSync);
     _syncedTimer?.cancel();
     _tabFade.dispose();
@@ -287,162 +349,165 @@ class _HomeShellState extends State<HomeShell>
 
     // The side menu sits at the start (the right, in Arabic), where the eye
     // starts reading.
-    Widget withRail(Widget body) => !wide
-        ? body
-        : Row(
-            children: [
-              NavigationRail(
-                selectedIndex: _index,
-                onDestinationSelected: _selectTab,
-                extended:
-                    MediaQuery.sizeOf(context).width >= kExtendedRailBreakpoint,
-                minExtendedWidth: 200,
-                labelType:
-                    MediaQuery.sizeOf(context).width >= kExtendedRailBreakpoint
-                        ? NavigationRailLabelType.none
-                        : NavigationRailLabelType.all,
-                backgroundColor: AppColors.card,
-                indicatorColor: AppColors.oliveLight.withValues(alpha: 0.35),
-                destinations: [
-                  for (var i = 0; i < tabs.length; i++)
-                    NavigationRailDestination(
-                      icon: tabIcon(i),
-                      selectedIcon: selectedTabIcon(i),
-                      label: Text(tabs[i].label),
-                    ),
-                ],
+    Widget sideMenu(ValueChanged<int> select) => NavigationRail(
+          selectedIndex: _index,
+          onDestinationSelected: select,
+          extended: MediaQuery.sizeOf(context).width >= kExtendedRailBreakpoint,
+          minExtendedWidth: 200,
+          labelType: MediaQuery.sizeOf(context).width >= kExtendedRailBreakpoint
+              ? NavigationRailLabelType.none
+              : NavigationRailLabelType.all,
+          backgroundColor: AppColors.card,
+          indicatorColor: AppColors.oliveLight.withValues(alpha: 0.35),
+          destinations: [
+            for (var i = 0; i < tabs.length; i++)
+              NavigationRailDestination(
+                icon: tabIcon(i),
+                selectedIcon: selectedTabIcon(i),
+                label: Text(tabs[i].label),
               ),
-              const VerticalDivider(width: 1, thickness: 1),
-              Expanded(child: body),
-            ],
-          );
+          ],
+        );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(current.label == AppStrings.dashboard
-            ? AppStrings.appTitle
-            : current.label),
-        actions: [
-          IconButton(
-            tooltip: AppStrings.search,
-            icon: const Icon(Icons.search),
-            onPressed: () => showSearch<void>(
-              context: context,
-              delegate: AppSearchDelegate(
-                classes: session.myClasses,
-                isAdmin: session.isAdmin,
+    Widget bottomBar(ValueChanged<int> select) => AppNavBar(
+          selectedIndex: _index,
+          onSelected: select,
+          items: [
+            for (var i = 0; i < tabs.length; i++)
+              AppNavItem(
+                label: tabs[i].label,
+                color: tabs[i].color,
+                icon: tabIcon(i),
+                selectedIcon: selectedTabIcon(i),
               ),
-            ),
-          ),
-          const NotificationsBell(),
-          // A class servant may import into their own class too (the import
-          // screen offers only their classes; the policies enforce it).
-          if (_index == 2 && !isGeneralServant)
-            IconButton(
-              tooltip: AppStrings.importChildren,
-              icon: const Icon(Icons.upload_file),
-              onPressed: () => Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (_) => const ImportChildrenScreen(),
-                ),
-              ),
-            ),
-          IconButton(
-            tooltip: AppStrings.refresh,
-            icon: const Icon(Icons.refresh),
-            // The profile and classes, then the screen itself: the tab on
-            // view reloads now, the others when next opened.
-            onPressed: () async {
-              await session.refreshAll();
-              session.markChanged();
-            },
-          ),
-        ],
-      ),
-      // IndexedStack keeps each tab's scroll position and loaded data, so
-      // moving between attendance and the roster does not re-query every time.
-      body: withRail(Column(
-        children: [
-          if (_update != null)
-            _UpdateBanner(
-              update: _update!,
-              onDismiss: () => setState(() => _update = null),
-            ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-            child: (isOnline && pendingCount == 0 && sync.failedCount == 0)
-                ? (_justSynced
-                    ? const SyncedBanner()
-                    : const SizedBox(width: double.infinity))
-                : _OfflineBanner(
-                    isOnline: isOnline,
-                    pendingCount: pendingCount,
-                    failedCount: sync.failedCount,
-                    syncing: sync.syncing,
-                    onTap: () => Navigator.of(context).push<void>(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const SyncScreen(),
+          ],
+        );
+
+    // Its own context sits inside the pages' navigator, so what it opens
+    // keeps the bar.
+    final home = Builder(
+        builder: (context) => Scaffold(
+              key: _homeKey,
+              appBar: AppBar(
+                title: Text(current.label == AppStrings.dashboard
+                    ? AppStrings.appTitle
+                    : current.label),
+                actions: [
+                  IconButton(
+                    tooltip: AppStrings.search,
+                    icon: const Icon(Icons.search),
+                    onPressed: () => showSearch<void>(
+                      context: context,
+                      delegate: AppSearchDelegate(
+                        classes: session.myClasses,
+                        isAdmin: session.isAdmin,
                       ),
                     ),
                   ),
-          ),
-          Expanded(
-            child: Container(
-              decoration:
-                  const BoxDecoration(gradient: AppGradients.warmSurface),
-              // IndexedStack keeps each tab's state, so it must not be re-keyed.
-              child: FadeTransition(
-                opacity: CurvedAnimation(
-                  parent: _tabFade,
-                  curve: Curves.easeOut,
-                ),
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.985, end: 1).animate(
-                    CurvedAnimation(
-                      parent: _tabFade,
-                      curve: Curves.easeOutCubic,
+                  const NotificationsBell(),
+                  // A class servant may import into their own class too (the import
+                  // screen offers only their classes; the policies enforce it).
+                  if (_index == 2 && !isGeneralServant)
+                    IconButton(
+                      tooltip: AppStrings.importChildren,
+                      icon: const Icon(Icons.upload_file),
+                      onPressed: () => Navigator.of(context).push<void>(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ImportChildrenScreen(),
+                        ),
+                      ),
+                    ),
+                  IconButton(
+                    tooltip: AppStrings.refresh,
+                    icon: const Icon(Icons.refresh),
+                    // The profile and classes, then the screen itself: the tab on
+                    // view reloads now, the others when next opened.
+                    onPressed: () async {
+                      await session.refreshAll();
+                      session.markChanged();
+                    },
+                  ),
+                ],
+              ),
+              // IndexedStack keeps each tab's scroll position and loaded data, so
+              // moving between attendance and the roster does not re-query every time.
+              body: Column(
+                children: [
+                  if (_update != null)
+                    _UpdateBanner(
+                      update: _update!,
+                      onDismiss: () => setState(() => _update = null),
+                    ),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    child:
+                        (isOnline && pendingCount == 0 && sync.failedCount == 0)
+                            ? (_justSynced
+                                ? const SyncedBanner()
+                                : const SizedBox(width: double.infinity))
+                            : _OfflineBanner(
+                                isOnline: isOnline,
+                                pendingCount: pendingCount,
+                                failedCount: sync.failedCount,
+                                syncing: sync.syncing,
+                                onTap: () => Navigator.of(context).push<void>(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const SyncScreen(),
+                                  ),
+                                ),
+                              ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                          gradient: AppGradients.warmSurface),
+                      // IndexedStack keeps each tab's state, so it must not be re-keyed.
+                      child: FadeTransition(
+                        opacity: CurvedAnimation(
+                          parent: _tabFade,
+                          curve: Curves.easeOut,
+                        ),
+                        child: ScaleTransition(
+                          scale: Tween<double>(begin: 0.985, end: 1).animate(
+                            CurvedAnimation(
+                              parent: _tabFade,
+                              curve: Curves.easeOutCubic,
+                            ),
+                          ),
+                          child: IndexedStack(
+                            index: _index,
+                            // Only the tab on screen ticks: a hidden tab's data waits
+                            // to reload until it is opened (see AsyncSection).
+                            children: [
+                              for (final (i, tab) in tabs.indexed)
+                                _opened.contains(i)
+                                    ? TickerMode(
+                                        enabled: i == _index,
+                                        // A hidden tab's heroes must not fly in from
+                                        // where nobody can see them.
+                                        child: HeroMode(
+                                          enabled: i == _index,
+                                          child: tabBody(i, tab.child),
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  child: IndexedStack(
-                    index: _index,
-                    // Only the tab on screen ticks: a hidden tab's data waits
-                    // to reload until it is opened (see AsyncSection).
-                    children: [
-                      for (final (i, tab) in tabs.indexed)
-                        _opened.contains(i)
-                            ? TickerMode(
-                                enabled: i == _index,
-                                // A hidden tab's heroes must not fly in from
-                                // where nobody can see them.
-                                child: HeroMode(
-                                  enabled: i == _index,
-                                  child: tabBody(i, tab.child),
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                    ],
-                  ),
-                ),
+                ],
               ),
-            ),
-          ),
-        ],
-      )),
-      bottomNavigationBar: wide
-          ? null
-          : NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: _selectTab,
-              destinations: [
-                for (var i = 0; i < tabs.length; i++)
-                  NavigationDestination(
-                    icon: tabIcon(i),
-                    selectedIcon: selectedTabIcon(i),
-                    label: tabs[i].label,
-                  ),
-              ],
-            ),
+            ));
+
+    return ShellFrame(
+      navigatorKey: _pages,
+      home: home,
+      onSelect: _selectTab,
+      bottomBar: wide ? null : bottomBar,
+      sideMenu: wide ? sideMenu : null,
     );
   }
 }
@@ -555,7 +620,8 @@ class _AnimatedTabIcon extends StatelessWidget {
           case _TabMotion.tick:
             return Transform.rotate(
               angle: -0.35 * math.sin(t * math.pi * 3) * decay,
-              child: Transform.scale(scale: 1 + 0.25 * math.sin(t * math.pi), child: child),
+              child: Transform.scale(
+                  scale: 1 + 0.25 * math.sin(t * math.pi), child: child),
             );
           case _TabMotion.pulse:
             return Transform.scale(

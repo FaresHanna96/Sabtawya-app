@@ -18,7 +18,11 @@ import 'lesson_widgets.dart';
 /// programme's month and week, and the lesson of each grade. The upcoming one
 /// is highlighted; أمين الخدمة can postpone or cancel a week from its menu.
 class LessonScheduleScreen extends StatefulWidget {
-  const LessonScheduleScreen({super.key});
+  const LessonScheduleScreen({super.key, this.focusDate});
+
+  /// A Saturday to open on and outline (the one a notification is about);
+  /// without it the screen opens on the coming one.
+  final DateTime? focusDate;
 
   @override
   State<LessonScheduleScreen> createState() => _LessonScheduleScreenState();
@@ -34,8 +38,14 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
   final _upcomingKey = GlobalKey();
   bool _scrolled = false;
 
-  void _showUpcoming({bool animate = true}) {
-    final ctx = _upcomingKey.currentContext;
+  /// The card of [LessonScheduleScreen.focusDate].
+  final _focusKey = GlobalKey();
+
+  void _showUpcoming({bool animate = true}) =>
+      _show(_upcomingKey, animate: animate);
+
+  void _show(GlobalKey key, {bool animate = true}) {
+    final ctx = key.currentContext;
     if (ctx == null) return;
     Scrollable.ensureVisible(
       ctx,
@@ -145,11 +155,14 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
               d = DateTime(d.year, d.month, d.day + 7);
             }
 
-            // Open on the coming Saturday, once.
+            // Open on the asked-for Saturday, else the coming one, once.
             if (!_scrolled) {
               _scrolled = true;
               WidgetsBinding.instance.addPostFrameCallback(
-                (_) => _showUpcoming(animate: false),
+                (_) => _show(
+                  _focusKey.currentContext == null ? _upcomingKey : _focusKey,
+                  animate: false,
+                ),
               );
             }
 
@@ -173,20 +186,25 @@ class _LessonScheduleScreenState extends State<LessonScheduleScreen> {
               final brk = programme.breakOn(day);
               final isUpcoming = day == upcoming;
               final isPast = day.isBefore(today);
+              final isFocus = widget.focusDate != null &&
+                  DateUtils.isSameDay(day, widget.focusDate);
               final slot = programme.slotOn(day, firstDay);
               children.add(Padding(
                 key: isUpcoming ? _upcomingKey : null,
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Opacity(
-                  opacity: isPast ? 0.62 : 1,
+                  key: isFocus ? _focusKey : null,
+                  opacity: isPast && !isFocus ? 0.62 : 1,
                   child: Card(
                     margin: EdgeInsets.zero,
                     color: isUpcoming ? AppColors.goldTint : null,
-                    shape: isUpcoming
+                    shape: isUpcoming || isFocus
                         ? RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(
-                                color: AppColors.gold, width: 1.5),
+                            side: BorderSide(
+                              color: isFocus ? AppColors.navy : AppColors.gold,
+                              width: isFocus ? 2.5 : 1.5,
+                            ),
                           )
                         : null,
                     child: Padding(

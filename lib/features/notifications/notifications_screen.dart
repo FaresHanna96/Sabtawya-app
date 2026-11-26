@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../announcements/announcement_dialog.dart';
-import '../attendance/attendance_screen.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
@@ -13,28 +10,8 @@ import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/repositories/notification_repository.dart';
-import '../../data/repositories/servant_repository.dart';
-import '../../data/models/event.dart';
-import '../../data/repositories/event_repository.dart';
-import '../children/absence_followup_screen.dart';
-import '../children/birthday_screen.dart';
-import '../children/missing_info_screen.dart';
-import '../children/child_profile_screen.dart';
 import '../children/follow_up_call.dart';
-import '../classes/class_detail_screen.dart';
-import '../../data/models/servant_activity.dart';
-import '../../data/repositories/servant_activity_repository.dart';
-import '../servant_activities/admin_servant_activities_screen.dart';
-import '../servant_activities/lesson_prep_screen.dart';
-import '../servant_activities/prep_review_sheet.dart';
-import '../servant_activities/my_activities_screen.dart';
-import '../servant_activities/servant_activity_detail_screen.dart';
-import '../../state/session_controller.dart';
-import '../competitions/competitions_screen.dart';
-import '../events/event_detail_screen.dart';
-import '../events/events_screen.dart';
-import '../lessons/lesson_schedule_screen.dart';
-import '../servants/pending_requests_screen.dart';
+import 'notification_router.dart';
 
 /// The bell's list: newest first, unread in bold. Tapping an entry marks it
 /// read and opens the screen it is about.
@@ -53,138 +30,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _sectionKey.currentState?.reload() ?? Future.value();
 
   Future<void> _open(AppNotification n) async {
-    final session = context.read<SessionController>();
-    final seesCompetitions = session.isAdmin || session.isGeneralServant;
     if (!n.isRead) {
       try {
         await _repository.markRead(n.id);
       } catch (_) {}
     }
     if (!mounted) return;
-    final ref = n.refId;
-
-    // A prep sent for review opens its review sheet; a reviewed one opens
-    // that lesson's prep page. Entries made before the id was kept (they
-    // carry a servant's id, or none) fall through to the pages below.
-    final prep =
-        (n.kind == 'prep_submitted' || n.kind == 'prep_reviewed') && ref != null
-            ? await _prep(ref)
-            : null;
-    if (!mounted) return;
-    // An announcement is read where it is: its whole text in a dialog.
-    if (n.kind == 'announcement') {
-      await showAnnouncementDialog(
-        context,
-        title: n.title,
-        body: n.body,
-        sentAt: n.createdAt,
-      );
-      if (mounted) await _reload();
-      return;
-    }
-    if (prep != null && n.kind == 'prep_submitted') {
-      await showPrepReviewSheet(
-        context,
-        prep: prep,
-        onReview: (status, comment) => const ServantActivityRepository()
-            .reviewPrep(prepId: prep.id, status: status, comment: comment),
-      );
-      if (mounted) await _reload();
-      return;
-    }
-
-    final Widget? screen = switch (n.kind) {
-      'signup' => const PendingRequestsScreen(),
-      'lesson_changed' => const LessonScheduleScreen(),
-      'birthdays' => const BirthdayScreen(),
-      // The Saturday 5 PM reminder: the children whose record has gaps.
-      'missing_info' => const MissingInfoScreen(),
-      // The Sunday 5 PM reminder: children absent two Saturdays or more.
-      'absence_followup' => const AbsenceFollowUpScreen(),
-      'event_added' => const EventsScreen(),
-      // The event itself when it can still be found, else the list.
-      'event_today' =>
-        (ref == null ? null : await _eventDetail(ref)) ?? const EventsScreen(),
-      // Old notifications a plain servant may still hold: nothing to open.
-      'competition_added' when seesCompetitions => const CompetitionsScreen(),
-      'child_added' when ref != null => ChildProfileScreen(childId: ref),
-      // A child's absences reached an alert level: their profile.
-      'absence_child' when n.childId != null =>
-        ChildProfileScreen(childId: n.childId!),
-      // 'class_activity' about one child (edited, stopped, moved in, a visit):
-      // that child's profile. Older entries carry only the class.
-      'class_activity' when n.childId != null =>
-        ChildProfileScreen(childId: n.childId!),
-      // 'class_activity': somebody of this class did something in it.
-      'class_assigned' ||
-      'class_activity' when ref != null =>
-        ClassDetailScreen(classId: ref),
-      // That class's sheet for the Saturday the entry names.
-      'attendance_taken' when ref != null => AttendanceScreen(
-          showAppBar: true,
-          initialClassId: ref,
-          initialDate: n.mentionedDate,
-        ),
-      'prep_submitted' => (ref == null ? null : await _servantDetail(ref)) ??
-          const AdminServantActivitiesScreen(),
-      'prep_reviewed' => prep != null
-          ? LessonPrepScreen(
-              sessionId: prep.sessionId,
-              sessionDate: prep.sessionDate,
-            )
-          : const MyActivitiesScreen(showAppBar: true),
-      // The reminder is about the day it was sent.
-      'attendance_missing' when ref != null => AttendanceScreen(
-          showAppBar: true,
-          initialClassId: ref,
-          initialDate: n.createdAt,
-        ),
-      // 'decision' and 'class_removed' only inform: tapping marks them read.
-      _ => null,
-    };
-    if (!mounted) return;
-    if (screen != null) {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(builder: (_) => screen),
-      );
-    }
-    await _reload();
-  }
-
-  /// The preparation a notification is about, or null (an older entry whose
-  /// id is a servant's, a deleted prep, or no connection).
-  Future<LessonPrep?> _prep(String id) async {
-    try {
-      return await const ServantActivityRepository().prepById(id);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// The page of the event a notification is about.
-  Future<Widget?> _eventDetail(String eventId) async {
-    try {
-      final events = await const EventRepository().listEvents();
-      final match = events.where((Event e) => e.id == eventId);
-      return match.isEmpty ? null : EventDetailScreen(event: match.first);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// The activity page of the servant a prep notification is about.
-  Future<Widget?> _servantDetail(String servantId) async {
-    try {
-      final servants = await const ServantRepository().servants();
-      final match = servants.where((s) => s.id == servantId);
-      if (match.isEmpty) return null;
-      return ServantActivityDetailScreen(
-        servantId: servantId,
-        servantName: match.first.fullName,
-      );
-    } catch (_) {
-      return null;
-    }
+    await openNotification(context, n);
+    if (mounted) await _reload();
   }
 
   /// The notification's own button: write the follow-up down without opening
@@ -375,6 +228,10 @@ class _ReadSwipe extends StatelessWidget {
       'absence_child' => (Icons.person_off_rounded, AppColors.coral),
       'class_removed' => (Icons.person_remove_rounded, AppColors.coral),
       'event_today' => (Icons.event_available_rounded, AppColors.gold),
+      'lesson_prep_reminder' => (Icons.auto_stories_rounded, AppColors.navy),
+      'app_update' => (Icons.system_update_rounded, AppColors.navy),
+      'app_update_reminder' => (Icons.update_rounded, AppColors.gold),
+      'profile_incomplete' => (Icons.badge_rounded, AppColors.gold),
       'attendance_missing' => (Icons.alarm_rounded, AppColors.coral),
       _ => (Icons.notifications_rounded, AppColors.navy),
     };

@@ -22,6 +22,17 @@ class NotificationRepository {
     }
   }
 
+  /// One entry by its id, or null when it is gone or someone else's.
+  Future<AppNotification?> byId(String id) async {
+    try {
+      final data =
+          await Db.client.from(_table).select().eq('id', id).maybeSingle();
+      return data == null ? null : AppNotification.fromMap(data);
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   Future<int> unreadCount() async {
     try {
       final data =

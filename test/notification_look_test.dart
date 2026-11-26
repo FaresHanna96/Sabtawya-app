@@ -7,7 +7,8 @@ void main() {
     'lesson_changed', 'birthdays', 'child_added', 'attendance_taken',
     'event_added', 'competition_added', 'class_assigned', 'class_activity',
     'missing_info', 'absence_followup', 'absence_child', 'class_removed',
-    'event_today', 'attendance_missing',
+    'event_today', 'attendance_missing', 'lesson_prep_reminder', 'app_update',
+    'app_update_reminder', 'profile_incomplete',
   ];
 
   test('every kind has its own icon (none shared)', () {

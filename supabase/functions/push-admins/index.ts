@@ -74,7 +74,7 @@ async function sendOne(
   target: Record<string, string>,
   title: string,
   body: string,
-  badge?: number,
+  data: Record<string, string> = {},
 ): Promise<Response> {
   return await fetch(url, {
     method: 'POST',
@@ -86,9 +86,14 @@ async function sendOne(
       message: {
         ...target,
         notification: { title, body },
-        // The unread count, which the service worker shows on the app icon.
-        ...(badge === undefined ? {} : { data: { badge: String(badge) } }),
-        webpush: { fcm_options: { link: '/' } },
+        // What a tap opens, and the unread count the service worker shows on
+        // the app icon.
+        data,
+        webpush: {
+          fcm_options: {
+            link: data.notification_id ? `/?n=${data.notification_id}` : '/',
+          },
+        },
       },
     }),
   });
@@ -98,7 +103,7 @@ async function sendPush(
   tokens: { token: string }[],
   title: string,
   body: string,
-  badge?: number,
+  data: Record<string, string> = {},
 ): Promise<number> {
   const bearer = await accessToken();
   const url =
@@ -107,11 +112,11 @@ async function sendPush(
   for (const { token } of tokens) {
     let res: Response;
     if (isInstallationId(token)) {
-      res = await sendOne(url, bearer, { fid: token }, title, body, badge);
+      res = await sendOne(url, bearer, { fid: token }, title, body, data);
       // Should the `fid` field be refused, the transition still accepts an
       // installation ID in `token`.
       if (res.status === 400) {
-        res = await sendOne(url, bearer, { token }, title, body, badge);
+        res = await sendOne(url, bearer, { token }, title, body, data);
       }
       // A 400 here may be the message, not the device: only a 404 (not
       // registered any more) removes an installation ID.
@@ -122,7 +127,7 @@ async function sendPush(
       }
       continue;
     }
-    res = await sendOne(url, bearer, { token }, title, body, badge);
+    res = await sendOne(url, bearer, { token }, title, body, data);
     if (res.ok) {
       sent++;
     } else if (res.status === 404 || res.status === 400) {
@@ -162,10 +167,11 @@ async function announceDecision(profileId: string): Promise<Response> {
   const accepted = p.is_active && !p.rejected_at;
   const sent = await sendPush(
     tokens,
-    accepted ? 'تم قبول طلبك' : 'بخصوص طلب الانضمام',
+    accepted ? 'أهلًا بيك في الخدمة 🎉' : 'بخصوص طلب الانضمام',
     accepted
-      ? 'تمت الموافقة على طلب انضمامك، يمكنك الآن تسجيل الدخول'
-      : 'لم يتم قبول طلب انضمامك، تواصل مع أمين الخدمة',
+      ? 'طلبك اتقبل، تقدر تسجّل الدخول دلوقتي'
+      : 'طلبك متقبلش المرة دي، كلّم أمين الخدمة',
+    { kind: 'decision' },
   );
   return new Response(JSON.stringify({ sent }), { status: 200 });
 }
@@ -177,7 +183,7 @@ async function pushNotification(id: string): Promise<Response> {
     .update({ pushed_at: new Date().toISOString() })
     .eq('id', id)
     .is('pushed_at', null)
-    .select('user_id, title, body')
+    .select('id, user_id, title, body')
     .maybeSingle();
   if (!n) return new Response('nothing to announce', { status: 200 });
 
@@ -193,7 +199,10 @@ async function pushNotification(id: string): Promise<Response> {
     .select('id', { count: 'exact', head: true })
     .eq('user_id', n.user_id)
     .is('read_at', null);
-  const sent = await sendPush(tokens, n.title, n.body ?? '', count ?? undefined);
+  const sent = await sendPush(tokens, n.title, n.body ?? '', {
+    notification_id: n.id as string,
+    ...(count === null ? {} : { badge: String(count) }),
+  });
   return new Response(JSON.stringify({ sent }), { status: 200 });
 }
 
@@ -237,8 +246,9 @@ serve(async (req) => {
 
     const sent = await sendPush(
       tokens,
-      'طلب انضمام جديد',
-      `${claimed.full_name} يطلب الانضمام للخدمة`,
+      'طلب انضمام جديد 👋',
+      `${claimed.full_name} عايز ينضم للخدمة`,
+      { kind: 'signup', ref_id: String(profile_id) },
     );
     return new Response(JSON.stringify({ sent }), { status: 200 });
   } catch (e) {

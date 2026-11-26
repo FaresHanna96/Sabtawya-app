@@ -224,6 +224,16 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
+                // How the preparations stand, right under this week's one.
+                FadeSlideIn(
+                  index: 1,
+                  child: _ProgressHeader(
+                    submitted: submitted,
+                    accepted: accepted,
+                    total: total,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 FadeSlideIn(
                   child: ServantSummaryCard(
                     sundaySchool: data.sundaySchool,
@@ -277,15 +287,6 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     nameOf: (id) => data.names[id] ?? '',
                   ),
                 ],
-                const SizedBox(height: 16),
-                FadeSlideIn(
-                  index: 1,
-                  child: _ProgressHeader(
-                    submitted: submitted,
-                    accepted: accepted,
-                    total: total,
-                  ),
-                ),
                 const SizedBox(height: 20),
                 if (missed.isNotEmpty) ...[
                   _GroupTitle(

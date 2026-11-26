@@ -6,6 +6,10 @@ import 'package:flutter/foundation.dart';
 
 import '../../data/supabase/db.dart';
 import '../../firebase_options.dart';
+import 'push_tap.dart';
+import 'web_taps_stub.dart' if (dart.library.js_interop) 'web_taps_web.dart';
+
+export 'push_tap.dart';
 
 /// Push notifications: registers this device so the edge functions can reach
 /// it (a join request for admins, a decision or any bell entry for servants).
@@ -32,7 +36,14 @@ class PushService {
   /// Bumped when a push arrives while the app is open, so the bell can refresh.
   final ValueNotifier<int> received = ValueNotifier<int>(0);
 
+  /// A notification the person tapped and the app has not opened yet. The
+  /// home shell takes it once someone is signed in.
+  final ValueNotifier<PushTap?> tapped = ValueNotifier<PushTap?>(null);
+
   static const _fidWait = Duration(seconds: 10);
+
+  bool _tapsListening = false;
+  bool _webTapsListening = false;
 
   bool _listening = false;
   bool _tokenListening = false;
@@ -47,6 +58,24 @@ class PushService {
   static bool isInstallationId(String id) =>
       RegExp(r'^[A-Za-z0-9_-]{22}$').hasMatch(id);
 
+  /// Hears taps on the website's notifications. Called once at startup, while
+  /// the address the app was opened at is still untouched.
+  void listenForTaps() {
+    if (_webTapsListening) return;
+    _webTapsListening = true;
+    listenForWebTaps((data) => _onTap(PushTap.fromData(data)));
+  }
+
+  void _onTap(PushTap? tap) {
+    if (tap != null) tapped.value = tap;
+  }
+
+  void _onOpened(RemoteMessage message) => _onTap(PushTap.fromData(
+        message.data,
+        title: message.notification?.title,
+        body: message.notification?.body,
+      ));
+
   /// Registers this device for the signed-in user. Safe to call after every
   /// sign-in: the ID is re-attached to whoever is using the device now.
   Future<void> registerDevice() async {
@@ -55,6 +84,14 @@ class PushService {
         await Firebase.initializeApp(options: DefaultFirebaseOptions.current);
       }
       final messaging = FirebaseMessaging.instance;
+      if (!kIsWeb && !_tapsListening) {
+        _tapsListening = true;
+        // Tapped while the app was in the background, or closed.
+        FirebaseMessaging.onMessageOpenedApp.listen(_onOpened);
+        unawaited(messaging.getInitialMessage().then((m) {
+          if (m != null) _onOpened(m);
+        }));
+      }
       final settings = await messaging.requestPermission();
       if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 

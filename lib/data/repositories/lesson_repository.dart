@@ -44,6 +44,22 @@ class LessonRepository {
     }
   }
 
+  /// The programme's month and week of the lesson [id], or null when gone.
+  Future<LessonSlot?> slotOfLesson(String id) async {
+    try {
+      final row = await Db.client
+          .from(Db.tLessons)
+          .select('coptic_month, week')
+          .eq('id', id)
+          .maybeSingle();
+      return row == null
+          ? null
+          : LessonSlot(asInt(row['coptic_month']), asInt(row['week']));
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// The Saturdays with no lesson, by yyyy-MM-dd: why (a holiday or a نشاط
   /// ترفيهي) and whether the later lessons move a week. Attendance is not
   /// taken on them.

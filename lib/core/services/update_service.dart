@@ -54,6 +54,10 @@ class UpdateCheck {
 class UpdateService {
   const UpdateService._();
 
+  /// A newer version found away from the home shell (a tapped update notice),
+  /// which then shows its banner or forced screen.
+  static final ValueNotifier<AppUpdate?> found = ValueNotifier<AppUpdate?>(null);
+
   static const _url = 'https://sabtawya.vercel.app/version.json';
 
   /// The newer version, or null when up to date, on the web, or offline.

@@ -9,6 +9,35 @@ firebase.initializeApp({
   projectId: 'sabtawya-a4907',
 });
 
+// A tap opens what the notification is about: an open app is told through a
+// message, a closed one is opened at /?n=<id>. Added before
+// firebase.messaging(), so its own click handling does not also run.
+self.addEventListener('notificationclick', function (event) {
+  event.stopImmediatePropagation();
+  event.notification.close();
+  const fcm = event.notification.data && event.notification.data.FCM_MSG;
+  const data = (fcm && fcm.data) || {};
+  const url = data.notification_id
+    ? '/?n=' + encodeURIComponent(data.notification_id)
+    : '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      // The app itself, not the download or statistics pages.
+      const app = list.find(function (c) {
+        const path = new URL(c.url).pathname;
+        return path === '/' || path === '/index.html';
+      });
+      if (!app) return clients.openWindow(url);
+      const tap = Object.assign({}, data, {
+        title: fcm && fcm.notification && fcm.notification.title,
+        body: fcm && fcm.notification && fcm.notification.body,
+      });
+      app.postMessage({ sabtawyaTap: tap });
+      return app.focus();
+    }),
+  );
+});
+
 // Messages carry a `notification` block, so the browser displays them itself.
 firebase.messaging();
 
@@ -26,9 +55,4 @@ self.addEventListener('push', function (event) {
   } catch (e) {
     // A badge is a nicety; never break the notification.
   }
-});
-
-self.addEventListener('notificationclick', function (event) {
-  event.notification.close();
-  event.waitUntil(clients.openWindow('/'));
 });
