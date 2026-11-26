@@ -27,11 +27,15 @@ class AppNavBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
+    this.onLongPress,
   });
 
   final List<AppNavItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// A long press on a tab: its shortcuts.
+  final ValueChanged<int>? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +78,9 @@ class AppNavBar extends StatelessWidget {
                               item: item,
                               selected: i == selectedIndex,
                               onTap: () => onSelected(i),
+                              onLongPress: onLongPress == null
+                                  ? null
+                                  : () => onLongPress!(i),
                             ),
                           ),
                       ],
@@ -94,11 +101,13 @@ class _NavButton extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.onTap,
+    this.onLongPress,
   });
 
   final AppNavItem item;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +118,7 @@ class _NavButton extends StatelessWidget {
       button: true,
       child: InkResponse(
         onTap: onTap,
+        onLongPress: onLongPress,
         radius: 36,
         highlightColor: item.color.withValues(alpha: 0.08),
         splashColor: item.color.withValues(alpha: 0.14),

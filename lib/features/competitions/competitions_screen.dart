@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/pill_tabs.dart';
 import '../../core/widgets/date_cube.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
@@ -104,11 +105,9 @@ class _CompetitionsScreenState extends State<CompetitionsScreen>
                 : const Icon(Icons.ios_share_rounded),
           ),
         ],
-        bottom: TabBar(
+        bottom: pillTabs(
           controller: _tabs,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          indicatorColor: Colors.white,
+          onDark: true,
           tabs: const [
             Tab(text: AppStrings.competitionsList),
             Tab(text: AppStrings.cumulativeScores),

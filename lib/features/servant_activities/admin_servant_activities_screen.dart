@@ -8,6 +8,7 @@ import '../../core/utils/arabic_sort.dart';
 import '../../core/utils/app_failure.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/pill_tabs.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/celebration.dart';
@@ -127,14 +128,12 @@ class AdminServantActivitiesScreen extends StatelessWidget {
     }
   }
 
-  static const _tabBar = TabBar(
-    tabs: [
+  static final _tabBar = pillTabs(
+    onDark: true,
+    tabs: const [
       Tab(text: AppStrings.servantsTab),
       Tab(text: AppStrings.servantAttendanceTab),
     ],
-    indicatorColor: Colors.white,
-    labelColor: Colors.white,
-    unselectedLabelColor: Colors.white60,
   );
 
   @override
@@ -165,12 +164,14 @@ class AdminServantActivitiesScreen extends StatelessWidget {
             )
           : Column(
               children: [
+                // The header's lower part: it carries the rounded edge.
                 Material(
                   color: Theme.of(context).appBarTheme.backgroundColor ??
                       Theme.of(context).colorScheme.primary,
+                  borderRadius: AppTheme.headerRadius,
                   child: Row(
                     children: [
-                      const Expanded(child: _tabBar),
+                      Expanded(child: _tabBar),
                       IconButton(
                         tooltip: AppStrings.exportEvent,
                         color: Colors.white,

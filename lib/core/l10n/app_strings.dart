@@ -18,6 +18,8 @@ class AppStrings {
   static const edit = 'تعديل';
   static const add = 'إضافة';
   static const search = 'بحث';
+  static const quickActionsHint =
+      'جرّب: دوس مطوّل على أي تبويب تحت تلاقي اختصاراته';
   static const noResults = 'مفيش نتايج';
   static const promoteClassesTitle = 'ترقية الفصول للسنة الجديدة';
   static const promoteClassesConfirm = 'رقّي الفصول';

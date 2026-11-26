@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/pill_tabs.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/class_filter_chips.dart';
@@ -319,13 +320,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ),
           ],
-          bottom: const TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
-            tabs: [
+          bottom: pillTabs(
+            onDark: true,
+            scrollable: true,
+            tabs: const [
               Tab(text: AppStrings.overallReport),
               Tab(text: AppStrings.classReport),
               Tab(text: AppStrings.monthlyReport),

@@ -24,6 +24,7 @@ import '../../data/repositories/notification_repository.dart';
 import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
+import '../children/child_form_screen.dart';
 import '../children/children_screen.dart';
 import '../sync/sync_screen.dart';
 import '../classes/classes_screen.dart';
@@ -37,6 +38,8 @@ import '../notifications/notifications_bell.dart';
 import '../notifications/notifications_screen.dart';
 import '../search/app_search.dart';
 import 'app_nav_bar.dart';
+import 'more_entries.dart';
+import 'quick_actions.dart';
 import 'more_screen.dart';
 import 'shell_frame.dart';
 import 'welcome_tour.dart';
@@ -54,6 +57,59 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _index = 0;
+
+  /// Whether the last tab change went on to a later tab.
+  bool _forward = true;
+
+  /// A tab's shortcut sheet; choosing one switches to the tab first.
+  Future<void> _shortcuts(
+    _Tab tab,
+    ValueChanged<int> select,
+    int index,
+  ) async {
+    final session = context.read<SessionController>();
+    final role = session.isAdmin
+        ? MoreRole.admin
+        : session.isGeneralServant
+            ? MoreRole.generalServant
+            : MoreRole.servant;
+    final actions = quickActionsFor(tab.id, role);
+    final home = _homeKey.currentContext;
+    if (actions.isEmpty || home == null) return;
+    final chosen =
+        await showQuickActions(home, title: tab.label, actions: actions);
+    if (chosen == null || !mounted) return;
+    // Closes the open pages (asking about unsaved changes) and shows the tab.
+    select(index);
+    await WidgetsBinding.instance.endOfFrame;
+    final page = _homeKey.currentContext;
+    if (page == null || !page.mounted) return;
+    // Still on a page that would not close: leave the person there.
+    if (_pages.currentState?.canPop() ?? false) return;
+    switch (chosen.id) {
+      case QuickAction.searchId:
+        await showSearch<void>(
+          context: page,
+          delegate: AppSearchDelegate(
+            classes: session.myClasses,
+            isAdmin: session.isAdmin,
+          ),
+        );
+      case QuickAction.notificationsId:
+        await Navigator.of(page).push<void>(
+          MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+        );
+      case QuickAction.addChildId:
+        await Navigator.of(page).push<void>(
+          MaterialPageRoute<void>(builder: (_) => const ChildFormScreen()),
+        );
+        session.markChanged();
+      default:
+        await Navigator.of(page).push<void>(
+          MaterialPageRoute<void>(builder: (_) => chosen.open!()),
+        );
+    }
+  }
 
   /// The navigator every page opens in, above the bottom bar.
   final _pages = GlobalKey<NavigatorState>();
@@ -184,6 +240,9 @@ class _HomeShellState extends State<HomeShell>
       await WhatsNewPopup.maybeShow(context);
     }
     if (mounted) await _callerName();
+    if (mounted && await const QuickActionsHint().take() && mounted) {
+      Ui.info(context, AppStrings.quickActionsHint);
+    }
   }
 
   /// "Caller name" is on by default on Android: keeps its list current, and
@@ -229,6 +288,7 @@ class _HomeShellState extends State<HomeShell>
       );
     }
     setState(() {
+      _forward = index > _index;
       _index = index;
       _opened.add(index);
     });
@@ -260,6 +320,7 @@ class _HomeShellState extends State<HomeShell>
 
     final tabs = <_Tab>[
       _Tab(
+        id: HomeTab.home,
         label: AppStrings.dashboard,
         icon: Icons.home_outlined,
         selectedIcon: Icons.home_rounded,
@@ -270,6 +331,7 @@ class _HomeShellState extends State<HomeShell>
             : const ServantDashboardScreen(),
       ),
       _Tab(
+        id: HomeTab.classes,
         label: (isAdmin || isGeneralServant)
             ? AppStrings.classesNav
             : AppStrings.myClasses,
@@ -280,6 +342,7 @@ class _HomeShellState extends State<HomeShell>
         child: const ClassesScreen(),
       ),
       const _Tab(
+        id: HomeTab.children,
         label: AppStrings.childrenNav,
         icon: Icons.diversity_3_outlined,
         selectedIcon: Icons.diversity_3,
@@ -288,6 +351,7 @@ class _HomeShellState extends State<HomeShell>
         child: ChildrenScreen(),
       ),
       const _Tab(
+        id: HomeTab.attendance,
         label: AppStrings.attendanceNav,
         icon: Icons.how_to_reg_outlined,
         selectedIcon: Icons.how_to_reg,
@@ -297,6 +361,7 @@ class _HomeShellState extends State<HomeShell>
       ),
       if (!isGeneralServant)
         _Tab(
+          id: HomeTab.activities,
           label: isAdmin ? AppStrings.activitiesNav : AppStrings.myActivities,
           icon: Icons.supervisor_account_outlined,
           selectedIcon: Icons.supervisor_account,
@@ -307,6 +372,7 @@ class _HomeShellState extends State<HomeShell>
               : const MyActivitiesScreen(),
         ),
       _Tab(
+        id: HomeTab.more,
         label: AppStrings.more,
         icon: Icons.apps_outlined,
         selectedIcon: Icons.apps,
@@ -362,8 +428,14 @@ class _HomeShellState extends State<HomeShell>
           destinations: [
             for (var i = 0; i < tabs.length; i++)
               NavigationRailDestination(
-                icon: tabIcon(i),
-                selectedIcon: selectedTabIcon(i),
+                icon: GestureDetector(
+                  onLongPress: () => _shortcuts(tabs[i], select, i),
+                  child: tabIcon(i),
+                ),
+                selectedIcon: GestureDetector(
+                  onLongPress: () => _shortcuts(tabs[i], select, i),
+                  child: selectedTabIcon(i),
+                ),
                 label: Text(tabs[i].label),
               ),
           ],
@@ -372,6 +444,7 @@ class _HomeShellState extends State<HomeShell>
     Widget bottomBar(ValueChanged<int> select) => AppNavBar(
           selectedIndex: _index,
           onSelected: select,
+          onLongPress: (i) => _shortcuts(tabs[i], select, i),
           items: [
             for (var i = 0; i < tabs.length; i++)
               AppNavItem(
@@ -389,6 +462,12 @@ class _HomeShellState extends State<HomeShell>
         builder: (context) => Scaffold(
               key: _homeKey,
               appBar: AppBar(
+                // The classes tab and the admin's servants tab continue the
+                // header with their own strip, which carries the rounded edge.
+                shape: current.child is ClassesScreen ||
+                        current.child is AdminServantActivitiesScreen
+                    ? const Border()
+                    : null,
                 title: Text(current.label == AppStrings.dashboard
                     ? AppStrings.appTitle
                     : current.label),
@@ -468,8 +547,12 @@ class _HomeShellState extends State<HomeShell>
                           parent: _tabFade,
                           curve: Curves.easeOut,
                         ),
-                        child: ScaleTransition(
-                          scale: Tween<double>(begin: 0.985, end: 1).animate(
+                        child: SlideTransition(
+                          textDirection: Directionality.of(context),
+                          position: Tween<Offset>(
+                            begin: Offset(_forward ? 0.05 : -0.05, 0),
+                            end: Offset.zero,
+                          ).animate(
                             CurvedAnimation(
                               parent: _tabFade,
                               curve: Curves.easeOutCubic,
@@ -562,6 +645,7 @@ class AttendanceTabIcon extends StatelessWidget {
 
 class _Tab {
   const _Tab({
+    required this.id,
     required this.label,
     required this.icon,
     required this.selectedIcon,
@@ -570,6 +654,7 @@ class _Tab {
     required this.child,
   });
 
+  final HomeTab id;
   final String label;
   final IconData icon;
   final IconData selectedIcon;

@@ -10,6 +10,7 @@ import '../../core/utils/child_changes.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/pill_tabs.dart';
 import '../../core/widgets/async_section.dart';
 import '../../data/models/attendance.dart';
 import '../../data/models/badges.dart';
@@ -378,26 +379,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   ],
                 ),
               ),
-              tabBar: TabBar(
-                isScrollable: false,
-                labelColor: AppColors.navy,
-                unselectedLabelColor: AppColors.muted,
-                // A soft pill under the open tab; no hover/press grey.
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicatorPadding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                indicator: BoxDecoration(
-                  color: AppColors.navy.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                dividerColor: AppColors.navy.withValues(alpha: 0.08),
-                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-                splashFactory: NoSplash.splashFactory,
-                labelPadding: EdgeInsets.zero,
-                labelStyle:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                unselectedLabelStyle:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              tabBar: pillTabs(
                 tabs: const [
                   Tab(
                       height: 58,

@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/pill_tabs.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/utils/message_template.dart';
@@ -306,10 +307,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 // Filter tab bar with live counts
                 // All five fit on screen (no swiping): the count on top, a
                 // short label under it.
-                TabBar(
+                pillTabs(
                   controller: _tabController,
-                  isScrollable: false,
-                  labelPadding: EdgeInsets.zero,
                   tabs: [
                     _countTab(balances.length, AppStrings.all),
                     _countTab(booked.length, AppStrings.bookedTab),

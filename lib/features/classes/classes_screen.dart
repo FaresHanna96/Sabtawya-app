@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/class_colors.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/pill_tabs.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/async_section.dart';
 import '../../core/widgets/skeleton.dart';
@@ -176,11 +177,9 @@ class _ClassesScreenState extends State<ClassesScreen>
     final isGeneralServant = session.isGeneralServant;
     final everyClass = isAdmin || isGeneralServant;
 
-    final tabBar = TabBar(
+    final tabBar = pillTabs(
       controller: _tabs,
-      indicatorColor: Colors.white,
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white60,
+      onDark: true,
       tabs: [
         Tab(
           text: everyClass ? AppStrings.classesTitle : AppStrings.myClasses,
@@ -244,9 +243,11 @@ class _ClassesScreenState extends State<ClassesScreen>
             ? pages
             : Column(
                 children: [
+                  // The header's lower part: it carries the rounded edge.
                   Material(
                     color: Theme.of(context).appBarTheme.backgroundColor ??
                         Theme.of(context).colorScheme.primary,
+                    borderRadius: AppTheme.headerRadius,
                     child: Row(
                       children: [
                         Expanded(child: tabBar),

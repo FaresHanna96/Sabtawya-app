@@ -1353,8 +1353,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: Row(
                   children: [
-                    const Icon(Icons.event_rounded,
-                        size: 18, color: AppColors.navy),
+                    // How much of the list is present, filling as ticked.
+                    AttendanceRing(present: present, total: total),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -2263,6 +2263,43 @@ class _RoundMark extends StatelessWidget {
   }
 }
 
+/// A small ring that fills with the share of children present.
+@visibleForTesting
+class AttendanceRing extends StatelessWidget {
+  const AttendanceRing({
+    super.key,
+    required this.present,
+    required this.total,
+  });
+
+  final int present;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final share = total == 0 ? 0.0 : present / total;
+    return Semantics(
+      label: '${(share * 100).round()}%',
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: share),
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+        builder: (_, value, __) => SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            value: value,
+            strokeWidth: 4,
+            strokeCap: StrokeCap.round,
+            color: AppColors.success,
+            backgroundColor: AppColors.success.withValues(alpha: 0.16),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// One child's line: four toggles and the score they add up to.
 @visibleForTesting
 class AttendanceEntryCard extends StatelessWidget {
@@ -2524,6 +2561,8 @@ class _MarkToggle extends StatelessWidget {
             transform: Matrix4.diagonal3Values(
                 selected ? 1.04 : 1, selected ? 1.04 : 1, 1),
             transformAlignment: Alignment.center,
+            constraints: const BoxConstraints(minHeight: 44),
+            alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
             decoration: BoxDecoration(
               color: selected

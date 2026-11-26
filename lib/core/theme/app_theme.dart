@@ -1,6 +1,9 @@
+import 'package:flutter/cupertino.dart'
+    show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 import '../widgets/responsive.dart';
+import '../widgets/soft_transitions.dart';
 
 /// Palette taken from the Sabtawya emblem: Coptic navy lettering on white with
 /// the olive Arabic script.
@@ -135,11 +138,40 @@ class AppGradients {
   );
 }
 
+/// The back button's face: the arrow on a soft rounded square.
+class BackChip extends StatelessWidget {
+  const BackChip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = IconTheme.of(context).color ?? AppColors.navy;
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      // Turns by itself in a right-to-left layout.
+      child: Icon(Icons.arrow_back_rounded, size: 20, color: color),
+    );
+  }
+}
+
 class AppTheme {
   const AppTheme._();
 
   /// Bundled with the app (assets/fonts), so text looks right offline too.
-  static const _font = 'Cairo';
+  static const fontFamily = 'Cairo';
+  static const _font = fontFamily;
+
+  /// The rounded bottom edge of the navy header. A tab strip under the header
+  /// takes it over (see [headerRadius]).
+  static const headerRadius =
+      BorderRadius.vertical(bottom: Radius.circular(22));
+  static const headerShape =
+      RoundedRectangleBorder(borderRadius: headerRadius);
 
   static ThemeData light() {
     final base = ThemeData(useMaterial3: true);
@@ -163,6 +195,10 @@ class AppTheme {
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
         elevation: 0,
+        // A soft shadow once the page scrolls under it.
+        scrolledUnderElevation: 5,
+        shadowColor: AppColors.navy.withValues(alpha: 0.35),
+        surfaceTintColor: Colors.transparent,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontFamily: _font,
@@ -170,9 +206,11 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
-        shape: const Border(
-          bottom: BorderSide(color: Color(0xFF243F73), width: 1),
-        ),
+        shape: headerShape,
+      ),
+      // The back arrow sits on a soft rounded chip, in the header's colour.
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (_) => const BackChip(),
       ),
       cardTheme: CardThemeData(
         color: AppColors.card,
@@ -256,17 +294,17 @@ class AppTheme {
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android:
-              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+              CappedPageTransitionsBuilder(SoftPageTransitionsBuilder()),
           TargetPlatform.iOS:
-              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+              CappedPageTransitionsBuilder(CupertinoPageTransitionsBuilder()),
           TargetPlatform.windows:
-              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+              CappedPageTransitionsBuilder(SoftPageTransitionsBuilder()),
           TargetPlatform.macOS:
-              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+              CappedPageTransitionsBuilder(SoftPageTransitionsBuilder()),
           TargetPlatform.linux:
-              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+              CappedPageTransitionsBuilder(SoftPageTransitionsBuilder()),
           TargetPlatform.fuchsia:
-              CappedPageTransitionsBuilder(ZoomPageTransitionsBuilder()),
+              CappedPageTransitionsBuilder(SoftPageTransitionsBuilder()),
         },
       ),
       dialogTheme: DialogThemeData(
