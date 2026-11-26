@@ -59,14 +59,7 @@ class ProfileTabs extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
-                          // Each card gets its own storage slot: a folding
-                          // card would otherwise read the tab's saved scroll
-                          // position as its open/closed flag and fail.
-                          for (var j = 0; j < tabs[i].length; j++)
-                            KeyedSubtree(
-                              key: PageStorageKey<String>('profile-card-$i-$j'),
-                              child: tabs[i][j],
-                            ),
+                          for (final card in tabs[i]) _OwnStorage(child: card),
                         ]),
                       ),
                     ),
@@ -78,6 +71,28 @@ class ProfileTabs extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Cuts a card off from the tab's page storage.
+///
+/// The tab saves its scroll position there, and everything inside it would
+/// share that slot: a folding card reading a number as its "open" flag, or a
+/// notes box reading that flag as its scroll position, turns into a grey box.
+class _OwnStorage extends StatefulWidget {
+  const _OwnStorage({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_OwnStorage> createState() => _OwnStorageState();
+}
+
+class _OwnStorageState extends State<_OwnStorage> {
+  final _bucket = PageStorageBucket();
+
+  @override
+  Widget build(BuildContext context) =>
+      PageStorage(bucket: _bucket, child: widget.child);
 }
 
 class _TabsHeader extends SliverPersistentHeaderDelegate {

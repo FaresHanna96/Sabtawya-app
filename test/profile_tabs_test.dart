@@ -62,7 +62,8 @@ void main() {
     expect(find.text('first 0').hitTestable(), findsNothing); // still scrolled
   });
 
-  testWidgets('a folding card works after the tab was scrolled', (tester) async {
+  testWidgets('a folding card works after the tab was scrolled',
+      (tester) async {
     // A folding card saves "open" in the same page storage the tab's scroll
     // position uses: without its own slot it read a number as yes/no and the
     // whole tab went grey.
@@ -82,7 +83,8 @@ void main() {
                     SizedBox(height: 60, child: Text('first $i')),
                 ],
                 const [
-                  ExpansionTile(title: Text('fold'), children: [Text('inside')]),
+                  ExpansionTile(
+                      title: Text('fold'), children: [Text('inside')]),
                 ],
               ],
             ),
@@ -98,12 +100,47 @@ void main() {
     await tester.tap(find.text('fold'));
     await tester.pumpAndSettle();
     expect(find.text('inside'), findsOneWidget);
-    // Leave and come back: it is still open, and nothing breaks.
+    // Leave and come back: nothing breaks, and the card still folds.
     await tester.tap(find.text('one'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('two'));
     await tester.pumpAndSettle();
-    expect(find.text('inside'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.tap(find.text('fold'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a notes box inside a folding card opens without breaking',
+      (tester) async {
+    // A multi-line text box scrolls, so it also reads page storage: it must not
+    // see the "open" flag its folding card saved.
+    await tester.pumpWidget(MaterialApp(
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          body: DefaultTabController(
+            length: 1,
+            child: ProfileTabs(
+              onRefresh: () async {},
+              header: const SizedBox(height: 100),
+              tabBar: const TabBar(tabs: [Tab(text: 'one')]),
+              tabs: const [
+                [
+                  ExpansionTile(
+                    title: Text('fold'),
+                    children: [TextField(maxLines: 2)],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('fold'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(TextField), findsOneWidget);
   });
 }
