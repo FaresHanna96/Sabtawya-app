@@ -29,7 +29,7 @@ import 'patron_avatar.dart';
 export '../../core/theme/class_colors.dart' show classColourIndex;
 export 'class_saturday_status.dart' show ClassSaturdayStatus;
 
-/// The class list. An admin sees every class including archived ones; a servant
+/// The class list (active classes). An admin sees every class; a servant
 /// sees only the classes assigned to them, which the policies enforce. A
 /// servant with a single class sees that class's page here instead of a list.
 class ClassesScreen extends StatefulWidget {
@@ -64,8 +64,6 @@ class _ClassesScreenState extends State<ClassesScreen>
       if (!_tabs.indexIsChanging && mounted) setState(() {});
     });
 
-  bool _includeArchived = false;
-
   @override
   void dispose() {
     _tabs.dispose();
@@ -82,7 +80,7 @@ class _ClassesScreenState extends State<ClassesScreen>
     final isAdmin = session.isAdmin;
     final saturday = AppDateUtils.lastSaturday(DateTime.now());
     final (classes, weeks, health, preps, breaks) = await (
-      _repository.overview(includeInactive: _includeArchived),
+      _repository.overview(),
       yearId == null
           ? Future.value(const <String, ClassWeek>{})
           : _reports
@@ -165,11 +163,6 @@ class _ClassesScreenState extends State<ClassesScreen>
     if (added == true) await _reload();
   }
 
-  void _toggleArchived(bool value) {
-    setState(() => _includeArchived = value);
-    _sectionKey.currentState?.reload();
-  }
-
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
@@ -201,15 +194,6 @@ class _ClassesScreenState extends State<ClassesScreen>
 
     final list = _buildList(isAdmin, isGeneralServant);
 
-    // Archived classes: an icon on the tab strip, not a row of its own.
-    final archiveToggle = IconButton(
-      tooltip: AppStrings.showInactive,
-      isSelected: _includeArchived,
-      icon: const Icon(Icons.inventory_2_outlined),
-      selectedIcon: const Icon(Icons.inventory_2),
-      onPressed: () => _toggleArchived(!_includeArchived),
-    );
-
     // Each page keeps its state (and its loaded data) while the other shows.
     final pages = TabBarView(
       controller: _tabs,
@@ -232,9 +216,6 @@ class _ClassesScreenState extends State<ClassesScreen>
           ? AppBar(
               title: Text(
                   everyClass ? AppStrings.classesTitle : AppStrings.myClasses),
-              actions: [
-                if (isAdmin && _tabs.index == 0) archiveToggle,
-              ],
               bottom: tabBar,
             )
           : null,
@@ -248,16 +229,7 @@ class _ClassesScreenState extends State<ClassesScreen>
                     color: Theme.of(context).appBarTheme.backgroundColor ??
                         Theme.of(context).colorScheme.primary,
                     borderRadius: AppTheme.headerRadius,
-                    child: Row(
-                      children: [
-                        Expanded(child: tabBar),
-                        if (isAdmin && _tabs.index == 0)
-                          IconTheme(
-                            data: const IconThemeData(color: Colors.white),
-                            child: archiveToggle,
-                          ),
-                      ],
-                    ),
+                    child: tabBar,
                   ),
                   Expanded(child: pages),
                 ],
