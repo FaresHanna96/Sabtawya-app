@@ -12,6 +12,10 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  65: [
+    WhatsNewItem(Icons.touch_app_outlined, 'اختصارات الشريط',
+        'اتصلّح إن قوائم الاختصارات كانت بتفتح فوق بعض، ودلوقتي الجديدة بتاخد مكان القديمة.'),
+  ],
   64: [
     WhatsNewItem(Icons.notifications_active_outlined, 'الإشعار بيفتح مكانه',
         'اضغط على أي إشعار، من الجرس أو من برّه، يوديك على الصفحة بتاعته. وكلام الإشعارات بقى أبسط وأوضح.'),

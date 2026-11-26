@@ -161,6 +161,39 @@ void main() {
       expect(chosen?.id, QuickAction.addChildId);
     });
 
+    testWidgets('a second sheet takes the place of the open one',
+        (tester) async {
+      late BuildContext page;
+      await tester.pumpWidget(_app(Scaffold(
+        body: Builder(builder: (context) {
+          page = context;
+          return const Text('page');
+        }),
+      )));
+      var firstClosed = false;
+      showQuickActions(
+        page,
+        title: 'المخدومين',
+        actions: quickActionsFor(HomeTab.children, MoreRole.admin),
+      ).then((chosen) => firstClosed = chosen == null);
+      await tester.pumpAndSettle();
+      showQuickActions(
+        page,
+        title: 'الحضور',
+        actions: quickActionsFor(HomeTab.attendance, MoreRole.admin),
+      );
+      await tester.pumpAndSettle();
+      expect(firstClosed, isTrue);
+      expect(find.text('المخدومين'), findsNothing);
+      expect(find.text('الحضور'), findsOneWidget);
+
+      // One close is enough to be back on the page.
+      Navigator.of(page).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(find.text('page'), findsOneWidget);
+    });
+
     testWidgets('a long press on a tab asks for its shortcuts', (tester) async {
       int? pressed;
       await tester.pumpWidget(_app(Scaffold(

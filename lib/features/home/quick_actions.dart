@@ -84,15 +84,23 @@ List<QuickAction> quickActionsFor(HomeTab tab, MoreRole role) {
   };
 }
 
+const _sheetName = 'quick-actions';
+
 /// The sheet a long press on a tab opens. Returns the chosen action.
+///
+/// The bar stays usable under an open sheet, so another long press takes the
+/// old sheet's place instead of opening on top of it.
 Future<QuickAction?> showQuickActions(
   BuildContext context, {
   required String title,
   required List<QuickAction> actions,
 }) {
   Haptics.select();
+  Navigator.of(context)
+      .popUntil((route) => route.settings.name != _sheetName);
   return showModalBottomSheet<QuickAction>(
     context: context,
+    routeSettings: const RouteSettings(name: _sheetName),
     showDragHandle: true,
     isScrollControlled: true,
     builder: (context) => SafeArea(
