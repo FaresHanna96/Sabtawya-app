@@ -42,6 +42,7 @@ import 'more_entries.dart';
 import 'quick_actions.dart';
 import 'more_screen.dart';
 import 'shell_frame.dart';
+import 'web_cards.dart';
 import 'welcome_tour.dart';
 import 'whats_new_popup.dart';
 
@@ -517,6 +518,8 @@ class _HomeShellState extends State<HomeShell>
                       update: _update!,
                       onDismiss: () => setState(() => _update = null),
                     ),
+                  // On the home only: the other tabs keep their room.
+                  if (_index == 0) const WebCards(),
                   AnimatedSize(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOut,

@@ -6,10 +6,15 @@ import 'package:flutter/foundation.dart';
 
 import '../../data/supabase/db.dart';
 import '../../firebase_options.dart';
+import 'error_reporter.dart';
 import 'push_tap.dart';
 import 'web_taps_stub.dart' if (dart.library.js_interop) 'web_taps_web.dart';
 
 export 'push_tap.dart';
+
+/// Where the browser stands on notifications. [unknown] until asked about, and
+/// for a browser that has none.
+enum PushPermission { unknown, notAsked, granted, denied }
 
 /// Push notifications: registers this device so the edge functions can reach
 /// it (a join request for admins, a decision or any bell entry for servants).
@@ -39,6 +44,10 @@ class PushService {
   /// A notification the person tapped and the app has not opened yet. The
   /// home shell takes it once someone is signed in.
   final ValueNotifier<PushTap?> tapped = ValueNotifier<PushTap?>(null);
+
+  /// The website's notification permission, for its card and settings row.
+  final ValueNotifier<PushPermission> permission =
+      ValueNotifier<PushPermission>(PushPermission.unknown);
 
   static const _fidWait = Duration(seconds: 10);
 
@@ -76,9 +85,25 @@ class PushService {
         body: message.notification?.body,
       ));
 
+  /// The person tapped «فعّل الإشعارات»: asks the browser, then registers.
+  Future<void> enableFromTap() => registerDevice(fromTap: true);
+
+  static PushPermission _permissionOf(AuthorizationStatus status) =>
+      switch (status) {
+        AuthorizationStatus.authorized ||
+        AuthorizationStatus.provisional =>
+          PushPermission.granted,
+        AuthorizationStatus.denied => PushPermission.denied,
+        _ => PushPermission.notAsked,
+      };
+
   /// Registers this device for the signed-in user. Safe to call after every
   /// sign-in: the ID is re-attached to whoever is using the device now.
-  Future<void> registerDevice() async {
+  ///
+  /// A browser only lets a tap ask for permission (an iPhone ignores anything
+  /// else), so on the website it is asked [fromTap] only; the phone app asks
+  /// by itself.
+  Future<void> registerDevice({bool fromTap = false}) async {
     try {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(options: DefaultFirebaseOptions.current);
@@ -92,8 +117,12 @@ class PushService {
           if (m != null) _onOpened(m);
         }));
       }
-      final settings = await messaging.requestPermission();
+      var settings = kIsWeb && !fromTap
+          ? await messaging.getNotificationSettings()
+          : await messaging.requestPermission();
+      permission.value = _permissionOf(settings.authorizationStatus);
       if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+      if (kIsWeb && permission.value != PushPermission.granted) return;
 
       if (!_listening) {
         _listening = true;
@@ -104,18 +133,28 @@ class PushService {
       final waiting = _waiting = Completer<String>();
       String id = '';
       try {
-        await messaging.register(
-          vapidKey: kIsWeb ? DefaultFirebaseOptions.webVapidKey : null,
-        );
+        // Timed too: a call that never returns would also block the fallback.
+        await messaging
+            .register(
+              vapidKey: kIsWeb ? DefaultFirebaseOptions.webVapidKey : null,
+            )
+            .timeout(_fidWait);
         id = await waiting.future.timeout(_fidWait, onTimeout: () => '');
-      } catch (e) {
+      } catch (e, stack) {
         debugPrint('push: installation registration failed: $e');
+        _report('register', e, stack);
       }
       if (id.isEmpty) await _registerWithToken(messaging);
     } catch (e) {
       // Push is a convenience; the app works without it.
       debugPrint('push registration skipped: $e');
     }
+  }
+
+  /// Why a browser could not register, on the stats page: it happens on
+  /// people's own phones, where nobody can read the console.
+  void _report(String step, Object error, StackTrace stack) {
+    if (kIsWeb) ErrorReporter.report('push $step: $error', stack);
   }
 
   void _onRegistered(String id) {
@@ -149,18 +188,21 @@ class PushService {
   /// The fallback: the old way, used only when no installation ID arrives.
   Future<void> _registerWithToken(FirebaseMessaging messaging) async {
     try {
-      // ignore: deprecated_member_use
-      final token = await messaging.getToken(
-        vapidKey: kIsWeb ? DefaultFirebaseOptions.webVapidKey : null,
-      );
+      final token = await messaging
+          // ignore: deprecated_member_use
+          .getToken(
+            vapidKey: kIsWeb ? DefaultFirebaseOptions.webVapidKey : null,
+          )
+          .timeout(_fidWait);
       if (token != null) await _save(token);
       if (!_tokenListening) {
         _tokenListening = true;
         // ignore: deprecated_member_use
         messaging.onTokenRefresh.listen((t) => _save(t));
       }
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('push: token registration skipped: $e');
+      _report('token', e, stack);
     }
   }
 
@@ -172,8 +214,9 @@ class PushService {
         'p_platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
         if (replaces != null) 'p_replaces': replaces,
       });
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('push: saving the device failed: $e');
+      _report('save', e, stack);
     }
   }
 }

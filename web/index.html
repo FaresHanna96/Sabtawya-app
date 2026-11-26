@@ -22,6 +22,8 @@
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1B3A6B">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="خدمة 3:6 ابتدائي السبت">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
@@ -59,20 +61,23 @@
       var el = document.getElementById('app-loading');
       if (el) { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 450); }
     });
-    // Force any waiting service worker to activate immediately so users
-    // are never stuck in a reload loop after a new deployment.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(function (reg) {
-        if (reg.waiting) { reg.waiting.postMessage('skip-waiting'); }
-        reg.addEventListener('updatefound', function () {
-          var sw = reg.installing;
-          if (!sw) return;
-          sw.addEventListener('statechange', function () {
-            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-              sw.postMessage('skip-waiting');
-            }
+    // Saves the app on the phone so it opens without internet (app-sw.js).
+    // Not on a developer's machine, where a saved copy only gets in the way.
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('app-sw.js').catch(function () {});
+      });
+      // On the very first visit the files load before the worker is there, so
+      // once the app is up it is told which ones to save.
+      window.addEventListener('flutter-first-frame', function () {
+        setTimeout(function () {
+          navigator.serviceWorker.ready.then(function (reg) {
+            if (!reg.active) return;
+            var files = performance.getEntriesByType('resource')
+              .map(function (e) { return e.name; });
+            reg.active.postMessage({ save: ['/'].concat(files) });
           });
-        });
+        }, 8000);
       });
     }
   </script>

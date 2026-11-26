@@ -8,7 +8,9 @@ param([switch]$Force, [switch]$NoPush)
 $url = "https://fxclufgfkvfrhdleyndf.supabase.co"
 $key = "sb_publishable_5j2lzDrUoKL3RUlJTIBoag_fU8ClIuT"
 
-& "D:\dev\flutter\bin\flutter.bat" build web --release `
+# --no-web-resources-cdn: the drawing engine comes from our site, so app-sw.js
+# can save it and the app opens without internet.
+& "D:\dev\flutter\bin\flutter.bat" build web --release --no-web-resources-cdn `
     "--dart-define=SUPABASE_URL=$url" `
     "--dart-define=SUPABASE_ANON_KEY=$key"
 

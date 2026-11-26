@@ -9,7 +9,7 @@ $url = "https://atusdmohomycgqmhoovh.supabase.co"
 $key = "sb_publishable_NxbpowUI1dV9Rl9e6hpLDA_mjBAgSlN"   # publishable (public) key of the dev project
 $flutter = "D:\dev\flutter\bin\flutter.bat"
 
-& $flutter build web --release --output "$PSScriptRoot\build\web_dev" "--dart-define=SUPABASE_URL=$url" "--dart-define=SUPABASE_ANON_KEY=$key"
+& $flutter build web --release --no-web-resources-cdn --output "$PSScriptRoot\build\web_dev" "--dart-define=SUPABASE_URL=$url" "--dart-define=SUPABASE_ANON_KEY=$key"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if ($Deploy) {

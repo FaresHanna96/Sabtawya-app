@@ -18,6 +18,16 @@ class AppStrings {
   static const edit = 'تعديل';
   static const add = 'إضافة';
   static const search = 'بحث';
+  static const enableNotifications = 'فعّل الإشعارات';
+  static const enableNotificationsBody =
+      'عشان يوصلك الإشعار على الموبايل حتى والتطبيق مقفول.';
+  static const notificationsOn = 'الإشعارات شغّالة على الجهاز ده';
+  static const notificationsDenied =
+      'الإشعارات مقفولة. افتحها من إعدادات الموبايل أو المتصفح للموقع ده.';
+  static const installTitle = 'ضيف التطبيق للشاشة الرئيسية';
+  static const installSteps =
+      'من سفاري دوس على زر المشاركة ⬆️ تحت، واختار «إضافة إلى الشاشة الرئيسية» '
+      'وبعدين «إضافة». افتح الأيقونة الجديدة وسجّل الدخول، عشان توصلك الإشعارات.';
   static const quickActionsHint =
       'جرّب: دوس مطوّل على أي تبويب تحت تلاقي اختصاراته';
   static const noResults = 'مفيش نتايج';
