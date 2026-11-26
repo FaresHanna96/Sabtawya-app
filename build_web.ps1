@@ -1,7 +1,8 @@
 # Build and deploy sabtawya web app
 # Run from project root: .\build_web.ps1
 # -Force: every phone below this build must update before it can be used.
-# -NoPush: do not send the "new version" notice to every user (send_update_push.ps1).
+# -NoPush: do not send the "new version" notice to every user (send_update_push.ps1);
+#          the Friday reminder is still pointed at this version.
 param([switch]$Force, [switch]$NoPush)
 
 
@@ -64,7 +65,8 @@ if ($LASTEXITCODE -eq 0) {
     # and one backup (only after a successful deploy).
     if ($LASTEXITCODE -eq 0) {
         & "$PSScriptRoot\prune_vercel.ps1" -Project sabtawya
-        # Every release tells every user: a push and a bell entry that open the update.
-        if (-not $NoPush) { & "$PSScriptRoot\send_update_push.ps1" }
+        # Every release points the Friday reminder at itself and tells every user:
+        # a push and a bell entry that open the update (-NoPush: the reminder only).
+        & "$PSScriptRoot\send_update_push.ps1" -ReminderOnly:$NoPush
     }
 }
