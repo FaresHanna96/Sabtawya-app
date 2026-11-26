@@ -70,3 +70,5 @@ if ($LASTEXITCODE -eq 0) {
         & "$PSScriptRoot\send_update_push.ps1" -ReminderOnly:$NoPush
     }
 }
+# A failed build, deploy or reminder update must fail the whole release.
+exit $LASTEXITCODE
