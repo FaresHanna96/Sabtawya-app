@@ -126,7 +126,7 @@ changed.
    ("install version x.y.z"). Skip it for a release with `-NoPush`; a repeat for the same version
    is skipped by the script itself.
    Two kinds of update notice: `app_update` (this release push) and `app_update_reminder` (a weekly Friday
-   9 PM Cairo reminder, every Friday until the Friday four weeks after each release,
+   7 PM Cairo reminder, every Friday until the Friday four weeks after each release,
    `notify_update_reminder`).
 7. Check `https://sabtawya.vercel.app/version.json` and compare the SHA-256 of the
    downloaded APKs with the local files.
