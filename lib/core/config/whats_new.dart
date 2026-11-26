@@ -12,6 +12,16 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  64: [
+    WhatsNewItem(Icons.notifications_active_outlined, 'الإشعار بيفتح مكانه',
+        'اضغط على أي إشعار، من الجرس أو من برّه، يوديك على الصفحة بتاعته. وكلام الإشعارات بقى أبسط وأوضح.'),
+    WhatsNewItem(Icons.dashboard_customize_rounded, 'شكل وتنقّل أسهل',
+        'الشريط اللي تحت بقى ظاهر في كل الصفحات، واضغط عليه ضغطة طويلة تلاقي اختصارات.'),
+    WhatsNewItem(Icons.event_busy_rounded, 'السبت اللي مفيهوش درس',
+        'إشعار واحد فيه السبب وحالة الدرس والحضور.'),
+    WhatsNewItem(Icons.phone_iphone_rounded, 'الآيفون',
+        'زرار للإشعارات في الإعدادات، والموقع بيفتح من غير نت.'),
+  ],
   63: [
     WhatsNewItem(Icons.campaign_rounded, 'إعلان لخدام بالاسم',
         'أمين الخدمة يقدر يبعت الإعلان لخدام يختارهم بالاسم.'),
