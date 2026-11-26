@@ -185,7 +185,7 @@ enum LogActivity {
 enum LogFilter { all, present, absent }
 
 /// A child's attendance, all in one card on the profile: the year's average
-/// and points, each activity with its count and the last time it was done,
+/// each activity with its count and the last time it was done,
 /// then month by month (newest first) with "حضر 1 من 3" and a bar, each
 /// opening to its Saturdays, one line each with the four activities as icons.
 class ChildAttendanceLog extends StatefulWidget {
@@ -195,15 +195,9 @@ class ChildAttendanceLog extends StatefulWidget {
     required this.sessionDates,
     this.breakDates = const {},
     this.lastActivity,
-    this.points,
-    this.gamePoints,
     this.badges = const <ChildBadge>[],
     this.today,
   });
-
-  /// The year's طايو with the badges' bonus, as the class ranking counts it
-  /// (the profile header's number). Wins over [points] + the bonus.
-  final int? gamePoints;
 
   final List<ChildSessionScore> history;
 
@@ -216,9 +210,6 @@ class ChildAttendanceLog extends StatefulWidget {
   /// When each activity was last done (any year).
   final ChildLastActivity? lastActivity;
 
-  /// The year's attendance points as the database counts them; summed from
-  /// [history] when not given. The badges' bonus is added on top.
-  final int? points;
 
   /// The child's badges: each one earned adds [kBadgeBonus] to the year's
   /// طايو and to the month it was earned in.
@@ -290,11 +281,6 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
   @override
   Widget build(BuildContext context) {
     final totals = LogTotals.of(_months);
-    // The same figure as the profile's header when it is known, so the two
-    // can never differ; otherwise the attendance points plus the badge bonus.
-    final points = widget.gamePoints ??
-        (widget.points ?? widget.history.fold<int>(0, (sum, h) => sum + h.score)) +
-            _bonusByMonth.values.fold<int>(0, (a, b) => a + b);
 
     return SectionCard(
       title: AppStrings.attendanceSummary,
@@ -305,7 +291,6 @@ class _ChildAttendanceLogState extends State<ChildAttendanceLog> {
         children: [
           _Overview(
             totals: totals,
-            points: points,
             lastActivity: widget.lastActivity,
             months: _months,
             today: widget.today ?? DateTime.now(),
@@ -471,19 +456,17 @@ class _HistoryHeader extends StatelessWidget {
   }
 }
 
-/// The year at a glance: average with its bar, Saturdays and points, then
+/// The year at a glance: average with its bar, then
 /// the four activities with their count and the last time each was done.
 class _Overview extends StatelessWidget {
   const _Overview({
     required this.totals,
-    required this.points,
     required this.lastActivity,
     required this.months,
     required this.today,
   });
 
   final LogTotals totals;
-  final int points;
   final ChildLastActivity? lastActivity;
   final List<LogMonth> months;
   final DateTime today;
@@ -508,12 +491,6 @@ class _Overview extends StatelessWidget {
             label: AppStrings.averageAttendance,
           ),
           const SizedBox(height: 12),
-          StatTile(
-            label: AppStrings.totalPoints,
-            value: '$points',
-            color: AppColors.olive,
-            icon: Icons.star_rounded,
-          ),
           const SizedBox(height: 8),
         ],
         // Two by two: each activity, how often, and when last.

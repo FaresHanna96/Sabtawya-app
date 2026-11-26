@@ -148,7 +148,6 @@ void main() {
                     childId: 'child',
                     lastMass: DateTime(2026, 11, 7),
                   ),
-                  points: 25,
                   today: _today,
                 ),
               ),
@@ -162,7 +161,9 @@ void main() {
       expect(find.text('ملخص الحضور'), findsOneWidget);
       expect(find.text('سجل الحضور'), findsOneWidget);
       expect(find.text('2/3'), findsWidgets); // attended, and mass
-      expect(find.text('25'), findsOneWidget); // points
+      // The year's طايو is on the profile's header card, not repeated here.
+      expect(find.text('إجمالي الطايوهات'), findsNothing);
+      expect(find.text('25'), findsNothing);
       // Attended-out-of-held is not repeated: the activities show it.
       expect(find.text('السبوت المحضورة'), findsNothing);
       expect(find.textContaining('آخر مرة'), findsOneWidget); // mass only
@@ -174,7 +175,7 @@ void main() {
       expect(find.text('5 طايو · 4 سبوت ما اتسجّلوش'), findsOneWidget);
     });
 
-    testWidgets('each badge adds 10 to the year and to the month it was earned',
+    testWidgets('each badge adds 10 to the month it was earned',
         (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Directionality(
@@ -184,7 +185,6 @@ void main() {
               child: ChildAttendanceLog(
                 history: _history,
                 sessionDates: _sessions,
-                points: 25,
                 badges: [
                   ChildBadge(
                     childId: 'child',
@@ -201,7 +201,6 @@ void main() {
           ),
         ),
       ));
-      expect(find.text('35'), findsOneWidget); // 25 + 10
       expect(find.text('30 طايو · سبت ما اتسجّلش'), findsOneWidget); // Nov
       expect(find.text('5 طايو · 4 سبوت ما اتسجّلوش'), findsOneWidget); // Oct
     });

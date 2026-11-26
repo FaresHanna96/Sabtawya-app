@@ -498,8 +498,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                       sessionDates: data.sessionDates,
                       breakDates: data.breakDates,
                       lastActivity: data.lastActivity,
-                      points: data.yearReport?.points,
-                      gamePoints: data.rankedPoints,
                       badges: data.badges ?? const <ChildBadge>[],
                     ),
                   ]),
@@ -1151,13 +1149,6 @@ class _ProfileData {
 
   /// The game points: this child's line in [ranking] (attendance points
   /// plus the badge bonus), 0 when not found.
-  int? get rankedPoints {
-    for (final r in ranking ?? const <LeaderboardRow>[]) {
-      if (r.childId == child.id) return r.gamePoints;
-    }
-    return null;
-  }
-
   int get gamePoints {
     for (final r in ranking ?? const <LeaderboardRow>[]) {
       if (r.childId == child.id) return r.gamePoints;
