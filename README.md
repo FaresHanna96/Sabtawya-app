@@ -127,7 +127,8 @@ changed.
    is skipped by the script itself.
    Two kinds of update notice: `app_update` (this release push) and `app_update_reminder` (a weekly Friday
    7 PM Cairo reminder, every Friday until the Friday four weeks after each release,
-   `notify_update_reminder`).
+   `notify_update_reminder`). The Friday reminder goes to every active user not yet on the latest build,
+   even if a release notice was just sent.
 7. Check `https://sabtawya.vercel.app/version.json` and compare the SHA-256 of the
    downloaded APKs with the local files.
 
