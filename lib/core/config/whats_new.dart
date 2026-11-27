@@ -12,6 +12,14 @@ class WhatsNewItem {
 /// shows the entry of the running build once per phone. A build with no entry
 /// shows nothing. Add the new entry for every release that users should hear about.
 const Map<int, List<WhatsNewItem>> kWhatsNew = {
+  67: [
+    WhatsNewItem(Icons.cloud_off_rounded, 'من غير نت أحسن',
+        'التطبيق بيفضل شغال من غير نت حتى بعد وقت طويل، والحفظ بيتبعت لما النت يرجع من غير ما يتكرر.'),
+    WhatsNewItem(Icons.shield_outlined, 'أمان أكتر',
+        'لما تسجّل خروج، الموبايل بيبطّل يستقبل إشعاراتك.'),
+    WhatsNewItem(Icons.build_circle_outlined, 'تصليحات',
+        'أرقام الخدام بقت كاملة، والحضور مبيضيعش وإنت بتغيّر حالة السبت، ومفيش دفع أكتر من المطلوب في الرحلات.'),
+  ],
   65: [
     WhatsNewItem(Icons.touch_app_outlined, 'اختصارات الشريط',
         'اتصلّح إن قوائم الاختصارات كانت بتفتح فوق بعض، ودلوقتي الجديدة بتاخد مكان القديمة.'),
