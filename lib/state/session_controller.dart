@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../core/services/app_badge_stub.dart'
-    if (dart.library.js_interop) '../core/services/app_badge_web.dart';
 import '../core/services/push_service.dart';
 import '../core/utils/app_failure.dart';
 import '../data/models/attendance.dart';
@@ -14,7 +12,7 @@ import '../data/models/school_class.dart';
 import '../data/repositories/attendance_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/class_repository.dart';
-import '../data/services/caller_id_service.dart';
+import '../data/services/device_cleanup.dart';
 
 enum SessionStatus {
   /// Resolving the stored session and loading the profile.
@@ -43,9 +41,11 @@ class SessionController extends ChangeNotifier {
     AuthRepository auth = const AuthRepository(),
     ClassRepository classes = const ClassRepository(),
     AttendanceRepository attendance = const AttendanceRepository(),
+    DeviceCleanup cleanup = const DeviceCleanup(),
   })  : _auth = auth,
         _classes = classes,
-        _attendance = attendance {
+        _attendance = attendance,
+        _cleanup = cleanup {
     _subscription = _auth.authChanges.listen(
       _onAuthChanged,
       onError: (Object error) => _fail(error),
@@ -64,6 +64,7 @@ class SessionController extends ChangeNotifier {
   final AuthRepository _auth;
   final ClassRepository _classes;
   final AttendanceRepository _attendance;
+  final DeviceCleanup _cleanup;
 
   StreamSubscription<AuthState>? _subscription;
 
@@ -97,6 +98,12 @@ class SessionController extends ChangeNotifier {
 
   void _onAuthChanged(AuthState state) {
     if (state.session == null) {
+      // Also when the session ends by itself (expired or revoked), where
+      // signOut() below never ran.
+      if (state.event == AuthChangeEvent.signedOut) {
+        unawaited(_quietly(() => _cleanup.forgetPush(server: false)));
+        unawaited(_quietly(_cleanup.wipe));
+      }
       _loadToken++;
       _profile = null;
       _myClasses = const <ClassOverview>[];
@@ -146,19 +153,22 @@ class SessionController extends ChangeNotifier {
 
       if (profile == null) {
         _status = SessionStatus.notFound;
+        unawaited(_quietly(_cleanup.wipe));
         notifyListeners();
         return;
       }
       // Servants waiting for approval are registered too, so the decision
       // reaches them as a push.
-      PushService.instance.registerDevice();
+      unawaited(_quietly(_cleanup.registerPush));
       if (profile.isRejected) {
         _status = SessionStatus.rejected;
+        unawaited(_quietly(_cleanup.wipe));
         notifyListeners();
         return;
       }
       if (!profile.isActive) {
         _status = SessionStatus.inactive;
+        unawaited(_quietly(_cleanup.wipe));
         notifyListeners();
         return;
       }
@@ -205,6 +215,11 @@ class SessionController extends ChangeNotifier {
         _profile = profile;
         _myClasses = classes;
         _currentYear = year;
+      }
+      if (_status != SessionStatus.ready) {
+        _myClasses = const <ClassOverview>[];
+        _currentYear = null;
+        unawaited(_quietly(_cleanup.wipe));
       }
       notifyListeners();
     } catch (_) {
@@ -254,11 +269,30 @@ class SessionController extends ChangeNotifier {
         occupation: occupation,
       );
 
-  Future<void> signOut() {
-    setAppBadge(0); // the next person to sign in must not see this count
-    // ...nor be told who the previous servant's families are.
-    CallerIdService.disable();
-    return _auth.signOut();
+  Future<void> signOut() async {
+    // While the session can still delete it: this device stops getting this
+    // person's pushes.
+    await _quietly(() => _cleanup.forgetPush(server: true));
+    // The next person to sign in must not see this count, nor be told who the
+    // previous servant's families are.
+    await _quietly(_cleanup.hideNames);
+    try {
+      await _auth.signOut();
+    } finally {
+      // The sign-out failed and they are still in: keep their pushes coming.
+      if (_auth.currentSession != null) {
+        unawaited(_quietly(_cleanup.registerPush));
+      }
+    }
+  }
+
+  /// Cleaning up is never a reason to fail what the person is doing.
+  static Future<void> _quietly(Future<void> Function() step) async {
+    try {
+      await step();
+    } catch (e) {
+      debugPrint('session cleanup skipped: $e');
+    }
   }
 
   Future<void> sendPasswordReset(String email) =>

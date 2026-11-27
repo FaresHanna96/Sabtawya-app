@@ -49,10 +49,13 @@ class OfflineHttpClient extends http.BaseClient {
 
   /// Writes that must reach the server now or fail: a lesson prep and its
   /// files. Queued, the app said "sent" while the photos were still on the
-  /// phone, and the prep showed up without them (or with broken ones).
+  /// phone, and the prep showed up without them (or with broken ones). And a
+  /// device removed at sign-out: replayed after the next sign-in, it would
+  /// switch that person's pushes off.
   static const _neverQueueTables = <String>{
     'servant_lesson_preps',
     'servant_lesson_prep_photos',
+    'device_tokens',
   };
   static const _neverQueueBuckets = <String>{'servant-submissions'};
 

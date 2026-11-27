@@ -2350,6 +2350,143 @@ void main() {
       expect(row['classes_count'], 1);
     });
   });
+
+  group('signed-out callers', () {
+    const zero = '00000000-0000-0000-0000-000000000000';
+
+    dev('cannot call the functions that were open to them', () async {
+      // 42501: refused before the function runs.
+      final sessions = await _call(
+          'POST', '/rest/v1/rpc/generate_sessions_internal',
+          body: {'p_year_id': zero});
+      expect(sessions.code, '42501', reason: '${sessions.body}');
+      final totals = await _call(
+          'POST', '/rest/v1/rpc/service_weekly_attendance',
+          body: {'p_year': zero, 'p_from': '2026-01-01'});
+      expect(totals.code, '42501', reason: '${totals.body}');
+      // PGRST202: no such function any more.
+      final email = await _call(
+          'POST', '/rest/v1/rpc/check_email_registered',
+          body: {'p_email': 'nobody@sabtawya.test'});
+      expect(email.code, 'PGRST202', reason: '${email.body}');
+    });
+
+    dev('can still check a name and an email before signing up', () async {
+      final name = await _call('POST', '/rest/v1/rpc/servant_name_taken',
+          body: {'p_name': 'nobody at all'});
+      final email = await _call('POST', '/rest/v1/rpc/check_signup_email',
+          body: {'p_email': 'someone@gmail.com'});
+      expect(name.body, isFalse, reason: '${name.body}');
+      expect(email.ok, isTrue, reason: '${email.body}');
+    });
+
+    dev('signed in, the admin still creates sessions and a servant still reads '
+        'the totals', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final year = (await _call(
+              'GET', '/rest/v1/attendance_years?select=id&is_current=eq.true',
+              token: admin.token))
+          .rows
+          .single['id'];
+      final made = await _call(
+          'POST', '/rest/v1/rpc/generate_sessions_for_year',
+          token: admin.token, body: {'p_year_id': year});
+      expect(made.ok, isTrue, reason: '${made.body}');
+      final direct = await _call(
+          'POST', '/rest/v1/rpc/generate_sessions_internal',
+          token: servant.token, body: {'p_year_id': year});
+      expect(direct.code, '42501', reason: '${direct.body}');
+      final totals = await _call(
+          'POST', '/rest/v1/rpc/service_weekly_attendance',
+          token: servant.token,
+          body: {'p_year': year, 'p_from': '2026-01-01'});
+      expect(totals.ok, isTrue, reason: '${totals.body}');
+    });
+  });
+
+  group('a deactivated servant and event money', () {
+    dev('reads and adds payments only while active', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final kids = await _call(
+          'GET',
+          '/rest/v1/children?select=id&is_active=eq.true&order=full_name&limit=2',
+          token: servant.token);
+      final paid = kids.rows[0]['id'] as String;
+      final other = kids.rows[1]['id'] as String;
+      final made = await _call('POST', '/rest/v1/events',
+          token: admin.token,
+          body: {
+            'title': 'dev security test',
+            'event_date': '2099-01-01',
+            'cost': 100,
+            'created_by': admin.id,
+          },
+          prefer: 'return=representation');
+      expect(made.ok, isTrue, reason: '${made.body}');
+      final event = made.rows.single['id'] as String;
+
+      Future<_Reply> pay(String child) =>
+          _call('POST', '/rest/v1/event_payments',
+              token: servant.token,
+              body: {
+                'event_id': event,
+                'child_id': child,
+                'amount': 10,
+                'paid_by': servant.id,
+              });
+      Future<_Reply> reserve(String child) =>
+          _call('POST', '/rest/v1/event_reservations',
+              token: servant.token,
+              body: {
+                'event_id': event,
+                'child_id': child,
+                'reserved_by': servant.id,
+              });
+      Future<int> seen(String table, _Who who) async => (await _call(
+              'GET',
+              '/rest/v1/$table?select=*&'
+                  '${table == 'events' ? 'id' : 'event_id'}=eq.$event',
+              token: who.token))
+          .rows
+          .length;
+
+      try {
+        expect((await pay(paid)).ok, isTrue);
+        expect((await reserve(paid)).ok, isTrue);
+        for (final t in ['events', 'event_payments', 'event_reservations']) {
+          expect(await seen(t, servant), 1, reason: 'active: $t');
+        }
+
+        await _call('PATCH', '/rest/v1/profiles?id=eq.${servant.id}',
+            token: admin.token, body: {'is_active': false});
+        for (final t in ['events', 'event_payments', 'event_reservations']) {
+          expect(await seen(t, servant), 0, reason: 'deactivated: $t');
+        }
+        expect((await pay(other)).ok, isFalse);
+        expect((await reserve(other)).ok, isFalse);
+        // Their own rows cannot be removed either.
+        for (final t in ['event_payments', 'event_reservations']) {
+          await _call('DELETE', '/rest/v1/$t?event_id=eq.$event',
+              token: servant.token);
+          expect(await seen(t, admin), 1, reason: 'kept: $t');
+        }
+      } finally {
+        await _call('PATCH', '/rest/v1/profiles?id=eq.${servant.id}',
+            token: admin.token, body: {'is_active': true});
+        await _call('DELETE', '/rest/v1/events?id=eq.$event',
+            token: admin.token);
+        for (final who in [admin, servant, await _login('general')]) {
+          await _call(
+              'DELETE',
+              '/rest/v1/notifications?kind=in.(event_added,app_update)'
+                  '&created_at=gte.$started',
+              token: who.token);
+        }
+      }
+    });
+  });
 }
 
 /// Uploads a tiny PDF to [bucket]/[path] as the holder of [token].

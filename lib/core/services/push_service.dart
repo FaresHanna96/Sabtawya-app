@@ -60,6 +60,12 @@ class PushService {
   String? _fid;
   Completer<String>? _waiting;
 
+  /// The id or token last sent to the server for this device, to delete there
+  /// at sign-out.
+  String? _saved;
+
+  static const _forgetWait = Duration(seconds: 5);
+
   /// An installation ID: 22 characters of base64url. A registration token is
   /// far longer and has a colon in it. The edge functions use the same rule to
   /// pick the field to send to.
@@ -206,8 +212,38 @@ class PushService {
     }
   }
 
+  /// Stops pushes to this device for the person leaving it: deletes its row on
+  /// the server (with [server], while there is still a session) and tells
+  /// Firebase to stop delivering. Offline only the second can work; the server
+  /// then drops the dead row at its next send. Never throws, never waits long.
+  Future<void> forgetDevice({bool server = true}) async {
+    final saved = _saved;
+    _saved = null;
+    if (server && saved != null) {
+      await _forgetStep(
+        () => Db.client.from('device_tokens').delete().eq('token', saved),
+      );
+    }
+    if (Firebase.apps.isEmpty) return;
+    await _forgetStep(() => FirebaseMessaging.instance.unregister());
+    if (saved != null && !isInstallationId(saved)) {
+      // ignore: deprecated_member_use
+      await _forgetStep(() => FirebaseMessaging.instance.deleteToken());
+    }
+  }
+
+  Future<void> _forgetStep(Future<void> Function() step) async {
+    try {
+      await step().timeout(_forgetWait);
+    } catch (e) {
+      debugPrint('push: forgetting this device: $e');
+    }
+  }
+
   Future<void> _save(String token, {String? replaces}) async {
     if (Db.client.auth.currentUser == null) return;
+    // Remembered even if the save fails: the row may be there from before.
+    _saved = token;
     try {
       await Db.client.rpc('register_device_token', params: {
         'p_token': token,

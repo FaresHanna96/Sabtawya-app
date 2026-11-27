@@ -76,6 +76,15 @@ void main() {
     expect(offline.single['full_name'], 'Anna');
   });
 
+  test('removing this device at sign-out is never queued', () async {
+    online = false;
+    await expectLater(
+      client.delete(Uri.parse('$_base/device_tokens?token=eq.abc')),
+      throwsA(isA<http.ClientException>()),
+    );
+    expect(OfflineStore.pendingWrites(), isEmpty);
+  });
+
   test('a read with nothing kept still fails offline', () async {
     online = false;
     expect(getChildren, throwsA(isA<http.ClientException>()));
