@@ -16,7 +16,6 @@ import '../../core/services/update_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/ui.dart';
-import '../../core/widgets/app_widgets.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/responsive.dart';
 import '../../data/models/app_notification.dart';
@@ -824,18 +823,6 @@ class _OfflineBanner extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Shown while the shell has nothing to display, e.g. a servant with no class.
-class HomePlaceholder extends StatelessWidget {
-  const HomePlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) => const EmptyState(
-        icon: Icons.class_outlined,
-        title: AppStrings.noClassesAssigned,
-        body: AppStrings.noClassesAssignedBody,
-      );
 }
 
 /// Replaces the real download in tests.

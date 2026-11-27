@@ -7,7 +7,6 @@ import 'package:sabtawya/data/models/child.dart';
 import 'package:sabtawya/features/children/ask_family.dart';
 import 'package:sabtawya/features/children/asked_log.dart';
 import 'package:sabtawya/features/children/missing_info_banner.dart';
-import 'package:sabtawya/features/dashboard/missing_info_section.dart';
 
 Child _child({
   String id = 'k',
@@ -147,66 +146,6 @@ void main() {
       final nobody = await ask(tester, _child(noBirth: true, mobile: null));
       expect(nobody.$1, isFalse);
       expect(nobody.$2, isEmpty);
-    });
-  });
-
-  group('the card on the home page', () {
-    Widget app(Widget child) => MaterialApp(
-          home: Scaffold(
-            body: Padding(padding: const EdgeInsets.all(16), child: child),
-          ),
-        );
-
-    testWidgets('shows how many are missing and the progress', (tester) async {
-      await tester.pumpWidget(
-          app(MissingInfoCard(total: 80, missing: 20, onTap: () {})));
-      expect(find.text('بيانات ناقصة'), findsOneWidget);
-      expect(find.text('20 مخدوم بياناتهم ناقصة'), findsOneWidget);
-      expect(find.text('اكتمل 60 من 80'), findsOneWidget);
-    });
-
-    testWidgets('one child reads as one', (tester) async {
-      await tester
-          .pumpWidget(app(MissingInfoCard(total: 5, missing: 1, onTap: () {})));
-      expect(find.text('مخدوم واحد بياناته ناقصة'), findsOneWidget);
-    });
-
-    testWidgets('the section counts the children with a gap', (tester) async {
-      await tester.pumpWidget(app(MissingInfoSection(
-        load: () async => [
-          _child(id: '1'),
-          _child(id: '2', noBirth: true),
-          _child(id: '3', noBirth: true),
-        ],
-      )));
-      await tester.pumpAndSettle();
-      expect(find.text('2 مخدوم بياناتهم ناقصة'), findsOneWidget);
-    });
-
-    testWidgets('nothing when every record is complete or there are none',
-        (tester) async {
-      await tester.pumpWidget(app(MissingInfoSection(
-        load: () async => [_child(id: '1')],
-      )));
-      await tester.pumpAndSettle();
-      expect(find.byType(MissingInfoCard), findsNothing);
-
-      await tester.pumpWidget(app(MissingInfoSection(
-        key: UniqueKey(),
-        load: () async => <Child>[],
-      )));
-      await tester.pumpAndSettle();
-      expect(find.byType(MissingInfoCard), findsNothing);
-    });
-
-    testWidgets('fits a 320 px phone', (tester) async {
-      tester.view.physicalSize = const Size(320, 700);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(
-          app(MissingInfoCard(total: 800, missing: 799, onTap: () {})));
-      expect(tester.takeException(), isNull);
     });
   });
 

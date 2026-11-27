@@ -9,7 +9,6 @@ import 'package:sabtawya/data/models/reports.dart';
 import 'package:sabtawya/data/models/school_class.dart';
 import 'package:sabtawya/features/attendance/attendance_screen.dart';
 import 'package:sabtawya/features/classes/classes_screen.dart';
-import 'package:sabtawya/features/dashboard/home_numbers_card.dart';
 
 final _year = AttendanceYear(
   id: 'y',
@@ -72,8 +71,6 @@ final widgets = <String, Widget Function()>{
           prepSent: false),
       onRecord: () {},
       onTap: () {}),
-  'numbers': () => const HomeNumbersCard(
-      children: 80, classes: 8, servants: 12, admins: 2, boys: 40, girls: 40),
 };
 
 void main() {

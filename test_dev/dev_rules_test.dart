@@ -2507,6 +2507,78 @@ void main() {
       }
     });
   });
+
+  group('event payments', () {
+    dev('stop at the cost; a payment sent again is told apart', () async {
+      final admin = await _login('admin');
+      final servant = await _login('servant');
+      final kid = (await _call(
+              'GET',
+              '/rest/v1/children?select=id&is_active=eq.true&order=full_name'
+                  '&limit=1',
+              token: servant.token))
+          .rows
+          .single['id'];
+      final made = await _call('POST', '/rest/v1/events',
+          token: admin.token,
+          body: {
+            'title': 'dev cap test',
+            'event_date': '2099-01-01',
+            'cost': 100,
+            'created_by': admin.id,
+          },
+          prefer: 'return=representation');
+      expect(made.ok, isTrue, reason: '${made.body}');
+      final event = made.rows.single['id'] as String;
+      Future<_Reply> pay(String id, num amount) =>
+          _call('POST', '/rest/v1/event_payments', token: servant.token, body: {
+            'id': id,
+            'event_id': event,
+            'child_id': kid,
+            'amount': amount,
+            'paid_by': servant.id,
+          });
+      const first = '11111111-1111-4111-8111-111111111111';
+      const second = '22222222-2222-4222-8222-222222222222';
+      try {
+        expect((await pay(first, 100)).ok, isTrue);
+        // The same payment again: the key says it is saved, not "too much".
+        final again = await pay(first, 100);
+        expect(again.status, 409, reason: '${again.body}');
+        expect(again.code, '23505');
+        expect('${again.body['message']}', contains('event_payments_pkey"'));
+        // A second payment on a paid-up child.
+        final over = await pay(second, 1);
+        expect(over.ok, isFalse);
+        expect(over.code, '23514', reason: '${over.body}');
+      } finally {
+        await _call('DELETE', '/rest/v1/events?id=eq.$event',
+            token: admin.token);
+        for (final who in [admin, servant, await _login('general')]) {
+          await _call(
+              'DELETE',
+              '/rest/v1/notifications?kind=eq.event_added'
+                  '&created_at=gte.$started',
+              token: who.token);
+        }
+      }
+    });
+  });
+
+  group('views nothing reads', () {
+    dev('are gone', () async {
+      final admin = await _login('admin');
+      for (final view in [
+        'v_child_commitment',
+        'v_child_sunday_school',
+        'v_child_birthdays',
+      ]) {
+        final r = await _call('GET', '/rest/v1/$view?limit=1',
+            token: admin.token);
+        expect(r.status, 404, reason: '$view: ${r.body}');
+      }
+    });
+  });
 }
 
 /// Uploads a tiny PDF to [bucket]/[path] as the holder of [token].
@@ -2540,4 +2612,5 @@ Future<_Reply> _download(String bucket, String path, String token) async {
     headers: {'apikey': _key!, 'Authorization': 'Bearer $token'},
   );
   return _Reply(r.statusCode, null);
+
 }

@@ -94,23 +94,6 @@ class ServantRepository {
     }
   }
 
-  Future<void> updateServant({
-    required String servantId,
-    required String fullName,
-    String? mobile,
-    AppRole? role,
-  }) async {
-    try {
-      await Db.from(Db.tProfiles).update(<String, dynamic>{
-        'full_name': fullName.trim(),
-        'mobile': _blankToNull(mobile),
-        if (role != null) 'role': role.wire,
-      }).eq('id', servantId);
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
   /// The signed-in user's own private data, or null when none is saved yet.
   Future<ServantDetails?> myDetails() async {
     try {
@@ -175,15 +158,6 @@ class ServantRepository {
           .select()
           .order('created_at', ascending: false);
       return rows(data).map(PendingServant.fromMap).toList();
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  Future<int> pendingSignupCount() async {
-    try {
-      final data = await Db.from(Db.vPendingServants).select('id');
-      return rows(data).length;
     } catch (e) {
       throw AppFailure.from(e);
     }

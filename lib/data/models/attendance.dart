@@ -279,17 +279,6 @@ class AttendanceEntry {
       mass == other.mass &&
       confession == other.confession;
 
-  /// Only the four flags are sent. The score is recomputed by the database so
-  /// a client can never write an arbitrary grade.
-  Map<String, dynamic> toUpsertMap(String sessionId) => <String, dynamic>{
-        'session_id': sessionId,
-        'child_id': child.id,
-        'sunday_school': sundaySchool,
-        'vespers': vespers,
-        'mass': mass,
-        'confession': confession,
-      };
-
   /// The marks that differ from [original], by column name, with their new
   /// value. Empty when nothing was touched.
   Map<String, bool> changedFlags(AttendanceEntry original) => <String, bool>{
@@ -364,7 +353,6 @@ class AttendanceSheet {
   final AttendanceYear year;
   final List<AttendanceEntry> entries;
 
-  int get totalScore => entries.fold(0, (sum, entry) => sum + entry.score);
   int get maxScore => entries.length * year.maxPointsPerSession;
   int get presentCount => entries.where((entry) => entry.isPresent).length;
   int get recordedCount => entries.where((entry) => entry.isRecorded).length;

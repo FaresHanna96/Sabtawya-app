@@ -106,24 +106,6 @@ class AppGradients {
     colors: [AppColors.navyDark, AppColors.navyLight],
   );
 
-  static const LinearGradient oliveAccent = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [AppColors.olive, AppColors.oliveLight],
-  );
-
-  static const LinearGradient goldAccent = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [AppColors.gold, Color(0xFFF2C46D)],
-  );
-
-  static const LinearGradient maroonAccent = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [AppColors.maroon, AppColors.coral],
-  );
-
   static const LinearGradient warmSurface = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,

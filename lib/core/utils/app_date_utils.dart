@@ -81,11 +81,6 @@ class AppDateUtils {
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
 
-  static DateTime parseIsoDate(String value) {
-    final parsed = DateTime.parse(value);
-    return DateTime(parsed.year, parsed.month, parsed.day);
-  }
-
   static DateTime dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
 
@@ -113,8 +108,6 @@ class AppDateUtils {
     return DateTime(date.year, date.month,
         date.day + (DateTime.saturday - date.weekday) % 7);
   }
-
-  static String formatPercentage(num value) => '${value.toStringAsFixed(1)}%';
 
   /// Whether someone born on [birth] has their birthday on [day]. A 29 February
   /// birthday falls on the 28th in a year without one, so it is never skipped.

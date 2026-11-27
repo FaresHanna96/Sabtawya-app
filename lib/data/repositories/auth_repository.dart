@@ -217,28 +217,4 @@ class AuthRepository {
       throw AppFailure.from(e);
     }
   }
-
-  Future<void> updateMyProfile({
-    required String fullName,
-    String? mobile,
-    DateTime? birthDate,
-  }) async {
-    final userId = Db.userId;
-    if (userId == null) return;
-
-    final d = birthDate;
-    try {
-      await Db.from(Db.tProfiles).update(<String, dynamic>{
-        'full_name': fullName.trim(),
-        'mobile': mobile?.trim().isEmpty ?? true ? null : mobile!.trim(),
-        'birth_date': d == null
-            ? null
-            : '${d.year.toString().padLeft(4, '0')}-'
-                '${d.month.toString().padLeft(2, '0')}-'
-                '${d.day.toString().padLeft(2, '0')}',
-      }).eq('id', userId);
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
 }

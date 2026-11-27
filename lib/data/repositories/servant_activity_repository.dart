@@ -53,22 +53,6 @@ class ServantActivityRepository {
     }
   }
 
-  /// Inserts a photo record for an existing prep.
-  Future<void> addPrepPhoto({
-    required String prepId,
-    required String storagePath,
-  }) async {
-    try {
-      await Db.from(Db.tServantLessonPrepPhotos)
-          .insert(<String, dynamic>{
-        'prep_id': prepId,
-        'storage_path': storagePath,
-      });
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
   /// Saves several uploaded files on [prepId] in one request (it was one
   /// request per photo).
   Future<void> addPrepPhotos({
@@ -161,19 +145,6 @@ class ServantActivityRepository {
           .eq('id', id)
           .maybeSingle();
       return data == null ? null : LessonPrep.fromMap(data);
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  /// All lesson preps for the signed-in servant, newest first.
-  Future<List<LessonPrep>> myLessonPreps() async {
-    try {
-      final data = await Db.from(Db.tServantLessonPreps)
-          .select(_prepSelect)
-          .eq('servant_id', Db.userId!)
-          .order('created_at', ascending: false);
-      return rows(data).map(LessonPrep.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -340,25 +311,6 @@ class ServantActivityRepository {
       if (to != null) query = query.lte('date', isoDate(to));
       final data = await query.order('date', ascending: false);
       return rows(data).map(ServantAttendance.fromMap).toList();
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  /// How many times [servantId] was marked in each activity between [from]
-  /// and [to] (inclusive), in one query: activity type -> count.
-  Future<Map<String, int>> activityCounts({
-    required String servantId,
-    required DateTime from,
-    required DateTime to,
-  }) async {
-    try {
-      final data = await Db.from(Db.tServantAttendances)
-          .select('activity_type')
-          .eq('servant_id', servantId)
-          .gte('date', isoDate(from))
-          .lte('date', isoDate(to));
-      return countByType(rows(data));
     } catch (e) {
       throw AppFailure.from(e);
     }

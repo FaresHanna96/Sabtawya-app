@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sabtawya/core/l10n/app_strings.dart';
 import 'package:sabtawya/core/utils/child_changes.dart';
 import 'package:sabtawya/data/models/child.dart';
-import 'package:sabtawya/data/models/import_batch.dart';
 import 'package:sabtawya/features/children/change_history_card.dart';
 
 ChildChange _edit(
@@ -126,17 +125,5 @@ void main() {
   });
 
   group('recent imports', () {
-    test('reads a batch', () {
-      final b = ImportBatch.fromMap({
-        'id': 'b1',
-        'created_at': '2026-11-17T10:00:00Z',
-        'actor_name': 'فارس',
-        'inserted': 3,
-        'updated': 2,
-      });
-      expect(b.inserted, 3);
-      expect(b.updated, 2);
-      expect(b.actorName, 'فارس');
-    });
   });
 }

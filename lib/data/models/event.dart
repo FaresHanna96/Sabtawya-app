@@ -115,18 +115,6 @@ class ChildEventBalance {
   /// Booked the trip: reserved, or started paying.
   bool get isBooked => reserved || isPaid;
 
-  /// The same line with the booking flipped (after a reserve / cancel).
-  ChildEventBalance withReserved(bool value) => ChildEventBalance(
-        eventId: eventId,
-        childId: childId,
-        childName: childName,
-        classId: classId,
-        cost: cost,
-        totalPaid: totalPaid,
-        remaining: remaining,
-        reserved: value,
-      );
-
   factory ChildEventBalance.fromMap(Map<String, dynamic> map) =>
       ChildEventBalance(
         eventId: asText(map['event_id']),

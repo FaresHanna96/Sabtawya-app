@@ -159,31 +159,6 @@ class AttendanceRepository {
     }
   }
 
-  Future<AttendanceSession?> sessionOn({
-    required String classId,
-    required DateTime date,
-  }) async {
-    try {
-      final data = await Db.from(Db.tAttendanceSessions)
-          .select()
-          .eq('class_id', classId)
-          .eq('session_date', AppDateUtils.toIsoDate(date))
-          .maybeSingle();
-      return data == null ? null : AttendanceSession.fromMap(data);
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  Future<void> setLocked(String sessionId, bool isLocked) async {
-    try {
-      await Db.from(Db.tAttendanceSessions)
-          .update(<String, dynamic>{'is_locked': isLocked}).eq('id', sessionId);
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
   // ------------------------------------------------------------------- sheet
 
   /// Builds one Saturday's sheet by joining the live class roster with whatever
@@ -370,9 +345,4 @@ class AttendanceRepository {
       throw AppFailure.from(e);
     }
   }
-
-  /// Convenience used by the export screen, which needs the roster and the
-  /// records together for an arbitrary session.
-  Future<List<Child>> rosterOf(String classId) =>
-      _children.byClass(classId, includeInactive: false);
 }

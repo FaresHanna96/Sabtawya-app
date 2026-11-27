@@ -7,7 +7,6 @@ import 'package:sabtawya/data/models/servant_activity.dart';
 import 'package:sabtawya/features/servant_activities/admin_servant_activities_screen.dart';
 import 'package:sabtawya/features/servant_activities/servant_badges.dart';
 import 'package:sabtawya/features/servant_activities/servant_covers.dart';
-import 'package:sabtawya/features/servant_activities/servant_follow_up_card.dart';
 import 'package:sabtawya/features/servant_activities/servant_year.dart';
 
 Widget _app(Widget child, {double scale = 1}) => MaterialApp(
@@ -124,48 +123,6 @@ void main() {
           _app(const ServantBadgesCard(badges: states), scale: 1.5));
       expect(tester.takeException(), isNull);
     });
-  });
-
-  group('ServantFollowUpCard', () {
-    testWidgets('hidden when nobody needs following up', (tester) async {
-      await tester.pumpWidget(
-          _app(const ServantFollowUpCard(entries: [], senderName: 'أبونا')));
-      expect(find.text(AppStrings.needsAttention), findsNothing);
-    });
-
-    testWidgets('lists the reason and a WhatsApp message', (tester) async {
-      const e = ServantFollowUpEntry(
-        followUp: ServantFollowUp('a', ServantFollowUpReason.absent, 3),
-        name: 'مينا سمير',
-        mobile: '01012345678',
-      );
-      await tester.pumpWidget(
-          _app(const ServantFollowUpCard(entries: [e], senderName: 'أبونا')));
-      expect(find.text(AppStrings.needsAttention), findsOneWidget);
-      expect(
-          find.textContaining(AppStrings.servantAbsentRun(3)), findsOneWidget);
-      expect(servantFollowUpMessage(e, 'أبونا'), contains('مينا'));
-    });
-  });
-
-  testWidgets('embedded follow-up fits 320 px at 1.5× text', (tester) async {
-    const e = ServantFollowUpEntry(
-      followUp: ServantFollowUp('a', ServantFollowUpReason.preps, 2),
-      name: 'خادم عام تجريبي بإسم طويل جدا',
-      mobile: '01012345678',
-      className: '3 ولاد',
-    );
-    await tester.pumpWidget(_app(
-        ServantFollowUpCard(
-          embedded: true,
-          entries: const [e, e],
-          senderName: 'أبونا',
-          onOpen: (_) {},
-        ),
-        scale: 1.5));
-    expect(tester.takeException(), isNull);
-    expect(find.text(AppStrings.needsAttention), findsOneWidget);
-    expect(find.byType(Divider), findsOneWidget);
   });
 
   testWidgets('TrendArrow says up or down', (tester) async {

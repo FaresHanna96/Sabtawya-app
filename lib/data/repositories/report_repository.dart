@@ -263,27 +263,6 @@ class ReportRepository {
   }
 
   /// For the Saturday [date]: each class that meets that day (through row
-  /// level security, the caller's classes) and whether its attendance was
-  /// taken. A class with no session that day is not in the map.
-  Future<Map<String, bool>> recordedOn({
-    required String yearId,
-    required DateTime date,
-  }) async {
-    try {
-      final data = await Db.from(Db.vClassSessionSummary)
-          .select('class_id, recorded_count')
-          .eq('year_id', yearId)
-          .eq('session_date', _iso(date));
-      return {
-        for (final r in rows(data))
-          asText(r['class_id']): asInt(r['recorded_count']) > 0,
-      };
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  /// For the Saturday [date]: each class that meets that day (through row
   /// level security, the caller's classes) with who came, out of its active
   /// children, and whether it was recorded. The same read as [recordedOn],
   /// with the numbers the class cards show.
@@ -411,18 +390,6 @@ class ReportRepository {
           .order('created_at', ascending: false)
           .order('id', ascending: false)
           .range(offset, offset + limit - 1);
-      return rows(data).map(ActivityLogEntry.fromMap).toList();
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  Future<List<ActivityLogEntry>> recentActivity({int limit = 15}) async {
-    try {
-      final data = await Db.from(Db.tActivityLog)
-          .select()
-          .order('created_at', ascending: false)
-          .limit(limit);
       return rows(data).map(ActivityLogEntry.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);

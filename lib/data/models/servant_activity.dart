@@ -117,9 +117,6 @@ class ServantAttendance {
   final String recordedBy;
   final DateTime? createdAt;
 
-  bool get isSundaySchool => activityType == 'sunday_school';
-  bool get isServantMeeting => activityType == 'servant_meeting';
-
   factory ServantAttendance.fromMap(Map<String, dynamic> map) =>
       ServantAttendance(
         id: asText(map['id']),

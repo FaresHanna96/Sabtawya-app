@@ -56,8 +56,6 @@ class Db {
 
   static String? get userId => client.auth.currentUser?.id;
 
-  static bool get isSignedIn => client.auth.currentSession != null;
-
   // Tables
   static const tProfiles = 'profiles';
   static const tServantInvites = 'servant_invites';
@@ -76,7 +74,6 @@ class Db {
   static const vSessionScores = 'v_session_scores';
   static const vClassSessionSummary = 'v_class_session_summary';
   static const vChildYearReport = 'v_child_year_report';
-  static const vChildSundaySchool = 'v_child_sunday_school';
   static const vChildActivityRates = 'v_child_activity_rates';
   static const vChildMonthlyReport = 'v_child_monthly_report';
   static const vClassYearScores = 'v_class_year_scores';
@@ -85,7 +82,6 @@ class Db {
   static const vChildAttendanceStreak = 'v_child_attendance_streak';
   static const vChildAttendanceTrend = 'v_child_attendance_trend';
   static const vPendingServants = 'v_pending_servants';
-  static const vChildBirthdays = 'v_child_birthdays';
   static const vServantBirthdays = 'v_servant_birthdays';
 
   // Tables – servant activities

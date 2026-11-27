@@ -18,7 +18,6 @@ enum FileKind {
   final String mimeType;
 
   bool get isPdf => this == FileKind.pdf;
-  bool get isImage => this != FileKind.pdf && this != FileKind.unknown;
 
   /// Reads [bytes]' signature; [FileKind.unknown] when it is none of these.
   static FileKind of(List<int> bytes) {

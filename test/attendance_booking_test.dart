@@ -76,14 +76,6 @@ void main() {
       final l = _line(paid: 20);
       expect([l.isBooked, l.isPaid], [true, true]);
     });
-
-    test('flipping the reservation keeps the money as it was', () {
-      final l = _line(paid: 20).withReserved(true);
-      expect(l.reserved, isTrue);
-      expect(l.totalPaid, 20);
-      expect(l.remaining, 80);
-      expect(l.withReserved(false).reserved, isFalse);
-    });
   });
 
   group('the booking chip on a card', () {

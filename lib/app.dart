@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
-import 'core/config/app_config.dart';
-import 'core/config/app_version.dart';
 import 'core/l10n/app_strings.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/sync_service.dart';
@@ -503,5 +501,3 @@ class _SessionErrorScreen extends StatelessWidget {
   }
 }
 
-/// Version string shown on the settings screen.
-const String appVersionLabel = '${AppConfig.appName} $kAppVersion';

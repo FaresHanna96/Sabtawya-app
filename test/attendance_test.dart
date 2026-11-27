@@ -78,23 +78,6 @@ void main() {
       expect(entry.score, 5);
     });
 
-    test('the upsert payload carries the flags only, never a score', () {
-      final entry = _entry()
-        ..sundaySchool = true
-        ..mass = true;
-
-      final payload = entry.toUpsertMap('session-1');
-
-      expect(payload, <String, dynamic>{
-        'session_id': 'session-1',
-        'child_id': 'مينا',
-        'sunday_school': true,
-        'vespers': false,
-        'mass': true,
-        'confession': false,
-      });
-    });
-
     test('clone and sameMarksAs detect an edit', () {
       final entry = _entry();
       final before = entry.clone();
@@ -135,7 +118,6 @@ void main() {
         ],
       );
 
-      expect(sheet.totalScore, 5);
       expect(sheet.maxScore, 40);
       expect(sheet.presentCount, 1);
       // A child marked absent still counts as recorded.

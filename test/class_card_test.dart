@@ -189,8 +189,6 @@ void main() {
       expect(find.text('8/10'), findsNothing);
       expect(find.text('80%'), findsNothing);
       expect(tester.takeException(), isNull);
-      // The prep line is not on the card any more.
-      expect(find.text(AppStrings.prepSentLine), findsNothing);
       expect(find.text(AppStrings.recordNow), findsNothing);
     });
 
@@ -212,7 +210,6 @@ void main() {
 
     testWidgets('prep unknown: no prep line at all', (tester) async {
       await _pump(tester, _class(), ClassCardFacts(week: _week('c1')));
-      expect(find.text(AppStrings.prepSentLine), findsNothing);
       expect(find.text(AppStrings.prepNotSent), findsNothing);
     });
 

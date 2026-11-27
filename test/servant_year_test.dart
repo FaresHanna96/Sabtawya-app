@@ -61,45 +61,6 @@ void main() {
     });
   });
 
-  group('follow-ups', () {
-    test('absent twice in a row comes first', () {
-      final y = _year(
-        marks: [
-          _m('a', 'sunday_school', _sats[5]),
-          for (final d in _sats) _m('b', 'sunday_school', d),
-        ],
-        classServants: {'a', 'b'},
-      );
-      final f = y.followUps(['a', 'b']);
-      expect(f.first.servantId, 'a');
-      expect(f.first.reason, ServantFollowUpReason.absent);
-      expect(f.first.count, 2);
-      // b came every week but sent no prep: 3 of the last 3 missing.
-      expect(f.last.servantId, 'b');
-      expect(f.last.reason, ServantFollowUpReason.preps);
-      expect(f.last.count, 3);
-    });
-
-    test('a general servant is never behind on preps', () {
-      final y = _year(
-        marks: [for (final d in _sats) _m('g', 'sunday_school', d)],
-        classServants: const {},
-      );
-      expect(y.followUps(['g']), isEmpty);
-    });
-
-    test('a hand-ticked or sent prep counts', () {
-      final y = _year(marks: [
-        for (final d in _sats) _m('a', 'sunday_school', d),
-        _m('a', 'lesson_prep', _sats[6]),
-      ], preps: [
-        _p('a', _sats[7]),
-      ]);
-      expect(y.missedRecentPreps('a'), 1);
-      expect(y.followUps(['a']), isEmpty);
-    });
-  });
-
   group('trend', () {
     test('this month against last, in points', () {
       // October: 1 of 4 activities on each of 5 Saturdays = 25%.
@@ -276,20 +237,6 @@ void main() {
       );
       final b = y.badges('a').firstWhere((s) => s.badge == ServantBadge.faithful);
       expect(b.earned, isFalse);
-    });
-
-    test('the missing prep is not counted as missed', () {
-      // The last three held Saturdays: _sats[5], [6], [7]; none is the
-      // activity, so use a year that ends on it.
-      final y = ServantYear(
-        heldSaturdays: _sats.take(4).toList(),
-        marks: const [],
-        preps: [_p('a', _sats[1]), _p('a', _sats[2])],
-        today: _today,
-        classServantIds: const {'a'},
-        noPrepDays: [_sats[3]],
-      );
-      expect(y.missedRecentPreps('a'), 1); // only _sats[0] of the last three
     });
 
     test('تحضير متميّز: a prep on that day does not count', () {

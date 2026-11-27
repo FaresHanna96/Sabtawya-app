@@ -55,19 +55,6 @@ int prepSaturdays({
   }.length;
 }
 
-/// Why a servant is on «محتاج متابعة».
-enum ServantFollowUpReason { absent, preps }
-
-class ServantFollowUp {
-  const ServantFollowUp(this.servantId, this.reason, this.count);
-
-  final String servantId;
-  final ServantFollowUpReason reason;
-
-  /// Saturdays missed in a row, or preps missed of the last three.
-  final int count;
-}
-
 /// A year of servant activity, held in memory: which Saturdays were held,
 /// who was marked for what on each, and who sent which prep. Everything the
 /// follow-up card, the trends and the badges need, without more queries.
@@ -137,41 +124,6 @@ class ServantYear {
       run++;
     }
     return run;
-  }
-
-  /// Of the last three held Saturdays, how many have no prep (class servants
-  /// only; 0 for a general servant).
-  int missedRecentPreps(String servantId) {
-    if (!_expectsPrep(servantId)) return 0;
-    final needing = [
-      for (final d in held)
-        if (!_noPrep.contains(_key(d))) d,
-    ];
-    final last =
-        needing.length <= 3 ? needing : needing.sublist(needing.length - 3);
-    return last.where((d) => !prepOn(servantId, d)).length;
-  }
-
-  /// Who needs a word: absent 2+ Saturdays in a row, or (class servants) 2 of
-  /// the last 3 preps missing. Absence first, then the longest run.
-  List<ServantFollowUp> followUps(Iterable<String> servantIds) {
-    final out = <ServantFollowUp>[];
-    for (final id in servantIds) {
-      final absent = absentRun(id);
-      if (absent >= 2) {
-        out.add(ServantFollowUp(id, ServantFollowUpReason.absent, absent));
-        continue;
-      }
-      final missed = missedRecentPreps(id);
-      if (missed >= 2 && held.length >= 3) {
-        out.add(ServantFollowUp(id, ServantFollowUpReason.preps, missed));
-      }
-    }
-    out.sort((a, b) {
-      if (a.reason != b.reason) return a.reason.index - b.reason.index;
-      return b.count - a.count;
-    });
-    return out;
   }
 
   /// The four activities over the held Saturdays of [month]'s month: marks

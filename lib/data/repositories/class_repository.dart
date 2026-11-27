@@ -219,19 +219,6 @@ class ClassRepository {
     }
   }
 
-  /// Moves a servant from one class to another in a single action.
-  Future<void> switchClass({
-    required String assignmentId,
-    required String newClassId,
-  }) async {
-    try {
-      await Db.from(Db.tClassServants).update(
-          <String, dynamic>{'class_id': newClassId}).eq('id', assignmentId);
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
   static String? _blankToNull(String? value) {
     final trimmed = value?.trim();
     return (trimmed == null || trimmed.isEmpty) ? null : trimmed;

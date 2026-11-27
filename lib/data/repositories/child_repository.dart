@@ -4,7 +4,6 @@ import '../../core/utils/app_failure.dart';
 import '../../core/utils/shared_requests.dart';
 import '../../core/utils/visit_merge.dart';
 import '../models/child.dart';
-import '../models/import_batch.dart';
 import '../supabase/db.dart';
 
 class ChildRepository {
@@ -179,20 +178,6 @@ class ChildRepository {
     }
   }
 
-  /// Existing children carrying any of [codes], used to decide insert vs update
-  /// during an Excel import. Codes are unique across the whole system.
-  /// The children with these ids that the caller may see, in no set order.
-  Future<List<Child>> byIds(List<String> ids) async {
-    if (ids.isEmpty) return <Child>[];
-    try {
-      final data =
-          await Db.from(Db.tChildren).select().inFilter('id', ids);
-      return rows(data).map(Child.fromMap).toList();
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
   Future<List<Child>> byCodes(List<String> codes) async {
     if (codes.isEmpty) return <Child>[];
     try {
@@ -261,31 +246,6 @@ class ChildRepository {
   Future<void> revertChange(int logId) async {
     try {
       await Db.client.rpc('revert_child_change', params: {'p_log_id': logId});
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  /// The Excel imports the caller can still undo (their own; all for admins).
-  Future<List<ImportBatch>> recentImports() async {
-    try {
-      final data = await Db.client.rpc('recent_import_batches');
-      return rows(data).map(ImportBatch.fromMap).toList();
-    } catch (e) {
-      throw AppFailure.from(e);
-    }
-  }
-
-  /// Removes the children an import added and restores the ones it changed.
-  Future<({int deleted, int restored})> undoImport(String batchId) async {
-    try {
-      final result =
-          await Db.client.rpc('undo_import', params: {'p_batch': batchId});
-      final map = result is Map ? result : const <String, dynamic>{};
-      return (
-        deleted: (map['deleted'] as num?)?.toInt() ?? 0,
-        restored: (map['restored'] as num?)?.toInt() ?? 0,
-      );
     } catch (e) {
       throw AppFailure.from(e);
     }

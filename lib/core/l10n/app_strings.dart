@@ -92,7 +92,6 @@ class AppStrings {
   static const confirmPassword = 'تأكيد كلمة المرور';
   static const passwordsDoNotMatch = 'كلمتا المرور مش متطابقتين';
   static const passwordTooShort = 'كلمة المرور لازم تكون 8 حروف على الأقل';
-  static const signUpDone = 'اتعمل الحساب';
   static const confirmEmailTitle = 'تأكيد البريد الإلكتروني';
   static const confirmEmailBody =
       'بعتنالك رسالة تأكيد على بريدك الإلكتروني. افتح الرابط وبعدين سجّل دخولك.';
@@ -143,9 +142,7 @@ class AppStrings {
   static const classesNav = 'الفصول';
   static const childrenNav = 'المخدومين';
   static const attendanceNav = 'الحضور';
-  static const reportsNav = 'ابطال الطايو';
   static const more = 'المزيد';
-  static const servantsNav = 'الخدام';
   static const settings = 'الإعدادات';
 
   // --------------------------------------------------------------- dashboard
@@ -156,23 +153,18 @@ class AppStrings {
   static const totalPoints = 'إجمالي الطايوهات';
   static const nextAttendance = 'موعد الحضور القادم';
   static const lastAttendance = 'آخر سبت للحضور';
-  static const lastSaturdayRate = 'حضور آخر سبت';
   static String classRecordedOn(String day) => 'اتسجّل حضور $day';
   static String classNotRecordedOn(String day) => 'لسه ما اتسجّلش حضور $day';
   static String classWeekAttendance(String day) => 'حضور سبت $day';
   static const recordNow = 'سجّل الحضور';
   static const classNeedsServant = 'محتاج خادم';
-  static const prepSentLine = 'التحضير اتبعت';
   static const healthShort = 'صحة الفصل';
   static String healthChipTooltip(int score) =>
       'صحة الفصل $score من 100: من حضور الأطفال وتسجيل الحضور والتحضير والافتقاد';
-  static const noUpcomingSession = 'مفيش جلسة جاية';
   static const noAttendanceYet = 'لسه ما اتسجّلش حضور';
   static const noBirthdaysToday = 'مفيش أعياد ميلاد النهارده';
-  static const futureSession = 'سبت لسه ما جاش';
   static const showUpcoming = 'السبوت القادمة';
   static const averageAttendance = 'متوسط الحضور';
-  static const recentActivity = 'آخر التحديثات';
   static const activityLogTitle = 'سجل التعديلات';
   static const logFilters = 'تصفية';
   static const logClear = 'مسح التصفية';
@@ -218,9 +210,6 @@ class AppStrings {
   static const askAgain = 'ابعت تاني';
   static String missingOnChild(String fields) => 'ناقص: $fields';
   static const missingEditChild = 'كمّل البيانات';
-  static String missingHomeCount(int n) =>
-      n == 1 ? 'مخدوم واحد بياناته ناقصة' : '$n مخدوم بياناتهم ناقصة';
-  static const missingHomeOpen = 'عرض القائمة';
   static const noClassesAssigned = 'لسه ما اتعيّنش ليك أي فصل';
   static const noClassesAssignedBody =
       'كلّم أمين الخدمة يعيّنك على فصل.';
@@ -251,7 +240,6 @@ class AppStrings {
   static const assignedServants = 'الخدام المعينون';
   static const servantIsMe = 'أنت';
   static const servantInactive = 'غير مفعّل';
-  static const classDetails = 'تفاصيل الفصل';
   static const selectClass = 'اختر الفصل';
   static const noClasses = 'مفيش فصول';
   static const confirmArchiveClass =
@@ -259,9 +247,7 @@ class AppStrings {
 
   // ---------------------------------------------------------------- servants
   static const servantsTitle = 'الخدام';
-  static const servantLabel = 'الخادم';
   static const addServant = 'إضافة خادم';
-  static const editServant = 'تعديل الخادم';
   static const servantName = 'اسم الخادم';
   static const servantData = 'بيانات الخادم';
   static const confessor = 'آب الاعتراف';
@@ -289,7 +275,6 @@ class AppStrings {
   static const activateServant = 'تنشيط';
   static const deactivateServant = 'إلغاء التنشيط';
   static const pendingInvites = 'دعوات في انتظار التسجيل';
-  static const registeredServants = 'الخدام المسجلون';
   static const allServants = 'الكل';
   static const servantsShort = 'خدام';
   static const adminsShort = 'أمناء';
@@ -314,7 +299,6 @@ class AppStrings {
   static const followAbsent = 'غياب متكرر';
   static const followBirthdays = 'أعياد الشهر';
   static const followMissing = 'بيانات ناقصة';
-  static String chipCommitted(int n) => 'أبطال الالتزام $n';
   static const championsTitle = 'أبطال الالتزام';
   static const tierCommitted = 'ملتزم';
   static const tierGold = 'ملتزم ذهبي';
@@ -350,9 +334,6 @@ class AppStrings {
   static const committedStreakHint =
       '4 سبوت ورا بعض = وسام «ملتزم»، و12 = «ملتزم ذهبي». شجّعهم!';
   static const committedTierNear = 'على الطريق';
-  static const committedTierNearSub = '3 سبوت';
-  static const committedTierSub4 = '4+ سبوت';
-  static const committedTierSub16 = '12+ سبت';
   static const oneLeftForCommitted = 'باقي سبت على وسام «ملتزم»';
   static String leftForGold(int n) =>
       n == 1 ? 'باقي سبت على «ملتزم ذهبي»' : 'باقي $n على «ملتزم ذهبي»';
@@ -366,7 +347,6 @@ class AppStrings {
   static const confirmDeleteServant =
       'حساب الخادم ده هيتمسح نهائي مع تحضيراته وحضوره. مفيش رجوع.';
   static const removeServant = 'إزالة من الفصل';
-  static const confirmRemoveServant = 'تشيل الخادم ده من الفصل؟';
   static const servantAssigned = 'الخادم اتعيّن';
   static const servantMoved = 'الخادم اتنقل للفصل الجديد';
   static const servantRemoved = 'الخادم اتشال';
@@ -375,7 +355,6 @@ class AppStrings {
 
   // ---------------------------------------------------------------- children
   static const childrenTitle = 'المخدومين';
-  static const childLabel = 'المخدوم';
   static const addChild = 'إضافة مخدوم';
   static const editChild = 'تعديل بيانات المخدوم';
   static const childProfile = 'ملف المخدوم';
@@ -389,22 +368,16 @@ class AppStrings {
   static const girl = 'بنت';
   static const boys = 'أولاد';
   static const girls = 'بنات';
-  static const genderRequired = 'النوع مطلوب';
   static const birthDate = 'تاريخ الميلاد';
   static const age = 'السن';
   static const years = 'سنة';
-  static const birthDateFuture = 'تاريخ الميلاد ما ينفعش يكون في المستقبل';
   static const pickDateTitle = 'اختر التاريخ';
   static const pickBirthDate = 'اختر تاريخ الميلاد';
-  static const childPhoto = 'صورة المخدوم';
   static const addPhoto = 'إضافة صورة';
   static const changePhoto = 'تغيير الصورة';
   static const takePhoto = 'التصوير بالكاميرا';
   static const fromGallery = 'اختيار من الصور';
   static const removePhoto = 'حذف الصورة';
-  static const confirmRemovePhoto = 'تحذف صورة المخدوم؟';
-  static const photoSaved = 'الصورة اتحفظت';
-  static const photoRemoved = 'الصورة اتحذفت';
   static const photoTooLarge = 'حجم الصورة كبير. الحد الأقصى 5 ميجابايت.';
   static const photoTypeNotSupported =
       'صيغة الصورة مش مدعومة. استخدم JPG أو PNG.';
@@ -453,12 +426,6 @@ class AppStrings {
   static const undoEditMessage =
       'البيانات هترجع زي ما كانت قبل التعديل ده. ومش هينفع لو اتغيّرت بعده.';
   static const undoDone = 'اتراجع';
-  static const recentImports = 'استيرادات حديثة';
-  static const undoImportTitle = 'التراجع عن الاستيراد';
-  static const undoImportMessage =
-      'سيُحذف المخدومون الذين أضافهم هذا الاستيراد وتعود بيانات من عدّلهم إلى ما كانت. يتعذر ذلك لو عُدّل أحدهم بعده.';
-  static String importBatchLine(String when, int added, int changed) =>
-      '$when: أضاف $added، عدّل $changed';
   static const healthNotesTitle = 'ملاحظات صحية وخاصة';
   static const healthNotesHint =
       'حساسية، حالة صحية، ظروف أسرية... (يراها خدام الفصل والأمين فقط)';
@@ -491,13 +458,7 @@ class AppStrings {
   static const activityByClass = 'الحضور حسب الممارسة';
   static const saturdaysHeld = 'السبوت حتى الآن';
   static const weeklyAttendance = 'الحضور كل سبت';
-  static const attendedLastSaturday = 'حضروا آخر سبت';
   static String attendedOf(int came, int of) => '$came من $of مخدوم';
-  static String comparedToPrevious(int diff) => diff == 0
-      ? 'زي السبت اللي قبله'
-      : diff > 0
-          ? 'أعلى $diff% من السبت اللي قبله'
-          : 'أقل ${-diff}% من السبت اللي قبله';
   static String notRecordedClasses(List<String> names) =>
       '${names.length == 1 ? 'فصل لم يسجّل' : names.length == 2 ? 'فصلين لم يسجّلوا' : '${names.length} فصول لم يسجّلوا'} الحضور: ${names.join('، ')}';
   static String saturdayDetail(String date, int came, int of, int pct) =>
@@ -530,18 +491,11 @@ class AppStrings {
   static const followUpNoteGeneric = 'افتقاد بعد غياب ورا بعض';
   static const logCall = 'سجّل افتقاد';
   static const absenceAlertSettings = 'تنبيهات الغياب';
-  static const absenceAlertLevelsLabel =
-      'عدد السبوت المتتالية للتنبيه (مثال: 2,3)';
-  static const absenceAlertLevelsHelp =
-      'بيتبعت تنبيه لخدام الفصل لما غياب المخدوم يوصل للأعداد دي';
-  static const absenceAlertLevelsInvalid =
-      'اكتب من رقم إلى 4 أرقام بين 1 و20 مفصولة بفاصلة';
   static const followUpPhone = 'مكالمة تليفون';
   static const followUpHome = 'زيارة منزلية';
   static String followUpNote(int n) => 'افتقاد بعد غياب $n سبوت ورا بعض';
   static String absentInARowShort(String n) => 'غياب $n سبوت';
   static String absentSaturdays(int n) => 'غايب $n سبوت ورا بعض';
-  static String presentSaturdays(int n) => 'حاضر $n سبوت ورا بعض';
   static const lastPresent = 'آخر حضور';
   static const followedUpOn = 'تم الافتقاد';
   static const notFollowedUp = 'لسه ما اتفتقدش';
@@ -553,7 +507,6 @@ class AppStrings {
   static String visitBy(String name) => 'بواسطة $name';
   static const changeHistory = 'سجل التغييرات';
   static String showAllCount(int n) => 'عرض الكل ($n)';
-  static const noChangeHistory = 'مفيش تغييرات متسجّلة';
   static const changeAdded = 'إضافة المخدوم';
   static const changeEdited = 'تعديل بيانات المخدوم';
   static const changeAttendance = 'تسجيل الحضور';
@@ -596,32 +549,24 @@ class AppStrings {
   static const personName = 'الاسم';
   static const turningAgeColumn = 'يكمل (سنة)';
   static const attendanceSummary = 'ملخص الحضور';
-  static const monthlyBreakdown = 'التفصيل الشهري';
   static const searchChildHint = 'ابحث بالاسم أو الموبايل أو الكود';
 
   // ----------------------------------------------------------------- filters
   static const filters = 'تصفية';
-  static const filterResults = 'نتائج التصفية';
   static const clearFilters = 'إلغاء التصفية';
   static const sortBy = 'ترتيب حسب';
   static const sortByName = 'الاسم';
-  static const sortByPoints = 'الطايوهات';
-  static const sortByAttendance = 'نسبة الحضور';
   static const sortByAge = 'السن';
   static const allMonths = 'كل الشهور';
-  static const presentOnly = 'الحاضرون فقط';
-  static const absentOnly = 'الغائبون فقط';
 
   // A child's attendance log (profile), one month at a time.
   static const logPresent = 'حضر';
   static const logAbsent = 'غاب';
-  static const logNotRecorded = 'ما اتسجّلش';
   static String logAttendedOf(int attended, int held) =>
       'حضر $attended من $held';
   static String logPoints(int points) => '$points طايو';
   static String logUnrecorded(int n) =>
       n == 1 ? 'سبت ما اتسجّلش' : '$n سبوت ما اتسجّلوش';
-  static const attendanceLogEmpty = 'لسه مفيش سبوت في السنة دي';
   static const logNoMatch = 'مفيش سبوت بالاختيار ده';
   static const logNoLesson = 'مفيش درس';
   static String logNoLessonCount(int n) =>
@@ -635,7 +580,6 @@ class AppStrings {
               : '$n سبت';
   static String logLastTime(String since) => 'آخر مرة $since';
   static const recordedOnly = 'تم تسجيلهم';
-  static const notRecordedOnly = 'لم يتم تسجيلهم';
   static const showingOf = 'عرض';
   static const resultsCount = 'نتيجة';
 
@@ -652,7 +596,6 @@ class AppStrings {
   static const attendanceDate = 'تاريخ الحضور';
   static const selectSaturday = 'اختر السبت';
   static const attendanceHistory = 'سجل الحضور';
-  static const lastActivityTitle = 'آخر مرة لكل ممارسة';
   static const neverAttended = 'لم يحضر بعد';
   static const attendanceRate = 'نسبة الحضور';
   static const birthdaysTitle = 'أعياد الميلاد';
@@ -669,14 +612,9 @@ class AppStrings {
   static const today = 'اليوم';
   static const previousMonth = 'الشهر السابق';
   static const nextMonth = 'الشهر التالي';
-  static const todayBirthdays = 'أعياد الميلاد النهارده';
-  static const sessionsSoFar = 'السبوت المنقضية';
-  static const fullAttendance = 'حضور كامل';
   static const sessionLocked = 'جلسة مغلقة';
   static const sessionLockedBody =
       'أمين الخدمة قفل الجلسة دي وما ينفعش تتعدّل.';
-  static const lockSession = 'إغلاق الجلسة';
-  static const unlockSession = 'إعادة فتح الجلسة';
   static const markAllPresent = 'تحضير الجميع';
   static const clearAll = 'مسح الكل';
 
@@ -735,10 +673,6 @@ class AppStrings {
   static String prepsWaitingReview(int n) =>
       n == 1 ? 'تحضير مستني مراجعة' : '$n تحضيرات مستنية مراجعة';
   static const generalServantShort = 'خادم عام';
-  static String servantAbsentRun(int n) =>
-      n == 2 ? 'غاب آخر سبتين' : 'غاب آخر $n سبوت';
-  static String servantMissedPreps(int n) =>
-      'ما بعتش التحضير $n من آخر 3 سبوت';
   static String trendUp(int points) => 'الشهر ده أحسن بـ $points%';
   static String trendDown(int points) => 'الشهر ده أقل بـ $points%';
 
@@ -834,11 +768,8 @@ class AppStrings {
   static const badgeStreak16 = 'ملتزم ذهبي';
   static const badgeStreak16Rule =
       '12 سبت ورا بعض أو أكتر. بيفضل معاه طول ما الحضور مكمّل.';
-  static const classRankingTitle = 'ترتيب الفصل';
   static String classRankingOf(String className) => 'ترتيب فصل $className';
   static const seeAll = 'عرض الكل';
-  static const rankingThisMonth = 'الشهر ده';
-  static const rankingThisYear = 'السنة دي';
   static String badgesCount(int n) => '$n أوسمة';
   static const rankingPointsNote =
       'الطايوهات من الحضور (5 لكل ممارسة) + 10 لكل وسام، وبتظهر بنفس الشكل في التقارير والـ Excel.';
@@ -933,7 +864,6 @@ class AppStrings {
   static const activityDayTag = 'نشاط';
   static const activityServantsBanner =
       'نشاط ترفيهي: حضور الخدام بيتسجّل وبيتحسب زي أي سبت، لكن مفيش تحضير.';
-  static const prepNotNeeded = 'مفيش تحضير في النشاط';
   static const changeSaturday = 'تغيير حالة السبت';
   static const noLessonThisSaturday = 'لا درس هذا السبت';
   static const breakHasRecords =
@@ -991,7 +921,6 @@ class AppStrings {
   static const recordedCount = 'تم تسجيلهم';
   static const presentOf = 'حضر';
   static const showAll = 'عرض الكل';
-  static const nextSaturdayTitle = 'السبت القادم';
   static const pastSaturdays = 'السبوت السابقة';
   static const upcomingSaturdays = 'باقي السنة';
   static const prepMissing = 'التحضير ما اترفعش';
@@ -1032,7 +961,6 @@ class AppStrings {
   static const callChild = 'المخدوم';
   static const callMother = 'الأم';
   static const callFather = 'الأب';
-  static const importExcelShort = 'استيراد Excel';
   static const showLess = 'عرض أقل';
   static const ofWord = 'من';
   static const notTakenYet = 'لسه ما اتسجّلش';
@@ -1042,7 +970,6 @@ class AppStrings {
   static const clearAllConfirm = 'مسح كل العلامات لهذا السبت؟';
   static const clearAllConfirmBody =
       'كل علامات الحضور على الشاشة هتتمسح. مفيش حاجة هتتحفظ غير لما تضغط حفظ.';
-  static const sessionScore = 'درجة الجلسة';
   static const unsavedChanges = 'تغييرات غير محفوظة';
   static const unsavedChangesBody =
       'عندك تغييرات ما اتحفظتش. تخرج وتتجاهلها؟';
@@ -1068,20 +995,15 @@ class AppStrings {
   // ----------------------------------------------------------------- reports
   static const reportsTitle = 'ابطال الطايو';
   static const classReport = 'تقرير الفصل';
-  static const childReport = 'تقرير المخدوم';
   static const monthlyReport = 'التقرير الشهري';
   static const overallReport = 'التقرير العام';
   static const month = 'الشهر';
   static const attendedSessions = 'السبوت المحضورة';
   static const rank = 'الترتيب';
   static const periodFilter = 'الفترة';
-  static const periodAll = 'كل السنة';
   static const periodFrom = 'من';
   static const periodTo = 'إلى';
   static const pointsInPeriod = 'طايوهات الفترة';
-  static const filterDay = 'يوم';
-  static const filterMonth = 'شهر';
-  static const filterYear = 'سنة';
 
   // ------------------------------------------------------------------- excel
   static const importChildren = 'استيراد مخدومين من Excel';
@@ -1096,7 +1018,6 @@ class AppStrings {
   static const importModeAddUpdate = 'إضافة وتحديث';
   static const importPreview = 'معاينة البيانات';
   static const importConfirm = 'تأكيد الاستيراد';
-  static const importRowsValid = 'صفوف صحيحة';
   static const importRowsInvalid = 'صفوف بها أخطاء';
   static const importRowsNew = 'جديد';
   static const importRowsExisting = 'تحديث';
@@ -1125,10 +1046,8 @@ class AppStrings {
   static const exportMonthlyAttendance = 'الحضور الشهري';
   static const exportYearlyAttendance = 'الحضور السنوي';
   static const exportClassReport = 'تقرير الفصل';
-  static const exportOverallReport = 'التقرير العام';
   static const exportDone = 'اتعمل الملف';
   static const share = 'مشاركة الملف';
-  static const exporting = 'بيتصدّر…';
 
   // -------------------------------------------------------- servant activities
   static const myActivities = 'تحضيراتي';
@@ -1138,8 +1057,6 @@ class AppStrings {
   static const servantActivities = 'متابعة الخدام';
   static const servantActivityReport = 'تقرير متابعة الخدام';
   static const lessonPrep = 'تحضير الدرس';
-  static const sundaySchoolAttendance = 'حضور مدارس الأحد';
-  static const servantMeetingAttendance = 'حضور اجتماع الخدمة';
   static const servantMeetingShort = 'اجتماع الخدمة';
   static const submitLessonPrep = 'رفع تحضير الدرس';
   static const prepPending = 'قيد المراجعة';
@@ -1158,13 +1075,9 @@ class AppStrings {
   static const sortServantLowest = 'الأقل حضوراً';
   static const sortServantLeastPrep = 'الأقل تحضيراً';
   static const sortServantPending = 'قيد المراجعة';
-  static const onlyPendingPreps = 'عندهم تحضير قيد المراجعة';
   static const allServantsCame = 'الكل حضروا';
   static String prepRate(int sent, int held) => 'تحضير $sent/$held';
   static String prepCount(int sent) => 'تحضير $sent';
-  static const reportTotalServants = 'إجمالي الخدام';
-  static const reportYearSaturdays = 'سبوت السنة حتى الآن';
-  static const reportServantDetails = 'تفاصيل الخدام';
   static const prepNotSent = 'ما بعتش تحضير';
   static const missedPrepsTitle = 'التحضيرات اللي ما اتبعتتش';
   static const prepMarkedByHand = 'تحضير اتسجّل يدوي';
@@ -1174,20 +1087,17 @@ class AppStrings {
   static const noLessonPrepsBody = 'ارفع تحضيرك لأول سبت.';
   static const recordAttendance = 'تسجيل الحضور';
   static const noAttendanceRecords = 'مفيش سجلات حضور';
-  static const noAttendanceRecordsBody = 'لسه ما اتسجّلش أي حضور هنا.';
   static const pickPhotos = 'اختيار صور';
   static const pickPdf = 'اختيار PDF';
   static const pdfFile = 'ملف PDF';
   static const openFile = 'افتح الملف';
   static const pickAPdfFile = 'اختر ملف بصيغة PDF';
-  static const photosSelected = 'صور مختارة';
   static const submittedSuccessfully = 'التحضير اترفع';
   static const reviewedSuccessfully = 'اتراجع';
   static const enterComment = 'اكتب التعليق';
   static const commentRequired = 'التعليق مطلوب';
   static const noPhotosSelected = 'اختار صورة أو ملف PDF واحد على الأقل';
   static const lessonPrepTitle = 'تحضير الدرس';
-  static const alreadySubmitted = 'اترفع';
 
   // The prep page: fixing after a comment, sending back, uploading.
   static const adminCommentTitle = 'تعليق أمين الخدمة';
@@ -1222,7 +1132,6 @@ class AppStrings {
   static const competitionTitle = 'عنوان المسابقة';
   static const competitionWeekDate = 'تاريخ الأسبوع';
   static const competitionMaxMark = 'العلامة القصوى';
-  static const markChildren = 'تسجيل العلامات';
   static const cumulativeScores = 'المجموع التراكمي';
   static const noCompetitions = 'مفيش مسابقات';
   static const noCompetitionsBody = 'ضيف مسابقة أسبوعية علشان تبدأ.';
@@ -1234,7 +1143,6 @@ class AppStrings {
   static const competitionUpcoming = 'جاية';
   static String competitionsCountLabel(int n) =>
       n == 1 ? 'مسابقة واحدة' : '$n مسابقات';
-  static const noMarkEntered = 'ما اتسجّلتش علامة';
   static const markSaved = 'اتحفظت العلامات';
   static const totalMarks = 'مجموع العلامات';
   static const avgMark = 'متوسط العلامة';
@@ -1282,7 +1190,6 @@ class AppStrings {
   static const bookedShort = 'اتحجزت الرحلة';
   static const bookedPaidShort = 'دفع';
   static const pickEvent = 'اختر النشاط';
-  static const bookingPaidNote = 'دفع قبل كده: الدفع من شاشة النشاط';
   static String bookingFor(String title) => 'حجز: $title';
   static String bookedOf(int n, int m) => 'محجوز $n من $m';
   static const paymentStatus = 'الحالة';
@@ -1299,7 +1206,6 @@ class AppStrings {
   static const paymentMethodCash = 'كاش';
   static const paymentMethodTayo = 'كيتي';
   static const confirmDeletePayment = 'تحذف الدفعة دي؟';
-  static const paymentHistory = 'سجل الدفعات';
   // On ملف المخدوم.
   static String tripsOwed(String amount) => 'لسه باقي $amount';
   static String tripPaidOf(String paid, String cost) => 'دفع $paid من $cost';
@@ -1317,10 +1223,8 @@ class AppStrings {
   // ---------------------------------------------------------------- settings
   static const settingsTitle = 'الإعدادات';
   static const account = 'الحساب';
-  static const myProfile = 'ملفي الشخصي';
   static const about = 'عن التطبيق';
   static const version = 'الإصدار';
-  static const systemManagement = 'إدارة النظام';
   static const changePassword = 'تغيير كلمة المرور';
   static const currentPassword = 'كلمة المرور الحالية';
   static const currentPasswordRequired = 'كلمة المرور الحالية مطلوبة';
@@ -1329,9 +1233,6 @@ class AppStrings {
   // ---- UI polish: labels, tooltips
   static const pillChildren = 'مخدومين';
   static const pillServants = 'خدام';
-  static const reportsAndFollowUp = 'التقارير والمتابعة';
-  static const importExportTitle = 'ملفات Excel';
-  static const competitionsAndEvents = 'المسابقات والنشاطات';
 
   // ── المزيد ────────────────────────────────────────────────────────────────
   static const moreFollowUp = 'المتابعة';
@@ -1358,7 +1259,6 @@ class AppStrings {
   static const locationDirections = 'اتجاهات للوصول';
   static const locationClear = 'مسح الموقع';
   static const locationPasteLabel = 'ألصق رابط الموقع أو الإحداثيات';
-  static const locationPasteFromClipboard = 'لصق من الحافظة';
   static const locationUseCurrent = 'استخدم موقعي الحالي';
   static const locationLocating = 'جارٍ تحديد موقعك...';
   static const locationNotRecognised =
@@ -1378,7 +1278,6 @@ class AppStrings {
   static const locationClipboardEmpty =
       'مفيش حاجة منسوخة. افتح خرائط جوجل وانسخ رابط المكان الأول.';
   static const locationPasteButton = 'لصق رابط من الحافظة';
-  static const locationOpenMaps = 'افتح خرائط جوجل';
   static const locationTypeInstead = 'أو اكتب الرابط أو الإحداثيات';
   static const locationUseCurrentHint = 'لو إنت واقف قدام بيت المخدوم دلوقتي';
   static const locationHowTo =
@@ -1466,20 +1365,9 @@ class AppStrings {
 
   // ── Parent messages ────────────────────────────────────────────────────────
   static const parentMessages = 'رسالة للأهالي';
-  static const messageTemplates = 'قوالب الرسائل';
   static const newMessage = 'رسالة جديدة';
   static const messageText = 'نص الرسالة';
   static const messageTagsHint = 'اضغط لإضافة: ';
-  static const messageTemplateTitle = 'اسم القالب';
-  static const addTemplate = 'إضافة قالب';
-  static const editTemplate = 'تعديل القالب';
-  static const deleteTemplate = 'حذف القالب';
-  static const confirmDeleteTemplate =
-      'هيتشال القالب ده من عند كل الخدام. متأكد؟';
-  static const noTemplates = 'لسه مفيش قوالب';
-  static const noTemplatesBody =
-      'القوالب اللي هنا بتظهر لكل الخدام وهما بيبعتوا للأهالي، جنب الجاهزة في التطبيق.';
-  static const builtInTemplate = 'جاهز';
   static String messagesSent(int sent, int total) => 'اتبعت $sent من $total';
   static const openNext = 'افتح التالي';
   static const allMessagesSent = 'اتبعتت كل الرسائل';
@@ -1500,28 +1388,22 @@ class AppStrings {
   static const healthServants = 'الخدام';
   static const healthChildren = 'الأطفال النشطين';
   static const healthTaken = 'الحضور المسجّل';
-  static const healthLate = 'اتسجّل متأخر';
   static const healthPresent = 'نسبة الحضور';
   static const healthPrep = 'التحضير المرفوع';
-  static const healthAccepted = 'مقبول';
   static const healthFollowUp = 'الغائبين اللي اتعمل لهم افتقاد';
   static String outOf(int a, int b) => '$a من $b';
   static const healthGood = 'ماشيين كويس';
   static const healthToFollow = 'محتاجين متابعة';
   static const healthNeedsSupport = 'محتاجين دعم';
-  static String classesDoingWell(int n) =>
-      n == 1 ? 'فصل واحد ماشي كويس' : '$n فصول ماشية كويس';
   static const healthScoreHint =
       'الدرجة من حضور الأطفال وتسجيل الحضور والتحضير والافتقاد. اضغط على الفصل للتفاصيل.';
   static const healthNoAbsent = 'مفيش غياب متكرر';
-  static String showAllClasses(int n) => 'عرض الكل ($n)';
   static const openClass = 'فتح الفصل';
 
   // ── Lesson materials ───────────────────────────────────────────────────────
   static const materialsTitle = 'وسائل الإيضاح';
   static const materialsLink = 'وسائل الإيضاح';
   static String gradeLabel(int grade) => 'صف $grade';
-  static const gradeWord = 'صف';
   static const noMaterials =
       'لسه مفيش مواد للدرس ده. لو عندك فيديو أو صورة أو ملف ساعدك، ضيفه هنا لباقي الخدام.';
   static const allGrades = 'لكل الصفوف';

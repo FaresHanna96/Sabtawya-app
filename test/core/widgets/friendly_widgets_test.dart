@@ -53,29 +53,6 @@ void main() {
     expect(find.text('مرحبا'), findsOneWidget);
   });
 
-  testWidgets('StatCard counts up to its value and reacts to taps',
-      (tester) async {
-    var taps = 0;
-    await tester.pumpWidget(_wrap(StatCard(
-      label: 'الأطفال',
-      value: '12',
-      icon: Icons.groups_outlined,
-      onTap: () => taps++,
-    )));
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('12'), findsOneWidget);
-    await tester.tap(find.byType(StatCard));
-    expect(taps, 1);
-  });
-
-  testWidgets('GreetingBanner greets by name', (tester) async {
-    await tester.pumpWidget(_wrap(const GreetingBanner(name: 'مينا')));
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.textContaining('مينا'), findsOneWidget);
-  });
-
   testWidgets('Celebration shows confetti and removes itself', (tester) async {
     late BuildContext ctx;
     await tester.pumpWidget(_wrap(Builder(builder: (c) {

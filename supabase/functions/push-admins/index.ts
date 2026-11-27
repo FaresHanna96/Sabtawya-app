@@ -1,9 +1,9 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Sends an FCM push to every admin device when a servant sign-up arrives.
-// Called by a database trigger (no JWT), so it only acts on a real pending
-// sign-up that has not been announced yet.
+// Sends one stored notification (a row of `notifications`) to its user's
+// devices over FCM. Called by a database trigger (no JWT), so it only acts on
+// a real row that has not been pushed yet.
 
 const SERVICE_ACCOUNT = JSON.parse(
   Deno.env.get('FIREBASE_SERVICE_ACCOUNT') ?? '{}',
@@ -138,44 +138,6 @@ async function sendPush(
   return sent;
 }
 
-// The admin decided on a sign-up: tell the servant who asked.
-async function announceDecision(profileId: string): Promise<Response> {
-  const { data: p } = await supabase
-    .from('profiles')
-    .select('full_name, is_active, rejected_at, push_decided_at')
-    .eq('id', profileId)
-    .maybeSingle();
-  if (!p || p.push_decided_at || (!p.is_active && !p.rejected_at)) {
-    return new Response('nothing to announce', { status: 200 });
-  }
-  const { data: claimed } = await supabase
-    .from('profiles')
-    .update({ push_decided_at: new Date().toISOString() })
-    .eq('id', profileId)
-    .is('push_decided_at', null)
-    .select('id')
-    .maybeSingle();
-  if (!claimed) return new Response('nothing to announce', { status: 200 });
-
-  const { data: tokens } = await supabase
-    .from('device_tokens')
-    .select('token')
-    .eq('user_id', profileId);
-  if (!tokens || tokens.length === 0) {
-    return new Response('no devices', { status: 200 });
-  }
-  const accepted = p.is_active && !p.rejected_at;
-  const sent = await sendPush(
-    tokens,
-    accepted ? 'أهلًا بيك في الخدمة 🎉' : 'بخصوص طلب الانضمام',
-    accepted
-      ? 'طلبك اتقبل، تقدر تسجّل الدخول دلوقتي'
-      : 'طلبك متقبلش المرة دي، كلّم أمين الخدمة',
-    { kind: 'decision' },
-  );
-  return new Response(JSON.stringify({ sent }), { status: 200 });
-}
-
 // Pushes one stored notification to its user's devices, once.
 async function pushNotification(id: string): Promise<Response> {
   const { data: n } = await supabase
@@ -208,49 +170,11 @@ async function pushNotification(id: string): Promise<Response> {
 
 serve(async (req) => {
   try {
-    const { profile_id, kind, notification_id } = await req.json();
-    if (kind === 'notification' && notification_id) {
-      return await pushNotification(notification_id);
+    const { kind, notification_id } = await req.json();
+    if (kind !== 'notification' || !notification_id) {
+      return new Response('missing notification_id', { status: 400 });
     }
-    if (!profile_id) return new Response('missing profile_id', { status: 400 });
-    if (kind === 'decision') return await announceDecision(profile_id);
-
-    // Claim the announcement: only a still-pending, not-yet-announced sign-up.
-    const { data: claimed } = await supabase
-      .from('profiles')
-      .update({ push_notified_at: new Date().toISOString() })
-      .eq('id', profile_id)
-      .eq('role', 'servant')
-      .eq('is_active', false)
-      .is('rejected_at', null)
-      .is('push_notified_at', null)
-      .select('full_name')
-      .maybeSingle();
-    if (!claimed) return new Response('nothing to announce', { status: 200 });
-
-    const { data: admins } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('role', 'admin')
-      .eq('is_active', true);
-    const ids = (admins ?? []).map((a) => a.id);
-    if (ids.length === 0) return new Response('no admins', { status: 200 });
-
-    const { data: tokens } = await supabase
-      .from('device_tokens')
-      .select('token')
-      .in('user_id', ids);
-    if (!tokens || tokens.length === 0) {
-      return new Response('no devices', { status: 200 });
-    }
-
-    const sent = await sendPush(
-      tokens,
-      'طلب انضمام جديد 👋',
-      `${claimed.full_name} عايز ينضم للخدمة`,
-      { kind: 'signup', ref_id: String(profile_id) },
-    );
-    return new Response(JSON.stringify({ sent }), { status: 200 });
+    return await pushNotification(notification_id);
   } catch (e) {
     return new Response(String(e), { status: 500 });
   }
