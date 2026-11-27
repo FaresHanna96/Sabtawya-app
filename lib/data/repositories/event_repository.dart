@@ -8,8 +8,7 @@ class EventRepository {
 
   Future<List<Event>> listEvents() async {
     try {
-      final data = await Db.client
-          .from(Db.tEvents)
+      final data = await Db.from(Db.tEvents)
           .select()
           .order('event_date', ascending: false);
       return rows(data).map(Event.fromMap).toList();
@@ -23,8 +22,7 @@ class EventRepository {
   Future<List<Event>> upcomingEvents({DateTime? today}) async {
     try {
       final day = (today ?? DateTime.now()).toIso8601String().split('T').first;
-      final data = await Db.client
-          .from(Db.tEvents)
+      final data = await Db.from(Db.tEvents)
           .select()
           .gte('event_date', day)
           .order('event_date', ascending: true);
@@ -44,8 +42,7 @@ class EventRepository {
     try {
       final userId = Db.userId;
       if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
-      final data = await Db.client
-          .from(Db.tEvents)
+      final data = await Db.from(Db.tEvents)
           .insert({
             'title': title.trim(),
             'event_date': eventDate.toIso8601String().split('T').first,
@@ -79,7 +76,7 @@ class EventRepository {
         if (description != null)
           'description': description.trim().isEmpty ? null : description.trim(),
       };
-      await Db.client.from(Db.tEvents).update(patch).eq('id', id);
+      await Db.from(Db.tEvents).update(patch).eq('id', id);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -87,7 +84,7 @@ class EventRepository {
 
   Future<void> deleteEvent(String id) async {
     try {
-      await Db.client.from(Db.tEvents).delete().eq('id', id);
+      await Db.from(Db.tEvents).delete().eq('id', id);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -97,8 +94,7 @@ class EventRepository {
   /// RLS restricts a regular servant to only their assigned class children.
   Future<List<ChildEventBalance>> balances(String eventId) async {
     try {
-      final data = await Db.client
-          .from(Db.vChildEventBalances)
+      final data = await Db.from(Db.vChildEventBalances)
           .select()
           .eq('event_id', eventId)
           .order('child_name');
@@ -117,12 +113,13 @@ class EventRepository {
     String eventId,
   ) async {
     try {
-      final data = await Db.client
-          .from(Db.tEventPayments)
+      final data = await allRows((from, to) => Db.from(Db.tEventPayments)
           .select('child_id, amount, payment_method')
-          .eq('event_id', eventId);
+          .eq('event_id', eventId)
+          .order('id')
+          .range(from, to));
       final byChild = <String, Map<String, double>>{};
-      for (final r in rows(data)) {
+      for (final r in data) {
         final id = '${r['child_id']}';
         final method = (r['payment_method'] as String?) ?? 'cash';
         final amount = double.tryParse('${r['amount']}') ?? 0;
@@ -138,8 +135,7 @@ class EventRepository {
   /// Payment history for one child in one event, newest first.
   Future<List<EventPayment>> payments(String eventId, String childId) async {
     try {
-      final data = await Db.client
-          .from(Db.tEventPayments)
+      final data = await Db.from(Db.tEventPayments)
           .select()
           .eq('event_id', eventId)
           .eq('child_id', childId)
@@ -160,12 +156,12 @@ class EventRepository {
     try {
       final userId = Db.userId;
       if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
-      await Db.client.from(Db.tEventPayments).insert({
+      await Db.from(Db.tEventPayments).insert({
         'event_id': eventId,
         'child_id': childId,
         'amount': amount,
         'paid_by': userId,
-        'paid_at': DateTime.now().toIso8601String(),
+        'paid_at': DateTime.now().toUtc().toIso8601String(),
         'payment_method': paymentMethod,
         if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
       });
@@ -177,7 +173,7 @@ class EventRepository {
   /// Books a place for the child without a payment.
   Future<void> reserve(String eventId, String childId) async {
     try {
-      await Db.client.from(Db.tEventReservations).insert({
+      await Db.from(Db.tEventReservations).insert({
         'event_id': eventId,
         'child_id': childId,
         'reserved_by': Db.userId,
@@ -190,8 +186,7 @@ class EventRepository {
   /// Removes the booking (payments, if any, are kept).
   Future<void> unreserve(String eventId, String childId) async {
     try {
-      final deleted = await Db.client
-          .from(Db.tEventReservations)
+      final deleted = await Db.from(Db.tEventReservations)
           .delete()
           .eq('event_id', eventId)
           .eq('child_id', childId)
@@ -206,7 +201,7 @@ class EventRepository {
 
   Future<void> deletePayment(String paymentId) async {
     try {
-      await Db.client.from(Db.tEventPayments).delete().eq('id', paymentId);
+      await Db.from(Db.tEventPayments).delete().eq('id', paymentId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -216,8 +211,7 @@ class EventRepository {
   /// RLS limits a servant to their own classes' children.
   Future<List<ChildEventBalance>> childBalances(String childId) async {
     try {
-      final data = await Db.client
-          .from(Db.vChildEventBalances)
+      final data = await Db.from(Db.vChildEventBalances)
           .select()
           .eq('child_id', childId);
       return rows(data).map(ChildEventBalance.fromMap).toList();
@@ -234,8 +228,7 @@ class EventRepository {
       // The API returns at most 1000 rows a call: read page after page.
       const page = 1000;
       for (var from = 0;; from += page) {
-        final data = await Db.client
-            .from(Db.vChildEventBalances)
+        final data = await Db.from(Db.vChildEventBalances)
             .select()
             .order('event_id')
             .order('child_id')

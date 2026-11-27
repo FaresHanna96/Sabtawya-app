@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/app_date_utils.dart';
 import '../../../data/models/attendance.dart';
 import '../../../data/models/child.dart';
 
@@ -60,7 +61,7 @@ int? daysToBirthday(DateTime? birth, DateTime today) {
   if (birth == null) return null;
   final t = DateTime(today.year, today.month, today.day);
   for (var i = 0; i <= 366; i++) {
-    final day = t.add(Duration(days: i));
+    final day = DateTime(t.year, t.month, t.day + i);
     if (birth.month == day.month &&
         (birth.day == day.day ||
             (birth.month == 2 &&
@@ -98,7 +99,8 @@ List<ProfileAlert> profileAlerts({
     final last = [child.lastPhoneVisitDate, child.lastHomeVisitDate]
         .whereType<DateTime>()
         .fold<DateTime?>(null, (a, b) => a == null || b.isAfter(a) ? b : a);
-    final days = last == null ? null : today.difference(last).inDays;
+    final days =
+        last == null ? null : AppDateUtils.daysBetween(last, today);
     if (days == null || days > 30) {
       out.add(ProfileAlert(
         ProfileAlertKind.noFollowUp,

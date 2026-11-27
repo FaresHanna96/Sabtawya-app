@@ -1,4 +1,9 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/config/app_config.dart';
+import '../../core/services/connectivity_service.dart';
 
 /// Single access point for the Supabase client.
 ///
@@ -7,7 +12,47 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class Db {
   const Db._();
 
-  static SupabaseClient get client => Supabase.instance.client;
+  static SupabaseClient get client => testClient ?? Supabase.instance.client;
+
+  @visibleForTesting
+  static SupabaseClient? testClient;
+
+  /// The HTTP layer under the client, which keeps reads and queues writes.
+  static http.Client? offlineHttp;
+
+  /// Rows of a table or view. Every repository reads and writes through this.
+  ///
+  /// The library refuses any request, before it reaches [offlineHttp], once the
+  /// sign-in has expired and cannot be renewed. Offline that would hide the
+  /// kept answers and lose saves, so in exactly that case the request goes to
+  /// [offlineHttp] with the stored token: a queued write is sent later with a
+  /// fresh one.
+  static PostgrestQueryBuilder<void> from(String table) {
+    final session = client.auth.currentSession;
+    final inner = offlineHttp;
+    if (session == null ||
+        inner == null ||
+        ConnectivityService.instance.isOnline ||
+        !_expired(session)) {
+      return client.from(table);
+    }
+    return PostgrestClient(
+      client.rest.url,
+      headers: <String, String>{
+        ...client.rest.headers,
+        'apikey': AppConfig.supabaseAnonKey,
+        'Authorization': 'Bearer ${session.accessToken}',
+      },
+      schema: 'public',
+      httpClient: inner,
+      retryEnabled: false,
+    ).from(table);
+  }
+
+  static bool _expired(Session session) {
+    final at = session.expiresAt;
+    return at != null && DateTime.now().millisecondsSinceEpoch >= at * 1000;
+  }
 
   static String? get userId => client.auth.currentUser?.id;
 
@@ -79,6 +124,21 @@ class Db {
   static const bucketClassPatrons = 'class-patrons';
   static const bucketServantSubmissions = 'servant-submissions';
   static const bucketLessonMaterials = 'lesson-materials';
+}
+
+/// Every row of a query: the server returns at most 1000 at once, silently.
+/// [page] asks for rows `from` to `to` and must order by something unique, or
+/// a row can come twice or be missed between two pages.
+Future<List<Map<String, dynamic>>> allRows(
+  Future<dynamic> Function(int from, int to) page, {
+  int size = 1000,
+}) async {
+  final all = <Map<String, dynamic>>[];
+  for (var from = 0;; from += size) {
+    final batch = rows(await page(from, from + size - 1));
+    all.addAll(batch);
+    if (batch.length < size) return all;
+  }
 }
 
 /// Shorthand for the repeated `List<dynamic> -> List<Map<String, dynamic>>`

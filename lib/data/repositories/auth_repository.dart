@@ -208,8 +208,7 @@ class AuthRepository {
     if (userId == null) return null;
 
     try {
-      final data = await Db.client
-          .from(Db.tProfiles)
+      final data = await Db.from(Db.tProfiles)
           .select()
           .eq('id', userId)
           .maybeSingle();
@@ -229,7 +228,7 @@ class AuthRepository {
 
     final d = birthDate;
     try {
-      await Db.client.from(Db.tProfiles).update(<String, dynamic>{
+      await Db.from(Db.tProfiles).update(<String, dynamic>{
         'full_name': fullName.trim(),
         'mobile': mobile?.trim().isEmpty ?? true ? null : mobile!.trim(),
         'birth_date': d == null

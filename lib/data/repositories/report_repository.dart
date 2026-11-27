@@ -12,7 +12,7 @@ class ReportRepository {
   Future<AdminStats> adminStats() async {
     try {
       final data =
-          await Db.client.from(Db.vAdminStats).select().limit(1).maybeSingle();
+          await Db.from(Db.vAdminStats).select().limit(1).maybeSingle();
       return data == null ? AdminStats.empty : AdminStats.fromMap(data);
     } catch (e) {
       throw AppFailure.from(e);
@@ -21,8 +21,7 @@ class ReportRepository {
 
   Future<List<ClassYearScore>> classScores(String yearId) async {
     try {
-      final data = await Db.client
-          .from(Db.vClassYearScores)
+      final data = await Db.from(Db.vClassYearScores)
           .select()
           .eq('year_id', yearId)
           .order('class_name');
@@ -50,11 +49,14 @@ class ReportRepository {
   }) async {
     try {
       var query =
-          Db.client.from(Db.vChildYearReport).select().eq('year_id', yearId);
+          Db.from(Db.vChildYearReport).select().eq('year_id', yearId);
       if (classId != null) query = query.eq('class_id', classId);
       if (onlyActive) query = query.eq('child_is_active', true);
-      final data = await query.order('child_name');
-      return rows(data).map(ChildYearReport.fromMap).toList();
+      final data = await allRows((from, to) => query
+          .order('child_name', ascending: false)
+          .order('child_id')
+          .range(from, to));
+      return data.map(ChildYearReport.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -65,8 +67,7 @@ class ReportRepository {
     required String yearId,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.vChildYearReport)
+      final data = await Db.from(Db.vChildYearReport)
           .select()
           .eq('child_id', childId)
           .eq('year_id', yearId)
@@ -85,7 +86,7 @@ class ReportRepository {
   }) async {
     try {
       var query =
-          Db.client.from(Db.vChildMonthlyReport).select().eq('year_id', yearId);
+          Db.from(Db.vChildMonthlyReport).select().eq('year_id', yearId);
       if (childId != null) query = query.eq('child_id', childId);
       if (classId != null) query = query.eq('class_id', classId);
       if (onlyActive) query = query.eq('child_is_active', true);
@@ -123,8 +124,7 @@ class ReportRepository {
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.day.toString().padLeft(2, '0')}';
     try {
-      var query = Db.client
-          .from(Db.tAttendanceRecords)
+      var query = Db.from(Db.tAttendanceRecords)
           .select(
             'child_id, score, '
             'attendance_sessions!inner(session_date, class_id, year_id), '
@@ -163,14 +163,16 @@ class ReportRepository {
     String? classId,
   }) async {
     try {
-      var query = Db.client
-          .from(Db.vChildActivityRates)
+      var query = Db.from(Db.vChildActivityRates)
           .select()
           .eq('year_id', yearId)
           .eq('child_is_active', true);
       if (classId != null) query = query.eq('class_id', classId);
-      final data = await query.order('child_name', ascending: true);
-      return rows(data).map(ChildActivityRate.fromMap).toList();
+      final data = await allRows((from, to) => query
+          .order('child_name', ascending: true)
+          .order('child_id')
+          .range(from, to));
+      return data.map(ChildActivityRate.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -178,7 +180,11 @@ class ReportRepository {
 
   /// How far back the weekly chart looks: 12 Saturdays, enough for the ten
   /// it shows and the one before them.
-  static const _weeksBack = Duration(days: 84);
+  static const _weeksBack = 84;
+
+  /// The calendar day [_weeksBack] days before today.
+  static DateTime _chartStart(DateTime today) =>
+      DateTime(today.year, today.month, today.day - _weeksBack);
 
   static String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
@@ -192,10 +198,9 @@ class ReportRepository {
     try {
       final today = DateTime.now();
       final iso = _iso(today);
-      final from = _iso(today.subtract(_weeksBack));
+      final from = _iso(_chartStart(today));
       final results = await Future.wait<dynamic>([
-        Db.client
-            .from(Db.vClassSessionSummary)
+        Db.from(Db.vClassSessionSummary)
             .select('session_date, class_id, present_count, active_children, '
                 'recorded_count')
             .eq('year_id', yearId)
@@ -205,14 +210,12 @@ class ReportRepository {
         // A database from before «الحضور بيتحسب» has no attendance_taken.
         Future<dynamic>.sync(() async {
           try {
-            return await Db.client
-                .from(Db.tLessonBreaks)
+            return await Db.from(Db.tLessonBreaks)
                 .select('break_date, kind, attendance_taken')
                 .gte('break_date', from)
                 .lte('break_date', iso);
           } catch (_) {
-            return await Db.client
-                .from(Db.tLessonBreaks)
+            return await Db.from(Db.tLessonBreaks)
                 .select('break_date')
                 .gte('break_date', from)
                 .lte('break_date', iso);
@@ -267,8 +270,7 @@ class ReportRepository {
     required DateTime date,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.vClassSessionSummary)
+      final data = await Db.from(Db.vClassSessionSummary)
           .select('class_id, recorded_count')
           .eq('year_id', yearId)
           .eq('session_date', _iso(date));
@@ -290,8 +292,7 @@ class ReportRepository {
     required DateTime date,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.vClassSessionSummary)
+      final data = await Db.from(Db.vClassSessionSummary)
           .select('class_id, present_count, active_children, recorded_count')
           .eq('year_id', yearId)
           .eq('session_date', _iso(date));
@@ -315,7 +316,7 @@ class ReportRepository {
   /// it cannot be read: the comparison is then simply not shown.
   Future<Map<DateTime, double>> serviceWeeklyAttendance(String yearId) async {
     try {
-      final from = _iso(DateTime.now().subtract(_weeksBack));
+      final from = _iso(_chartStart(DateTime.now()));
       final data = await Db.client.rpc(
         'service_weekly_attendance',
         params: {'p_year': yearId, 'p_from': from},
@@ -334,8 +335,7 @@ class ReportRepository {
   /// When [childId] last did each of the four activities.
   Future<ChildLastActivity?> lastActivity(String childId) async {
     try {
-      final data = await Db.client
-          .from(Db.vChildLastActivity)
+      final data = await Db.from(Db.vChildLastActivity)
           .select()
           .eq('child_id', childId)
           .maybeSingle();
@@ -355,8 +355,7 @@ class ReportRepository {
     int minPresent = 3,
   }) async {
     try {
-      var query = Db.client
-          .from(Db.vChildAttendanceStreak)
+      var query = Db.from(Db.vChildAttendanceStreak)
           .select()
           .eq('year_id', yearId)
           .or('absent_streak.gte.$minAbsent,present_streak.gte.$minPresent');
@@ -373,8 +372,7 @@ class ReportRepository {
   /// security limits it to the caller's classes.
   Future<List<ChildTrend>> decliningChildren({required String yearId}) async {
     try {
-      final data = await Db.client
-          .from(Db.vChildAttendanceTrend)
+      final data = await Db.from(Db.vChildAttendanceTrend)
           .select()
           .eq('year_id', yearId)
           .eq('is_declining', true);
@@ -397,7 +395,7 @@ class ReportRepository {
     DateTime? from,
   }) async {
     try {
-      var query = Db.client.from(Db.tActivityLog).select();
+      var query = Db.from(Db.tActivityLog).select();
       if (actorId != null) query = query.eq('actor_id', actorId);
       if (entity != null) query = query.eq('entity', entity);
       // A child's own entries carry its id as the row; attendance entries
@@ -421,8 +419,7 @@ class ReportRepository {
 
   Future<List<ActivityLogEntry>> recentActivity({int limit = 15}) async {
     try {
-      final data = await Db.client
-          .from(Db.tActivityLog)
+      final data = await Db.from(Db.tActivityLog)
           .select()
           .order('created_at', ascending: false)
           .limit(limit);

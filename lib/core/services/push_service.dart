@@ -221,7 +221,7 @@ class PushService {
     _saved = null;
     if (server && saved != null) {
       await _forgetStep(
-        () => Db.client.from('device_tokens').delete().eq('token', saved),
+        () => Db.from('device_tokens').delete().eq('token', saved),
       );
     }
     if (Firebase.apps.isEmpty) return;

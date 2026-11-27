@@ -76,8 +76,7 @@ class AnnouncementRepository {
   /// Takes it back: also removed from every recipient's bell.
   Future<void> delete(String announcementId) async {
     try {
-      await Db.client
-          .from(Db.tAnnouncements)
+      await Db.from(Db.tAnnouncements)
           .delete()
           .eq('id', announcementId);
     } catch (e) {

@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import '../../core/utils/app_date_utils.dart';
+
 /// When each child's family was last asked, on this phone, for what their
 /// record is missing. It stops the same family being asked twice in a week.
 /// Kept on the device on purpose: no table, nothing to sync; the cost is that
@@ -70,8 +72,7 @@ class AskedLog {
   /// Whole days between [asked] and [now]; null when never asked.
   static int? daysAgo(DateTime? asked, DateTime now) {
     if (asked == null) return null;
-    DateTime day(DateTime d) => DateTime(d.year, d.month, d.day);
-    return day(now).difference(day(asked)).inDays;
+    return AppDateUtils.daysBetween(asked, now);
   }
 
   /// True when asking again now would be a repeat.

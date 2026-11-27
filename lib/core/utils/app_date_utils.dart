@@ -68,7 +68,7 @@ class AppDateUtils {
   static String dayLabel(DateTime date, {DateTime? now}) {
     final today = dateOnly(now ?? DateTime.now());
     final day = dateOnly(date);
-    final days = today.difference(day).inDays;
+    final days = daysBetween(day, today);
     if (days == 0) return 'اليوم';
     if (days == 1) return 'أمس';
     final year = day.year == today.year ? '' : ' ${day.year}';
@@ -89,6 +89,13 @@ class AppDateUtils {
   static DateTime dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
 
+  /// Whole calendar days from [from] to [to]. Not `difference().inDays`: the
+  /// day the clocks go forward is 23 hours long and would count as none.
+  static int daysBetween(DateTime from, DateTime to) =>
+      DateTime.utc(to.year, to.month, to.day)
+          .difference(DateTime.utc(from.year, from.month, from.day))
+          .inDays;
+
   static bool isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -97,7 +104,7 @@ class AppDateUtils {
   static DateTime lastSaturday(DateTime from) {
     final date = dateOnly(from);
     final diff = (date.weekday - DateTime.saturday + 7) % 7;
-    return date.subtract(Duration(days: diff));
+    return DateTime(date.year, date.month, date.day - diff);
   }
 
   /// The first Saturday on or after [from] (today when omitted).
@@ -148,7 +155,7 @@ class AppDateUtils {
   /// "منذ 1 أسبوع" would read wrong.
   static String sinceLabel(DateTime date, {DateTime? now}) {
     final today = dateOnly(now ?? DateTime.now());
-    final days = today.difference(dateOnly(date)).inDays;
+    final days = daysBetween(date, today);
 
     if (days <= 0) return 'اليوم';
     if (days < 7) {

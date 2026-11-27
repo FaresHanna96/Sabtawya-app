@@ -159,6 +159,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       hasRecords: _entries.any((e) => e.isRecorded),
     );
     if (picked == null || !mounted) return;
+    // The sheet is read again afterwards: ask before unsaved marks go.
+    if (!await _confirmDiscard() || !mounted) return;
     const repo = LessonRepository();
     final ok = await Ui.runGuarded(
       context,
@@ -581,10 +583,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       !sheet.session.isBreak && (!sheet.session.isLocked || _isAdmin);
   bool get _canEdit => _sheets.any(_canEditSheet);
 
+  /// Counts the loads, so only the latest one is shown.
+  int _loadSeq = 0;
+
   /// [quiet] keeps the roster on screen while it reloads (after a save or a
   /// lock), so the servant stays where they were instead of being sent back
   /// to the top behind a loading placeholder.
   Future<void> _load({bool quiet = false}) async {
+    // A slower, older load must not replace what a newer one shows.
+    final seq = ++_loadSeq;
     final year = _year;
     final classIds = _shownClassIds;
     if (classIds.isEmpty || year == null) {
@@ -632,7 +639,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // Every class's roster and records in two queries, not two per class.
       final sheets = await _repository.sheets(sessions: onDate, year: year);
 
-      if (!mounted) return;
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _sessions = sessions;
         _date = target;
@@ -650,7 +657,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (!_syncBooking() && _bookingEvent != null) unawaited(_loadBooking());
       if (!quiet) unawaited(_restoreDrafts());
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || seq != _loadSeq) return;
       // A quiet reload follows a save that already succeeded: keep the
       // roster and just say the refresh failed.
       if (quiet) {

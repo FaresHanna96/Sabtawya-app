@@ -16,15 +16,14 @@ class LessonRepository {
 
   Future<LessonProgramme> programme() async {
     try {
-      final lessons = rows(await Db.client
-              .from(Db.tLessons)
+      final lessons = rows(await Db.from(Db.tLessons)
               .select()
               .order('coptic_month')
               .order('week'))
           .map(Lesson.fromMap)
           .toList();
       final extras = <LessonSlot, LessonExtras>{
-        for (final row in rows(await Db.client.from(Db.tLessonExtras).select()))
+        for (final row in rows(await Db.from(Db.tLessonExtras).select()))
           LessonSlot(row['coptic_month'] as int, row['week'] as int):
               LessonExtras.fromMap(row),
       };
@@ -47,8 +46,7 @@ class LessonRepository {
   /// The programme's month and week of the lesson [id], or null when gone.
   Future<LessonSlot?> slotOfLesson(String id) async {
     try {
-      final row = await Db.client
-          .from(Db.tLessons)
+      final row = await Db.from(Db.tLessons)
           .select('coptic_month, week')
           .eq('id', id)
           .maybeSingle();
@@ -67,19 +65,16 @@ class LessonRepository {
     try {
       List<Map<String, dynamic>> data;
       try {
-        data = rows(await Db.client
-            .from(Db.tLessonBreaks)
+        data = rows(await Db.from(Db.tLessonBreaks)
             .select('break_date, shift, kind, attendance_taken'));
       } catch (_) {
         try {
           // A database from before «الحضور بيتحسب»: no day takes attendance.
-          data = rows(await Db.client
-              .from(Db.tLessonBreaks)
+          data = rows(await Db.from(Db.tLessonBreaks)
               .select('break_date, shift, kind'));
         } catch (_) {
           // A database from before the kind column: every break a holiday.
-          data = rows(await Db.client
-              .from(Db.tLessonBreaks)
+          data = rows(await Db.from(Db.tLessonBreaks)
               .select('break_date, shift'));
         }
       }
@@ -109,8 +104,7 @@ class LessonRepository {
     int? page,
   }) async {
     try {
-      await Db.client
-          .from(Db.tLessons)
+      await Db.from(Db.tLessons)
           .update(<String, dynamic>{'title': title.trim(), 'page': page})
           .eq('coptic_month', slot.month)
           .eq('week', slot.week)
@@ -129,7 +123,7 @@ class LessonRepository {
     String? blank(String? v) =>
         (v == null || v.trim().isEmpty) ? null : v.trim();
     try {
-      await Db.client.from(Db.tLessonExtras).upsert(<String, dynamic>{
+      await Db.from(Db.tLessonExtras).upsert(<String, dynamic>{
         'coptic_month': slot.month,
         'week': slot.week,
         'pulpit': blank(pulpit),
@@ -149,7 +143,7 @@ class LessonRepository {
     bool attendanceTaken = false,
   }) async {
     try {
-      await Db.client.from(Db.tLessonBreaks).upsert(<String, dynamic>{
+      await Db.from(Db.tLessonBreaks).upsert(<String, dynamic>{
         'break_date': LessonProgramme.keyOf(saturday),
         'shift': shift,
         if (kind != null) 'kind': kind.wire,
@@ -165,8 +159,7 @@ class LessonRepository {
   /// Puts the lesson back on [saturday].
   Future<void> clearBreak(DateTime saturday) async {
     try {
-      await Db.client
-          .from(Db.tLessonBreaks)
+      await Db.from(Db.tLessonBreaks)
           .delete()
           .eq('break_date', LessonProgramme.keyOf(saturday));
     } catch (e) {
@@ -179,8 +172,7 @@ class LessonRepository {
   /// The materials of [slot] for [grade], plus those for every grade.
   Future<List<LessonMaterial>> materials(LessonSlot slot, int grade) async {
     try {
-      final data = await Db.client
-          .from(Db.tLessonMaterials)
+      final data = await Db.from(Db.tLessonMaterials)
           .select()
           .eq('coptic_month', slot.month)
           .eq('week', slot.week)
@@ -200,7 +192,7 @@ class LessonRepository {
     required String url,
   }) async {
     try {
-      await Db.client.from(Db.tLessonMaterials).insert(<String, dynamic>{
+      await Db.from(Db.tLessonMaterials).insert(<String, dynamic>{
         'coptic_month': slot.month,
         'week': slot.week,
         'grade': grade,
@@ -226,7 +218,7 @@ class LessonRepository {
       file: file,
     );
     try {
-      await Db.client.from(Db.tLessonMaterials).insert(<String, dynamic>{
+      await Db.from(Db.tLessonMaterials).insert(<String, dynamic>{
         'coptic_month': slot.month,
         'week': slot.week,
         'grade': grade,
@@ -249,7 +241,7 @@ class LessonRepository {
 
   Future<void> deleteMaterial(LessonMaterial m) async {
     try {
-      await Db.client.from(Db.tLessonMaterials).delete().eq('id', m.id);
+      await Db.from(Db.tLessonMaterials).delete().eq('id', m.id);
       if (m.storagePath != null) {
         await PhotoService.remove(
             bucket: Db.bucketLessonMaterials, path: m.storagePath);

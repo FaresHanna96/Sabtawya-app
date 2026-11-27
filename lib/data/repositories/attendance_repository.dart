@@ -17,8 +17,7 @@ class AttendanceRepository {
 
   Future<List<AttendanceYear>> years() async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceYears)
+      final data = await Db.from(Db.tAttendanceYears)
           .select()
           .order('start_date', ascending: false);
       return rows(data).map(AttendanceYear.fromMap).toList();
@@ -29,8 +28,7 @@ class AttendanceRepository {
 
   Future<AttendanceYear?> currentYear() async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceYears)
+      final data = await Db.from(Db.tAttendanceYears)
           .select()
           .eq('is_current', true)
           .maybeSingle();
@@ -51,8 +49,7 @@ class AttendanceRepository {
     bool makeCurrent = false,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceYears)
+      final data = await Db.from(Db.tAttendanceYears)
           .insert(<String, dynamic>{
             'name': name.trim(),
             'start_date': AppDateUtils.toIsoDate(startDate),
@@ -84,7 +81,7 @@ class AttendanceRepository {
     required int pointsConfession,
   }) async {
     try {
-      await Db.client.from(Db.tAttendanceYears).update(<String, dynamic>{
+      await Db.from(Db.tAttendanceYears).update(<String, dynamic>{
         'name': name.trim(),
         'start_date': AppDateUtils.toIsoDate(startDate),
         'end_date': AppDateUtils.toIsoDate(endDate),
@@ -131,8 +128,7 @@ class AttendanceRepository {
     required String yearId,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceSessions)
+      final data = await Db.from(Db.tAttendanceSessions)
           .select()
           .eq('class_id', classId)
           .eq('year_id', yearId)
@@ -150,8 +146,7 @@ class AttendanceRepository {
     required String yearId,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.vClassSessionSummary)
+      final data = await Db.from(Db.vClassSessionSummary)
           .select()
           .eq('class_id', classId)
           .eq('year_id', yearId)
@@ -169,8 +164,7 @@ class AttendanceRepository {
     required DateTime date,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceSessions)
+      final data = await Db.from(Db.tAttendanceSessions)
           .select()
           .eq('class_id', classId)
           .eq('session_date', AppDateUtils.toIsoDate(date))
@@ -183,8 +177,7 @@ class AttendanceRepository {
 
   Future<void> setLocked(String sessionId, bool isLocked) async {
     try {
-      await Db.client
-          .from(Db.tAttendanceSessions)
+      await Db.from(Db.tAttendanceSessions)
           .update(<String, dynamic>{'is_locked': isLocked}).eq('id', sessionId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -227,13 +220,14 @@ class AttendanceRepository {
   }) async {
     if (classIds.isEmpty) return const <AttendanceSession>[];
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceSessions)
+      final data = await allRows((from, to) => Db.from(Db.tAttendanceSessions)
           .select()
           .inFilter('class_id', classIds)
           .eq('year_id', yearId)
-          .order('session_date', ascending: true);
-      return rows(data).map(AttendanceSession.fromMap).toList();
+          .order('session_date', ascending: true)
+          .order('id')
+          .range(from, to));
+      return data.map(AttendanceSession.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -254,23 +248,26 @@ class AttendanceRepository {
     try {
       final classIds = {for (final s in sessions) s.classId}.toList();
       final (childRows, recordRows) = await (
-        Db.client
-            .from(Db.tChildren)
+        allRows((from, to) => Db.from(Db.tChildren)
             .select()
             .inFilter('class_id', classIds)
-            .eq('is_active', true),
-        Db.client
-            .from(Db.vSessionScores)
+            .eq('is_active', true)
+            .order('id')
+            .range(from, to)),
+        allRows((from, to) => Db.from(Db.vSessionScores)
             .select()
-            .inFilter('session_id', [for (final s in sessions) s.id]),
+            .inFilter('session_id', [for (final s in sessions) s.id])
+            .order('session_id')
+            .order('child_id')
+            .range(from, to)),
       ).wait;
 
       final rosterByClass = <String, List<Child>>{};
-      for (final child in rows(childRows).map(Child.fromMap)) {
+      for (final child in childRows.map(Child.fromMap)) {
         (rosterByClass[child.classId] ??= <Child>[]).add(child);
       }
       final recordsBySession = <String, Map<String, AttendanceRecord>>{};
-      for (final r in rows(recordRows).map(AttendanceRecord.fromMap)) {
+      for (final r in recordRows.map(AttendanceRecord.fromMap)) {
         (recordsBySession[r.sessionId] ??= {})[r.childId] = r;
       }
 
@@ -299,8 +296,7 @@ class AttendanceRepository {
 
   Future<List<AttendanceRecord>> recordsForSession(String sessionId) async {
     try {
-      final data = await Db.client
-          .from(Db.vSessionScores)
+      final data = await Db.from(Db.vSessionScores)
           .select()
           .eq('session_id', sessionId);
       return rows(data).map(AttendanceRecord.fromMap).toList();
@@ -318,12 +314,11 @@ class AttendanceRepository {
     if (plan.isEmpty) return;
     try {
       for (final group in plan.updates) {
-        await Db.client
-            .from(Db.tAttendanceRecords)
+        await Db.from(Db.tAttendanceRecords)
             .upsert(group, onConflict: 'session_id,child_id');
       }
       if (plan.insertIfMissing.isNotEmpty) {
-        await Db.client.from(Db.tAttendanceRecords).upsert(
+        await Db.from(Db.tAttendanceRecords).upsert(
               plan.insertIfMissing,
               onConflict: 'session_id,child_id',
               ignoreDuplicates: true,
@@ -354,7 +349,7 @@ class AttendanceRepository {
   }) async {
     try {
       var query =
-          Db.client.from(Db.vSessionScores).select().eq('child_id', childId);
+          Db.from(Db.vSessionScores).select().eq('child_id', childId);
       if (yearId != null) query = query.eq('year_id', yearId);
       // Oldest Saturday first (postgrest sorts descending by default).
       final data = await query.order('session_date', ascending: true);
@@ -366,8 +361,7 @@ class AttendanceRepository {
 
   Future<List<ChildSessionScore>> sessionScores(String sessionId) async {
     try {
-      final data = await Db.client
-          .from(Db.vSessionScores)
+      final data = await Db.from(Db.vSessionScores)
           .select()
           .eq('session_id', sessionId)
           .order('child_name');

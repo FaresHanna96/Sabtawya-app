@@ -31,6 +31,10 @@ class OfflineHttpClient extends http.BaseClient {
   /// A slow connection should fall back to the kept copy, not spin forever.
   static const _readTimeout = Duration(seconds: 10);
 
+  /// With nothing kept there is nothing to fall back to, so wait longer, then
+  /// show the error with its retry button.
+  static const _firstReadTimeout = Duration(seconds: 30);
+
   /// Tables whose primary key is a server-generated `id`; an insert made
   /// offline gets one here so later queued writes can refer to the new row.
   static const _idTables = <String>{
@@ -45,6 +49,9 @@ class OfflineHttpClient extends http.BaseClient {
     'servant_lesson_prep_photos',
     'servant_attendances',
     'attendance_years',
+    'servant_invites',
+    'message_templates',
+    'lesson_materials',
   };
 
   /// Writes that must reach the server now or fail: a lesson prep and its
@@ -97,6 +104,16 @@ class OfflineHttpClient extends http.BaseClient {
       }
       return _write(request, target);
     }
+    if (path.contains('/auth/v1/')) {
+      // A token refresh that cannot get through is how an expired sign-in
+      // finds out there is no connection (see Db.from).
+      try {
+        return await _inner.send(request);
+      } catch (e) {
+        if (isNetworkError(e)) ConnectivityService.instance.markOffline();
+        rethrow;
+      }
+    }
     return _inner.send(request);
   }
 
@@ -108,9 +125,9 @@ class OfflineHttpClient extends http.BaseClient {
     final cached = OfflineStore.getCached(key);
 
     try {
-      var future = _inner.send(request);
-      if (cached != null) future = future.timeout(_readTimeout);
-      final streamed = await future;
+      final streamed = await _inner
+          .send(request)
+          .timeout(cached != null ? _readTimeout : _firstReadTimeout);
       final response = await http.Response.fromStream(streamed);
       ConnectivityService.instance.markOnline();
       if (response.statusCode == 200 || response.statusCode == 206) {
@@ -153,7 +170,7 @@ class OfflineHttpClient extends http.BaseClient {
     http.BaseRequest original,
     String label,
   ) async {
-    final request = await _materialize(original);
+    final request = _withIds(await _materialize(original));
 
     // Keep the order: while this person's earlier writes are waiting, a later
     // one waits too, otherwise it could run before the row it depends on
@@ -171,28 +188,50 @@ class OfflineHttpClient extends http.BaseClient {
     return _enqueue(request, label);
   }
 
+  /// Gives a plain insert its `id` before it is sent the first time. Should
+  /// the answer be lost, the replay carries the same id, so the server refuses
+  /// it as already saved instead of saving the row twice.
+  http.Request _withIds(http.Request request) {
+    final path = request.url.path;
+    if (!path.contains('/rest/v1/') ||
+        request.method.toUpperCase() != 'POST' ||
+        request.url.queryParameters.containsKey('on_conflict') ||
+        !_idTables.contains(_tableOf(path))) {
+      return request;
+    }
+    final rows = _decodeRows(request.bodyBytes);
+    if (rows.isEmpty) return request;
+    for (final row in rows) {
+      row.putIfAbsent('id', _uuid);
+    }
+    // A list insert names its columns; one left out of the list is ignored.
+    var url = request.url;
+    final columns = url.queryParameters['columns'];
+    if (columns != null && !columns.split(',').contains('"id"')) {
+      url = url.replace(queryParameters: <String, String>{
+        ...url.queryParameters,
+        'columns': '$columns,"id"',
+      });
+    }
+    return http.Request(request.method, url)
+      ..headers.addAll(request.headers)
+      ..bodyBytes = Uint8List.fromList(utf8.encode(jsonEncode(
+        _bodyIsList(request.bodyBytes) ? rows : rows.first,
+      )))
+      ..followRedirects = request.followRedirects
+      ..persistentConnection = request.persistentConnection;
+  }
+
   Future<http.StreamedResponse> _enqueue(
     http.Request request,
     String label,
   ) async {
     final isRest = request.url.path.contains('/rest/v1/');
     final table = _tableOf(request.url.path);
-    var bytes = request.bodyBytes;
-    List<Map<String, dynamic>> rows = const <Map<String, dynamic>>[];
-
-    if (isRest && request.method.toUpperCase() == 'POST') {
-      rows = _decodeRows(bytes);
-      final isPlainInsert =
-          !request.url.queryParameters.containsKey('on_conflict');
-      if (isPlainInsert && _idTables.contains(table)) {
-        for (final row in rows) {
-          row.putIfAbsent('id', _uuid);
-        }
-        bytes = Uint8List.fromList(utf8.encode(jsonEncode(
-          _bodyIsList(request.bodyBytes) ? rows : rows.first,
-        )));
-      }
-    }
+    final bytes = request.bodyBytes;
+    final rows = isRest && request.method.toUpperCase() == 'POST'
+        ? _decodeRows(bytes)
+        : const <Map<String, dynamic>>[];
 
     final headers = Map<String, String>.from(request.headers)
       ..removeWhere((k, _) => k.toLowerCase() == 'authorization');

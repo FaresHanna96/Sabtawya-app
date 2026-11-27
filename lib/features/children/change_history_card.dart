@@ -86,9 +86,7 @@ class _ChangeHistoryCardState extends State<ChangeHistoryCard> {
   /// "اليوم", "أمس", or "الجمعة 13 نوفمبر · منذ 3 أيام".
   Widget _dayHeader(DateTime day, {required bool first}) {
     final now = widget.now ?? DateTime.now();
-    final recent =
-        AppDateUtils.dateOnly(now).difference(AppDateUtils.dateOnly(day)).inDays <
-            2;
+    final recent = AppDateUtils.daysBetween(day, now) < 2;
     return Padding(
       padding: EdgeInsets.only(top: first ? 0 : 10, bottom: 8),
       child: Row(

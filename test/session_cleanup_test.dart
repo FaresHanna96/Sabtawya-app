@@ -118,6 +118,17 @@ void main() {
     expect(_log, ['registerPush']);
   });
 
+  test('a token refresh that cannot get through keeps the app open', () async {
+    await session.load();
+    auth.events.addError(AuthRetryableFetchException(message: 'offline'));
+    await Future<void>.delayed(Duration.zero);
+    expect(session.status, SessionStatus.ready);
+
+    auth.events.addError(StateError('something else'));
+    await Future<void>.delayed(Duration.zero);
+    expect(session.status, SessionStatus.error);
+  });
+
   test('sign-out forgets the device while the session can still do it',
       () async {
     await session.signOut();

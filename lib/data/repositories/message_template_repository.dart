@@ -9,8 +9,7 @@ class MessageTemplateRepository {
 
   Future<List<MessageTemplate>> list() async {
     try {
-      final data = await Db.client
-          .from(Db.tMessageTemplates)
+      final data = await Db.from(Db.tMessageTemplates)
           .select()
           .order('sort_order')
           .order('created_at');
@@ -25,9 +24,9 @@ class MessageTemplateRepository {
     final values = <String, dynamic>{'title': title.trim(), 'body': body.trim()};
     try {
       if (id == null) {
-        await Db.client.from(Db.tMessageTemplates).insert(values);
+        await Db.from(Db.tMessageTemplates).insert(values);
       } else {
-        await Db.client.from(Db.tMessageTemplates).update(values).eq('id', id);
+        await Db.from(Db.tMessageTemplates).update(values).eq('id', id);
       }
     } catch (e) {
       throw AppFailure.from(e);
@@ -36,7 +35,7 @@ class MessageTemplateRepository {
 
   Future<void> delete(String id) async {
     try {
-      await Db.client.from(Db.tMessageTemplates).delete().eq('id', id);
+      await Db.from(Db.tMessageTemplates).delete().eq('id', id);
     } catch (e) {
       throw AppFailure.from(e);
     }

@@ -69,7 +69,7 @@ class CompetitionMark {
         childId: asText(map['child_id']),
         mark: asInt(map['mark']),
         markedBy: asText(map['marked_by']),
-        markedAt: asDate(map['marked_at']),
+        markedAt: asDate(map['marked_at']).toLocal(),
       );
 }
 

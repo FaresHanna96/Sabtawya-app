@@ -729,7 +729,7 @@ class _BirthdayTile extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final thisYear = DateTime(now.year, birth.month, birth.day);
-    final daysLeft = thisYear.difference(today).inDays;
+    final daysLeft = AppDateUtils.daysBetween(today, thisYear);
     final isToday = daysLeft == 0;
     // Already celebrated this year: still listed, but quieter.
     final passed = daysLeft < 0;

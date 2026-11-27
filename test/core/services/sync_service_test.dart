@@ -79,6 +79,25 @@ void main() {
     dir.deleteSync(recursive: true);
   });
 
+  test('a write the server already has counts as sent; other duplicates fail',
+      () async {
+    await queue('event_payments', owner: 'user-a');
+    await queue('class_servants', owner: 'user-a');
+    answer = (i, _) => http.Response(
+        jsonEncode({
+          'code': '23505',
+          'message': 'duplicate key value violates unique constraint '
+              '"${i == 0 ? 'event_payments_pkey' : 'class_servants_unique'}"',
+        }),
+        409);
+
+    await makeService().flush();
+
+    expect(OfflineStore.pendingWrites(), isEmpty);
+    expect(OfflineStore.failedWrites().map((w) => w.label), ['class_servants']);
+    expect(synced, 1);
+  });
+
   test('waiting writes are sent oldest first with the current token', () async {
     await queue('children', owner: 'user-a', body: '{"n":1}');
     await queue('event_payments', owner: 'user-a', body: '{"n":2}');

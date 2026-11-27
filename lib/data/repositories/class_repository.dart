@@ -13,7 +13,7 @@ class ClassRepository {
 
   Future<List<ClassOverview>> overview({bool includeInactive = false}) async {
     try {
-      final query = Db.client.from(Db.vClassOverview).select();
+      final query = Db.from(Db.vClassOverview).select();
       final data = includeInactive
           ? await query.order('sort_order')
           : await query.eq('is_active', true).order('sort_order');
@@ -25,8 +25,7 @@ class ClassRepository {
 
   Future<ClassOverview?> overviewById(String classId) async {
     try {
-      final data = await Db.client
-          .from(Db.vClassOverview)
+      final data = await Db.from(Db.vClassOverview)
           .select()
           .eq('class_id', classId)
           .maybeSingle();
@@ -38,7 +37,7 @@ class ClassRepository {
 
   Future<List<SchoolClass>> list({bool includeInactive = false}) async {
     try {
-      final query = Db.client.from(Db.tClasses).select();
+      final query = Db.from(Db.tClasses).select();
       final data = includeInactive
           ? await query.order('sort_order')
           : await query.eq('is_active', true).order('sort_order');
@@ -56,8 +55,7 @@ class ClassRepository {
     int? sortOrder,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.tClasses)
+      final data = await Db.from(Db.tClasses)
           .insert(<String, dynamic>{
             'name': name.trim(),
             'description': _blankToNull(description),
@@ -109,7 +107,7 @@ class ClassRepository {
     int? sortOrder,
   }) async {
     try {
-      await Db.client.from(Db.tClasses).update(<String, dynamic>{
+      await Db.from(Db.tClasses).update(<String, dynamic>{
         'name': name.trim(),
         'description': _blankToNull(description),
         'patron_name': _blankToNull(patronName),
@@ -125,7 +123,7 @@ class ClassRepository {
     required String? path,
   }) async {
     try {
-      await Db.client.from(Db.tClasses).update(
+      await Db.from(Db.tClasses).update(
           <String, dynamic>{'patron_photo_path': path}).eq('id', classId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -139,7 +137,7 @@ class ClassRepository {
   /// assignments and the Saturday calendar cascade away with it.
   Future<void> delete(String classId) async {
     try {
-      await Db.client.from(Db.tClasses).delete().eq('id', classId);
+      await Db.from(Db.tClasses).delete().eq('id', classId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -147,8 +145,7 @@ class ClassRepository {
 
   Future<void> setActive(String classId, bool isActive) async {
     try {
-      await Db.client
-          .from(Db.tClasses)
+      await Db.from(Db.tClasses)
           .update(<String, dynamic>{'is_active': isActive}).eq('id', classId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -159,8 +156,7 @@ class ClassRepository {
 
   Future<List<ClassServant>> servantsOfClass(String classId) async {
     try {
-      final data = await Db.client
-          .from(Db.vClassServants)
+      final data = await Db.from(Db.vClassServants)
           .select()
           .eq('class_id', classId)
           .order('servant_name');
@@ -172,8 +168,7 @@ class ClassRepository {
 
   Future<List<ClassServant>> allAssignments() async {
     try {
-      final data = await Db.client
-          .from(Db.vClassServants)
+      final data = await Db.from(Db.vClassServants)
           .select()
           .order('class_name')
           .order('servant_name');
@@ -185,8 +180,7 @@ class ClassRepository {
 
   Future<List<ClassServant>> classesOfServant(String servantId) async {
     try {
-      final data = await Db.client
-          .from(Db.vClassServants)
+      final data = await Db.from(Db.vClassServants)
           .select()
           .eq('servant_id', servantId)
           .order('class_name');
@@ -204,11 +198,10 @@ class ClassRepository {
   }) async {
     try {
       // Remove any existing assignment so the servant stays in only one class.
-      await Db.client
-          .from(Db.tClassServants)
+      await Db.from(Db.tClassServants)
           .delete()
           .eq('servant_id', servantId);
-      await Db.client.from(Db.tClassServants).insert(<String, dynamic>{
+      await Db.from(Db.tClassServants).insert(<String, dynamic>{
         'class_id': classId,
         'servant_id': servantId,
         'assigned_by': Db.userId,
@@ -220,7 +213,7 @@ class ClassRepository {
 
   Future<void> removeAssignment(String assignmentId) async {
     try {
-      await Db.client.from(Db.tClassServants).delete().eq('id', assignmentId);
+      await Db.from(Db.tClassServants).delete().eq('id', assignmentId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -232,7 +225,7 @@ class ClassRepository {
     required String newClassId,
   }) async {
     try {
-      await Db.client.from(Db.tClassServants).update(
+      await Db.from(Db.tClassServants).update(
           <String, dynamic>{'class_id': newClassId}).eq('id', assignmentId);
     } catch (e) {
       throw AppFailure.from(e);

@@ -13,7 +13,8 @@ import nodemailer from 'npm:nodemailer@6.9.14';
 // free Supabase plan keeps no backups of its own. Two calls, one cron job each:
 //
 //   {}                  every data table as a CSV (Excel opens them)
-//   {"part":"photos"}   the children's photos and the class pictures
+//   {"part":"photos"}   every uploaded file: the children's photos, the class
+//                       pictures, lesson materials and lesson preparations
 //
 // Every zip is encrypted (AES-256) with BACKUP_PASSWORD, because it holds
 // children's personal data and an email is not a safe place for a plain file.
@@ -39,32 +40,46 @@ const PASSWORD = Deno.env.get('BACKUP_PASSWORD') ?? '';
 // Gmail refuses mail above 25 MB, and attachments grow by a third in transit.
 const MAX_ZIP_BYTES = 15 * 1024 * 1024;
 
-// The app's data. Left out: device tokens and config (secrets), visit and
-// notification logs (noise), and the fixed email rules (in the migrations).
-const TABLES = [
-  'children',
-  'classes',
-  'profiles',
-  'servant_details',
-  'class_servants',
-  'servant_invites',
-  'attendance_years',
-  'attendance_sessions',
-  'attendance_records',
-  'child_visit_logs',
-  'child_private_notes',
-  'events',
-  'event_payments',
-  'event_reservations',
-  'competitions',
-  'competition_marks',
-  'lessons',
-  'lesson_breaks',
-  'lesson_extras',
-  'servant_attendances',
-  'servant_lesson_preps',
-  'servant_lesson_prep_photos',
-  'activity_log',
+// The app's data, each table with its key: pages are read in key order, or a
+// row can come twice or be missed between two of them. Left out: device tokens
+// and config (secrets), visit and notification logs (noise), and the fixed
+// email rules (in the migrations).
+const TABLES: Record<string, string[]> = {
+  children: ['id'],
+  classes: ['id'],
+  profiles: ['id'],
+  servant_details: ['profile_id'],
+  class_servants: ['id'],
+  servant_invites: ['id'],
+  servant_substitutes: ['id'],
+  attendance_years: ['id'],
+  attendance_sessions: ['id'],
+  attendance_records: ['id'],
+  child_visit_logs: ['id'],
+  child_private_notes: ['child_id'],
+  events: ['id'],
+  event_payments: ['id'],
+  event_reservations: ['event_id', 'child_id'],
+  competitions: ['id'],
+  competition_marks: ['id'],
+  lessons: ['id'],
+  lesson_breaks: ['break_date'],
+  lesson_extras: ['coptic_month', 'week'],
+  lesson_materials: ['id'],
+  message_templates: ['id'],
+  announcements: ['id'],
+  servant_attendances: ['id'],
+  servant_lesson_preps: ['id'],
+  servant_lesson_prep_photos: ['id'],
+  activity_log: ['id'],
+};
+
+// Where each uploaded file is listed: its bucket, table and path column.
+const FILES: [string, string, string][] = [
+  ['child-photos', 'children', 'photo_path'],
+  ['class-patrons', 'classes', 'patron_photo_path'],
+  ['lesson-materials', 'lesson_materials', 'storage_path'],
+  ['servant-submissions', 'servant_lesson_prep_photos', 'storage_path'],
 ];
 
 type Entry = { name: string; data: Uint8Array };
@@ -73,10 +88,9 @@ async function readAll(table: string): Promise<Record<string, unknown>[]> {
   const page = 1000;
   const out: Record<string, unknown>[] = [];
   for (let from = 0; ; from += page) {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .range(from, from + page - 1);
+    let query = supabase.from(table).select('*');
+    for (const key of TABLES[table]) query = query.order(key);
+    const { data, error } = await query.range(from, from + page - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     out.push(...(data ?? []));
     if (!data || data.length < page) return out;
@@ -149,7 +163,7 @@ async function dataBackup(dryRun: boolean) {
   const files: Entry[] = [];
   const counts: string[] = [];
   const enc = new TextEncoder();
-  for (const t of TABLES) {
+  for (const t of Object.keys(TABLES)) {
     const rows = await readAll(t);
     files.push({ name: `${t}.csv`, data: enc.encode(toCsv(rows)) });
     counts.push(`${t}: ${rows.length}`);
@@ -176,22 +190,19 @@ async function dataBackup(dryRun: boolean) {
   return { part: 'data', bytes: zip.length, verified, sent: !dryRun, counts };
 }
 
-/** Children's photos and class pictures, in zips of at most MAX_ZIP_BYTES. */
+/** Every uploaded file, in zips of at most MAX_ZIP_BYTES. */
 async function photoBackup(dryRun: boolean) {
   const items: { bucket: string; path: string }[] = [];
-  const children = await readAll('children');
-  for (const c of children) {
-    if (c.photo_path) items.push({ bucket: 'child-photos', path: String(c.photo_path) });
-  }
-  const classes = await readAll('classes');
-  for (const c of classes) {
-    if (c.patron_photo_path) {
-      items.push({ bucket: 'class-patrons', path: String(c.patron_photo_path) });
+  for (const [bucket, table, column] of FILES) {
+    for (const row of await readAll(table)) {
+      if (row[column]) items.push({ bucket, path: String(row[column]) });
     }
   }
 
   const parts: { files: number; bytes: number; sent: boolean }[] = [];
   const missing: string[] = [];
+  // Too big to mail on their own: named in the answer and the last email.
+  const tooBig: string[] = [];
   let batch: Entry[] = [];
   let batchBytes = 0;
   let next = 0;
@@ -209,10 +220,13 @@ async function photoBackup(dryRun: boolean) {
         to: BACKUP_TO,
         subject: `نسخة احتياطية للصور (جزء ${n}${last ? '، الأخير' : ''}) — سبتاوية ${day()}`,
         text:
-          `صور المخدومين وصور الفصول، الجزء ${n}${last ? ' وهو الأخير' : ''}.\n` +
+          `صور المخدومين والفصول وملفات الدروس والتحضيرات، الجزء ${n}${last ? ' وهو الأخير' : ''}.\n` +
           `الملف مشفّر بكلمة سر النسخ الاحتياطي: افتحه ببرنامج 7-Zip أو WinRAR.\n` +
-          `اسم كل صورة هو مسارها كما في عمود photo_path في ملف children.csv ` +
-          `(أو patron_photo_path في classes.csv) من النسخة الأسبوعية للبيانات.\n` +
+          `اسم كل ملف هو اسم مجلده ثم مساره كما في عمود photo_path أو ` +
+          `patron_photo_path أو storage_path في ملفات النسخة الأسبوعية للبيانات.\n` +
+          (last && tooBig.length > 0
+            ? `ملفات أكبر من حد الإيميل ولم تُرفق:\n${tooBig.join('\n')}\n`
+            : '') +
           `احتفظ به في مكان آمن: فيه صور المخدومين.`,
         attachments: [{
           filename: `sabtawya-photos-${day()}-part-${n}.zip`,
@@ -233,6 +247,10 @@ async function photoBackup(dryRun: boolean) {
       continue;
     }
     const bytes = new Uint8Array(await data.arrayBuffer());
+    if (bytes.length > MAX_ZIP_BYTES) {
+      tooBig.push(`${item.bucket}/${item.path}`);
+      continue;
+    }
     // Close the part before it would grow past the limit.
     if (batch.length > 0 && batchBytes + bytes.length > MAX_ZIP_BYTES) {
       await flush(false);
@@ -248,10 +266,12 @@ async function photoBackup(dryRun: boolean) {
       from: `سبتاوية <${GMAIL_USER}>`,
       to: BACKUP_TO,
       subject: `نسخة احتياطية للصور — لا توجد صور — سبتاوية ${day()}`,
-      text: 'لا توجد صور محفوظة في التطبيق هذا الأسبوع.',
+      text: tooBig.length > 0
+        ? `لم تُرفق ملفات لأنها أكبر من حد الإيميل:\n${tooBig.join('\n')}`
+        : 'لا توجد صور محفوظة في التطبيق هذا الأسبوع.',
     });
   }
-  return { part: 'photos', listed: items.length, scanned: next, missing, parts };
+  return { part: 'photos', listed: items.length, scanned: next, missing, tooBig, parts };
 }
 
 serve(async (req) => {

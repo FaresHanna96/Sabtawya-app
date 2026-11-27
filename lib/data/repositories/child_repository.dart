@@ -15,7 +15,7 @@ class ChildRepository {
     bool includeInactive = false,
   }) async {
     try {
-      var query = Db.client.from(Db.tChildren).select().eq('class_id', classId);
+      var query = Db.from(Db.tChildren).select().eq('class_id', classId);
       if (!includeInactive) query = query.eq('is_active', true);
       final data = await query.order('full_name');
       return rows(data).map(Child.fromMap).toList();
@@ -49,11 +49,14 @@ class ChildRepository {
     String? classId,
   }) async {
     try {
-      var query = Db.client.from(Db.tChildren).select();
+      var query = Db.from(Db.tChildren).select();
       if (classId != null) query = query.eq('class_id', classId);
       if (!includeInactive) query = query.eq('is_active', true);
-      final data = await query.order('full_name');
-      return rows(data).map(Child.fromMap).toList();
+      final data = await allRows((from, to) => query
+          .order('full_name', ascending: false)
+          .order('id')
+          .range(from, to));
+      return data.map(Child.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -61,8 +64,7 @@ class ChildRepository {
 
   Future<Child?> byId(String childId) async {
     try {
-      final data = await Db.client
-          .from(Db.tChildren)
+      final data = await Db.from(Db.tChildren)
           .select()
           .eq('id', childId)
           .maybeSingle();
@@ -74,8 +76,7 @@ class ChildRepository {
 
   Future<Child> create(Child child) async {
     try {
-      final data = await Db.client
-          .from(Db.tChildren)
+      final data = await Db.from(Db.tChildren)
           .insert(child.toWriteMap())
           .select()
           .single();
@@ -112,8 +113,7 @@ class ChildRepository {
 
   Future<Child> update(Child child) async {
     try {
-      final data = await Db.client
-          .from(Db.tChildren)
+      final data = await Db.from(Db.tChildren)
           .update(child.toWriteMap())
           .eq('id', child.id)
           .select()
@@ -128,8 +128,7 @@ class ChildRepository {
   /// future attendance sheets while every past record is kept.
   Future<void> setActive(String childId, bool isActive) async {
     try {
-      await Db.client
-          .from(Db.tChildren)
+      await Db.from(Db.tChildren)
           .update(<String, dynamic>{'is_active': isActive}).eq('id', childId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -143,8 +142,7 @@ class ChildRepository {
     required String newClassId,
   }) async {
     try {
-      await Db.client
-          .from(Db.tChildren)
+      await Db.from(Db.tChildren)
           .update(<String, dynamic>{'class_id': newClassId}).eq('id', childId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -158,7 +156,7 @@ class ChildRepository {
     required double? longitude,
   }) async {
     try {
-      await Db.client.from(Db.tChildren).update(<String, dynamic>{
+      await Db.from(Db.tChildren).update(<String, dynamic>{
         'latitude': latitude,
         'longitude': longitude,
       }).eq('id', childId);
@@ -174,8 +172,7 @@ class ChildRepository {
   Future<void> setPhoto(
       {required String childId, required String? path}) async {
     try {
-      await Db.client
-          .from(Db.tChildren)
+      await Db.from(Db.tChildren)
           .update(<String, dynamic>{'photo_path': path}).eq('id', childId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -189,7 +186,7 @@ class ChildRepository {
     if (ids.isEmpty) return <Child>[];
     try {
       final data =
-          await Db.client.from(Db.tChildren).select().inFilter('id', ids);
+          await Db.from(Db.tChildren).select().inFilter('id', ids);
       return rows(data).map(Child.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
@@ -200,7 +197,7 @@ class ChildRepository {
     if (codes.isEmpty) return <Child>[];
     try {
       final data =
-          await Db.client.from(Db.tChildren).select().inFilter('code', codes);
+          await Db.from(Db.tChildren).select().inFilter('code', codes);
       return rows(data).map(Child.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
@@ -298,8 +295,7 @@ class ChildRepository {
   /// caller may not see it: the database returns no row then).
   Future<String?> healthNote(String childId) async {
     try {
-      final data = await Db.client
-          .from(Db.tChildPrivateNotes)
+      final data = await Db.from(Db.tChildPrivateNotes)
           .select('health_notes')
           .eq('child_id', childId)
           .maybeSingle();
@@ -315,13 +311,12 @@ class ChildRepository {
     final value = text?.trim() ?? '';
     try {
       if (value.isEmpty) {
-        await Db.client
-            .from(Db.tChildPrivateNotes)
+        await Db.from(Db.tChildPrivateNotes)
             .delete()
             .eq('child_id', childId);
         return;
       }
-      await Db.client.from(Db.tChildPrivateNotes).upsert(
+      await Db.from(Db.tChildPrivateNotes).upsert(
         <String, dynamic>{'child_id': childId, 'health_notes': value},
         onConflict: 'child_id',
       );
@@ -332,8 +327,7 @@ class ChildRepository {
 
   Future<List<ChildVisitLog>> visitLogs(String childId) async {
     try {
-      final data = await Db.client
-          .from(Db.tChildVisitLogs)
+      final data = await Db.from(Db.tChildVisitLogs)
           .select(
               '*, recorder:profiles!child_visit_logs_recorded_by_fkey(full_name)')
           .eq('child_id', childId)
@@ -363,8 +357,7 @@ class ChildRepository {
   /// is reported instead of pretending it worked.
   Future<void> deleteVisitLog(String id) async {
     try {
-      final deleted = await Db.client
-          .from(Db.tChildVisitLogs)
+      final deleted = await Db.from(Db.tChildVisitLogs)
           .delete()
           .eq('id', id)
           .select('id');
@@ -391,8 +384,7 @@ class ChildRepository {
         '${d.day.toString().padLeft(2, '0')}';
     List<ChildVisitLog> mine = const [];
     try {
-      final data = await Db.client
-          .from(Db.tChildVisitLogs)
+      final data = await Db.from(Db.tChildVisitLogs)
           .select()
           .eq('child_id', childId)
           .eq('visit_type', visitType)
@@ -419,8 +411,7 @@ class ChildRepository {
       return;
     }
     try {
-      await Db.client
-          .from(Db.tChildVisitLogs)
+      await Db.from(Db.tChildVisitLogs)
           .update(<String, dynamic>{'notes': notes}).eq('id', existing);
     } catch (e) {
       throw AppFailure.from(e);
@@ -435,7 +426,7 @@ class ChildRepository {
   }) async {
     try {
       final d = visitDate;
-      await Db.client.from(Db.tChildVisitLogs).insert(<String, dynamic>{
+      await Db.from(Db.tChildVisitLogs).insert(<String, dynamic>{
         'child_id': childId,
         'visit_type': visitType,
         'visit_date': '${d.year.toString().padLeft(4, '0')}-'

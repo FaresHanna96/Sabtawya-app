@@ -233,7 +233,7 @@ class _SummaryTabState extends State<_SummaryTab>
         final extra = await Future.wait([
           _repo.sessionDatesForYear(yearId),
           _repo.attendancesBetween(from: year.startDate, to: today),
-          _repo.recentPreps(limit: 1000),
+          _repo.allPreps(),
           const ServantRepository().servants(includeInactive: false),
           const ClassRepository().allAssignments(),
           _repo
@@ -478,7 +478,7 @@ class _AttendanceTabState extends State<_AttendanceTab>
     for (final d in dates) {
       final dOnly = DateTime(d.year, d.month, d.day);
       // Prefer past/today over future; among equals pick closest
-      final diff = dOnly.difference(todayOnly).inDays.abs();
+      final diff = AppDateUtils.daysBetween(todayOnly, dOnly).abs();
       final isPastOrToday = !dOnly.isAfter(todayOnly);
       if (best == null) {
         best = d;

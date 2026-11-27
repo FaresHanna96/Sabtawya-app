@@ -90,7 +90,7 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
     final days = _period.daysBack;
     if (days == null) return null;
     final today = AppDateUtils.dateOnly(DateTime.now());
-    return today.subtract(Duration(days: days));
+    return DateTime(today.year, today.month, today.day - days);
   }
 
   Future<void> _search() async {

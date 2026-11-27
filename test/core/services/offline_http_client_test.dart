@@ -76,6 +76,57 @@ void main() {
     expect(offline.single['full_name'], 'Anna');
   });
 
+  test('a plain insert carries its id from the first send to the replay',
+      () async {
+    final bodies = <String>[];
+    final c = OfflineHttpClient(MockClient((request) async {
+      bodies.add(request.body); // stored by the server...
+      throw http.ClientException('Connection closed'); // ...answer lost
+    }));
+    await c.post(Uri.parse('$_base/event_payments'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'amount': 100}));
+
+    final first = jsonDecode(bodies.single) as Map;
+    final replay = jsonDecode(utf8.decode(
+            base64Decode(OfflineStore.pendingWrites().single.bodyBase64)))
+        as Map;
+    expect(first['id'], isNotNull);
+    expect(replay['id'], first['id']);
+  });
+
+  test('a list insert names the id among its columns', () async {
+    late http.Request seen;
+    final c = OfflineHttpClient(MockClient((request) async {
+      seen = request;
+      return http.Response('', 201);
+    }));
+    await c.post(
+        Uri.parse('$_base/servant_attendances')
+            .replace(queryParameters: {'columns': '"date"'}),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode([
+          {'date': '2026-11-28'},
+          {'date': '2026-12-05'},
+        ]));
+    expect(seen.url.queryParameters['columns'], '"date","id"');
+    final rows = jsonDecode(seen.body) as List;
+    expect(rows.map((r) => (r as Map)['id']).toSet(), hasLength(2));
+  });
+
+  test('an upsert and a table without its own id are sent as they are',
+      () async {
+    final bodies = <String>[];
+    final c = OfflineHttpClient(MockClient((request) async {
+      bodies.add(request.body);
+      return http.Response('', 201);
+    }));
+    final body = jsonEncode({'child_id': 'c'});
+    await c.post(Uri.parse('$_base/event_payments?on_conflict=id'), body: body);
+    await c.post(Uri.parse('$_base/event_reservations'), body: body);
+    expect(bodies, [body, body]);
+  });
+
   test('removing this device at sign-out is never queued', () async {
     online = false;
     await expectLater(

@@ -66,7 +66,7 @@ class LessonPrep {
       photos: photos,
       adminComment: asTextOrNull(map['admin_comment']),
       reviewedBy: asTextOrNull(map['reviewed_by']),
-      reviewedAt: asDateOrNull(map['reviewed_at']),
+      reviewedAt: asDateOrNull(map['reviewed_at'])?.toLocal(),
       createdAt: asDateOrNull(map['created_at']),
       sharedAt: asDateOrNull(map['shared_at']),
       className: asTextOrNull(

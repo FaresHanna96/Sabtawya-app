@@ -16,7 +16,7 @@ class ServantRepository {
 
   Future<List<Profile>> servants({bool includeInactive = true}) async {
     try {
-      final query = Db.client.from(Db.tProfiles).select();
+      final query = Db.from(Db.tProfiles).select();
       final data = includeInactive
           ? await query.order('full_name')
           : await query.eq('is_active', true).order('full_name');
@@ -42,8 +42,7 @@ class ServantRepository {
 
   Future<List<ServantInvite>> pendingInvites() async {
     try {
-      final data = await Db.client
-          .from(Db.tServantInvites)
+      final data = await Db.from(Db.tServantInvites)
           .select()
           .isFilter('accepted_at', null)
           .order('created_at', ascending: false);
@@ -67,7 +66,7 @@ class ServantRepository {
     final trimmedEmail = email.trim().toLowerCase();
     final trimmedName = fullName.trim();
     try {
-      await Db.client.from(Db.tServantInvites).insert(<String, dynamic>{
+      await Db.from(Db.tServantInvites).insert(<String, dynamic>{
         'email': trimmedEmail,
         'full_name': trimmedName,
         'role': role.wire,
@@ -89,7 +88,7 @@ class ServantRepository {
 
   Future<void> deleteInvite(String inviteId) async {
     try {
-      await Db.client.from(Db.tServantInvites).delete().eq('id', inviteId);
+      await Db.from(Db.tServantInvites).delete().eq('id', inviteId);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -102,7 +101,7 @@ class ServantRepository {
     AppRole? role,
   }) async {
     try {
-      await Db.client.from(Db.tProfiles).update(<String, dynamic>{
+      await Db.from(Db.tProfiles).update(<String, dynamic>{
         'full_name': fullName.trim(),
         'mobile': _blankToNull(mobile),
         if (role != null) 'role': role.wire,
@@ -117,8 +116,7 @@ class ServantRepository {
     try {
       final id = Db.userId;
       if (id == null) return null;
-      final data = await Db.client
-          .from(Db.tServantDetails)
+      final data = await Db.from(Db.tServantDetails)
           .select()
           .eq('profile_id', id)
           .maybeSingle();
@@ -131,7 +129,7 @@ class ServantRepository {
   /// The admin-only data of every servant, keyed by profile id.
   Future<Map<String, ServantDetails>> details() async {
     try {
-      final data = await Db.client.from(Db.tServantDetails).select();
+      final data = await Db.from(Db.tServantDetails).select();
       return <String, ServantDetails>{
         for (final d in rows(data).map(ServantDetails.fromMap)) d.profileId: d,
       };
@@ -153,13 +151,13 @@ class ServantRepository {
     AppRole? role,
   }) async {
     try {
-      await Db.client.from(Db.tProfiles).update(<String, dynamic>{
+      await Db.from(Db.tProfiles).update(<String, dynamic>{
         'full_name': fullName.trim(),
         if (role != null) 'role': role.wire,
         'mobile': _blankToNull(mobile),
         'birth_date': birthDate?.toIso8601String().substring(0, 10),
       }).eq('id', servantId);
-      await Db.client.from(Db.tServantDetails).upsert(<String, dynamic>{
+      await Db.from(Db.tServantDetails).upsert(<String, dynamic>{
         'profile_id': servantId,
         'address': _blankToNull(address),
         'confessor': _blankToNull(confessor),
@@ -173,8 +171,7 @@ class ServantRepository {
 
   Future<List<PendingServant>> pendingSignups() async {
     try {
-      final data = await Db.client
-          .from(Db.vPendingServants)
+      final data = await Db.from(Db.vPendingServants)
           .select()
           .order('created_at', ascending: false);
       return rows(data).map(PendingServant.fromMap).toList();
@@ -185,7 +182,7 @@ class ServantRepository {
 
   Future<int> pendingSignupCount() async {
     try {
-      final data = await Db.client.from(Db.vPendingServants).select('id');
+      final data = await Db.from(Db.vPendingServants).select('id');
       return rows(data).length;
     } catch (e) {
       throw AppFailure.from(e);
@@ -223,8 +220,7 @@ class ServantRepository {
 
   Future<void> setActive(String servantId, bool isActive) async {
     try {
-      await Db.client
-          .from(Db.tProfiles)
+      await Db.from(Db.tProfiles)
           .update(<String, dynamic>{'is_active': isActive}).eq('id', servantId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -236,8 +232,7 @@ class ServantRepository {
   /// deleting the rows would leave the files behind.
   Future<void> deleteServant(String servantId) async {
     try {
-      final photos = await Db.client
-          .from(Db.tServantLessonPrepPhotos)
+      final photos = await Db.from(Db.tServantLessonPrepPhotos)
           .select('storage_path, servant_lesson_preps!inner(servant_id)')
           .eq('servant_lesson_preps.servant_id', servantId);
       final paths =
@@ -257,8 +252,7 @@ class ServantRepository {
   /// every signed-in user: the view is not limited to the caller's classes.
   Future<List<Profile>> birthdays() async {
     try {
-      final data = await Db.client
-          .from(Db.vServantBirthdays)
+      final data = await Db.from(Db.vServantBirthdays)
           .select()
           .order('full_name');
       return rows(data).map(Profile.fromMap).toList();

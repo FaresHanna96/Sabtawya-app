@@ -10,6 +10,7 @@ import 'core/services/error_reporter.dart';
 import 'core/services/offline_http_client.dart';
 import 'core/services/offline_store.dart';
 import 'data/services/access_log.dart';
+import 'data/supabase/db.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,10 +27,13 @@ Future<void> main() async {
     return;
   }
 
+  final offlineHttp = OfflineHttpClient();
+  Db.offlineHttp = offlineHttp;
+
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
-    httpClient: OfflineHttpClient(),
+    httpClient: offlineHttp,
     // Offline handling lives in OfflineHttpClient; retries would only delay it.
     postgrestOptions: const PostgrestClientOptions(retryEnabled: false),
     authOptions: const FlutterAuthClientOptions(

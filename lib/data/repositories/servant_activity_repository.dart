@@ -1,3 +1,6 @@
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show PostgrestFilterBuilder;
+
 import '../models/attendance.dart';
 import '../models/profile.dart';
 import '../models/servant_activity.dart';
@@ -24,8 +27,7 @@ class ServantActivityRepository {
   /// The servant's own lesson prep for [sessionId], or null if not yet submitted.
   Future<LessonPrep?> lessonPrepForSession(String sessionId) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .eq('session_id', sessionId)
           .eq('servant_id', Db.userId!)
@@ -41,7 +43,7 @@ class ServantActivityRepository {
   /// Photos are added separately via [addPrepPhoto].
   Future<LessonPrep> createLessonPrep(String sessionId) async {
     try {
-      await Db.client.from(Db.tServantLessonPreps).insert(<String, dynamic>{
+      await Db.from(Db.tServantLessonPreps).insert(<String, dynamic>{
         'servant_id': Db.userId,
         'session_id': sessionId,
       });
@@ -57,8 +59,7 @@ class ServantActivityRepository {
     required String storagePath,
   }) async {
     try {
-      await Db.client
-          .from(Db.tServantLessonPrepPhotos)
+      await Db.from(Db.tServantLessonPrepPhotos)
           .insert(<String, dynamic>{
         'prep_id': prepId,
         'storage_path': storagePath,
@@ -76,7 +77,7 @@ class ServantActivityRepository {
   }) async {
     if (storagePaths.isEmpty) return;
     try {
-      await Db.client.from(Db.tServantLessonPrepPhotos).insert([
+      await Db.from(Db.tServantLessonPrepPhotos).insert([
         for (final path in storagePaths)
           <String, dynamic>{'prep_id': prepId, 'storage_path': path},
       ]);
@@ -88,8 +89,7 @@ class ServantActivityRepository {
   /// Removes one file from the servant's own prep (the row, then the file).
   Future<void> removePrepPhoto(LessonPrepPhoto photo) async {
     try {
-      await Db.client
-          .from(Db.tServantLessonPrepPhotos)
+      await Db.from(Db.tServantLessonPrepPhotos)
           .delete()
           .eq('id', photo.id);
     } catch (e) {
@@ -118,8 +118,7 @@ class ServantActivityRepository {
   /// loads those).
   Future<List<LessonPrep>> myPrepsSummary() async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select('id, servant_id, session_id, status, admin_comment, '
               'reviewed_at, created_at, shared_at, '
               'attendance_sessions!inner(session_date, classes(name))')
@@ -140,8 +139,7 @@ class ServantActivityRepository {
   }) async {
     if (classIds.isEmpty) return [];
     try {
-      var query = Db.client
-          .from(Db.tAttendanceSessions)
+      var query = Db.from(Db.tAttendanceSessions)
           .select('id, year_id, class_id, session_date, is_locked, notes')
           .inFilter('class_id', classIds)
           // No lesson, no prep and nothing to count.
@@ -158,8 +156,7 @@ class ServantActivityRepository {
   /// visible to the signed-in person (row level security).
   Future<LessonPrep?> prepById(String id) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .eq('id', id)
           .maybeSingle();
@@ -172,8 +169,7 @@ class ServantActivityRepository {
   /// All lesson preps for the signed-in servant, newest first.
   Future<List<LessonPrep>> myLessonPreps() async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .eq('servant_id', Db.userId!)
           .order('created_at', ascending: false);
@@ -188,8 +184,7 @@ class ServantActivityRepository {
   /// All lesson preps for [servantId], newest first.
   Future<List<LessonPrep>> prepsForServant(String servantId) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .eq('servant_id', servantId)
           .eq('attendance_sessions.is_break', false)
@@ -203,8 +198,7 @@ class ServantActivityRepository {
   /// All pending lesson preps across all servants.
   Future<List<LessonPrep>> allPendingPreps() async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .eq('status', 'pending')
           .order('created_at', ascending: true);
@@ -214,11 +208,25 @@ class ServantActivityRepository {
     }
   }
 
+  /// Every prep of every status, newest first, however many there are.
+  Future<List<LessonPrep>> allPreps() async {
+    try {
+      final data = await allRows((from, to) => Db.from(Db.tServantLessonPreps)
+          .select(_prepSelect)
+          .eq('attendance_sessions.is_break', false)
+          .order('created_at', ascending: false)
+          .order('id')
+          .range(from, to));
+      return data.map(LessonPrep.fromMap).toList();
+    } catch (e) {
+      throw AppFailure.from(e);
+    }
+  }
+
   /// The latest [limit] preps of every status, newest first («التحضيرات»).
   Future<List<LessonPrep>> recentPreps({int limit = 200}) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .eq('attendance_sessions.is_break', false)
           .order('created_at', ascending: false)
@@ -229,7 +237,6 @@ class ServantActivityRepository {
     }
   }
 
-  /// How many preps wait for review: ids only, for a badge.
   /// The classes whose prep is done for the Saturday [date]: any servant of
   /// the class uploaded one, OR the admin ticked «تحضير الدرس» for any servant
   /// of the class that day. (An admin sees every class; RLS narrows anyone
@@ -238,8 +245,7 @@ class ServantActivityRepository {
     try {
       final iso = isoDate(date);
       // Uploaded by a servant: the class of that Saturday's session.
-      final uploaded = await Db.client
-          .from(Db.tServantLessonPreps)
+      final uploaded = await Db.from(Db.tServantLessonPreps)
           .select('id, attendance_sessions!inner(class_id, session_date)')
           .eq('attendance_sessions.session_date', iso);
       final uploadedClasses = {
@@ -249,16 +255,14 @@ class ServantActivityRepository {
       };
 
       // Ticked by the admin: the servants marked that day, then their classes.
-      final marks = await Db.client
-          .from(Db.tServantAttendances)
+      final marks = await Db.from(Db.tServantAttendances)
           .select('servant_id')
           .eq('activity_type', 'lesson_prep')
           .eq('date', iso);
       final marked = {for (final r in rows(marks)) '${r['servant_id']}'};
       var assignments = const <({String servantId, String classId})>[];
       if (marked.isNotEmpty) {
-        final data = await Db.client
-            .from(Db.tClassServants)
+        final data = await Db.from(Db.tClassServants)
             .select('servant_id, class_id')
             .inFilter('servant_id', marked.toList());
         assignments = [
@@ -285,10 +289,10 @@ class ServantActivityRepository {
           if (markedServantIds.contains(a.servantId)) a.classId,
       };
 
+  /// How many preps wait for review: ids only, for a badge.
   Future<int> pendingPrepsCount() async {
     try {
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select('id')
           .eq('status', 'pending');
       return rows(data).length;
@@ -304,11 +308,11 @@ class ServantActivityRepository {
     String? comment,
   }) async {
     try {
-      await Db.client.from(Db.tServantLessonPreps).update(<String, dynamic>{
+      await Db.from(Db.tServantLessonPreps).update(<String, dynamic>{
         'status': status,
         'admin_comment': comment,
         'reviewed_by': Db.userId,
-        'reviewed_at': DateTime.now().toIso8601String(),
+        'reviewed_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', prepId);
     } catch (e) {
       throw AppFailure.from(e);
@@ -328,8 +332,7 @@ class ServantActivityRepository {
     DateTime? to,
   }) async {
     try {
-      var query = Db.client
-          .from(Db.tServantAttendances)
+      var query = Db.from(Db.tServantAttendances)
           .select()
           .eq('servant_id', servantId)
           .eq('activity_type', activityType);
@@ -350,8 +353,7 @@ class ServantActivityRepository {
     required DateTime to,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantAttendances)
+      final data = await Db.from(Db.tServantAttendances)
           .select('activity_type')
           .eq('servant_id', servantId)
           .gte('date', isoDate(from))
@@ -370,8 +372,7 @@ class ServantActivityRepository {
     required DateTime to,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantAttendances)
+      final data = await Db.from(Db.tServantAttendances)
           .select('id, servant_id, activity_type, date, recorded_by')
           .eq('servant_id', servantId)
           .gte('date', isoDate(from))
@@ -407,8 +408,7 @@ class ServantActivityRepository {
     required DateTime date,
   }) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantAttendances)
+      final data = await Db.from(Db.tServantAttendances)
           .insert(<String, dynamic>{
             'servant_id': servantId,
             'activity_type': activityType,
@@ -426,8 +426,7 @@ class ServantActivityRepository {
   /// The substitutes recorded on [date] (empty where the table is missing).
   Future<List<ServantSubstitute>> substitutesOn(DateTime date) async {
     try {
-      final data = await Db.client
-          .from(Db.tServantSubstitutes)
+      final data = await Db.from(Db.tServantSubstitutes)
           .select()
           .eq('date', isoDate(date));
       return rows(data).map(ServantSubstitute.fromMap).toList();
@@ -444,8 +443,7 @@ class ServantActivityRepository {
     DateTime? to,
   }) async {
     try {
-      var query = Db.client
-          .from(Db.tServantSubstitutes)
+      var query = Db.from(Db.tServantSubstitutes)
           .select()
           .or('absent_servant_id.eq.$servantId,'
               'substitute_servant_id.eq.$servantId');
@@ -496,8 +494,7 @@ class ServantActivityRepository {
   }) async {
     if (servantIds.isEmpty) return const [];
     try {
-      final data = await Db.client
-          .from(Db.tServantAttendances)
+      final data = await Db.from(Db.tServantAttendances)
           .insert([
             for (final id in servantIds)
               <String, dynamic>{
@@ -516,8 +513,7 @@ class ServantActivityRepository {
 
   Future<void> deleteAttendance(String attendanceId) async {
     try {
-      await Db.client
-          .from(Db.tServantAttendances)
+      await Db.from(Db.tServantAttendances)
           .delete()
           .eq('id', attendanceId);
     } catch (e) {
@@ -530,10 +526,10 @@ class ServantActivityRepository {
   /// All unique session dates for the year, newest first (deduped across classes).
   Future<List<DateTime>> sessionDatesForYear(String yearId) async {
     try {
-      final data = await _heldSessionRows(yearId, orderAsc: true);
+      final data = await _heldSessionRows(yearId);
       final seen = <String>{};
       final dates = <DateTime>[];
-      for (final row in rows(data)) {
+      for (final row in data) {
         final raw = row['session_date'] as String;
         if (seen.add(raw)) {
           dates.add(DateTime.parse(raw));
@@ -549,25 +545,29 @@ class ServantActivityRepository {
   /// A holiday counts for nothing; a نشاط ترفيهي counts (but has no prep: see
   /// activityDatesForYear). A database from before `servants_off` (migration
   /// 20261124008) falls back to «every day with a lesson».
-  Future<dynamic> _heldSessionRows(
+  Future<List<Map<String, dynamic>>> _heldSessionRows(
     String yearId, {
-    bool orderAsc = false,
     String? upTo,
   }) async {
-    dynamic build(bool legacy) {
-      var q = Db.client
-          .from(Db.tAttendanceSessions)
+    PostgrestFilterBuilder<List<Map<String, dynamic>>> build(bool legacy) {
+      var q = Db.from(Db.tAttendanceSessions)
           .select('session_date')
           .eq('year_id', yearId)
           .eq(legacy ? 'is_break' : 'servants_off', false);
       if (upTo != null) q = q.lte('session_date', upTo);
-      return orderAsc ? q.order('session_date', ascending: true) : q;
+      return q;
     }
 
+    Future<List<Map<String, dynamic>>> read(bool legacy) =>
+        allRows((from, to) => build(legacy)
+            .order('session_date', ascending: true)
+            .order('id')
+            .range(from, to));
+
     try {
-      return await build(false);
+      return await read(false);
     } catch (_) {
-      return await build(true);
+      return await read(true);
     }
   }
 
@@ -575,15 +575,16 @@ class ServantActivityRepository {
   /// there is no lesson, so no prep is expected or counted.
   Future<List<DateTime>> activityDatesForYear(String yearId) async {
     try {
-      final data = await Db.client
-          .from(Db.tAttendanceSessions)
+      final data = await allRows((from, to) => Db.from(Db.tAttendanceSessions)
           .select('session_date')
           .eq('year_id', yearId)
           .eq('is_break', true)
           .eq('servants_off', false)
-          .order('session_date', ascending: true);
+          .order('session_date', ascending: true)
+          .order('id')
+          .range(from, to));
       return {
-        for (final row in rows(data)) row['session_date'] as String,
+        for (final row in data) row['session_date'] as String,
       }.map(DateTime.parse).toList();
     } catch (e) {
       throw AppFailure.from(e);
@@ -597,16 +598,14 @@ class ServantActivityRepository {
           '${date.month.toString().padLeft(2, '0')}-'
           '${date.day.toString().padLeft(2, '0')}';
       // Step 1: get session IDs for this date
-      final sessionData = await Db.client
-          .from(Db.tAttendanceSessions)
+      final sessionData = await Db.from(Db.tAttendanceSessions)
           .select('id')
           .eq('session_date', iso);
       final sessionIds =
           rows(sessionData).map((r) => r['id'] as String).toList();
       if (sessionIds.isEmpty) return [];
       // Step 2: load preps for those sessions
-      final data = await Db.client
-          .from(Db.tServantLessonPreps)
+      final data = await Db.from(Db.tServantLessonPreps)
           .select(_prepSelect)
           .inFilter('session_id', sessionIds);
       return rows(data).map(LessonPrep.fromMap).toList();
@@ -621,16 +620,14 @@ class ServantActivityRepository {
   /// for the admin only.
   Future<Set<String>> classesWithPrepOn(DateTime date) async {
     try {
-      final sessions = rows(await Db.client
-          .from(Db.tAttendanceSessions)
+      final sessions = rows(await Db.from(Db.tAttendanceSessions)
           .select('id, class_id')
           .eq('session_date', AppDateUtils.toIsoDate(date)));
       if (sessions.isEmpty) return const {};
       final classOf = {
         for (final s in sessions) asText(s['id']): asText(s['class_id']),
       };
-      final preps = rows(await Db.client
-          .from(Db.tServantLessonPreps)
+      final preps = rows(await Db.from(Db.tServantLessonPreps)
           .select('session_id')
           .inFilter('session_id', classOf.keys.toList()));
       return {
@@ -651,14 +648,14 @@ class ServantActivityRepository {
     String? servantId,
   }) async {
     try {
-      var query = Db.client
-          .from(Db.tServantAttendances)
+      var query = Db.from(Db.tServantAttendances)
           .select()
           .gte('date', AppDateUtils.toIsoDate(from))
           .lte('date', AppDateUtils.toIsoDate(to));
       if (servantId != null) query = query.eq('servant_id', servantId);
-      final data = await query;
-      return rows(data).map(ServantAttendance.fromMap).toList();
+      final data = await allRows((first, last) =>
+          query.order('date', ascending: true).order('id').range(first, last));
+      return data.map(ServantAttendance.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -672,7 +669,7 @@ class ServantActivityRepository {
           '${date.month.toString().padLeft(2, '0')}-'
           '${date.day.toString().padLeft(2, '0')}';
       final data =
-          await Db.client.from(Db.tServantAttendances).select().eq('date', iso);
+          await Db.from(Db.tServantAttendances).select().eq('date', iso);
       return rows(data).map(ServantAttendance.fromMap).toList();
     } catch (e) {
       throw AppFailure.from(e);
@@ -687,7 +684,7 @@ class ServantActivityRepository {
       // Only sessions already held, so percentages are "so far".
       final data =
           await _heldSessionRows(yearId, upTo: isoDate(DateTime.now()));
-      return distinctDates(rows(data));
+      return distinctDates(data);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -707,25 +704,26 @@ class ServantActivityRepository {
     try {
       final from =
           '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-01';
-      final toDate =
-          DateTime(year, month + 1, 1).subtract(const Duration(days: 1));
+      // Day 0 of the next month: the last day of this one.
+      final toDate = DateTime(year, month + 1, 0);
       final to =
           '${toDate.year.toString().padLeft(4, '0')}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}';
 
       // Attendances for this month
-      final attData = await Db.client
-          .from(Db.tServantAttendances)
-          .select(
-            'servant_id, activity_type, date, '
-            'profiles!servant_attendances_servant_id_fkey(full_name)',
-          )
-          .gte('date', from)
-          .lte('date', to);
+      final attData = await allRows((first, last) =>
+          Db.from(Db.tServantAttendances)
+              .select(
+                'servant_id, activity_type, date, '
+                'profiles!servant_attendances_servant_id_fkey(full_name)',
+              )
+              .gte('date', from)
+              .lte('date', to)
+              .order('id')
+              .range(first, last));
 
       // A holiday counts for nothing. A نشاط ترفيهي counts for the four
       // activities, but there is no prep that day.
-      final breakRows = rows(await Db.client
-          .from(Db.tLessonBreaks)
+      final breakRows = rows(await Db.from(Db.tLessonBreaks)
           .select('break_date, kind')
           .gte('break_date', from)
           .lte('break_date', to));
@@ -738,31 +736,31 @@ class ServantActivityRepository {
       };
 
       // Sessions in this month
-      final sessionData = await Db.client
-          .from(Db.tAttendanceSessions)
-          .select('id')
-          .eq('is_break', false)
-          .gte('session_date', from)
-          .lte('session_date', to);
-      final sessionIds =
-          rows(sessionData).map((r) => r['id'] as String).toList();
+      final sessionData = await allRows((first, last) =>
+          Db.from(Db.tAttendanceSessions)
+              .select('id')
+              .eq('is_break', false)
+              .gte('session_date', from)
+              .lte('session_date', to)
+              .order('id')
+              .range(first, last));
+      final sessionIds = sessionData.map((r) => r['id'] as String).toList();
 
       // Preps for sessions in this month
       final prepData = sessionIds.isEmpty
           ? <Map<String, dynamic>>[]
-          : rows(
-              await Db.client
-                  .from(Db.tServantLessonPreps)
-                  .select(
-                    'servant_id, attendance_sessions!inner(session_date), '
-                    'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
-                  )
-                  .inFilter('session_id', sessionIds),
-            );
+          : await allRows((first, last) => Db.from(Db.tServantLessonPreps)
+              .select(
+                'servant_id, attendance_sessions!inner(session_date), '
+                'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
+              )
+              .inFilter('session_id', sessionIds)
+              .order('id')
+              .range(first, last));
 
       final Map<String, _MonthBuilder> map = {};
 
-      for (final row in rows(attData)) {
+      for (final row in attData) {
         final day = row['date']?.toString();
         if (holidays.contains(day)) continue;
         if (row['activity_type'] == 'lesson_prep' && breakDays.contains(day)) {
@@ -798,7 +796,7 @@ class ServantActivityRepository {
         final session = row['attendance_sessions'] as Map<String, dynamic>?;
         (prepDays[id] ??= {}).add(session?['session_date']?.toString() ?? '');
       }
-      for (final row in rows(attData)) {
+      for (final row in attData) {
         if (row['activity_type'] != 'lesson_prep') continue;
         if (breakDays.contains(row['date']?.toString())) continue;
         final id = row['servant_id'] as String;
@@ -860,7 +858,7 @@ class ServantActivityRepository {
   }) async {
     try {
       // The three reads do not depend on each other.
-      var prepQuery = Db.client.from(Db.tServantLessonPreps).select(
+      var prepQuery = Db.from(Db.tServantLessonPreps).select(
             'servant_id, status, '
             'attendance_sessions!inner(session_date), '
             'profiles!servant_lesson_preps_servant_id_fkey(full_name)',
@@ -873,8 +871,7 @@ class ServantActivityRepository {
         prepQuery =
             prepQuery.lte('attendance_sessions.session_date', isoDate(to));
       }
-      var attendanceQuery = Db.client
-          .from(Db.tServantAttendances)
+      var attendanceQuery = Db.from(Db.tServantAttendances)
           .select('servant_id, activity_type, date');
       if (from != null) {
         attendanceQuery = attendanceQuery.gte('date', isoDate(from));
@@ -883,15 +880,16 @@ class ServantActivityRepository {
 
       // A holiday counts for nothing, as in the database function.
       final holidayQuery =
-          Db.client.from(Db.tLessonBreaks).select('break_date, kind');
+          Db.from(Db.tLessonBreaks).select('break_date, kind');
 
       final (profileData, prepData, attendanceData, breakData) = await (
         // ALL servant profiles, so servants with zero activity still appear.
-        Db.client.from(Db.tProfiles).select('id, full_name, role').order(
+        Db.from(Db.tProfiles).select('id, full_name, role').order(
               'full_name',
             ),
-        prepQuery,
-        attendanceQuery,
+        allRows((first, last) => prepQuery.order('id').range(first, last)),
+        allRows(
+            (first, last) => attendanceQuery.order('id').range(first, last)),
         holidayQuery.catchError((Object _) => <dynamic>[]),
       ).wait;
       final holidays = {

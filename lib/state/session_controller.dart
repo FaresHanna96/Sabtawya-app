@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/services/connectivity_service.dart';
 import '../core/services/push_service.dart';
 import '../core/utils/app_failure.dart';
 import '../data/models/attendance.dart';
@@ -48,7 +49,13 @@ class SessionController extends ChangeNotifier {
         _cleanup = cleanup {
     _subscription = _auth.authChanges.listen(
       _onAuthChanged,
-      onError: (Object error) => _fail(error),
+      onError: (Object error) {
+        // A token refresh that could not reach the server: the library tries
+        // again by itself and the session stays. Showing the error screen would
+        // close whatever is open, offline included.
+        if (error is AuthRetryableFetchException) return;
+        _fail(error);
+      },
     );
     PushService.instance.received.addListener(_onPush);
   }
@@ -140,7 +147,9 @@ class SessionController extends ChangeNotifier {
   int _loadToken = 0;
 
   /// Loads the profile, then the classes and current year it unlocks.
-  Future<void> load() async {
+  Future<void> load() => _load();
+
+  Future<void> _load({bool retried = false}) async {
     final token = ++_loadToken;
     _status = SessionStatus.loading;
     _errorMessage = null;
@@ -182,6 +191,11 @@ class SessionController extends ChangeNotifier {
       _status = SessionStatus.ready;
     } catch (e) {
       if (token != _loadToken) return;
+      // The first request just found out there is no connection: now the kept
+      // answers can be read.
+      if (!retried && !ConnectivityService.instance.isOnline) {
+        return _load(retried: true);
+      }
       _fail(e);
       return;
     }

@@ -80,7 +80,7 @@ class EventPayment {
         childId: asText(map['child_id']),
         amount: asDouble(map['amount']),
         paidBy: asText(map['paid_by']),
-        paidAt: asDate(map['paid_at']),
+        paidAt: asDate(map['paid_at']).toLocal(),
         notes: asTextOrNull(map['notes']),
         paymentMethod: asTextOrNull(map['payment_method']) ?? 'cash',
       );

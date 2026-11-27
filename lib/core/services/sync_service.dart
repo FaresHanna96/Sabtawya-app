@@ -107,7 +107,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
           final response = await _client.send(request);
           final body = await response.stream.bytesToString();
           final code = response.statusCode;
-          if (code >= 200 && code < 300) {
+          if ((code >= 200 && code < 300) || _alreadySaved(code, body)) {
             await OfflineStore.removeWrite(write.id);
             sent++;
           } else if (code == 401 || code == 408 || code == 429 || code >= 500) {
@@ -132,6 +132,19 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
     if (sent > 0) {
       ConnectivityService.instance.markOnline();
       onSynced?.call();
+    }
+  }
+
+  /// The row is on the server already (its own id is taken): an earlier send
+  /// got through and only the answer was lost. Any other duplicate is a real
+  /// refusal.
+  bool _alreadySaved(int code, String body) {
+    if (code != 409) return false;
+    try {
+      final map = jsonDecode(body) as Map;
+      return map['code'] == '23505' && '${map['message']}'.contains('_pkey"');
+    } catch (_) {
+      return false;
     }
   }
 

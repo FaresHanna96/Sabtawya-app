@@ -8,8 +8,7 @@ class CompetitionRepository {
 
   Future<List<Competition>> listCompetitions() async {
     try {
-      final data = await Db.client
-          .from(Db.tCompetitions)
+      final data = await Db.from(Db.tCompetitions)
           .select()
           .order('week_date', ascending: false);
       return rows(data).map(Competition.fromMap).toList();
@@ -27,8 +26,7 @@ class CompetitionRepository {
     try {
       final userId = Db.userId;
       if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
-      final data = await Db.client
-          .from(Db.tCompetitions)
+      final data = await Db.from(Db.tCompetitions)
           .insert({
             'title': title.trim(),
             'week_date': weekDate.toIso8601String().split('T').first,
@@ -57,8 +55,7 @@ class CompetitionRepository {
           'week_date': weekDate.toIso8601String().split('T').first,
         if (maxMark != null) 'max_mark': maxMark,
       };
-      final data = await Db.client
-          .from(Db.tCompetitions)
+      final data = await Db.from(Db.tCompetitions)
           .update(patch)
           .eq('id', id)
           .select()
@@ -71,7 +68,7 @@ class CompetitionRepository {
 
   Future<void> deleteCompetition(String id) async {
     try {
-      await Db.client.from(Db.tCompetitions).delete().eq('id', id);
+      await Db.from(Db.tCompetitions).delete().eq('id', id);
     } catch (e) {
       throw AppFailure.from(e);
     }
@@ -82,23 +79,25 @@ class CompetitionRepository {
       String competitionId) async {
     try {
       // Fetch all children the caller may see (RLS limits to assigned classes for servants)
-      final childrenData = await Db.client
-          .from(Db.tChildren)
+      final childrenData = await allRows((from, to) => Db.from(Db.tChildren)
           .select('id, full_name, class_id')
           .eq('is_active', true)
-          .order('full_name');
+          .order('id')
+          .range(from, to));
 
       // Fetch existing marks for this competition
-      final marksData = await Db.client
-          .from(Db.tCompetitionMarks)
-          .select('child_id, mark, id')
-          .eq('competition_id', competitionId);
+      final marksData = await allRows((from, to) =>
+          Db.from(Db.tCompetitionMarks)
+              .select('child_id, mark, id')
+              .eq('competition_id', competitionId)
+              .order('id')
+              .range(from, to));
 
       final marksByChild = <String, Map<String, dynamic>>{
-        for (final m in rows(marksData)) m['child_id'] as String: m,
+        for (final m in marksData) m['child_id'] as String: m,
       };
 
-      final children = rows(childrenData)
+      final children = childrenData
         ..sort((a, b) => ArabicSort.compare(
             a['full_name'].toString(), b['full_name'].toString()));
 
@@ -120,13 +119,13 @@ class CompetitionRepository {
     try {
       final userId = Db.userId;
       if (userId == null) throw AppFailure('ما قدرناش نتأكد من هويتك');
-      await Db.client.from(Db.tCompetitionMarks).upsert(
+      await Db.from(Db.tCompetitionMarks).upsert(
         {
           'competition_id': competitionId,
           'child_id': childId,
           'mark': mark,
           'marked_by': userId,
-          'marked_at': DateTime.now().toIso8601String(),
+          'marked_at': DateTime.now().toUtc().toIso8601String(),
         },
         onConflict: 'competition_id,child_id',
       );
@@ -137,8 +136,7 @@ class CompetitionRepository {
 
   Future<void> deleteMark(String competitionId, String childId) async {
     try {
-      await Db.client
-          .from(Db.tCompetitionMarks)
+      await Db.from(Db.tCompetitionMarks)
           .delete()
           .eq('competition_id', competitionId)
           .eq('child_id', childId);
@@ -154,8 +152,7 @@ class CompetitionRepository {
       final result = <CompetitionMark>[];
       const page = 1000;
       for (var from = 0;; from += page) {
-        final data = await Db.client
-            .from(Db.tCompetitionMarks)
+        final data = await Db.from(Db.tCompetitionMarks)
             .select()
             .inFilter('competition_id', competitionIds)
             .order('id')
@@ -174,7 +171,7 @@ class CompetitionRepository {
     String? classId,
   }) async {
     try {
-      var query = Db.client.from(Db.vChildCompScores).select();
+      var query = Db.from(Db.vChildCompScores).select();
       if (classId != null) query = query.eq('class_id', classId);
       final data = await query.order('total_marks', ascending: false);
       return rows(data).map(ChildCompetitionScore.fromMap).toList();
@@ -188,8 +185,7 @@ class CompetitionRepository {
   /// marks (RLS); anyone else gets an empty list.
   Future<List<(Competition, int)>> childMarks(String childId) async {
     try {
-      final data = await Db.client
-          .from(Db.tCompetitionMarks)
+      final data = await Db.from(Db.tCompetitionMarks)
           .select('mark, competitions(*)')
           .eq('child_id', childId);
       final result = <(Competition, int)>[];
