@@ -100,6 +100,7 @@ void main() {
           web: true,
           ios: false,
           installed: false,
+          store: _Store(),
           permission: ValueNotifier(state),
         )));
         await tester.pumpAndSettle();

@@ -13,6 +13,7 @@ import '../profile/my_profile_screen.dart';
 import 'absence_alert_tile.dart';
 import 'caller_id_tile.dart';
 import 'notifications_tile.dart';
+import 'web_app_tiles.dart';
 
 /// Asks first (warning about changes still waiting to sync), then signs out.
 /// Shared by Settings and the profile header on المزيد.
@@ -84,6 +85,8 @@ class SettingsScreen extends StatelessWidget {
             _GroupCard(children: [
               const CallerIdTile(),
               const NotificationsTile(),
+              const InstallTile(),
+              const AppLockTile(),
             ]),
             if (session.isAdmin) ...[
               const _GroupTitle(AppStrings.absenceAlertSettings),

@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/services/push_service.dart';
+import 'core/services/web_pwa_stub.dart'
+    if (dart.library.js_interop) 'core/services/web_pwa_web.dart';
 import 'core/config/app_config.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/error_reporter.dart';
@@ -15,6 +17,7 @@ import 'data/supabase/db.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   PushService.instance.listenForTaps();
+  listenForInstall();
 
   await Hive.initFlutter();
   await OfflineStore.init();

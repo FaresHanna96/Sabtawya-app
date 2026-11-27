@@ -6,35 +6,51 @@ import '../../core/l10n/app_strings.dart';
 import '../../core/services/push_service.dart';
 import '../../core/services/web_device_stub.dart'
     if (dart.library.js_interop) '../../core/services/web_device_web.dart';
+import '../../core/services/web_pwa_stub.dart'
+    if (dart.library.js_interop) '../../core/services/web_pwa_web.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/ui.dart';
 
 /// Remembers that the "add to the home screen" card was closed on this phone.
+/// It comes back after [hideFor]: without the app installed an iPhone gets no
+/// notifications at all.
 class InstallCardStore {
   const InstallCardStore();
 
   static const _boxName = 'whats_new';
   static const _key = 'install_card_closed';
 
+  static const hideFor = Duration(days: 14);
+
   /// True (do not show) when it cannot be read.
   Future<bool> closed() async {
     try {
-      return (await Hive.openBox<dynamic>(_boxName)).get(_key) == true;
+      final box = await Hive.openBox<dynamic>(_boxName);
+      return stillClosed(box.get(_key), DateTime.now());
     } catch (_) {
       return true;
     }
   }
 
+  /// [stored] is when it was closed. An older version only kept `true`, with no
+  /// time, so that one is shown again.
+  static bool stillClosed(Object? stored, DateTime now) {
+    final at = stored is String ? DateTime.tryParse(stored) : null;
+    return at != null && now.difference(at) < hideFor;
+  }
+
   Future<void> close() async {
     try {
-      await (await Hive.openBox<dynamic>(_boxName)).put(_key, true);
+      await (await Hive.openBox<dynamic>(_boxName))
+          .put(_key, DateTime.now().toIso8601String());
     } catch (_) {}
   }
 }
 
-/// The website's two nudges, above the tabs: on an iPhone in a Safari tab, how
-/// to add the app to the home screen; otherwise, a button that turns
-/// notifications on (a browser only lets a tap ask).
+/// The website's nudges, above the tabs: on an iPhone in a Safari tab, how to
+/// add the app to the home screen; where the browser can install it, a button
+/// that does; otherwise, a button that turns notifications on (a browser only
+/// lets a tap ask).
 class WebCards extends StatefulWidget {
   const WebCards({
     super.key,
@@ -44,6 +60,8 @@ class WebCards extends StatefulWidget {
     this.store = const InstallCardStore(),
     this.permission,
     this.enable,
+    this.canInstall,
+    this.install,
   });
 
   final bool web;
@@ -54,6 +72,8 @@ class WebCards extends StatefulWidget {
   final InstallCardStore store;
   final ValueListenable<PushPermission>? permission;
   final Future<void> Function()? enable;
+  final ValueListenable<bool>? canInstall;
+  final Future<bool> Function()? install;
 
   @override
   State<WebCards> createState() => _WebCardsState();
@@ -74,7 +94,7 @@ class _WebCardsState extends State<WebCards> {
   @override
   void initState() {
     super.initState();
-    if (widget.web && _inSafari) {
+    if (widget.web && !(widget.installed ?? isInstalledWebApp)) {
       widget.store.closed().then((closed) {
         if (mounted) setState(() => _installClosed = closed);
       });
@@ -110,6 +130,28 @@ class _WebCardsState extends State<WebCards> {
         },
       );
     }
+    return ValueListenableBuilder<bool>(
+      valueListenable: widget.canInstall ?? installAvailable,
+      builder: (context, canInstall, _) {
+        if (canInstall && !_installClosed) {
+          return _NudgeCard(
+            icon: Icons.add_to_home_screen_rounded,
+            title: AppStrings.installRow,
+            body: AppStrings.installBody,
+            action: AppStrings.installAction,
+            onAction: () => (widget.install ?? promptInstall)(),
+            onClose: () {
+              setState(() => _installClosed = true);
+              widget.store.close();
+            },
+          );
+        }
+        return _notificationsCard();
+      },
+    );
+  }
+
+  Widget _notificationsCard() {
     return ValueListenableBuilder<PushPermission>(
       valueListenable: widget.permission ?? PushService.instance.permission,
       builder: (context, permission, _) {

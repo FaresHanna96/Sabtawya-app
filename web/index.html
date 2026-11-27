@@ -50,14 +50,25 @@
     <div style="width:180px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;">
       <div style="height:100%;background:#E8C547;border-radius:2px;animation:ldbar 4s ease-in-out forwards;"></div>
     </div>
-    <p style="color:rgba(255,255,255,.6);margin-top:18px;font-size:13px;font-family:Arial,sans-serif;">جاري التحميل…</p>
+    <p id="app-loading-text" style="color:rgba(255,255,255,.6);margin-top:18px;font-size:13px;font-family:Arial,sans-serif;">جاري التحميل…</p>
+    <button id="app-retry" type="button" onclick="location.reload()" style="display:none;margin-top:4px;padding:10px 28px;border:0;border-radius:999px;background:#fff;color:#1B3A6B;font:bold 14px Arial,sans-serif;">حاول تاني</button>
   </div>
   <style>
     body { margin: 0; background: #1B1F5E; }
     @keyframes ldbar { 0% { width: 0 } 40% { width: 50% } 80% { width: 85% } 100% { width: 95% } }
   </style>
   <script>
+    // A load that failed or is taking too long gets a way out.
+    function sabtawyaStuck() {
+      var button = document.getElementById('app-retry');
+      if (!button) return;
+      document.getElementById('app-loading-text').textContent =
+        'التحميل واخد وقت. اتأكد من النت وحاول تاني.';
+      button.style.display = 'block';
+    }
+    var stuckTimer = setTimeout(sabtawyaStuck, 20000);
     window.addEventListener('flutter-first-frame', function () {
+      clearTimeout(stuckTimer);
       var el = document.getElementById('app-loading');
       if (el) { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 450); }
     });
@@ -82,6 +93,7 @@
     }
   </script>
 
-  <script src="flutter_bootstrap.js" async></script>
+  <script src="pwa.js"></script>
+  <script src="flutter_bootstrap.js" async onerror="sabtawyaStuck()"></script>
 </body>
 </html>

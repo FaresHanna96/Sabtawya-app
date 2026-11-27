@@ -1,12 +1,15 @@
 ﻿{
+    "id": "/",
     "name": "خدمة 3:6 ابتدائي السبت",
-    "short_name": "خدمة 3:6 ابتدائي السبت",
+    "short_name": "سبتاوية",
+    "description": "نظام إدارة الحضور والطايو",
+    "lang": "ar",
+    "dir": "rtl",
     "start_url": ".",
     "display": "standalone",
+    "orientation": "any",
     "background_color": "#1B1F5E",
     "theme_color": "#1B3A6B",
-    "description": "نظام إدارة الحضور والطايو",
-    "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
         {
@@ -31,5 +34,51 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ]
+    ],
+    "screenshots": [
+        {
+            "src": "screenshots/home.jpg",
+            "sizes": "750x1624",
+            "type": "image/jpeg",
+            "form_factor": "narrow",
+            "label": "الرئيسية"
+        },
+        {
+            "src": "screenshots/children.jpg",
+            "sizes": "750x1624",
+            "type": "image/jpeg",
+            "form_factor": "narrow",
+            "label": "المخدومين"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "الحضور",
+            "url": "./?go=attendance",
+            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "متابعة الغياب",
+            "url": "./?go=absence",
+            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "أعياد الميلاد",
+            "url": "./?go=birthdays",
+            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+        }
+    ],
+    "share_target": {
+        "action": "/share-target",
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "params": {
+            "files": [
+                {
+                    "name": "files",
+                    "accept": ["image/*", "application/pdf"]
+                }
+            ]
+        }
+    }
 }

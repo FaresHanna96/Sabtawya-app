@@ -1190,6 +1190,27 @@ class AppStrings {
   static const bookedShort = 'اتحجزت الرحلة';
   static const bookedPaidShort = 'دفع';
   static const pickEvent = 'اختر النشاط';
+  static String updateRequiredWeb(String v) =>
+      'لازم تحدّث للنسخة $v عشان تكمّل. دوس «$updateReload».';
+  static const installRow = 'أضف التطبيق للشاشة الرئيسية';
+  static const installAction = 'ثبّت التطبيق';
+  static const installBody =
+      'يبقى ليه أيقونة على الموبايل، ويفتح أسرع ومن غير نت.';
+  static const installStepsOther =
+      'من قايمة المتصفح (⋮) اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».';
+  static const appLockRow = 'قفل التطبيق بالبصمة';
+  static const appLockHelp =
+      'يطلب البصمة أو الوش لما تفتح التطبيق، أو ترجعله بعد ٥ دقايق.';
+  static const appLockedTitle = 'التطبيق مقفول';
+  static const appLockOpen = 'افتح بالبصمة';
+  static const appLockFailed =
+      'ما اتفتحش. جرّب تاني، أو سجّل خروج وادخل بكلمة السر.';
+  static const appLockNotChanged = 'ما اتغيّرش حاجة. جرّب تاني.';
+  static String sharedPickDate(int n) => n == 1
+      ? 'الملف ده تحضير لأنهي سبت؟'
+      : 'الملفات دي ($n) تحضير لأنهي سبت؟';
+  static const sharedNotForYou = 'رفع التحضير لخدام الفصول بس.';
+  static const sharedNoDates = 'مفيش سبت قريب ترفع له التحضير.';
   static String bookingFor(String title) => 'حجز: $title';
   static String bookedOf(int n, int m) => 'محجوز $n من $m';
   static const paymentStatus = 'الحالة';

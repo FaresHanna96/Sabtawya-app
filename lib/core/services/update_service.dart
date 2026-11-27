@@ -50,7 +50,8 @@ class UpdateCheck {
 }
 
 /// Checks the site's version.json (written by build_web.ps1 on every deploy)
-/// against this build. Android only: the website is always the latest one.
+/// against this build. A newer one is installed on Android and reloaded on the
+/// website, where an open tab or home-screen app can stay on an old copy.
 class UpdateService {
   const UpdateService._();
 
@@ -60,12 +61,14 @@ class UpdateService {
 
   static const _url = 'https://sabtawya.vercel.app/version.json';
 
-  /// The newer version, or null when up to date, on the web, or offline.
-  /// Runs by itself at launch and on resume, so it stays silent.
-  static Future<AppUpdate?> check({http.Client? client}) async {
-    if (kIsWeb) return null;
-    return (await checkNow(client: client)).update;
-  }
+  /// The newer version, or null when up to date or offline. Runs by itself at
+  /// launch and on resume, so it stays silent.
+  static Future<AppUpdate?> check({
+    http.Client? client,
+    bool web = kIsWeb,
+    int current = kAppBuild,
+  }) async =>
+      (await checkNow(client: client, web: web, current: current)).update;
 
   /// The check the servant asks for (المزيد): unlike [check] it tells "up to
   /// date" apart from "could not check". On the web it reads the site's own

@@ -37,10 +37,14 @@ class LessonPrepScreen extends StatefulWidget {
     super.key,
     required this.sessionId,
     required this.sessionDate,
+    this.initialFiles = const <XFile>[],
   });
 
   final String sessionId;
   final DateTime sessionDate;
+
+  /// Files already chosen (shared to the app): attached, not yet sent.
+  final List<XFile> initialFiles;
 
   @override
   State<LessonPrepScreen> createState() => _LessonPrepScreenState();
@@ -63,6 +67,12 @@ class _LessonPrepScreenState extends State<LessonPrepScreen> {
       _sectionKey.currentState?.reload() ?? Future.value();
 
   bool get _busy => _progress != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _add(widget.initialFiles);
+  }
 
   // ── picking ───────────────────────────────────────────────────────────────
 

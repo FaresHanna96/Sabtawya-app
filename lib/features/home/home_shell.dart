@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ota_update/ota_update.dart';
@@ -10,6 +11,10 @@ import '../../data/services/access_log.dart';
 import '../../core/config/app_version.dart';
 import '../../core/l10n/app_strings.dart';
 import '../../core/services/connectivity_service.dart';
+import '../../core/services/page_reload_stub.dart'
+    if (dart.library.js_interop) '../../core/services/page_reload_web.dart';
+import '../../core/services/web_pwa_stub.dart'
+    if (dart.library.js_interop) '../../core/services/web_pwa_web.dart';
 import '../../core/services/push_service.dart';
 import '../../core/services/sync_service.dart';
 import '../../core/services/update_service.dart';
@@ -20,6 +25,7 @@ import '../../core/widgets/motion.dart';
 import '../../core/widgets/responsive.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/repositories/notification_repository.dart';
+import '../../data/repositories/servant_activity_repository.dart';
 import '../../data/services/caller_id_service.dart';
 import '../../state/session_controller.dart';
 import '../attendance/attendance_screen.dart';
@@ -32,11 +38,14 @@ import '../dashboard/servant_dashboard_screen.dart';
 import '../excel/import_children_screen.dart';
 import '../servant_activities/admin_servant_activities_screen.dart';
 import '../servant_activities/my_activities_screen.dart';
+import '../servant_activities/lesson_prep_screen.dart';
+import '../servant_activities/shared_files_sheet.dart';
 import '../notifications/notification_router.dart';
 import '../notifications/notifications_bell.dart';
 import '../notifications/notifications_screen.dart';
 import '../search/app_search.dart';
 import 'app_nav_bar.dart';
+import 'launch_actions.dart';
 import 'more_entries.dart';
 import 'quick_actions.dart';
 import 'more_screen.dart';
@@ -68,12 +77,7 @@ class _HomeShellState extends State<HomeShell>
     int index,
   ) async {
     final session = context.read<SessionController>();
-    final role = session.isAdmin
-        ? MoreRole.admin
-        : session.isGeneralServant
-            ? MoreRole.generalServant
-            : MoreRole.servant;
-    final actions = quickActionsFor(tab.id, role);
+    final actions = quickActionsFor(tab.id, _roleOf(session));
     final home = _homeKey.currentContext;
     if (actions.isEmpty || home == null) return;
     final chosen =
@@ -178,11 +182,83 @@ class _HomeShellState extends State<HomeShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkUpdate();
+    // Signed in: from here there is saved data worth keeping.
+    askPersistentStorage();
     WidgetsBinding.instance.addPostFrameCallback((_) => _welcome());
     PushService.instance.tapped.addListener(_openTapped);
     UpdateService.found.addListener(_onUpdateFound);
     // The tap that started the app is already waiting.
     WidgetsBinding.instance.addPostFrameCallback((_) => _openTapped());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openLaunch());
+  }
+
+  MoreRole _roleOf(SessionController session) => session.isAdmin
+      ? MoreRole.admin
+      : session.isGeneralServant
+          ? MoreRole.generalServant
+          : MoreRole.servant;
+
+  /// How the website was opened: an icon shortcut, or files shared to it.
+  Future<void> _openLaunch() async {
+    if (!mounted || (_update?.forced ?? false)) return;
+    final session = context.read<SessionController>();
+    if (takeLaunchShared()) return _openShared(session);
+    final target = launchTarget(takeLaunchShortcut(), _roleOf(session));
+    final home = _homeKey.currentContext;
+    switch (target) {
+      case LaunchTab():
+        _selectTab(_attendanceTab);
+      case LaunchPage(:final open):
+        if (home == null) return;
+        await Navigator.of(home).push<void>(
+          MaterialPageRoute<void>(builder: (_) => open()),
+        );
+      case null:
+        break;
+    }
+  }
+
+  /// Photos or PDFs from the share sheet become a lesson prep: the servant
+  /// picks the Saturday, then sends them from the prep page.
+  Future<void> _openShared(SessionController session) async {
+    final files = await takeSharedFiles();
+    final home = _homeKey.currentContext;
+    if (files.isEmpty || home == null || !home.mounted) return;
+    final classes = [for (final c in session.myClasses) c.classId];
+    if (_roleOf(session) != MoreRole.servant || classes.isEmpty) {
+      Ui.info(home, AppStrings.sharedNotForYou);
+      return;
+    }
+    try {
+      final dates = sharedFileDates(
+        await const ServantActivityRepository().sessionsForClasses(
+          classes,
+          yearId: session.currentYear?.id,
+        ),
+      );
+      if (!home.mounted) return;
+      if (dates.isEmpty) {
+        Ui.info(home, AppStrings.sharedNoDates);
+        return;
+      }
+      final picked = await pickSharedFileDate(
+        home,
+        dates: dates,
+        files: files.length,
+      );
+      if (picked == null || !home.mounted) return;
+      await Navigator.of(home).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => LessonPrepScreen(
+            sessionId: picked.id,
+            sessionDate: picked.sessionDate,
+            initialFiles: files,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (home.mounted) Ui.error(home, e);
+    }
   }
 
   void _onUpdateFound() {
@@ -863,13 +939,27 @@ mixin _InstallLogic<T extends StatefulWidget> on State<T> {
   /// cancelling Android's install prompt tells the app nothing.
   static const _installerWait = Duration(seconds: 45);
 
+  /// The website updates by loading itself again; tests replace both.
+  bool get web => kIsWeb;
+  Future<void> Function() get reload => reloadPage;
+
   /// What the button does: try again when that can help, else the web page.
-  void _onButton() => _problem != null && !_canRetry ? _openPage() : _start();
+  void _onButton() {
+    if (web) {
+      unawaited(reload());
+    } else if (_problem != null && !_canRetry) {
+      _openPage();
+    } else {
+      _start();
+    }
+  }
 
   /// The button's label to match [_onButton].
-  String get _buttonLabel => _problem != null && !_canRetry
-      ? AppStrings.updateOpenPage
-      : AppStrings.updateNow;
+  String get _buttonLabel => web
+      ? AppStrings.updateReload
+      : _problem != null && !_canRetry
+          ? AppStrings.updateOpenPage
+          : AppStrings.updateNow;
 
   void _openPage() => launchUrl(_page, mode: LaunchMode.externalApplication);
 
@@ -1037,9 +1127,20 @@ class _UpdateBannerState extends State<_UpdateBanner>
 /// Shown instead of the app when this build is below the published
 /// `min_build`. No close button and no back: the only way on is to update.
 class ForcedUpdateScreen extends StatefulWidget {
-  const ForcedUpdateScreen({super.key, required this.update});
+  const ForcedUpdateScreen({
+    super.key,
+    required this.update,
+    this.web = kIsWeb,
+    this.reload,
+    this.firstReload,
+  });
 
   final AppUpdate update;
+
+  /// Tests replace the browser.
+  final bool web;
+  final Future<void> Function()? reload;
+  final bool Function(int build)? firstReload;
 
   @override
   State<ForcedUpdateScreen> createState() => _ForcedUpdateScreenState();
@@ -1050,12 +1151,24 @@ class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
   @override
   AppUpdate get update => widget.update;
 
+  @override
+  bool get web => widget.web;
+
+  @override
+  Future<void> Function() get reload => widget.reload ?? reloadPage;
+
   /// Nobody has to find a button or a web page: the download starts by itself
-  /// and Android then asks only for the usual "install" tap.
+  /// and Android then asks only for the usual "install" tap. The website
+  /// reloads itself, once: if that did not bring the new version, the button
+  /// stays rather than reloading for ever.
   @override
   void initState() {
     super.initState();
-    if (widget.update.canInstallInApp) {
+    if (web) {
+      if ((widget.firstReload ?? firstReloadFor)(widget.update.build)) {
+        unawaited(reload());
+      }
+    } else if (widget.update.canInstallInApp) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _start();
       });
@@ -1069,7 +1182,9 @@ class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
     if (_problem != null) {
       text = _problem!;
     } else if (p == null) {
-      text = AppStrings.updateRequiredBody(widget.update.version);
+      text = web
+          ? AppStrings.updateRequiredWeb(widget.update.version)
+          : AppStrings.updateRequiredBody(widget.update.version);
     } else if (p > 100) {
       text = AppStrings.updateInstalling;
     } else {
@@ -1133,15 +1248,17 @@ class _ForcedUpdateScreenState extends State<ForcedUpdateScreen>
                     // Always there: an installer that is cancelled or never
                     // opens tells the app nothing, and this screen has no
                     // other way out. The web page installs the same APK.
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: _openPage,
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        minimumSize: const Size(200, 44),
+                    if (!web) ...[
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _openPage,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          minimumSize: const Size(200, 44),
+                        ),
+                        child: const Text(AppStrings.updateManual),
                       ),
-                      child: const Text(AppStrings.updateManual),
-                    ),
+                    ],
                   ],
                 ),
               ),

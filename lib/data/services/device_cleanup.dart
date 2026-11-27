@@ -2,6 +2,9 @@ import '../../core/services/app_badge_stub.dart'
     if (dart.library.js_interop) '../../core/services/app_badge_web.dart';
 import '../../core/services/offline_store.dart';
 import '../../core/services/push_service.dart';
+import '../../core/services/web_pwa_stub.dart'
+    if (dart.library.js_interop) '../../core/services/web_pwa_web.dart';
+import '../../features/lock/app_lock.dart';
 import 'caller_id_service.dart';
 
 /// What this device holds for the person signed in, and how to take it back
@@ -18,12 +21,15 @@ class DeviceCleanup {
     await CallerIdService.disable();
   }
 
-  /// [hideNames] and every kept copy of the server's answers.
+  /// [hideNames], every kept copy of the server's answers, files shared to the
+  /// app and not yet picked up, and the website's screen lock.
   Future<void> wipe() async {
     try {
       await hideNames();
     } finally {
       await OfflineStore.clearCache();
+      await clearSharedFiles();
+      await const AppLockStore().clear();
     }
   }
 

@@ -46,7 +46,7 @@ Future<List<XFile>> pickPhotosInBrowser({
     final out = <XFile>[];
     for (var i = 0; i < files.length; i++) {
       final file = files.item(i)!;
-      out.add(await _shrink(file, maxSide, quality) ?? await _asIs(file));
+      out.add(await browserFile(file, maxSide: maxSide, quality: quality));
     }
     finish(out);
   }
@@ -65,6 +65,18 @@ Future<List<XFile>> pickPhotosInBrowser({
   input.click();
   return completer.future;
 }
+
+/// A file the browser handed over, a photo shrunk like a picked one; anything
+/// else (a PDF) as it is.
+Future<XFile> browserFile(
+  web.File file, {
+  int maxSide = 1024,
+  double quality = 0.85,
+}) async =>
+    (file.type == 'application/pdf'
+        ? null
+        : await _shrink(file, maxSide, quality)) ??
+    await _asIs(file);
 
 Future<XFile> _asIs(web.File file) async {
   final buffer = await file.arrayBuffer().toDart;

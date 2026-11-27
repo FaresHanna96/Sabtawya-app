@@ -17,6 +17,7 @@ import '../../core/utils/app_failure.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/ui.dart';
 import '../../core/widgets/app_widgets.dart';
+import '../../core/widgets/keep_awake.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../data/models/attendance.dart';
@@ -1131,7 +1132,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      KeepAwake(child: _sheetPage(context));
+
+  Widget _sheetPage(BuildContext context) {
     _publishUnsaved(_canEdit && _hasChanges);
     return PopScope(
       canPop: !_hasChanges,

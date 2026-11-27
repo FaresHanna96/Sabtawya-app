@@ -11,6 +11,7 @@ import 'core/widgets/app_widgets.dart';
 import 'core/widgets/responsive.dart';
 import 'features/auth/login_screen.dart';
 import 'features/home/home_shell.dart';
+import 'features/lock/app_lock.dart';
 import 'state/session_controller.dart';
 
 /// Arabic-only, right-to-left. The locale is pinned rather than following the
@@ -79,7 +80,11 @@ class SabtawyaApp extends StatelessWidget {
         locale: const Locale('ar'),
         supportedLocales: _supportedLocales,
         localizationsDelegates: _localizationDelegates,
-        builder: appFrame,
+        // The screen lock sits above every page and dialog.
+        builder: (context, child) => appFrame(
+          context,
+          AppLockGate(child: child ?? const SizedBox.shrink()),
+        ),
         home: const AuthGate(),
       ),
     );
