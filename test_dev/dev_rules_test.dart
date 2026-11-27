@@ -769,7 +769,7 @@ void main() {
       await _call('PATCH', '/rest/v1/children?id=eq.$childId',
           token: servant.token, body: {'is_active': false});
       got = await inbox(general);
-      expect(got.where((n) => (n['body'] as String).contains('أوقف')),
+      expect(got.where((n) => (n['body'] as String).contains('وقّف')),
           hasLength(1));
 
       // A visit written down.
@@ -2325,11 +2325,22 @@ void main() {
 
       final marks = await _call(
           'GET',
-          '/rest/v1/servant_attendances?select=activity_type'
+          '/rest/v1/servant_attendances?select=activity_type,date'
               '&servant_id=eq.${servant.id}&date=gte.$from&date=lte.$to',
           token: admin.token);
-      int count(String type) =>
-          marks.rows.where((m) => m['activity_type'] == type).length;
+      final breaks = await _call(
+          'GET', '/rest/v1/lesson_breaks?select=break_date,kind',
+          token: admin.token);
+      final breakDays = {for (final b in breaks.rows) b['break_date']};
+      final holidays = {
+        for (final b in breaks.rows)
+          if (b['kind'] == 'holiday') b['break_date'],
+      };
+      // A holiday counts for nothing.
+      int count(String type) => marks.rows
+          .where((m) =>
+              m['activity_type'] == type && !holidays.contains(m['date']))
+          .length;
       expect(row['sunday_school'], count('sunday_school'));
       expect(row['servant_meeting'], count('servant_meeting'));
       expect(row['mass'], count('mass'));
@@ -2344,7 +2355,16 @@ void main() {
               '&attendance_sessions.session_date=lte.$to'
               '&attendance_sessions.is_break=eq.false',
           token: admin.token);
-      expect(row['preps_total'], preps.rows.length);
+      // One per Saturday: uploaded, or ticked by the admin; never on a day
+      // with no lesson.
+      final prepDays = {
+        for (final p in preps.rows) p['attendance_sessions']['session_date'],
+        for (final m in marks.rows)
+          if (m['activity_type'] == 'lesson_prep' &&
+              !breakDays.contains(m['date']))
+            m['date'],
+      };
+      expect(row['preps_total'], prepDays.length);
       expect(row['preps_pending'],
           preps.rows.where((p) => p['status'] == 'pending').length);
       expect(row['classes_count'], 1);
